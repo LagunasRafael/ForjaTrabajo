@@ -4,6 +4,7 @@ import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/servidor_perfil.dart';
+import 'screens/trabajos.dart';
 
 void main() {
   runApp(const MainApp());
@@ -24,6 +25,7 @@ class MainApp extends StatelessWidget {
         '/register': (context) => const RegisterPage(), // opcional dos
         '/homescreen': (context) => const HomeScreen(),
          '/servidor_perf': (context) => const ServidorPerfil(),
+         '/trabajos': (context) => Trabajos(),
       },
     );
   }
