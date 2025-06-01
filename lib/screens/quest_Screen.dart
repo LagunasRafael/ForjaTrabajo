@@ -22,110 +22,140 @@ class _LaborFormPageState extends State<LaborFormPage> {
       backgroundColor: Colors.white,
       body: Column(
         children: [
-          Stack(
-            children: [
-              Container(
-                height: 140,
-                color: Colors.blue,
-              ),
-              Positioned(
-                bottom: 0,
-                child: Container(
-                  width: MediaQuery.of(context).size.width,
-                  height: 30,
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
-                  ),
-                ),
-              ),
-              Positioned(
-                top: 40,
-                left: 16,
-                right: 16,
-                child: Row(
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.arrow_back, color: Colors.white),
-                      onPressed: () {
-                        Navigator.pop(context); // Puedes cambiar esto si necesitas otro comportamiento
-                      },
-                    ),
-                    const Expanded(
-                      child: Center(
-                        child: Text(
-                          'Cuéntanos sobre ti',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 48), // Para equilibrar el espacio del botón de atrás
-                  ],
-                ),
-              ),
-            ],
-          ),
+          // Encabezado mejorado
+          _buildHeader(context),
+          
+          // Cuerpo del formulario optimizado
           Expanded(
-            child: SingleChildScrollView(
+            child: ListView(  // Cambiado de SingleChildScrollView a ListView
               padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('¿Cuál es tu área laboral?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 10),
-                  ...areas.map((area) => RadioListTile<String>(
-                        title: Text(area),
-                        value: area,
-                        groupValue: selectedArea,
-                        onChanged: (value) => setState(() => selectedArea = value),
-                      )),
-                  const SizedBox(height: 20),
-                  const Text('¿Cuántos años de experiencia tienes en este oficio?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 10),
-                  ...experiences.map((exp) => RadioListTile<String>(
-                        title: Text(exp),
-                        value: exp,
-                        groupValue: selectedExperience,
-                        onChanged: (value) => setState(() => selectedExperience = value),
-                      )),
-                  const SizedBox(height: 20),
-                  const Text('¿Trabajas por tu cuenta o en una empresa/grupo?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 10),
-                  ...workTypes.map((type) => RadioListTile<String>(
-                        title: Text(type),
-                        value: type,
-                        groupValue: selectedWorkType,
-                        onChanged: (value) => setState(() => selectedWorkType = value),
-                      )),
-                  const SizedBox(height: 30),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30),
-                        ),
-                      ),
-                      onPressed: () {
-                        print("Área: $selectedArea");
-                        print("Experiencia: $selectedExperience");
-                        print("Trabajo: $selectedWorkType");
-                      },
-                      child: const Text('Siguiente'),
-                    ),
-                  ),
-                ],
-              ),
+              children: [
+                _buildQuestionSection(
+                  title: '¿Cuál es tu área laboral?',
+                  options: areas,
+                  value: selectedArea,
+                  onChanged: (value) => setState(() => selectedArea = value),
+                ),
+                
+                _buildQuestionSection(
+                  title: '¿Cuántos años de experiencia tienes en este oficio?',
+                  options: experiences,
+                  value: selectedExperience,
+                  onChanged: (value) => setState(() => selectedExperience = value),
+                ),
+                
+                _buildQuestionSection(
+                  title: '¿Trabajas por tu cuenta o en una empresa/grupo?',
+                  options: workTypes,
+                  value: selectedWorkType,
+                  onChanged: (value) => setState(() => selectedWorkType = value),
+                ),
+                
+                const SizedBox(height: 30),
+                
+                _buildSubmitButton(),
+              ],
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  // Widget para el encabezado
+  Widget _buildHeader(BuildContext context) {
+    return Stack(
+      children: [
+        Container(
+          height: 140,
+          color: Colors.blue,
+        ),
+        Positioned(
+          bottom: 0,
+          child: Container(
+            width: MediaQuery.of(context).size.width,
+            height: 30,
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+            ),
+          ),
+        ),
+        Positioned(
+          top: 40,
+          left: 16,
+          right: 16,
+          child: Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.white),
+                onPressed: () => Navigator.pop(context),
+              ),
+              const Expanded(
+                child: Center(
+                  child: Text(
+                    'Cuéntanos sobre ti',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 48),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Widget reusable para secciones de preguntas
+  Widget _buildQuestionSection({
+    required String title,
+    required List<String> options,
+    required String? value,
+    required ValueChanged<String?> onChanged,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 10),
+        ...options.map((option) => RadioListTile<String>(
+          title: Text(option),
+          value: option,
+          groupValue: value,
+          onChanged: onChanged,
+          contentPadding: EdgeInsets.zero,  // Reduce espacio interno
+          dense: true,  // Hace los tiles más compactos
+        )),
+        const SizedBox(height: 20),
+      ],
+    );
+  }
+
+  // Widget para el botón de enviar
+  Widget _buildSubmitButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.blue,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(30),
+          ),
+        ),
+        onPressed: () {
+          debugPrint("Área seleccionada: $selectedArea");
+          debugPrint("Experiencia: $selectedExperience");
+          debugPrint("Tipo de trabajo: $selectedWorkType");
+          Navigator.pushNamed(context, '/homescreen');
+        },
+        child: const Text('Siguiente'),
       ),
     );
   }

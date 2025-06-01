@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'detalle_trabajo.dart';
 
-class Trabajos extends StatelessWidget {
+class Mensajes extends StatelessWidget {
   final List<Map<String, dynamic>> trabajos = [
     {
       "nombre": "Jose Armando Juarez Ruiz",
@@ -41,7 +40,7 @@ class Trabajos extends StatelessWidget {
           children: [
             // Flecha y título
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: Row(
                 children: [
                   GestureDetector(
@@ -52,7 +51,7 @@ class Trabajos extends StatelessWidget {
                   Expanded(
                     child: Center(
                       child: Text(
-                        'Trabajos',
+                        'Mensajes',
                         style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                       ),
                     ),
@@ -95,7 +94,7 @@ class Trabajos extends StatelessWidget {
                       padding: const EdgeInsets.all(16.0),
                       child: Center(
                         child: Text(
-                          'Trabajo aceptados',
+                          '',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 16,
@@ -114,7 +113,7 @@ class Trabajos extends StatelessWidget {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => DetalleTrabajo(detalle_trabajo: trabajo),
+                                builder: (context) => ChatScreen(trabajo: trabajo),
                               ),
                             );
                           },
@@ -177,27 +176,181 @@ class Trabajos extends StatelessWidget {
         ),
       ),
       bottomNavigationBar: CustomBottomNavigationBar(
-        currentIndex: 1, // Índice 1 para la pantalla de trabajos
+        currentIndex: 2, // Índice 2 para Mensajes
         onTap: (index) {
-          // Evitar navegación redundante si ya estamos en la pantalla
-          if (index == 1) return;
+          // Si ya estamos en la pantalla seleccionada, no hacer nada
+          if (index == 2) return;
           
-          // Cerrar la pantalla actual antes de navegar
-          Navigator.pop(context);
-          
-          // Navegar a la nueva pantalla según el índice
+          // Navegar a la nueva pantalla
           switch (index) {
             case 0:
               Navigator.pushReplacementNamed(context, '/homescreen');
               break;
-            case 2:
-              Navigator.pushReplacementNamed(context, '/mensajes');
+            case 1:
+              Navigator.pushReplacementNamed(context, '/trabajos');
               break;
             case 3:
               Navigator.pushReplacementNamed(context, '/cleinte_perf');
               break;
           }
         },
+      ),
+    );
+  }
+}
+
+class ChatScreen extends StatelessWidget {
+  final Map<String, dynamic> trabajo;
+
+  const ChatScreen({super.key, required this.trabajo});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(trabajo['nombre']),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.call),
+            onPressed: () {},
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          Expanded(
+            child: ListView(
+              padding: EdgeInsets.all(16),
+              children: [
+                // Mensajes simulados
+                _buildMessage(
+                  text: "Hola, ¿cómo estás? Necesito ayuda con ${trabajo['descripcion']}",
+                  isMe: false,
+                  time: "10:00 AM",
+                ),
+                _buildMessage(
+                  text: "Hola, estoy bien. Claro que puedo ayudarte con eso. ¿Cuándo te vendría bien que pasara?",
+                  isMe: true,
+                  time: "10:05 AM",
+                ),
+                _buildMessage(
+                  text: "¿Podrías venir mañana por la mañana?",
+                  isMe: false,
+                  time: "10:10 AM",
+                ),
+                _buildMessage(
+                  text: "Sí, perfecto. ¿A qué hora exactamente?",
+                  isMe: true,
+                  time: "10:12 AM",
+                ),
+                _buildMessage(
+                  text: "¿A las 9:00 AM te parece bien?",
+                  isMe: false,
+                  time: "10:15 AM",
+                ),
+                _buildMessage(
+                  text: "Perfecto, ahí estaré. ¿Necesitas que lleve algún material especial?",
+                  isMe: true,
+                  time: "10:16 AM",
+                ),
+              ],
+            ),
+          ),
+          _buildMessageInput(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMessage({required String text, required bool isMe, required String time}) {
+    return Container(
+      margin: EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+        children: [
+          if (!isMe)
+            CircleAvatar(
+              radius: 16,
+              backgroundImage: AssetImage('assets/avatar.png'),
+            ),
+          SizedBox(width: 8),
+          Flexible(
+            child: Container(
+              padding: EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: isMe ? Color(0xFF0099FF) : Colors.grey[200],
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(12),
+                  topRight: Radius.circular(12),
+                  bottomLeft: isMe ? Radius.circular(12) : Radius.circular(0),
+                  bottomRight: isMe ? Radius.circular(0) : Radius.circular(12),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    text,
+                    style: TextStyle(
+                      color: isMe ? Colors.white : Colors.black,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    time,
+                    style: TextStyle(
+                      color: isMe ? Colors.white70 : Colors.grey,
+                      fontSize: 10,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMessageInput() {
+    return Container(
+      padding: EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.2),
+            blurRadius: 5,
+            offset: Offset(0, -2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          IconButton(
+            icon: Icon(Icons.add),
+            onPressed: () {},
+          ),
+          Expanded(
+            child: TextField(
+              decoration: InputDecoration(
+                hintText: "Escribe un mensaje...",
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(30),
+                  borderSide: BorderSide.none,
+                ),
+                filled: true,
+                fillColor: Colors.grey[100],
+                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              ),
+            ),
+          ),
+          IconButton(
+            icon: Icon(Icons.send, color: Color(0xFF0099FF)),
+            onPressed: () {},
+          ),
+        ],
       ),
     );
   }

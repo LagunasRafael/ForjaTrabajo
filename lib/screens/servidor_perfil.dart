@@ -10,15 +10,10 @@ class ServidorPerfil extends StatefulWidget {
 class _ServidorPerfilState extends State<ServidorPerfil> {
   int _selectedIndex = 3; // Índice del ícono seleccionado en la barra de navegación
 
-  // Lista de widgets que se mostrarán según el ícono seleccionado
-  static final List<Widget> _widgetOptions = <Widget>[
-    const Center(child: Text('Contenido de Inicio (Casa)')),
-    const Center(child: Text('Contenido de Trabajos (Documento)')),
-    const Center(child: Text('Contenido de Mensajes (Chat)')),
-    const Center(child: Text('Contenido de Perfil (Persona)')),
-  ];
-
   void _onItemTapped(int index) {
+    // Si ya está seleccionado, no hacer nada
+    if (_selectedIndex == index) return;
+
     setState(() {
       _selectedIndex = index;
     });
@@ -26,16 +21,16 @@ class _ServidorPerfilState extends State<ServidorPerfil> {
     // Navegación basada en el índice seleccionado
     switch (index) {
       case 0:
-        Navigator.pushNamed(context, '/homescreen');
+        Navigator.pushReplacementNamed(context, '/home');
         break;
       case 1:
-        Navigator.pushNamed(context, '/');
+        Navigator.pushReplacementNamed(context, '/trabajos');
         break;
       case 2:
-        Navigator.pushNamed(context, '/');
+        Navigator.pushReplacementNamed(context, '/mensajes');
         break;
       case 3:
-        Navigator.pushNamed(context, '/servidor_perf');
+        // Ya estamos en el perfil, no necesitamos navegar
         break;
     }
   }
@@ -54,9 +49,8 @@ class _ServidorPerfilState extends State<ServidorPerfil> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-             
               Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8.0), // Espacio arriba y abajo del perfil
+                padding: const EdgeInsets.symmetric(vertical: 8.0),
                 child: Row(
                   children: [
                     CircleAvatar(
@@ -90,10 +84,8 @@ class _ServidorPerfilState extends State<ServidorPerfil> {
                   ],
                 ),
               ),
-
-              // Sección de "Trabajos en proceso" con más separación
               Padding(
-                padding: const EdgeInsets.only(top: 16.0, bottom: 8.0), // Más espacio arriba y abajo
+                padding: const EdgeInsets.only(top: 16.0, bottom: 8.0),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -116,7 +108,7 @@ class _ServidorPerfilState extends State<ServidorPerfil> {
                           width: 30,
                           height: 30,
                           decoration: BoxDecoration(
-                            color: Colors.blue.shade700,
+                            color: const Color.fromARGB(255, 0, 128, 255),
                             shape: BoxShape.circle,
                           ),
                           child: Icon(
@@ -156,7 +148,7 @@ class _ServidorPerfilState extends State<ServidorPerfil> {
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: Colors.blue.shade700,
+                  color: const Color.fromARGB(255, 0, 128, 255),
                   borderRadius: BorderRadius.circular(15),
                 ),
                 child: Column(
@@ -188,16 +180,15 @@ class _ServidorPerfilState extends State<ServidorPerfil> {
                 ),
               ),
               const SizedBox(height: 20),
-              // Contenedores con altura fija para que sean del mismo tamaño
               Row(
                 children: [
                   Expanded(
-                    child: SizedBox( // Añadí SizedBox para controlar la altura
-                      height: 180, // Altura fija para ambos contenedores
+                    child: SizedBox(
+                      height: 180,
                       child: Container(
                         padding: const EdgeInsets.all(20),
                         decoration: BoxDecoration(
-                          color: Colors.blue.shade700,
+                          color: const Color.fromARGB(255, 0, 128, 255),
                           borderRadius: BorderRadius.circular(15),
                         ),
                         child: Column(
@@ -222,12 +213,12 @@ class _ServidorPerfilState extends State<ServidorPerfil> {
                   ),
                   const SizedBox(width: 16),
                   Expanded(
-                    child: SizedBox( // Añadí SizedBox para controlar la altura
-                      height: 180, // Misma altura que el primero
+                    child: SizedBox(
+                      height: 180,
                       child: Container(
                         padding: const EdgeInsets.all(20),
                         decoration: BoxDecoration(
-                          color: Colors.blue.shade700,
+                          color: const Color.fromARGB(255, 0, 128, 255),
                           borderRadius: BorderRadius.circular(15),
                         ),
                         child: Column(
@@ -260,7 +251,7 @@ class _ServidorPerfilState extends State<ServidorPerfil> {
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
-        selectedItemColor: Colors.blue.shade700,
+        selectedItemColor: const Color.fromARGB(255, 0, 128, 255),
         unselectedItemColor: Colors.grey,
         backgroundColor: theme.surface,
         type: BottomNavigationBarType.fixed,

@@ -60,10 +60,10 @@ class _HomeScreenState extends State<HomeScreen> {
         Navigator.pushNamed(context, '/trabajos'); // Ruta para la pantalla de trabajos
         break;
       case 2:
-        Navigator.pushNamed(context, '/messages'); // Ruta para la pantalla de mensajes
+        Navigator.pushNamed(context, '/mensajes'); // Ruta para la pantalla de mensajes
         break;
       case 3:
-        Navigator.pushNamed(context, '/servidor_perf'); // Ruta para la pantalla de perfil
+        Navigator.pushNamed(context, '/cleinte_perf'); // Ruta para la pantalla de perfil
         break;
     }
   }
@@ -92,7 +92,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     height: screenHeight * widget.altura,
                     width: double.infinity,
                     decoration: BoxDecoration(
-                      color: Colors.blue,
+                      color: const Color(0xFF2196F3),
                       borderRadius: widget.modoOvalo
                           ? BorderRadius.vertical(
                               bottom: Radius.elliptical(

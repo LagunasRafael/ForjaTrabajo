@@ -14,7 +14,7 @@ class _RegisterPageState extends State<RegisterPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: SingleChildScrollView( // Para evitar overflow en pantallas pequeñas
+      body: SingleChildScrollView(
         child: Column(
           children: [
             // Parte superior azul con curva
@@ -95,9 +95,13 @@ class _RegisterPageState extends State<RegisterPage> {
                     height: 44,
                     child: ElevatedButton(
                       onPressed: () {
-                        // Acción de registrar
+                      if (isServiceProvider) {
+                        //Navigator.push(context, MaterialPageRoute(builder: (_) => Scaffold(body: Center(child: Text('Prueba Quest')))));
+                        Navigator.pushNamed(context, '/quest');
+                      } else {
                         Navigator.pushNamed(context, '/homescreen');
-                      },
+                      }
+                    },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.indigo[800],
                         shape: RoundedRectangleBorder(

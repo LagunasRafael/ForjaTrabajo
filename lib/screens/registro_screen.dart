@@ -1,7 +1,14 @@
 import 'package:flutter/material.dart';
 
-class RegistroScreen extends StatelessWidget {
+class RegistroScreen extends StatefulWidget {
   const RegistroScreen({super.key});
+
+  @override
+  State<RegistroScreen> createState() => _RegistroScreenState();
+}
+
+class _RegistroScreenState extends State<RegistroScreen> {
+  bool _switchValue = false;
 
   @override
   Widget build(BuildContext context) {
@@ -17,7 +24,6 @@ class RegistroScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Contenedor para el título
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
@@ -37,7 +43,6 @@ class RegistroScreen extends StatelessWidget {
 
               const SizedBox(height: 40),
 
-              // Contenedor principal para los campos de texto y botones
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
@@ -53,64 +58,53 @@ class RegistroScreen extends StatelessWidget {
                 ),
                 child: Column(
                   children: [
-                    TextFormField(
-                      decoration: InputDecoration(
-                        labelText: 'Nombre completo',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(30.0), 
-                        ),
-                      ),
-                    ),
+                    // Tus campos de texto aquí...
+                    // (Mantén los mismos TextFormField que ya tenías)
 
                     const SizedBox(height: 16),
 
-                    TextFormField(
-                      decoration: InputDecoration(
-                        labelText: 'Correo electrónico',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(30.0),
+                    Row(
+                      children: [
+                        const Text('Redirigir a mensajes después de registro:'),
+                        const Spacer(),
+                        Switch(
+                          value: _switchValue,
+                          onChanged: (bool value) {
+                            setState(() {
+                              _switchValue = value;
+                            });
+                          },
                         ),
-                      ),
-                      keyboardType: TextInputType.emailAddress,
+                      ],
                     ),
 
                     const SizedBox(height: 16),
-
-                    TextFormField(
-                      decoration: InputDecoration(
-                        labelText: 'Contraseña',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(30.0),
-                        ),
-                      ),
-                      obscureText: true,
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    TextFormField(
-                      decoration: InputDecoration(
-                        labelText: 'Confirmar contraseña',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(30.0),
-                        ),
-                      ),
-                      obscureText: true,
-                    ),
-
-                    const SizedBox(height: 32),
 
                     ElevatedButton(
                       onPressed: () {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(content: Text('Cuenta creada')),
                         );
-                        Navigator.pushNamed(context, '/');
+                        
+                        if (_switchValue) {
+                          // Si el switch está activado, ir a mensajes
+                          Navigator.pushNamedAndRemoveUntil(
+                            context, 
+                            '/mensajes',
+                            (route) => false, // Elimina todas las rutas anteriores
+                          );
+                        } else {
+                          // Si el switch está desactivado, ir al home
+                          Navigator.pushNamedAndRemoveUntil(
+                            context, 
+                            '/home_screen',
+                            (route) => false,
+                          );
+                        }
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.blue,
                         padding: const EdgeInsets.symmetric(vertical: 16),
-                        minimumSize: const Size(double.infinity, 50),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(30),
                         ),
@@ -124,9 +118,7 @@ class RegistroScreen extends StatelessWidget {
                     const SizedBox(height: 16),
 
                     TextButton(
-                      onPressed: () {
-                        Navigator.pop(context);
-                      },
+                      onPressed: () => Navigator.pop(context),
                       child: const Text('¿Ya tienes cuenta? Inicia sesión'),
                     ),
                   ],
