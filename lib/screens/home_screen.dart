@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+// import 'quest_Screen.dart'; // Asegúrate de importar correctamente el archivo del formulario si es necesario para alguna ruta
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   final double altura;
   final double curvaIzquierda;
   final double curvaDerecha;
@@ -13,8 +14,8 @@ class HomeScreen extends StatelessWidget {
   final double electricistaTop;
   final double plomeroLeft;
   final double plomeroBottom;
+  final double plomeroTop; // Este parece duplicado con plomeroBottom, revisar uso
   final double mecanicoRight;
-  final double plomeroTop;
   final double mecanicoBottom;
 
   const HomeScreen({
@@ -30,15 +31,48 @@ class HomeScreen extends StatelessWidget {
     this.electricistaTop = 110,
     this.plomeroLeft = 100,
     this.plomeroBottom = 30,
-    this.plomeroTop = 110,
+    this.plomeroTop = 110, // Considerar si este es necesario o si es un error
     this.mecanicoRight = 30,
     this.mecanicoBottom = 40,
   });
 
   @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  // Índice del ícono seleccionado en la barra de navegación.
+  // Establecido en 0 para el ícono de casa (Home).
+  int _selectedIndex = 0;
+
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+
+    // Lógica de navegación basada en el índice seleccionado.
+    // Asegúrate de que tus rutas estén definidas en tu MaterialApp.
+    switch (index) {
+      case 0:
+    
+        break;
+      case 1:
+        Navigator.pushNamed(context, '/trabajos'); // Ruta para la pantalla de trabajos
+        break;
+      case 2:
+        Navigator.pushNamed(context, '/messages'); // Ruta para la pantalla de mensajes
+        break;
+      case 3:
+        Navigator.pushNamed(context, '/servidor_perf'); // Ruta para la pantalla de perfil
+        break;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
+    final theme = Theme.of(context).colorScheme; // Obtener el tema para el BottomNavigationBar
 
     final List<String> sampleItems =
         List.generate(20, (index) => 'Elemento ${index + 1}');
@@ -49,32 +83,32 @@ class HomeScreen extends StatelessWidget {
         slivers: [
           SliverToBoxAdapter(
             child: SizedBox(
-              height: screenHeight * altura + 100,
+              height: screenHeight * widget.altura + 100,
               child: Stack(
                 clipBehavior: Clip.none,
                 children: [
                   // Fondo azul con forma de óvalo
                   Container(
-                    height: screenHeight * altura,
+                    height: screenHeight * widget.altura,
                     width: double.infinity,
                     decoration: BoxDecoration(
                       color: Colors.blue,
-                      borderRadius: modoOvalo
+                      borderRadius: widget.modoOvalo
                           ? BorderRadius.vertical(
                               bottom: Radius.elliptical(
                                 screenWidth *
-                                    (curvaIzquierda + curvaDerecha) /
+                                    (widget.curvaIzquierda + widget.curvaDerecha) /
                                     2,
                                 screenWidth * 0.5,
                               ),
                             )
                           : BorderRadius.only(
                               bottomLeft: Radius.elliptical(
-                                screenWidth * curvaIzquierda,
+                                screenWidth * widget.curvaIzquierda,
                                 screenWidth * 0.5,
                               ),
                               bottomRight: Radius.elliptical(
-                                screenWidth * curvaDerecha,
+                                screenWidth * widget.curvaDerecha,
                                 screenWidth * 0.5,
                               ),
                             ),
@@ -82,10 +116,10 @@ class HomeScreen extends StatelessWidget {
                   ),
 
                   // Ubicación
-                  Positioned(
+                  Positioned( // Removed const here
                     top: 50,
                     left: 16,
-                    child: Container(
+                    child: Container( // Removed const here
                       padding: const EdgeInsets.symmetric(vertical: 8.0),
                       child: const Row(
                         children: [
@@ -273,6 +307,33 @@ class HomeScreen extends StatelessWidget {
               },
               childCount: sampleItems.length + 1,
             ),
+          ),
+        ],
+      ),
+      // Bottom Navigation Bar integrado
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _selectedIndex,
+        onTap: _onItemTapped,
+        selectedItemColor: Colors.blue.shade700,
+        unselectedItemColor: Colors.grey,
+        backgroundColor: theme.surface,
+        type: BottomNavigationBarType.fixed, // Asegura que los ítems tengan ancho fijo
+        items: const <BottomNavigationBarItem>[
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home),
+            label: '', // Etiquetas vacías para solo mostrar íconos
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.description), // Ícono de documento
+            label: '',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.chat), // Ícono de chat
+            label: '',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person), // Ícono de persona
+            label: '',
           ),
         ],
       ),

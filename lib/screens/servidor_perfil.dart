@@ -26,7 +26,7 @@ class _ServidorPerfilState extends State<ServidorPerfil> {
     // Navegación basada en el índice seleccionado
     switch (index) {
       case 0:
-        Navigator.pushNamed(context, '/');
+        Navigator.pushNamed(context, '/homescreen');
         break;
       case 1:
         Navigator.pushNamed(context, '/');
@@ -48,13 +48,13 @@ class _ServidorPerfilState extends State<ServidorPerfil> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        toolbarHeight: 140, // Aumenté la altura para más espacio
+        toolbarHeight: 140, 
         title: Padding(
-          padding: const EdgeInsets.only(top: 20.0, bottom: 10.0), // Añadí espacio arriba y abajo
+          padding: const EdgeInsets.only(top: 20.0, bottom: 10.0), 
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Sección del perfil con más espacio vertical
+             
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8.0), // Espacio arriba y abajo del perfil
                 child: Row(
