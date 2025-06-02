@@ -35,7 +35,7 @@ class BienvenidaScreen extends StatelessWidget {
                 //crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('Bienvenido', textAlign: TextAlign.center, style: TextStyle(fontSize: 30, color: Colors.white)),
-                  Text('Buscas algun servicio o quieres ofrecer uno? Bueno estas en el lugar correcto', textAlign: TextAlign.center, style: TextStyle(fontSize: 16, color: Colors.white)),
+                  Text('', textAlign: TextAlign.center, style: TextStyle(fontSize: 16, color: Colors.white)),
 
                   const SizedBox(height: 40),
 

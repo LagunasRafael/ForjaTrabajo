@@ -31,7 +31,7 @@ class ProfileIntroPage extends StatelessWidget {
             // Imagen
             Center(
               child: Image.asset(
-                'assets/logo_300.png', // Asegúrate que exista en esa ruta
+                'assets/encuesta.png', // Asegúrate que exista en esa ruta
                 height: 200,
               ),
             ),
