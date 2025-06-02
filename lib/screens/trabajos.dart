@@ -2,33 +2,40 @@ import 'package:flutter/material.dart';
 import 'detalle_trabajo.dart';
 
 class Trabajos extends StatelessWidget {
+  // Cambié las URLs por rutas locales (asegúrate de tener estas imágenes en assets)
   final List<Map<String, dynamic>> trabajos = [
     {
       "nombre": "Jose Armando Juarez Ruiz",
       "valoracion": "4.5 de 5",
       "calificacion": "4.5",
       "icono": "🔥",
-      "descripcion": "Tengo una fuga en la tubería de la cocina y el grifo gotea todo el tiempo. Necesito que alguien revise, repare y asegure que no haya más problemas",
+      "descripcion":
+          "Tengo una fuga en la tubería de la cocina y el grifo gotea todo el tiempo. Necesito que alguien revise, repare y asegure que no haya más problemas",
       "progreso": 0,
-      "costo": "\$3000"
+      "costo": "\$3000",
+      "imagen": "avatar.png"
     },
     {
       "nombre": "Juan Luis Romero Martinez",
       "valoracion": "5 de 5",
       "calificacion": "5.0",
       "icono": "🔥",
-      "descripcion": "Quiero construir un muro nuevo en mi jardín y necesito que también reparen algunas partes dañadas de la pared que ya tengo",
+      "descripcion":
+          "Quiero construir un muro nuevo en mi jardín y necesito que también reparen algunas partes dañadas de la pared que ya tengo",
       "progreso": 1,
-      "costo": "\$5000"
+      "costo": "\$5000",
+      "imagen": "avatar2.png"
     },
     {
       "nombre": "Rafael Lagunas Perez",
       "valoracion": "3.8 de 5",
       "calificacion": "3.8",
       "icono": "🔥",
-      "descripcion": "Mi auto hace un ruido extraño cuando freno y siento que no está funcionando como antes. Necesito un diagnóstico y reparación urgente",
+      "descripcion":
+          "Mi auto hace un ruido extraño cuando freno y siento que no está funcionando como antes. Necesito un diagnóstico y reparación urgente",
       "progreso": 2,
-      "costo": "\$1500"
+      "costo": "\$1500",
+      "imagen": "avatar3.png"
     },
   ];
 
@@ -42,45 +49,53 @@ class Trabajos extends StatelessWidget {
             // Flecha y título
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-              child: Row(
+              child: Stack(
+                alignment: Alignment.center,
                 children: [
-                  GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: Icon(Icons.arrow_back, size: 28, color: Colors.black),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: Icon(Icons.arrow_back, size: 28, color: Colors.black),
+                    ),
                   ),
-                  SizedBox(width: 16),
-                  Expanded(
-                    child: Center(
-                      child: Text(
-                        'Trabajos',
-                        style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                      ),
+                  Center(
+                    child: Text(
+                      'Trabajos',
+                      style:
+                          TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                     ),
                   ),
                 ],
               ),
             ),
-            // Barra de búsqueda
             SizedBox(height: 40),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 35),
-              child: TextField(
-                textAlign: TextAlign.center,
-                decoration: InputDecoration(
-                  hintText: 'Buscar trabajador',
-                  prefixIcon: Icon(Icons.search),
-                  filled: true,
-                  fillColor: Colors.white,
-                  contentPadding: EdgeInsets.symmetric(vertical: 12),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(30),
-                    borderSide: BorderSide.none,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  TextField(
+                    textAlign: TextAlign.center,
+                    decoration: InputDecoration(
+                      hintText: 'Buscar trabajador',
+                      filled: true,
+                      fillColor: Colors.white,
+                      contentPadding: EdgeInsets.symmetric(vertical: 12),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(30),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
                   ),
-                ),
+                  Positioned(
+                    left: 16,
+                    child: Icon(Icons.search, color: Colors.grey),
+                  ),
+                ],
               ),
             ),
             SizedBox(height: 60),
-            // Contenedor blanco inferior
             Expanded(
               child: Container(
                 decoration: BoxDecoration(
@@ -90,7 +105,6 @@ class Trabajos extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Título "Trabajo aceptados"
                     Padding(
                       padding: const EdgeInsets.all(16.0),
                       child: Center(
@@ -108,13 +122,15 @@ class Trabajos extends StatelessWidget {
                     // Lista de trabajos
                     ...trabajos.map((trabajo) {
                       return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        padding:
+                            const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                         child: GestureDetector(
                           onTap: () {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => DetalleTrabajo(detalle_trabajo: trabajo),
+                                builder: (context) =>
+                                    DetalleTrabajo(detalle_trabajo: trabajo),
                               ),
                             );
                           },
@@ -135,7 +151,10 @@ class Trabajos extends StatelessWidget {
                               children: [
                                 CircleAvatar(
                                   radius: 25,
-                                  backgroundImage: AssetImage('assets/avatar.png'),
+                                  backgroundImage: (trabajo['imagen'] != null && trabajo['imagen'].toString().startsWith('http'))
+                                      ? NetworkImage(trabajo['imagen'])
+                                      : AssetImage(trabajo['imagen']),
+                                  backgroundColor: Colors.grey[200],
                                 ),
                                 SizedBox(width: 12),
                                 Column(
@@ -179,13 +198,8 @@ class Trabajos extends StatelessWidget {
       bottomNavigationBar: CustomBottomNavigationBar(
         currentIndex: 1, // Índice 1 para la pantalla de trabajos
         onTap: (index) {
-          // Evitar navegación redundante si ya estamos en la pantalla
           if (index == 1) return;
-          
-          // Cerrar la pantalla actual antes de navegar
           Navigator.pop(context);
-          
-          // Navegar a la nueva pantalla según el índice
           switch (index) {
             case 0:
               Navigator.pushReplacementNamed(context, '/homescreen');

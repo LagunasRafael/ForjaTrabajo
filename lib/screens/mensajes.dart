@@ -7,27 +7,33 @@ class Mensajes extends StatelessWidget {
       "valoracion": "4.5 de 5",
       "calificacion": "4.5",
       "icono": "🔥",
-      "descripcion": "Tengo una fuga en la tubería de la cocina y el grifo gotea todo el tiempo. Necesito que alguien revise, repare y asegure que no haya más problemas",
+      "descripcion":
+          "Tengo una fuga en la tubería de la cocina y el grifo gotea todo el tiempo. Necesito que alguien revise, repare y asegure que no haya más problemas",
       "progreso": 0,
-      "costo": "\$3000"
+      "costo": "\$3000",
+      "imagen": "avatar.png"
     },
     {
       "nombre": "Juan Luis Romero Martinez",
       "valoracion": "5 de 5",
       "calificacion": "5.0",
       "icono": "🔥",
-      "descripcion": "Quiero construir un muro nuevo en mi jardín y necesito que también reparen algunas partes dañadas de la pared que ya tengo",
+      "descripcion":
+          "Quiero construir un muro nuevo en mi jardín y necesito que también reparen algunas partes dañadas de la pared que ya tengo",
       "progreso": 1,
-      "costo": "\$5000"
+      "costo": "\$5000",
+      "imagen": "avatar2.png"
     },
     {
       "nombre": "Rafael Lagunas Perez",
       "valoracion": "3.8 de 5",
       "calificacion": "3.8",
       "icono": "🔥",
-      "descripcion": "Mi auto hace un ruido extraño cuando freno y siento que no está funcionando como antes. Necesito un diagnóstico y reparación urgente",
+      "descripcion":
+          "Mi auto hace un ruido extraño cuando freno y siento que no está funcionando como antes. Necesito un diagnóstico y reparación urgente",
       "progreso": 2,
-      "costo": "\$1500"
+      "costo": "\$1500",
+      "imagen": "avatar3.png"
     },
   ];
 
@@ -39,43 +45,52 @@ class Mensajes extends StatelessWidget {
         child: Column(
           children: [
             // Flecha y título
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: Row(
-                children: [
-                  GestureDetector(
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: GestureDetector(
                     onTap: () => Navigator.pop(context),
                     child: Icon(Icons.arrow_back, size: 28, color: Colors.black),
                   ),
-                  SizedBox(width: 16),
-                  Expanded(
-                    child: Center(
-                      child: Text(
-                        'Mensajes',
-                        style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                      ),
-                    ),
+                ),
+                Center(
+                  child: Text(
+                    'Mensajes',
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
+          ),
             // Barra de búsqueda
             SizedBox(height: 40),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 35),
-              child: TextField(
-                textAlign: TextAlign.center,
-                decoration: InputDecoration(
-                  hintText: 'Buscar trabajador',
-                  prefixIcon: Icon(Icons.search),
-                  filled: true,
-                  fillColor: Colors.white,
-                  contentPadding: EdgeInsets.symmetric(vertical: 12),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(30),
-                    borderSide: BorderSide.none,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  TextField(
+                    textAlign: TextAlign.center,
+                    decoration: InputDecoration(
+                      hintText: 'Buscar trabajador',
+                      filled: true,
+                      fillColor: Colors.white,
+                      contentPadding: EdgeInsets.symmetric(vertical: 12),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(30),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
                   ),
-                ),
+                  Positioned(
+                    left: 16,
+                    child: Icon(Icons.search, color: Colors.grey),
+                  ),
+                ],
               ),
             ),
             SizedBox(height: 60),
@@ -134,7 +149,10 @@ class Mensajes extends StatelessWidget {
                               children: [
                                 CircleAvatar(
                                   radius: 25,
-                                  backgroundImage: AssetImage('assets/avatar.png'),
+                                  backgroundImage: (trabajo['imagen'] != null && trabajo['imagen'].toString().startsWith('http'))
+                                      ? NetworkImage(trabajo['imagen'])
+                                      : AssetImage(trabajo['imagen']),
+                                  backgroundColor: Colors.grey[200],
                                 ),
                                 SizedBox(width: 12),
                                 Column(
@@ -272,14 +290,14 @@ class ChatScreen extends StatelessWidget {
           if (!isMe)
             CircleAvatar(
               radius: 16,
-              backgroundImage: AssetImage('assets/avatar.png'),
+              backgroundImage: AssetImage(trabajo['imagen'] ?? 'avatar.png'),
             ),
           SizedBox(width: 8),
           Flexible(
             child: Container(
               padding: EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: isMe ? Color(0xFF0099FF) : Colors.grey[200],
+                 color: isMe ? const Color.fromARGB(179, 0, 102, 255) : const Color.fromARGB(255, 227, 227, 227),
                 borderRadius: BorderRadius.only(
                   topLeft: Radius.circular(12),
                   topRight: Radius.circular(12),
@@ -338,7 +356,7 @@ class ChatScreen extends StatelessWidget {
                 hintText: "Escribe un mensaje...",
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(30),
-                  borderSide: BorderSide.none,
+                  borderSide: BorderSide.none,  
                 ),
                 filled: true,
                 fillColor: Colors.grey[100],

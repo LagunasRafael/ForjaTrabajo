@@ -59,7 +59,7 @@ class DetalleTrabajo extends StatelessWidget {
                       ),
                       child: CircleAvatar(
                         radius: 90,
-                        backgroundImage: AssetImage('assets/avatar.png'),
+                        backgroundImage: AssetImage(detalle_trabajo['imagen'] ?? 'avatar.png'),
                         backgroundColor: Colors.grey[200],
                       ),
                     ),

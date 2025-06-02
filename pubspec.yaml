@@ -27,3 +27,10 @@ flutter:
   assets:
     - assets/logo_300.png
     - assets/encuesta.png
+    - assets/avatar.png
+    - assets/avatar2.png
+    - assets/avatar3.png
+    - assets/electricista_trabajando.jpg
+    - assets/funciones_del_plomero.jpg
+    - assets/oficio_albañil.jpg
+    - assets/oficio_mecanico.jpg

@@ -262,14 +262,10 @@ class _HomeScreenState extends State<HomeScreen> {
                       controller: PageController(viewportFraction: 0.8),
                       scrollDirection: Axis.horizontal,
                       children: [
-                        _buildCarouselItem(
-                            'https://picsum.photos/600/300?random=1'),
-                        _buildCarouselItem(
-                            'https://picsum.photos/600/300?random=2'),
-                        _buildCarouselItem(
-                            'https://picsum.photos/600/300?random=3'),
-                        _buildCarouselItem(
-                            'https://picsum.photos/600/300?random=4'),
+                        _buildCarouselItem('assets/electricista_trabajando.jpg'),
+                        _buildCarouselItem('assets/funciones_del_plomero.jpg'),
+                        _buildCarouselItem('assets/oficio_albañil.jpg'),
+                        _buildCarouselItem('assets/oficio_mecanico.jpg'),
                       ],
                     ),
                   ),
@@ -377,18 +373,18 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildCarouselItem(String imageUrl) {
-    return Padding(
-      padding: const EdgeInsets.only(right: 12.0),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: Image.network(
-          imageUrl,
-          fit: BoxFit.cover,
-        ),
+  Widget _buildCarouselItem(String imagePath) {
+  return Container(
+    margin: EdgeInsets.symmetric(horizontal: 8.0),
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(12.0),
+      image: DecorationImage(
+        image: AssetImage(imagePath),
+        fit: BoxFit.cover,
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildListItem(String title) {
     return Container(
