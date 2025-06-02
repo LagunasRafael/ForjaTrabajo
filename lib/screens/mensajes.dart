@@ -4,9 +4,9 @@ class Mensajes extends StatelessWidget {
   final List<Map<String, dynamic>> trabajos = [
     {
       "nombre": "Jose Armando Juarez Ruiz",
-      "valoracion": "4.5 de 5",
+      "valoracion": "Hoy a las 7:50 am",
       "calificacion": "4.5",
-      "icono": "🔥",
+      "icono": "",
       "descripcion":
           "Tengo una fuga en la tubería de la cocina y el grifo gotea todo el tiempo. Necesito que alguien revise, repare y asegure que no haya más problemas",
       "progreso": 0,
@@ -15,9 +15,9 @@ class Mensajes extends StatelessWidget {
     },
     {
       "nombre": "Juan Luis Romero Martinez",
-      "valoracion": "5 de 5",
+      "valoracion": "Ayer a las 11:50 pm",
       "calificacion": "5.0",
-      "icono": "🔥",
+      "icono": "",
       "descripcion":
           "Quiero construir un muro nuevo en mi jardín y necesito que también reparen algunas partes dañadas de la pared que ya tengo",
       "progreso": 1,
@@ -26,9 +26,9 @@ class Mensajes extends StatelessWidget {
     },
     {
       "nombre": "Rafael Lagunas Perez",
-      "valoracion": "3.8 de 5",
+      "valoracion": "Ayer a las 3:20 pm",
       "calificacion": "3.8",
-      "icono": "🔥",
+      "icono": "",
       "descripcion":
           "Mi auto hace un ruido extraño cuando freno y siento que no está funcionando como antes. Necesito un diagnóstico y reparación urgente",
       "progreso": 2,
@@ -169,7 +169,7 @@ class Mensajes extends StatelessWidget {
                                     Row(
                                       children: [
                                         Text(
-                                          'Valoracion ${trabajo['valoracion']} ',
+                                          '${trabajo['valoracion']} ',
                                           style: TextStyle(color: Colors.white),
                                         ),
                                         Text(

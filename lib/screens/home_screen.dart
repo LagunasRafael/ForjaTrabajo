@@ -168,58 +168,39 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
 
-                  // Botones de oficios dentro del óvalo
+ // Reemplaza todo el Stack de botones por este Widget:
                   Positioned(
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    child: Stack(
-                      children: [
-                        // Botón de Albañilería
-                        Positioned(
-                          left: 35,
-                          top: 240,
-                          child: _buildCircularButton(
+                    top: 120, // Ajusta esta posición según necesites
+                    left: 16,
+                    right: 16,
+                    child: Container(
+                      height:
+                          290, // Altura suficiente para los botones y sus etiquetas
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          _buildCircularButton(
                             icon: Icons.construction,
                             label: 'Albañilería',
                             color: Colors.orange,
                           ),
-                        ),
-
-                        // Botón de Electricista
-                        Positioned(
-                          right: 205,
-                          top: 260,
-                          child: _buildCircularButton(
+                          _buildCircularButton(
                             icon: Icons.electrical_services,
                             label: 'Electricista',
                             color: Colors.yellow[700]!,
                           ),
-                        ),
-
-                        // Botón de Plomería
-                        Positioned(
-                          left: 205,
-                          bottom: 30,
-                          child: _buildCircularButton(
+                          _buildCircularButton(
                             icon: Icons.plumbing,
                             label: 'Plomería',
                             color: Colors.blue[400]!,
                           ),
-                        ),
-
-                        // Botón de Mecánico
-                        Positioned(
-                          right: 40,
-                          bottom: 65,
-                          child: _buildCircularButton(
+                          _buildCircularButton(
                             icon: Icons.car_repair,
                             label: 'Mecánico',
                             color: Colors.red[400]!,
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ],
