@@ -27,8 +27,6 @@ def login(data: schemas.UserLogin, db: Session = Depends(get_db)):
         "token_type": "bearer"
     }
 
-@router.get("/me")
-def read_users_me(
-    current_user: models.User = Depends(get_current_user)
-):
+@router.get("/me", response_model=schemas.UserResponse)
+def me(current_user = Depends(get_current_user)):
     return current_user
