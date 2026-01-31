@@ -1,4 +1,5 @@
 from pydantic import BaseModel, EmailStr,validator ,field_validator
+from app.core.roles import Role
 
 class UserBase(BaseModel):
     email: EmailStr
@@ -8,6 +9,7 @@ class UserCreate(BaseModel):
     email: EmailStr
     password: str
     full_name: str | None = None
+    role : Role = Role.user
 
     @validator("password")
     def password_length(cls, v: str):
@@ -20,7 +22,7 @@ class UserResponse(BaseModel):
     id: int
     email: EmailStr
     full_name: str | None
-    role: str
+    role: Role
     is_active: bool
 
     class Config:
