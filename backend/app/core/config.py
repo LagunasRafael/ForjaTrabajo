@@ -1,13 +1,5 @@
-import os
-from dotenv import load_dotenv
+from datetime import timedelta
 
-load_dotenv()
-
-class Settings:
-    PROJECT_NAME = "Forja Trabajo"
-    DATABASE_URL = os.getenv("DATABASE_URL")
-    SECRET_KEY = os.getenv("SECRET_KEY")
-    ALGORITHM = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES = 60
-
-settings = Settings()
+SECRET_KEY = "super-secret-key-cambiar-luego"
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 60
