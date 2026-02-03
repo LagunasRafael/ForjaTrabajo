@@ -1,5 +1,13 @@
-from sqlalchemy import Column, Integer, String, Boolean
+import enum
+from sqlalchemy import Column, Integer, String, Boolean, Enum
 from app.db.database import Base
+from sqlalchemy.orm import relationship
+
+# Definimos los roles como una clase Enum de Python
+class UserRole(str, enum.Enum):
+    CLIENT = "client"
+    WORKER = "worker"
+    ADMIN = "admin"
 
 class User(Base):
     __tablename__ = "users"
@@ -8,5 +16,12 @@ class User(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
     full_name = Column(String, nullable=True)
-    role = Column(String, default="user")  # user | worker | admin \ 
+    
+    # Usamos el Enum aquí. SQLite lo manejará como String, 
+    # pero SQLAlchemy validará los valores por ti.
+    role = Column(Enum(UserRole), default=UserRole.CLIENT, nullable=False)
+    
     is_active = Column(Boolean, default=True)
+
+    services = relationship("Service", back_populates="owner")
+    payments = relationship("Payment", back_populates="payer")

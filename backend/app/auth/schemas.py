@@ -1,38 +1,39 @@
-from pydantic import BaseModel, EmailStr,validator ,field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator, ConfigDict
 from app.core.roles import Role
+from typing import Optional
 
+# 1. Esquema Base para datos comunes
 class UserBase(BaseModel):
     email: EmailStr
-    full_name: str | None = None
+    full_name: Optional[str] = Field(None, max_length=100)
 
-class UserCreate(BaseModel):
-    email: EmailStr
-    password: str
-    full_name: str | None = None
-    role : Role = Role.user
+# 2. Esquema para Registro (Input)
+class UserCreate(UserBase):
+    password: str = Field(..., min_length=8)
+    role: Role = Role.CLIENT # Por defecto es usuario normal
 
-    @validator("password")
+    @field_validator("password")
+    @classmethod
     def password_length(cls, v: str):
+        # Validación de los 72 bytes para compatibilidad con bcrypt
         if len(v.encode("utf-8")) > 72:
-            raise ValueError("Password must be 72 bytes or less")
+            raise ValueError("La contraseña no puede exceder los 72 bytes")
         return v
-    #d
 
-class UserResponse(BaseModel):
+# 3. Esquema para Respuesta (Output)
+class UserResponse(UserBase):
+    model_config = ConfigDict(from_attributes=True) # Reemplaza a class Config en V2
+
     id: int
-    email: EmailStr
-    full_name: str | None
     role: Role
     is_active: bool
 
-    class Config:
-        from_attributes = True
-
+# 4. Esquema para Login
 class UserLogin(BaseModel):
-    email: str
+    email: EmailStr # Mejor usar EmailStr aquí también para validar formato
     password: str
 
+# 5. Esquema para el Token JWT
 class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"
-
