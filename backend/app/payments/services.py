@@ -1,25 +1,31 @@
-from datetime import datetime  # <--- 1. NUEVA IMPORTACIÓN IMPORTANTE
+from datetime import datetime
+from http.client import HTTPException
+import stat  
 from sqlalchemy.orm import Session
 from app.payments import models, schemas
+from app.services.models import Service
 
-def create_payment(db: Session, payment: schemas.PaymentCreate, payer_id: int):
-    # 2. Generamos la fecha aquí mismo en Python
-    fecha_ahora = datetime.now()
+def create_payment(db: Session, payment: schemas.PaymentCreate):
+    
+    service_found = db.query(Service).filter(Service.id == payment.service_id).first()
 
-    # 3. Se la pasamos al modelo directamente
+    if not service_found:
+        raise HTTPException(
+            status_code=stat.HTTP_404_NOT_FOUND,
+            detail=f"El servicio con id {payment.service_id} no existe. No se puede procesar el pago."
+        )
+
     db_payment = models.Payment(
         amount=payment.amount,
-        service_id=payment.service_id,
-        payer_id=payer_id,
-        payee_id=payment.payee_id,
-        payment_method=payment.payment_method,
-        created_at=fecha_ahora  # <--- ¡ESTO SOLUCIONA EL PROBLEMA!
+        service_id=payment.service_id, 
+        payer_id=payment.payer_id,
+        payee_id=service_found.provider_id, 
+        status="pending"
     )
-    
+
     db.add(db_payment)
     db.commit()
     db.refresh(db_payment)
-    
     return db_payment
 
 def get_payment(db: Session, payment_id: int):
@@ -32,7 +38,7 @@ def complete_payment(db: Session, payment_id: int):
     if not db_payment:
         return None
     
-    # Actualizamos el estado y simulamos el ID de Stripe
+    # Actualizamos el estado y simulamos el ID
     db_payment.status = models.PaymentStatus.COMPLETED
     db_payment.provider_payment_id = f"txn_stripe_fake_{payment_id}_xyz"
     

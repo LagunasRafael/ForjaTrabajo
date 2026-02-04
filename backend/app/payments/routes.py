@@ -1,7 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from fastapi import APIRouter, Depends, HTTPException, status
+from app.payments import models, schemas 
+from app.services.models import Service
 from app.db.database import get_db
-from . import schemas, services
+from app.payments import services
+
 
 router = APIRouter()
 
@@ -10,12 +13,11 @@ def create_payment(
     payment_data: schemas.PaymentCreate, 
     db: Session = Depends(get_db)
 ):
-    # Simular el ID del usuario
-    fake_user_id = 1 
-    return services.create_payment(db=db, payment=payment_data, payer_id=fake_user_id)
+    return services.create_payment(db=db, payment=payment_data)
 
 @router.get("/{payment_id}", response_model=schemas.PaymentResponse)
-def read_payment(payment_id: int, db: Session = Depends(get_db)):
+def read_payment(payment_id: int, db: Session = Depends(get_db)): 
+
     payment = services.get_payment(db, payment_id)
     if payment is None:
         raise HTTPException(status_code=404, detail="Pago no encontrado")
