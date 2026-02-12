@@ -1,8 +1,9 @@
+import uuid
 from sqlalchemy import Column, ForeignKey, Integer, String, Float, DateTime
 from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship
 from app.db.database import Base
 import enum
-from sqlalchemy.orm import relationship
 
 class PaymentStatus(str, enum.Enum):
     PENDING = "pending"
@@ -13,7 +14,9 @@ class PaymentStatus(str, enum.Enum):
 class Payment(Base):
     __tablename__ = "payments"
     
-    id = Column(Integer, primary_key=True, index=True)
+    # ID como UUID (String)
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+
     amount = Column(Float, nullable=False)
     status = Column(String, default=PaymentStatus.PENDING)
     payment_method = Column(String, default="card")
@@ -21,7 +24,7 @@ class Payment(Base):
 
     payer_id = Column(Integer, ForeignKey("users.id")) 
     
-    payee_id = Column(String, nullable=True) 
+    payee_id = Column(Integer, nullable=True) 
 
     service_id = Column(String, ForeignKey("services.id"), nullable=True)
 

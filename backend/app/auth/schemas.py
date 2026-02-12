@@ -2,9 +2,11 @@ from pydantic import BaseModel, EmailStr,validator ,field_validator
 from app.core.roles import Role
 
 class UserBase(BaseModel):
+    id : str
     email: EmailStr
     full_name: str | None = None
-
+    Role:str
+    is_active: bool
 class UserCreate(BaseModel):
     email: EmailStr
     password: str
@@ -19,7 +21,7 @@ class UserCreate(BaseModel):
     #d
 
 class UserResponse(BaseModel):
-    id: int
+    id: str
     email: EmailStr
     full_name: str | None
     role: Role
