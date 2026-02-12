@@ -4,6 +4,7 @@ from typing import Optional
 
 # 1. Esquema Base para datos comunes
 class UserBase(BaseModel):
+    id : str
     email: EmailStr
     full_name: Optional[str] = Field(None, max_length=100)
 
