@@ -1,4 +1,5 @@
 import enum
+import uuid
 from sqlalchemy import Column, Integer, String, Boolean, Enum
 from app.db.database import Base
 from sqlalchemy.orm import relationship
