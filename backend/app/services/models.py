@@ -56,13 +56,19 @@ class Service(Base):
     base_price = Column(Numeric(10, 2), nullable=True)
 
     category_id = Column(String(36), ForeignKey("categories.id"), nullable=False)
-    provider_id = Column(String(36), nullable=False)  # auth.user_id
+    
+    # CORRECCIÓN: Agregamos el ForeignKey apuntando a la tabla 'users'
+    provider_id = Column(String(36), ForeignKey("users.id"), nullable=False) 
 
     is_active = Column(Boolean, default=True)
+    # Nota: datetime.utcnow está deprecado en Python 3.12+, pero funciona.
     created_at = Column(DateTime, default=datetime.utcnow)
 
     category = relationship("Category", back_populates="services")
     requests = relationship("ServiceRequest", back_populates="service")
+    
+    # OPCIONAL: Agrega esto si en tu modelo User tienes back_populates="services"
+    owner = relationship("User", back_populates="services")
 
 
 # -----------------------------
@@ -75,7 +81,9 @@ class ServiceRequest(Base):
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
 
     service_id = Column(String(36), ForeignKey("services.id"), nullable=False)
-    client_id = Column(String(36), nullable=False)  # auth.user_id
+    
+    # CORRECCIÓN: Agregamos ForeignKey("users.id")
+    client_id = Column(String(36), ForeignKey("users.id"), nullable=False) 
 
     description = Column(Text, nullable=False)
     status = Column(Enum(JobStatus), default=JobStatus.PENDING)
@@ -102,8 +110,9 @@ class Job(Base):
         unique=True
     )
 
-    provider_id = Column(String(36), nullable=False)
-    client_id = Column(String(36), nullable=False)
+    # CORRECCIÓN: Ambos necesitan ForeignKey("users.id")
+    provider_id = Column(String(36), ForeignKey("users.id"), nullable=False)
+    client_id = Column(String(36), ForeignKey("users.id"), nullable=False)
 
     status = Column(Enum(JobStatus), default=JobStatus.ACCEPTED)
     final_price = Column(Numeric(10, 2), nullable=True)
