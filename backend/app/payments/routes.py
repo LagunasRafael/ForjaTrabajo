@@ -1,31 +1,30 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from app.db.database import get_db
-from . import schemas, services
+from typing import List
 
-router = APIRouter()
+from app.db.database import get_db
+from app.payments import schemas, services
+
+router = APIRouter(
+    prefix="/payments",
+    tags=["Payments"]
+)
 
 @router.post("/", response_model=schemas.PaymentResponse)
-def create_payment(
-    payment_data: schemas.PaymentCreate, 
-    db: Session = Depends(get_db)
-):
-    # Simular el ID del usuario
-    fake_user_id = 1 
-    return services.create_payment(db=db, payment=payment_data, payer_id=fake_user_id)
+def create_payment(payment: schemas.PaymentCreate, db: Session = Depends(get_db)):
+    return services.create_payment(db=db, payment=payment)
+
 
 @router.get("/{payment_id}", response_model=schemas.PaymentResponse)
-def read_payment(payment_id: int, db: Session = Depends(get_db)):
-    payment = services.get_payment(db, payment_id)
-    if payment is None:
-        raise HTTPException(status_code=404, detail="Pago no encontrado")
-    return payment
+def read_payment(payment_id: str, db: Session = Depends(get_db)):
+    db_payment = services.get_payment(db, payment_id=payment_id)
+    if db_payment is None:
+        raise HTTPException(status_code=404, detail="Payment not found")
+    return db_payment
 
 @router.patch("/{payment_id}/complete", response_model=schemas.PaymentResponse)
-def update_payment_status(payment_id: int, db: Session = Depends(get_db)):
-    payment = services.complete_payment(db, payment_id=payment_id)
-    
-    if payment is None:
-        raise HTTPException(status_code=404, detail="Pago no encontrado")
-        
-    return payment
+def complete_payment_route(payment_id: str, db: Session = Depends(get_db)):
+    db_payment = services.complete_payment(db, payment_id=payment_id)
+    if not db_payment:
+        raise HTTPException(status_code=404, detail="Payment not found")
+    return db_payment

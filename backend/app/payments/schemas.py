@@ -1,22 +1,37 @@
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
-from .models import PaymentStatus
+from app.payments import models 
 
-# Creacion de un pago
-class PaymentCreate(BaseModel):
+# Clase base
+class PaymentBase(BaseModel):
     amount: float
-    service_id: int
-    payee_id: int
+    payer_id: str 
+    service_id: str
     payment_method: str = "card"
 
-# Respuesta de un pago
-class PaymentResponse(BaseModel):
-    id: int
-    amount: float
-    status: PaymentStatus
-    created_at: datetime
-    service_id: int
+# Para recibir datos (Crear)
+class PaymentCreate(PaymentBase):
+    pass
 
+# Para devolver datos (Leer)
+class PaymentResponse(PaymentBase):
+   
+    id: str  
+    status: str
+    provider_payment_id: Optional[str] = None
+    created_at: datetime
+    updated_at: Optional[datetime]
+
+    class Config:
+        from_attributes = True
+class UserResponse(BaseModel):  
+    
+    id: str 
+    email: str
+    full_name: str
+    role: str
+    is_active: bool
+   
     class Config:
         from_attributes = True
