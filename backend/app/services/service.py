@@ -16,8 +16,8 @@ def create_category(db: Session, category: schemas.CategoryCreate):
     return db_category
 
 
-def get_categories(db: Session):
-    return db.query(models.Category).filter(models.Category.is_active == True).all()
+def get_categories(db: Session, skip: int = 0, limit: int = 100):
+    return db.query(models.Category).offset(skip).limit(limit).all()
 
 
 # -----------------------------
@@ -43,8 +43,8 @@ def create_service(
     return db_service
 
 
-def get_services(db: Session):
-    return db.query(models.Service).filter(models.Service.is_active == True).all()
+def get_services(db: Session, skip: int = 0, limit: int = 100):
+    return db.query(models.Service).offset(skip).limit(limit).all()
 
 
 def get_services_by_category(db: Session, category_id: UUID):

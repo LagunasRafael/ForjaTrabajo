@@ -7,10 +7,7 @@ from app.payments.models import Payment
 from app.routers import router
 from fastapi.middleware.cors import CORSMiddleware
 
-origins = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-]
+
 
 print("📋 Tablas listas para crear:", Base.metadata.tables.keys())
 Base.metadata.create_all(bind=engine)
@@ -21,11 +18,10 @@ app = FastAPI(
     version="1.0.0"
 )
 
-app.include_router(router)
-
-@app.get("/")
-def root():
-    return {"message": "Forja Trabajo API funcionando "}
+origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
 
 
 app.add_middleware(
@@ -35,3 +31,11 @@ app.add_middleware(
     allow_methods=["*"],  # Permite GET, POST, PUT, DELETE, etc.
     allow_headers=["*"],  # Permite todos los headers (Authorization, Content-Type, etc.)
 )
+
+app.include_router(router)
+
+@app.get("/")
+def root():
+    return {"message": "Forja Trabajo API funcionando "}
+
+

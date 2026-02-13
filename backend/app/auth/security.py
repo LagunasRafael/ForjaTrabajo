@@ -53,21 +53,24 @@ def get_current_user(
         raise credentials_exception
 
     # Buscamos por ID directamente
-    user = db.query(models.User).filter(models.User.id == int(user_id)).first()
+    user = db.query(models.User).filter(models.User.id == user_id).first()
     
     if user is None or not user.is_active:
         raise credentials_exception
 
     return user
 
-# --- FASE 2: VERIFICADOR DE ROLES ---
+# --- VERIFICADOR DE ROLES ---
 def check_role(allowed_roles: list[Role]):
-    """
-    Dependencia para proteger rutas por rol.
-    Uso: Depends(check_role([Role.admin, Role.worker]))
-    """
     def role_checker(current_user: models.User = Depends(get_current_user)):
-        if current_user.role not in allowed_roles:
+        # Convertimos a string por si el rol viene como Enum o Texto
+        user_role = current_user.role if isinstance(current_user.role, str) else current_user.role.value
+        
+        # Verificamos si el rol del usuario está en la lista permitida
+        # Asumiendo que allowed_roles es una lista de strings o Enums
+        allowed_values = [r.value if hasattr(r, 'value') else r for r in allowed_roles]
+
+        if user_role not in allowed_values:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="No tienes permisos suficientes para esta acción"
