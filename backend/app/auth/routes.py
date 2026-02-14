@@ -16,7 +16,7 @@ def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
     # SEGURIDAD FASE 2: Forzamos que el registro público sea siempre 'user'
     # Así, aunque envíen "role": "admin" en el JSON, se ignora.
     user_data = user.model_dump()
-    user_data["role"] = Role.CLIENT 
+     
     
     # Verificamos si el usuario ya existe para dar un error claro
     db_user = service.get_user_by_email(db, email=user.email)
