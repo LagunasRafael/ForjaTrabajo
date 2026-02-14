@@ -1,2 +1,23 @@
+# Entornos virtuales (Dependencias)
+venv/
+env/
+ENV/
+.venv/
+backend/venv/
+
+# Bases de Datos
+*.sqlite3
 *.db
+*.sql
+
+# Archivos de configuración sensible (Credenciales)
+.env
+
+# Python (Cache y archivos compilados)
 __pycache__/
+*.py[cod]
+*$py.class
+
+# Carpetas de IDEs
+.vscode/
+.idea/
