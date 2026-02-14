@@ -10,7 +10,7 @@ class UserBase(BaseModel):
 # 2. Esquema para Registro: NO pedimos ID porque lo genera el servidor
 class UserCreate(UserBase):
     password: str = Field(..., min_length=8)
-    role: Role = Role.CLIENT 
+    role: Optional[Role] = Role.CLIENT 
 
     @field_validator("password")
     @classmethod
