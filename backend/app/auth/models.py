@@ -25,4 +25,4 @@ class User(Base):
     is_active = Column(Boolean, default=True)
 
     services = relationship("Service", back_populates="owner")
-    payments = relationship("Payment", back_populates="payer")
+    #payments = relationship("Payment", back_populates="payer")

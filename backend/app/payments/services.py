@@ -1,7 +1,6 @@
 from sqlalchemy.orm import Session
-from fastapi import HTTPException, status # <--- CORREGIDO: Importar de FastAPI
+from fastapi import HTTPException, status 
 from app.payments import models, schemas
-# Asegúrate de importar el modelo de Service correcto (el de Luis)
 from app.services.models import Service 
 
 def create_payment(db: Session, payment: schemas.PaymentCreate):
