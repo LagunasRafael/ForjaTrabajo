@@ -6,6 +6,8 @@ from typing import Optional
 class UserBase(BaseModel):
     email: EmailStr
     full_name: Optional[str] = Field(None, max_length=100)
+    class Config:
+        from_attributes = True
 
 # 2. Esquema para Registro: NO pedimos ID porque lo genera el servidor
 class UserCreate(UserBase):
@@ -26,6 +28,7 @@ class UserResponse(UserBase):
     # --- CORRECCIÓN CRÍTICA ---
     # Cambiamos int a str para soportar el UUID de 36 caracteres
     id: str 
+    profile_picture_url: Optional[str] = None
     
     # Usamos str para el rol para evitar errores de validación con el Enum de la BD
     role: str 
@@ -41,3 +44,8 @@ class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: UserResponse
+
+class UserUpdate(BaseModel):
+    full_name: Optional[str] = None
+    role: Optional[str] = None # Cambia 'str' por tu enum 'Role' si lo tienes así
+    is_active: Optional[bool] = None

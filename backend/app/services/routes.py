@@ -41,7 +41,7 @@ def list_categories(
 # SERVICES
 # -----------------------------
 
-@router.post("/services", response_model=schemas.Service)
+@router.post("/", response_model=schemas.Service)
 def create_service(
     service_data: schemas.ServiceCreate,
     db: Session = Depends(get_db),
@@ -56,7 +56,7 @@ def create_service(
     return service.create_service(db, service_data, provider_id=current_user.id)
 
 
-@router.get("/services", response_model=List[schemas.Service])
+@router.get("/", response_model=List[schemas.Service])
 def list_services(
     skip: int = 0, 
     limit: int = 100, 
