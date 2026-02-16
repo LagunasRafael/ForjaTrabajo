@@ -57,3 +57,48 @@ def get_me(current_user: models.User = Depends(get_current_user)):
 def read_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     users = db.query(models.User).offset(skip).limit(limit).all()
     return users
+
+@router.put("/users/{user_id}", response_model=schemas.UserResponse)
+def update_user(
+    user_id: str, 
+    user_data: schemas.UserUpdate, # O UserUpdate si creaste un esquema específico
+    db: Session = Depends(get_db)
+):
+    # 1. Buscamos al usuario en la base de datos
+    db_user = db.query(models.User).filter(models.User.id == user_id).first()
+    
+    if not db_user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado")
+    
+    # 2. Actualizamos los campos
+    db_user.full_name = user_data.full_name
+    db_user.role = user_data.role
+    
+    # Si estás manejando is_active, descomenta esta línea:
+    # db_user.is_active = user_data.is_active 
+
+    # 3. Guardamos los cambios
+    db.commit()
+    db.refresh(db_user)
+    
+    return db_user
+
+# ----------------------------------------------------
+# 🔴 ELIMINAR USUARIO (DELETE)
+# ----------------------------------------------------
+@router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_user(
+    user_id: str, 
+    db: Session = Depends(get_db)
+):
+    # 1. Buscamos al usuario
+    db_user = db.query(models.User).filter(models.User.id == user_id).first()
+    
+    if not db_user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado")
+    
+    # 2. Lo eliminamos
+    db.delete(db_user)
+    db.commit()
+    
+    return None

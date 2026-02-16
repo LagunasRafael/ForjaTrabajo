@@ -41,3 +41,8 @@ class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: UserResponse
+
+class UserUpdate(BaseModel):
+    full_name: Optional[str] = None
+    role: Optional[str] = None # Cambia 'str' por tu enum 'Role' si lo tienes así
+    is_active: Optional[bool] = None
