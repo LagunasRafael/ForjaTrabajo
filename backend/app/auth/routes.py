@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status,UploadFile,File
 from sqlalchemy.orm import Session
 from typing import List
 # Corregimos el typo de 'segurity' a 'security' y limpiamos imports
@@ -8,6 +8,7 @@ from app.auth import models
 from app.db.database import get_db
 from app.auth.security import create_access_token, get_current_user
 from app.core.roles import Role # Para forzar el rol en el registro
+from app.utils.s3 import upload_file_to_s3
 
 router = APIRouter(tags=["Authentication"])
 
@@ -102,3 +103,28 @@ def delete_user(
     db.commit()
     
     return None
+
+@router.post("/{user_id}/profile-picture", response_model=schemas.UserResponse)
+async def upload_profile_picture(
+    user_id: str, 
+    file: UploadFile = File(...), 
+    db: Session = Depends(get_db)
+):
+    # 1. Verificamos que el usuario exista
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    # 2. Comprimimos y subimos a AWS S3
+    try:
+        file_url = await upload_file_to_s3(file) 
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al subir a S3: {str(e)}")
+
+    # 3. Guardamos la URL en la base de datos
+    user.profile_picture_url = file_url
+    db.commit()
+    db.refresh(user)
+
+    # 4. Devolvemos el usuario actualizado
+    return user
