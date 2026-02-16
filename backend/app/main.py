@@ -6,6 +6,7 @@ from app.services.models import Service
 from app.payments.models import Payment
 from app.routers import router
 from fastapi.middleware.cors import CORSMiddleware
+from app.payments.routes import router as payments_router
 
 
 
@@ -34,8 +35,11 @@ app.add_middleware(
 
 app.include_router(router)
 
+
 @app.get("/")
 def root():
     return {"message": "Forja Trabajo API funcionando "}
 
 
+
+app.include_router(payments_router)
