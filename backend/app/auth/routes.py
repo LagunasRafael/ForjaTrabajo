@@ -8,7 +8,7 @@ from app.auth import models
 from app.db.database import get_db
 from app.auth.security import create_access_token, get_current_user
 from app.core.roles import Role # Para forzar el rol en el registro
-from app.utils.s3 import upload_file_to_s3
+from app.utils.s3 import upload_file_to_s3, delete_old_file_from_s3
 
 router = APIRouter(tags=["Authentication"])
 
@@ -114,6 +114,9 @@ async def upload_profile_picture(
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    if user.profile_picture_url:
+        delete_old_file_from_s3(user.profile_picture_url)
 
     # 2. Comprimimos y subimos a AWS S3
     try:
