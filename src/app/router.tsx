@@ -6,6 +6,7 @@ import UsersPage from '../modules/users/UsersPage';
 import { CategoriesPage } from '../modules/services/pages/categoriesPage';
 import { ServicesPage } from '../modules/services/pages/ServicesPage';
 import { JobsPage } from '../modules/jobs/pages/JobsPage';
+import { ProfilePage } from '../modules/admin/pages/ProfilePage';
 
 export const router = createBrowserRouter([
   // 1. Ruta Pública (Login)
@@ -23,6 +24,10 @@ export const router = createBrowserRouter([
       {
         index: true,
         element: <DashboardPage />,
+      },
+      {
+        path: 'profile',
+        element: <ProfilePage />,
       },
       {
         path: 'users',

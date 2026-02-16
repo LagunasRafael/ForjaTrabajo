@@ -66,19 +66,32 @@ export const deleteUserApi = async (id: string): Promise<void> => {
   await api.delete(`/auth/users/${id}`);
 };
 
-// 🟣 SUBIR FOTO DE PERFIL (AWS S3) 👇 NUEVO SERVICIO AÑADIDO
 export const uploadUserAvatarApi = async (id: string, file: File): Promise<User> => {
-  // 1. Empacamos el archivo físico
   const formData = new FormData();
-  formData.append("file", file); // "file" debe ser exactamente el nombre que espera FastAPI
+  formData.append("file", file);
 
-  // 2. Hacemos la petición POST a tu nuevo endpoint
   const { data } = await api.post<UserDTO>(`/auth/${id}/profile-picture`, formData, {
-    headers: {
-      "Content-Type": "multipart/form-data", // Vital para que FastAPI no espere un JSON
-    },
+    headers: { "Content-Type": "multipart/form-data" },
   });
   
-  // 3. Devolvemos el usuario actualizado pasado por el Mapper
-  return mapUserFromApi(data);
+  const updatedUser = mapUserFromApi(data);
+
+  // 🔥 LA MAGIA DE SINCRONIZACIÓN:
+  // 1. Obtenemos quién está logueado ahora mismo
+  const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
+
+  // 2. Si el ID que acabamos de actualizar es el MISMO del que está logueado...
+  if (id === storedUser.id) {
+    // Actualizamos el localStorage con la nueva URL
+    const newUserSession = { 
+      ...storedUser, 
+      profile_picture_url: updatedUser.avatarUrl 
+    };
+    localStorage.setItem('user', JSON.stringify(newUserSession));
+    
+    // Avisamos a toda la app que cambie la foto (UserMenu, ProfilePage, etc.)
+    window.dispatchEvent(new Event('storage'));
+  }
+
+  return updatedUser;
 };
