@@ -1,14 +1,20 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
-# from uuid import UUID  <-- Ya no necesitamos forzar UUIDs manuales aquí
+    
+from uuid import UUID
+
+from fastapi import status
+from app.auth.security import check_role
+from app.core.roles import Role
+
+from app.auth.security import check_role
+from app.core.roles import Role
 
 from app.db.database import get_db
 from app.services import schemas, service
 from app.auth import models as auth_models
 
-# 1. IMPORTANTE: Asegúrate de tener esta dependencia creada en auth
-# Si no la tienes, avísame y te paso el código de 'dependencies.py'
 from app.auth.security import get_current_user 
 
 router = APIRouter()
@@ -17,14 +23,20 @@ router = APIRouter()
 # CATEGORIES
 # -----------------------------
 
-@router.post("/categories", response_model=schemas.Category)
+@router.post(
+    "/categories",
+    response_model=schemas.Category,
+    status_code=status.HTTP_201_CREATED
+)
 def create_category(
     category: schemas.CategoryCreate,
     db: Session = Depends(get_db),
-    # Opcional: Podrías restringir esto solo a Admins en el futuro
-    current_user: auth_models.User = Depends(get_current_user) 
+    current_user: auth_models.User = Depends(
+        check_role([Role.ADMIN])
+    )
 ):
     return service.create_category(db, category)
+
 
 
 @router.get("/categories", response_model=List[schemas.Category])
@@ -37,6 +49,28 @@ def list_categories(
     return service.get_categories(db, skip=skip, limit=limit)
 
 
+@router.put(
+    "/categories/{category_id}",
+    dependencies=[Depends(check_role([Role.ADMIN]))]
+)
+def update_category(
+    category_id: UUID,
+    category_data: schemas.CategoryUpdate,
+    db: Session = Depends(get_db),
+):
+    return service.update_category(db, category_id, category_data)
+
+
+@router.delete("/categories/{category_id}")
+def delete_category(
+    category_id: str,
+    db: Session = Depends(get_db),
+    current_user = Depends(check_role([Role.ADMIN]))
+):
+    return service.delete_category(db, category_id)
+
+
+
 # -----------------------------
 # SERVICES
 # -----------------------------
@@ -45,15 +79,16 @@ def list_categories(
 def create_service(
     service_data: schemas.ServiceCreate,
     db: Session = Depends(get_db),
-    # 2. INYECCIÓN DE USUARIO: FastAPI valida el token y te da el usuario real
-    current_user: auth_models.User = Depends(get_current_user)
+    current_user = Depends(
+        check_role([Role.CLIENT, Role.ADMIN])
+    )
 ):
-    # Validación de Rol (Opcional pero recomendada)
-    # if current_user.role != "provider":
-    #     raise HTTPException(status_code=403, detail="Solo los prestadores pueden publicar servicios")
+    return service.create_service(
+        db,
+        service_data,
+        provider_id=current_user.id
+    )
 
-    # 3. USAMOS EL ID REAL DEL TOKEN
-    return service.create_service(db, service_data, provider_id=current_user.id)
 
 
 @router.get("/", response_model=List[schemas.Service])

@@ -3,7 +3,7 @@ from typing import Optional
 from decimal import Decimal
 from datetime import datetime
 from enum import Enum
-
+    
 
 # -----------------------------
 # ENUMS
@@ -36,6 +36,10 @@ class Category(CategoryBase):
 
     class Config:
         orm_mode = True
+
+class CategoryUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None        
 
 
 # -----------------------------
