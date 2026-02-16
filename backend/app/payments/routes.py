@@ -1,30 +1,48 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from typing import List
-
 from app.db.database import get_db
-from app.payments import schemas, services
+import uuid
+
+from . import schemas, models
 
 router = APIRouter(
     prefix="/payments",
-    tags=["Payments"]
+    tags=["Contracts & Payments"]
 )
 
-@router.post("/", response_model=schemas.PaymentResponse)
+@router.post("/contracts", response_model=schemas.ContractResponse, status_code=201)
+def create_contract(contract: schemas.ContractCreate, db: Session = Depends(get_db)):
+    new_contract = models.Contract(
+        id=str(uuid.uuid4()),
+        service_id=contract.service_id,
+        client_id=contract.client_id,
+        status=models.ContractStatus.PENDING
+    )
+    db.add(new_contract)
+    db.commit()
+    db.refresh(new_contract)
+    return new_contract
+
+
+@router.post("/", response_model=schemas.PaymentResponse, status_code=201)
 def create_payment(payment: schemas.PaymentCreate, db: Session = Depends(get_db)):
-    return services.create_payment(db=db, payment=payment)
+    # Verificamos que el contrato exista antes de cobrar
+    contract = db.query(models.Contract).filter(models.Contract.id == payment.contract_id).first()
+    if not contract:
+        raise HTTPException(status_code=404, detail="El contrato no existe")
 
+    new_payment = models.Payment(
+        id=str(uuid.uuid4()),
+        contract_id=payment.contract_id,    
+        amount=payment.amount,
+        payment_method=payment.payment_method,
+        status=models.PaymentStatus.COMPLETED
+    )
+    
+    # Al pagar, el contrato pasa a estar En Progreso
+    contract.status = models.ContractStatus.IN_PROGRESS
 
-@router.get("/{payment_id}", response_model=schemas.PaymentResponse)
-def read_payment(payment_id: str, db: Session = Depends(get_db)):
-    db_payment = services.get_payment(db, payment_id=payment_id)
-    if db_payment is None:
-        raise HTTPException(status_code=404, detail="Payment not found")
-    return db_payment
-
-@router.patch("/{payment_id}/complete", response_model=schemas.PaymentResponse)
-def complete_payment_route(payment_id: str, db: Session = Depends(get_db)):
-    db_payment = services.complete_payment(db, payment_id=payment_id)
-    if not db_payment:
-        raise HTTPException(status_code=404, detail="Payment not found")
-    return db_payment
+    db.add(new_payment)
+    db.commit()
+    db.refresh(new_payment)
+    return new_payment

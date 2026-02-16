@@ -6,7 +6,8 @@ from app.services.models import Service
 from app.payments.models import Payment
 from app.routers import router
 from fastapi.middleware.cors import CORSMiddleware
-from app.auth import models as auth_models
+from app.payments.routes import router as payments_router
+
 
 
 print("📋 Tablas listas para crear:", Base.metadata.tables.keys())
@@ -40,3 +41,5 @@ def root():
     return {"message": "Forja Trabajo API funcionando "}
 
 
+
+app.include_router(payments_router)
