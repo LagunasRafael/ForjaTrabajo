@@ -1,6 +1,10 @@
 from sqlalchemy.orm import Session
 from app.services import models, schemas
 from uuid import UUID
+from sqlalchemy.orm import Session
+from app.services.models import Category
+
+
 
 from fastapi import HTTPException
 
@@ -16,8 +20,51 @@ def create_category(db: Session, category: schemas.CategoryCreate):
     return db_category
 
 
-def get_categories(db: Session, skip: int = 0, limit: int = 100):
-    return db.query(models.Category).offset(skip).limit(limit).all()
+def get_categories(
+    db: Session,
+    skip: int = 0,
+    limit: int = 100
+):
+    return (
+        db.query(models.Category)
+        .filter(models.Category.is_active == True)  # 🔑 ESTA LÍNEA
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+
+
+
+def update_category(db: Session, category_id: UUID, data: schemas.CategoryUpdate):
+    category = db.query(models.Category).filter(
+        models.Category.id == str(category_id)  # ✅ AQUÍ
+    ).first()
+
+    if not category:
+        raise HTTPException(status_code=404, detail="Categoría no encontrada")
+
+    if data.name is not None:
+        category.name = data.name
+    if data.description is not None:
+        category.description = data.description
+
+    db.commit()
+    db.refresh(category)
+    return category
+
+
+def delete_category(db: Session, category_id: str):
+    category = db.query(models.Category).filter(
+        models.Category.id == category_id
+    ).first()
+
+    if not category:
+        raise HTTPException(status_code=404, detail="Categoría no encontrada")
+
+    category.is_active = False
+    db.commit()
+    return {"message": "Categoría desactivada"}
+
 
 
 # -----------------------------
@@ -44,8 +91,13 @@ def create_service(
 
 
 def get_services(db: Session, skip: int = 0, limit: int = 100):
-    return db.query(models.Service).offset(skip).limit(limit).all()
-
+    return (
+        db.query(models.Service)
+        .filter(models.Service.is_active == True)
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
 
 def get_services_by_category(db: Session, category_id: UUID):
     return (
