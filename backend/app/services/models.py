@@ -15,21 +15,18 @@ import enum
 
 from app.db.database import Base
 
-
 # -----------------------------
-# ENUMS
+# ENUMS 
 # -----------------------------
 
 class JobStatus(str, enum.Enum):
-    PENDING = "pending"
-    ACCEPTED = "accepted"
-    IN_PROGRESS = "in_progress"
-    COMPLETED = "completed"
-    CANCELLED = "cancelled"
-
+    OPEN = "open"            # Cliente publica, esperando workers
+    MATCHED = "matched"      # Confirmación mutua (inicio de trabajo/chat)
+    COMPLETED = "completed"  # Trabajo finalizado
+    CANCELLED = "cancelled"  # Cancelación por alguna parte
 
 # -----------------------------
-# CATEGORY (OFICIO)
+# CATEGORY 
 # -----------------------------
 
 class Category(Base):
@@ -44,49 +41,59 @@ class Category(Base):
 
 
 # -----------------------------
-# SERVICE (PUBLICADO POR PRESTADOR)
+# SERVICE (PUBLICA EL CLIENTE - OPCIÓN B)
 # -----------------------------
 
 class Service(Base):
+    """
+    Aquí el CLIENTE o ADMIN publican la necesidad (ej. Tubo roto).
+    Mantenemos todos tus campos originales.
+    """
     __tablename__ = "services"
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     title = Column(String(150), nullable=False)
     description = Column(Text, nullable=False)
-    base_price = Column(Numeric(10, 2), nullable=True)
+    base_price = Column(Numeric(10, 2), nullable=True) # Presupuesto estimado del cliente
 
     category_id = Column(String(36), ForeignKey("categories.id"), nullable=False)
     
-    # CORRECCIÓN: Agregamos el ForeignKey apuntando a la tabla 'users'
-    provider_id = Column(String(36), ForeignKey("users.id"), nullable=False) 
+    # CAMBIO CRUCIAL: provider_id ahora es client_id porque el cliente es el dueño
+    client_id = Column(String(36), ForeignKey("users.id"), nullable=False) 
 
+    status = Column(Enum(JobStatus), default=JobStatus.OPEN)
     is_active = Column(Boolean, default=True)
-    # Nota: datetime.utcnow está deprecado en Python 3.12+, pero funciona.
     created_at = Column(DateTime, default=datetime.utcnow)
 
     category = relationship("Category", back_populates="services")
+    # Cambiamos el nombre de la relación para que sea más claro: Postulaciones de Workers
     requests = relationship("ServiceRequest", back_populates="service")
     
-    # OPCIONAL: Agrega esto si en tu modelo User tienes back_populates="services"
+    # Mantenemos la relación con User (ahora apunta al cliente creador)
     owner = relationship("User", back_populates="services")
 
 
 # -----------------------------
-# SERVICE REQUEST (SOLICITUD)
+# SERVICE REQUEST (POSTULACIÓN DEL WORKER)
 # -----------------------------
 
 class ServiceRequest(Base):
+    """
+    Aquí los WORKERS se postulan al Service del cliente.
+    """
     __tablename__ = "service_requests"
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-
     service_id = Column(String(36), ForeignKey("services.id"), nullable=False)
     
-    # CORRECCIÓN: Agregamos ForeignKey("users.id")
-    client_id = Column(String(36), ForeignKey("users.id"), nullable=False) 
+    # El worker que se postula
+    worker_id = Column(String(36), ForeignKey("users.id"), nullable=False) 
 
-    description = Column(Text, nullable=False)
-    status = Column(Enum(JobStatus), default=JobStatus.PENDING)
+    description = Column(Text, nullable=False) # Propuesta del worker: "Lo arreglo en 2 horas"
+    proposed_price = Column(Numeric(10, 2), nullable=True) # Cuánto quiere cobrar el worker
+    
+    # Estado de la postulación individual
+    status = Column(String(20), default="pending") 
 
     created_at = Column(DateTime, default=datetime.utcnow)
 
@@ -95,10 +102,13 @@ class ServiceRequest(Base):
 
 
 # -----------------------------
-# JOB (TRABAJO ACEPTADO)
+# JOB (TRABAJO EN MARCHA)
 # -----------------------------
 
 class Job(Base):
+    """
+    Se crea cuando el cliente ACEPTA una postulación (MATCHED).
+    """
     __tablename__ = "jobs"
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
@@ -110,14 +120,14 @@ class Job(Base):
         unique=True
     )
 
-    # CORRECCIÓN: Ambos necesitan ForeignKey("users.id")
+    # IDs de referencia rápida
     provider_id = Column(String(36), ForeignKey("users.id"), nullable=False)
     client_id = Column(String(36), ForeignKey("users.id"), nullable=False)
 
-    status = Column(Enum(JobStatus), default=JobStatus.ACCEPTED)
+    status = Column(Enum(JobStatus), default=JobStatus.MATCHED)
     final_price = Column(Numeric(10, 2), nullable=True)
 
-    started_at = Column(DateTime, nullable=True)
+    started_at = Column(DateTime, default=datetime.utcnow)
     completed_at = Column(DateTime, nullable=True)
 
     request = relationship("ServiceRequest", back_populates="job")
