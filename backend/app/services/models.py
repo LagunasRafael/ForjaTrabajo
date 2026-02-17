@@ -16,7 +16,7 @@ import enum
 from app.db.database import Base
 
 # -----------------------------
-# ENUMS (Actualizados a tus 4 estados)
+# ENUMS 
 # -----------------------------
 
 class JobStatus(str, enum.Enum):
@@ -26,7 +26,7 @@ class JobStatus(str, enum.Enum):
     CANCELLED = "cancelled"  # Cancelación por alguna parte
 
 # -----------------------------
-# CATEGORY (TU TABLA ORIGINAL - INTACTA)
+# CATEGORY 
 # -----------------------------
 
 class Category(Base):

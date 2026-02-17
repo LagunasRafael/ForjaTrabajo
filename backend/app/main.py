@@ -39,7 +39,3 @@ app.include_router(router)
 @app.get("/")
 def root():
     return {"message": "Forja Trabajo API funcionando "}
-
-
-
-app.include_router(payments_router)
