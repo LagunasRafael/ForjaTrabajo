@@ -5,7 +5,7 @@ from datetime import datetime
 from enum import Enum
 
 # -----------------------------
-# ENUMS (Los 4 estados que definiste)
+# ENUMS
 # -----------------------------
 
 class JobStatus(str, Enum):
@@ -15,13 +15,13 @@ class JobStatus(str, Enum):
     cancelled = "cancelled"
 
 # -----------------------------
-# CATEGORIES (Tus categorías originales)
+# CATEGORIES 
 # -----------------------------
 
 class CategoryBase(BaseModel):
     name: str
     description: Optional[str] = None
-
+    
 class CategoryCreate(CategoryBase):
     pass
 
@@ -38,7 +38,7 @@ class CategoryUpdate(BaseModel):
 
 
 # -----------------------------
-# SERVICES (Ajustados al Marketplace Inverso)
+# SERVICES
 # -----------------------------
 
 class ServiceBase(BaseModel):
@@ -64,7 +64,7 @@ class Service(ServiceBase):
 
 
 # -----------------------------
-# SERVICE REQUESTS (Postulaciones del Worker)
+# SERVICE REQUESTS 
 # -----------------------------
 
 class ServiceRequestCreate(BaseModel):
@@ -83,7 +83,7 @@ class ServiceRequest(BaseModel):
 
 
 # -----------------------------
-# JOBS (El resultado del Match)
+# JOBS
 # -----------------------------
 
 class Job(BaseModel):
