@@ -10,7 +10,7 @@ from app.auth.security import create_access_token, get_current_user
 from app.core.roles import Role # Para forzar el rol en el registro
 from app.utils.s3 import upload_file_to_s3, delete_old_file_from_s3
 
-router = APIRouter(tags=["Authentication"])
+router = APIRouter()
 
 @router.post("/register", response_model=schemas.UserResponse, status_code=status.HTTP_201_CREATED)
 def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
