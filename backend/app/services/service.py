@@ -6,7 +6,7 @@ from datetime import datetime
 from app.core.roles import Role # Importante para validar el Admin
 
 # -------------------------------------------------------------------------
-# CATEGORIES (TU BLOQUE ORIGINAL - 100% RESPETADO)
+# CATEGORIES 
 # -------------------------------------------------------------------------
 
 def create_category(db: Session, category: schemas.CategoryCreate):
@@ -58,19 +58,22 @@ def update_category(db: Session, category_id: UUID, data: schemas.CategoryUpdate
     db.refresh(category)
     return category
 
-def delete_category(db: Session, category_id: str):
+def delete_category_hard(db: Session, category_id: str):
     category = db.query(models.Category).filter(
         models.Category.id == category_id
     ).first()
+
     if not category:
         raise HTTPException(status_code=404, detail="Categoría no encontrada")
-    category.is_active = False
+
+    db.delete(category)
     db.commit()
-    return {"message": "Categoría desactivada"}
+
+    return {"message": "Categoría eliminada correctamente"}
 
 
 # -------------------------------------------------------------------------
-# SERVICES (MODO MARKETPLACE INVERSO - OPCIÓN B)
+# SERVICES
 # -------------------------------------------------------------------------
 
 def create_service(db: Session, service_data: schemas.ServiceCreate, client_id: UUID):
@@ -194,7 +197,7 @@ def get_offers_by_service(db: Session, service_id: str, client_id: str):
 
 
 # -------------------------------------------------------------------------
-# JOBS & MATCH (NUEVA FUNCIÓN CANCEL_JOB)
+# JOBS & MATCH
 # -------------------------------------------------------------------------
 
 def accept_postulation(db: Session, request_id: str, current_user_id: str):
