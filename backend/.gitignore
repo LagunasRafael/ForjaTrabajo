@@ -1,23 +1,14 @@
-# Entornos virtuales (Dependencias)
-venv/
-env/
-ENV/
-.venv/
-backend/venv/
 
-# Bases de Datos
-*.sqlite3
 *.db
-*.sql
+forja.db
 
-# Archivos de configuración sensible (Credenciales)
-.env
+.venv/
+env/
+venv/
+ENV/
 
-# Python (Cache y archivos compilados)
 __pycache__/
 *.py[cod]
 *$py.class
 
-# Carpetas de IDEs
 .vscode/
-.idea/

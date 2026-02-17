@@ -10,6 +10,25 @@ from app.core.roles import Role # Importante para validar el Admin
 # -------------------------------------------------------------------------
 
 def create_category(db: Session, category: schemas.CategoryCreate):
+    # 1. Buscamos si ya existe una categoría con ese nombre (activa o inactiva)
+    # Nota: Es recomendable usar .lower() si quieres evitar "Carpinteria" vs "carpinteria"
+    existing_category = db.query(models.Category).filter(
+        models.Category.name == category.name
+    ).first()
+
+    if existing_category:
+        if existing_category.is_active:
+            # Si ya está activa, lanzamos el error de que ya existe
+            raise HTTPException(status_code=400, detail="La categoría ya existe y está activa.")
+        
+        # 🚀 RE-ACTIVACIÓN: Si existe pero estaba oculta (is_active=False)
+        existing_category.is_active = True
+        existing_category.description = category.description
+        db.commit()
+        db.refresh(existing_category)
+        return existing_category
+
+    # 2. Si realmente no existe en la base de datos, la creamos normal
     db_category = models.Category(**category.dict())
     db.add(db_category)
     db.commit()
