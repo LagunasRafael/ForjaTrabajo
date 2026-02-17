@@ -9,6 +9,11 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  dio: ^5.9.1
+  flutter_secure_storage: ^10.0.0
+  flutter_riverpod: ^3.2.1
+  google_fonts: ^8.0.1
+  lucide_icons: ^0.257.0
 
 dev_dependencies:
   flutter_test:
