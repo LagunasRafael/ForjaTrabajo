@@ -19,7 +19,6 @@ class ContractResponse(BaseModel):
 
 class PaymentCreate(BaseModel):
     contract_id: str  # Ya no pedimos payer_id
-    amount: float
     payment_method: Optional[str] = "card"
 
 class PaymentResponse(BaseModel):

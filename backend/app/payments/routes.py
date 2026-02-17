@@ -59,7 +59,12 @@ def create_payment(payment: schemas.PaymentCreate, db: Session = Depends(get_db)
 @router.get("/contracts", response_model=List[schemas.ContractResponse])
 def get_contracts(db: Session = Depends(get_db)):
     contracts = db.query(models.Contract).all()
+    for contract in contracts:
+        db_job = db.query(models.Job).filter(models.Job.id == contract.job_id).first()
+        if not db_job:
+            raise HTTPException(status_code=404, detail=f"El trabajo (Job) con ID {contract.job_id} no existe")
     return contracts
+
 
 @router.get("/", response_model=List[schemas.PaymentResponse])
 def get_payments(db: Session = Depends(get_db)):

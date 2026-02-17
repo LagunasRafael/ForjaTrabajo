@@ -1,3 +1,4 @@
+from datetime import datetime
 import enum
 import uuid
 from sqlalchemy import Column, String, Float, Enum, DateTime, ForeignKey
@@ -19,12 +20,12 @@ class PaymentStatus(str, enum.Enum):
 class Contract(Base):
     __tablename__ = "contracts"
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    job_id = Column(String(36), nullable=False)
+    job_id = Column(String(36), ForeignKey("jobs.id"), nullable=False) 
     client_id = Column(String(36), ForeignKey("users.id"), nullable=False)
-    status = Column(Enum(ContractStatus), default=ContractStatus.PENDING)
-    scheduled_date = Column(DateTime(timezone=True), nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    
+    status = Column(String(20), default="pending")
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    job = relationship("Job")
     # Relación con pagos
     payments = relationship("Payment", back_populates="contract")
 
