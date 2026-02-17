@@ -19,13 +19,10 @@ class PaymentStatus(str, enum.Enum):
 class Contract(Base):
     __tablename__ = "contracts"
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    
-    # Llaves foráneas a lo que hicieron Luis y Rafa
-    service_id = Column(String(36), ForeignKey("services.id"), nullable=False)
+    job_id = Column(String(36), nullable=False)
     client_id = Column(String(36), ForeignKey("users.id"), nullable=False)
-    
     status = Column(Enum(ContractStatus), default=ContractStatus.PENDING)
-    scheduled_date = Column(DateTime(timezone=True), nullable=True) # Del diagrama
+    scheduled_date = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     # Relación con pagos
@@ -34,8 +31,6 @@ class Contract(Base):
 class Payment(Base):
     __tablename__ = "payments"
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    
-    # 🔴 El cambio clave: ahora el pago va al contrato, no al usuario
     contract_id = Column(String(36), ForeignKey("contracts.id"), nullable=False)
     
     amount = Column(Float, nullable=False)

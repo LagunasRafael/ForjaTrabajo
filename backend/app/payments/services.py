@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status 
 from app.payments import models, schemas
-from app.services.models import Service 
+from app.services.models import Job, Service 
 
 def create_payment(db: Session, payment: schemas.PaymentCreate):
     # Buscamos el servicio (el ID ya es string en el esquema, así que esto funciona)
@@ -30,18 +30,20 @@ def get_payment(db: Session, payment_id: str):
     return db.query(models.Payment).filter(models.Payment.id == payment_id).first()
 
 def complete_payment(db: Session, payment_id: str):
-    # Buscamos el pago usando la función de arriba (que ya acepta str)
+    # 1. Buscamos el pago (como ya lo hacías)
     db_payment = get_payment(db, payment_id)
-    
     if not db_payment:
         return None
     
-    # Actualizamos el estado
     db_payment.status = models.PaymentStatus.COMPLETED
-    # Simulamos el ID de transacción (funciona igual con strings)
-    db_payment.provider_payment_id = f"txn_stripe_fake_{payment_id}_xyz"
+    contract = db_payment.contract 
     
+    #if contract and contract.job_id:
+     #   # 4. Buscamos el Job de tu compañero
+      #  job_found = db.query(Job).filter(Job.id == contract.job_id).first()
+       # if job_found:
+        #    job_found.status = "PAID" 
+
     db.commit()
     db.refresh(db_payment)
-    
     return db_payment
