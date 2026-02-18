@@ -1,31 +1,37 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-// Asegúrate de que esta ruta sea la correcta según tus carpetas
-import 'package:forja_trabajo/features/services/presentation/screens/home_services_screen.dart';
+
+import 'core/theme/app_theme.dart';
+import 'features/auth/presentation/screens/role_selection_screen.dart';
+import 'features/services/presentation/screens/home_services_screen.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+
   runApp(
-    // El ProviderScope es OBLIGATORIO para que Riverpod funcione
     const ProviderScope(
-      child: MyApp(),
+      child: ForjaTrabajoApp(),
     ),
   );
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class ForjaTrabajoApp extends StatelessWidget {
+  const ForjaTrabajoApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      debugShowCheckedModeBanner: false,
       title: 'Forja Trabajo',
-      theme: ThemeData(
-        useMaterial3: true,
-        // Configuramos el color índigo como color primario de la app
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF4F46E5)),
-      ),
-      home: const HomeServicesScreen(),
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.theme,
+
+      // 👇 Pantalla inicial oficial (flujo correcto)
+      home: const RoleSelectionScreen(),
+
+      // 👇 Aquí registramos rutas
+      routes: {
+        '/services': (context) => const HomeServicesScreen(),
+      },
     );
   }
 }

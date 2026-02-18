@@ -6,6 +6,10 @@ from typing import Optional
 class UserBase(BaseModel):
     email: EmailStr
     full_name: Optional[str] = Field(None, max_length=100)
+    phone: Optional[str] = Field(None, max_length=15)
+    latitude: Optional[float] = Field(None)
+    longitude: Optional[float] = Field(None)
+    city: Optional[str] = Field(None, max_length=100)
     class Config:
         from_attributes = True
 
@@ -13,6 +17,7 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     password: str = Field(..., min_length=8)
     role: Optional[Role] = Role.CLIENT 
+    phone: str = Field(..., min_length=10, max_length=20)
 
     @field_validator("password")
     @classmethod
