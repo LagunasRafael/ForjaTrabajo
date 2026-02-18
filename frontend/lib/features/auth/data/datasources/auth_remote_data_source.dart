@@ -1,5 +1,7 @@
 import 'package:dio/dio.dart';
 import '../../../../core/network/api_client.dart';
+import '../../domain/models/user_model.dart';
+import 'package:flutter/foundation.dart';
 
 class AuthRemoteDataSource {
   final ApiClient apiClient;
@@ -100,6 +102,23 @@ class AuthRemoteDataSource {
       throw Exception(errorMessage);
     } catch (e) {
       throw Exception('Error de conexión: Verifica que el servidor esté encendido.');
+    }
+  }
+
+  Future<User> getUserProfile() async {
+    try {
+      // ⚠️ Asegúrate de que esta ruta tenga el prefijo correcto (ej. /auth/me o /users/me)
+      final response = await apiClient.dio.get('/auth/me'); 
+      
+      debugPrint('✅ RESPUESTA CRUDA DE FASTAPI: ${response.data}'); // 👈 Agregamos esto
+      
+      return User.fromJson(response.data);
+    } on DioException catch (e) {
+      debugPrint('🚨 ERROR DE DIO AL PEDIR PERFIL: ${e.response?.data}'); // 👈 Y esto
+      throw Exception('Error al cargar el perfil HTTP');
+    } catch (e) {
+      debugPrint('🚨 ERROR AL CONVERTIR EL JSON (El modelo no cuadra): $e'); // 👈 Y esto
+      throw Exception('Error al procesar los datos');
     }
   }
 }
