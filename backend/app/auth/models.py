@@ -1,6 +1,6 @@
 import enum
 import uuid
-from sqlalchemy import Column, Integer, String, Boolean, Enum
+from sqlalchemy import Column, Integer, String, Boolean, Enum, Float
 from app.db.database import Base
 from sqlalchemy.orm import relationship
 
@@ -20,8 +20,8 @@ class User(Base):
     profile_picture_url = Column(String, nullable=True)
     phone = Column(String, nullable=True)
     city = Column(String, nullable=True)
-    latitude = Column(String, nullable=True)
-    longitude = Column(String, nullable=True)
+    latitude = Column(Float, nullable=True)
+    longitude = Column(Float, nullable=True)
     
     # Usamos el Enum aquí. SQLite lo manejará como String, 
     # pero SQLAlchemy validará los valores por ti.
