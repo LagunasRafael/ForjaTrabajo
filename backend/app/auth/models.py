@@ -19,6 +19,9 @@ class User(Base):
     full_name = Column(String, nullable=True)
     profile_picture_url = Column(String, nullable=True)
     phone = Column(String, nullable=True)
+    city = Column(String, nullable=True)
+    latitude = Column(String, nullable=True)
+    longitude = Column(String, nullable=True)
     
     # Usamos el Enum aquí. SQLite lo manejará como String, 
     # pero SQLAlchemy validará los valores por ti.
