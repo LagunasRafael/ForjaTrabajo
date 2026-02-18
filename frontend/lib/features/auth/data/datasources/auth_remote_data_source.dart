@@ -114,11 +114,18 @@ class AuthRemoteDataSource {
       
       return User.fromJson(response.data);
     } on DioException catch (e) {
-      debugPrint('🚨 ERROR DE DIO AL PEDIR PERFIL: ${e.response?.data}'); // 👈 Y esto
-      throw Exception('Error al cargar el perfil HTTP');
-    } catch (e) {
-      debugPrint('🚨 ERROR AL CONVERTIR EL JSON (El modelo no cuadra): $e'); // 👈 Y esto
-      throw Exception('Error al procesar los datos');
+      // 1. Si el servidor respondió con un error (400, 422, 500)
+      if (e.response != null) {
+        debugPrint('🛑 EL SERVIDOR RESPONDIÓ CON ERROR: ${e.response?.statusCode}');
+        debugPrint('🛑 DETALLE DEL ERROR: ${e.response?.data}');
+      } 
+      // 2. Si el servidor NUNCA respondió (Apagado, sin internet, error de ruta)
+      else {
+        debugPrint('🚨 EL SERVIDOR NO RESPONDIÓ (¿Está apagado uvicorn?)');
+        debugPrint('🚨 TIPO DE ERROR DIO: ${e.type}');
+        debugPrint('🚨 MENSAJE: ${e.message}');
+      }
+      throw Exception('Falló el registro HTTP');
     }
   }
 }
