@@ -2,7 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../../services/presentation/screens/home_client_screen.dart';
+import '../../../services/presentation/screens/main_client_screen.dart';
 import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart';
 import 'package:forja_trabajo/core/theme/app_theme.dart';
 import 'register_screen.dart';
@@ -64,7 +64,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         // 🚀 MAGIA DE NAVEGACIÓN: Lo mandamos al Home y destruimos la pantalla de Login
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const HomeClientScreen()),
+          MaterialPageRoute(builder: (context) => const MainClientScreen()),
         );
       }
     });
