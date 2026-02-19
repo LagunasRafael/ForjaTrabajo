@@ -26,18 +26,30 @@ class ServiceRepositoryImpl implements ServiceRepository {
     required this.jobDS,
   });
 
+  // --- CATEGORÍAS ---
   @override
   Future<List<CategoryEntity>> getCategories() => categoryDS.getCategories();
 
   @override
+  Future<void> createCategory(String name, String description, String token) async {
+    return await categoryDS.createCategory(name, description, token);
+  }
+
+  @override
+  Future<void> deleteCategory(String id, String token) async {
+    return await categoryDS.deleteCategory(id, token);
+  }
+
+  // --- SERVICIOS ---
+  @override
   Future<List<ServiceEntity>> getServices() => serviceDS.getServices();
 
   @override
-  Future<List<ServiceEntity>> getServicesByCategory(String id) => serviceDS.getServicesByCategory(id);
+  Future<List<ServiceEntity>> getServicesByCategory(String id) => 
+      serviceDS.getServicesByCategory(id);
 
   @override
   Future<ServiceEntity> createService(ServiceEntity service, String token) async {
-    // Convertimos Entity a Model para que el DataSource lo pueda procesar
     final model = ServiceModel(
       id: service.id,
       title: service.title,
@@ -49,10 +61,10 @@ class ServiceRepositoryImpl implements ServiceRepository {
       isActive: service.isActive,
       createdAt: service.createdAt,
     );
-    // Usamos serviceDS que está definida arriba en la clase
     return await serviceDS.createService(model, token);
   }
 
+  // --- SOLICITUDES Y OFERTAS ---
   @override
   Future<ServiceRequestEntity> createRequest(ServiceRequestEntity request, String token) {
     final model = ServiceRequestModel(
@@ -74,6 +86,7 @@ class ServiceRepositoryImpl implements ServiceRepository {
   Future<JobEntity> acceptPostulation(String requestId, String token) => 
       requestDS.acceptPostulation(requestId, token);
 
+  // --- TRABAJOS (JOBS) ---
   @override
   Future<JobEntity> completeJob(String jobId, String token) => 
       jobDS.completeJob(jobId, token);

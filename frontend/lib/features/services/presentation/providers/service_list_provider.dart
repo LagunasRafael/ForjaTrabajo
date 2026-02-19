@@ -4,6 +4,7 @@ import 'category_provider.dart';
 import '../../data/repositories/service_repository_impl.dart'; 
 import '../../domain/entities/service_entity.dart';
 
+
 // 1. LECTURA: Tu provider original (ahora usando repository para ser consistente)
 final serviceListProvider = FutureProvider<List<ServiceEntity>>((ref) async {
   final repository = ref.watch(serviceRepositoryProvider);

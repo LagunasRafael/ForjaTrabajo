@@ -12,6 +12,10 @@ abstract class ServiceRepository {
   // Categories
   Future<List<CategoryEntity>> getCategories();
 
+  // Busca esta línea y déjala así:
+  Future<void> createCategory(String name, String description, String token);// 👈 Agregamos String token
+  Future<void> deleteCategory(String id, String token);   // 👈 Agregamos String token
+
   // Requests
   Future<ServiceRequestEntity> createRequest(ServiceRequestEntity request, String token);
   Future<List<ServiceRequestEntity>> getOffers(String serviceId, String token);

@@ -18,4 +18,35 @@ class CategoryRemoteDataSource {
       throw Exception('Error al cargar categorías');
     }
   }
+
+    Future<void> createCategory(String name, String description, String token) async {
+      final response = await http.post(
+        Uri.parse(baseUrl),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: json.encode({
+          'name': name,
+          'description': description, // 👈 Agregamos la descripción aquí
+        }),
+      );
+
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        throw Exception('Error al crear categoría: ${response.body}');
+      }
+    }
+    
+  Future<void> deleteCategory(String id, String token) async {
+    final response = await http.delete(
+      Uri.parse("$baseUrl/$id"),
+      headers: {
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode != 200 && response.statusCode != 204) {
+      throw Exception('No se pudo eliminar la categoría');
+    }
+  }
 }

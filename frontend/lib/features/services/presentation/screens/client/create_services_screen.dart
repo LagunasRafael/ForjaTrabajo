@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../domain/entities/service_entity.dart';
-import '../providers/category_provider.dart';
-import '../providers/service_list_provider.dart'; // Importamos el provider unificado
+import 'package:forja_trabajo/features/services/domain/entities/service_entity.dart';
+import 'package:forja_trabajo/features/services/presentation/providers/category_provider.dart';
+import 'package:forja_trabajo/features/services/presentation/providers/service_list_provider.dart';
 
 class CreateServiceScreen extends ConsumerStatefulWidget {
   const CreateServiceScreen({super.key});

@@ -3,7 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/theme/app_theme.dart';
 import 'features/auth/presentation/screens/role_selection_screen.dart';
-import 'features/services/presentation/screens/home_services_screen.dart';
+import 'features/auth/presentation/screens/login_screen.dart'; // 👈 Asegúrate de importar tu Login
+
+// 👇 TUS LAYOUTS
+import 'features/services/presentation/screens/layout/client_main_layout.dart';
+import 'features/services/presentation/screens/layout/worker_main_layout.dart';
+import 'features/services/presentation/screens/layout/admin_main_layout.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -25,12 +30,16 @@ class ForjaTrabajoApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.theme,
 
-      // 👇 Pantalla inicial oficial (flujo correcto)
+      // Pantalla inicial
       home: const RoleSelectionScreen(),
 
-      // 👇 Aquí registramos rutas
+      // 👇 RUTAS REGISTRADAS
       routes: {
-        '/services': (context) => const HomeServicesScreen(),
+        '/login':       (context) => const LoginScreen(),         // 👈 RUTA CLAVE PARA CERRAR SESIÓN
+        '/roles':       (context) => const RoleSelectionScreen(),
+        '/client_home': (context) => const ClientMainLayout(),
+        '/worker_home': (context) => const WorkerMainLayout(),
+        '/admin_home': (context) => AdminMainLayout(), // ✅ ASÍ ESTÁ BIEN
       },
     );
   }

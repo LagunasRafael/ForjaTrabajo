@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../providers/category_provider.dart';
-import '../providers/service_list_provider.dart';
-import '../widgets/service_card.dart';
-import '../screens/create_services_screen.dart';
+import 'package:forja_trabajo/features/services/presentation/providers/category_provider.dart';
+import 'package:forja_trabajo/features/services/presentation/providers/service_list_provider.dart';
+// Asegúrate de que esta ruta apunte a donde moviste el archivo:
+import 'create_services_screen.dart'; 
+import '../../widgets/service_card.dart';
 
-class HomeServicesScreen extends ConsumerWidget {
-  const HomeServicesScreen({super.key});
+// 👇 AQUÍ CAMBIAMOS EL NOMBRE PARA QUE EL LAYOUT LO ENCUENTRE
+class HomeClientScreen extends ConsumerWidget {
+  const HomeClientScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -76,19 +78,19 @@ class HomeServicesScreen extends ConsumerWidget {
           ],
         ),
       ),
-        floatingActionButton: FloatingActionButton(
-          backgroundColor: const Color(0xFF4F46E5),
-          elevation: 4,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          onPressed: () {
-            // ESTO ES LO QUE FALTABA: LA NAVEGACIÓN
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const CreateServiceScreen()),
-            );
-          },
-          child: const Icon(Icons.add, color: Colors.white, size: 28),
-        ),
+      // EL BOTÓN FLOTANTE DEL CLIENTE
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: const Color(0xFF4F46E5),
+        elevation: 4,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const CreateServiceScreen()),
+          );
+        },
+        child: const Icon(Icons.add, color: Colors.white, size: 28),
+      ),
     );
   }
 
@@ -154,9 +156,9 @@ class HomeServicesScreen extends ConsumerWidget {
   Widget _buildHeader() => Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
     const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text("Bienvenido de nuevo", style: TextStyle(color: Colors.grey, fontSize: 14)), Text("Hola, Carlos", style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800))]),
     CircleAvatar(
-        radius: 24, // O el tamaño que tengas
-        backgroundColor: Colors.indigo.shade100, // Fondo suave
-        child: const Icon(Icons.person, color: Colors.indigo), // Icono seguro
+        radius: 24,
+        backgroundColor: Colors.indigo.shade100,
+        child: const Icon(Icons.person, color: Colors.indigo),
       ),
   ]);
 
