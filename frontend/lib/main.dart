@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-// Importamos tu tema y tu nueva pantalla
 import 'core/theme/app_theme.dart';
 import 'features/auth/presentation/screens/role_selection_screen.dart';
+import 'features/auth/presentation/screens/login_screen.dart'; // 👈 Asegúrate de importar tu Login
+
+// 👇 TUS LAYOUTS
+import 'features/services/presentation/screens/layout/client_main_layout.dart';
+import 'features/services/presentation/screens/layout/worker_main_layout.dart';
+import 'features/services/presentation/screens/layout/admin_main_layout.dart';
 
 void main() {
-  // Garantiza que los motores internos de Flutter estén listos 
-  // (Súper importante si después agregas Firebase, S3 o bases locales)
   WidgetsFlutterBinding.ensureInitialized();
 
   runApp(
-    // 🧠 ENVUELTA MÁGICA DE RIVERPOD: 
-    // Esto permite que cualquier pantalla pueda usar "ref.watch" o "ref.read"
     const ProviderScope(
       child: ForjaTrabajoApp(),
     ),
@@ -26,12 +27,20 @@ class ForjaTrabajoApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Forja Trabajo',
-      // Quitamos la cintilla roja molesta de "DEBUG" en la esquina
-      debugShowCheckedModeBanner: false, 
-      // Inyectamos la paleta de colores que definiste en app_theme.dart
-      theme: AppTheme.theme, 
-      // Mandamos al usuario directo a la pantalla que acabas de crear
-      home: const RoleSelectionScreen(), 
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.theme,
+
+      // Pantalla inicial
+      home: const RoleSelectionScreen(),
+
+      // 👇 RUTAS REGISTRADAS
+      routes: {
+        '/login':       (context) => const LoginScreen(),         // 👈 RUTA CLAVE PARA CERRAR SESIÓN
+        '/roles':       (context) => const RoleSelectionScreen(),
+        '/client_home': (context) => const ClientMainLayout(),
+        '/worker_home': (context) => const WorkerMainLayout(),
+        '/admin_home': (context) => AdminMainLayout(), // ✅ ASÍ ESTÁ BIEN
+      },
     );
   }
 }
