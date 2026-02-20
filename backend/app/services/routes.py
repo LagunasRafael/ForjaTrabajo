@@ -113,16 +113,6 @@ def complete_job_status(
     """El trabajador marca como terminado"""
     return service.complete_job(db, job_id, current_user.id)
 
-@router.put("/{service_id}/cancel")
-def cancel_service(
-    service_id: str,
-    db: Session = Depends(get_db),
-    current_user: auth_models.User = Depends(get_current_user)
-):
-    
-    """Cancelar el servicio"""
-    return service.cancel_service(db, service_id, current_user.id)
-
 @router.put("/jobs/{job_id}/cancel", response_model=schemas.Job)
 def cancel_job_status(
     job_id: str,
@@ -135,7 +125,6 @@ def cancel_job_status(
     """
     return service.cancel_job(db, job_id, current_user.id, current_user.role)
 
-
 @router.put("/{service_id}/cancel")
 def cancel_service(
     service_id: str,
@@ -147,3 +136,20 @@ def cancel_service(
     ✅ ADMIN, WORKER y CLIENT pueden usarlo.
     """
     return service.cancel_service(db, service_id, current_user.id, current_user.role)
+
+# -----------------------------
+# NUEVOS ENDPOINTS DE BÚSQUEDA
+# -----------------------------
+
+@router.get("/top-categories", response_model=List[schemas.Category])
+def get_top_categories_route(db: Session = Depends(get_db)):
+    """Obtiene las 5 categorías con más servicios publicados."""
+    return service.get_top_categories(db, limit=5)
+
+@router.get("/search", response_model=List[schemas.Service])
+def search_services_route(
+    query: str, 
+    db: Session = Depends(get_db)
+):
+    """Busca servicios por título o descripción."""
+    return service.search_services(db, query)
