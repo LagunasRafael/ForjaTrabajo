@@ -28,9 +28,9 @@ class ServiceRemoteDataSource {
     }
   }
 
-Future<ServiceModel> createService(ServiceModel service, String token) async {
+  Future<ServiceModel> createService(ServiceModel service, String token) async {
     final response = await http.post(
-      Uri.parse('$baseUrl/'), // POST a /services/
+      Uri.parse('$baseUrl/'),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
@@ -42,6 +42,22 @@ Future<ServiceModel> createService(ServiceModel service, String token) async {
       return ServiceModel.fromJson(json.decode(response.body));
     } else {
       throw Exception('Error al crear servicio: ${response.body}');
+    }
+  }
+
+  Future<List<ServiceModel>> searchServices(String searchText) async {
+    final url = Uri.parse("$baseUrl/search").replace(
+      queryParameters: {'query': searchText} 
+    );
+
+    final response = await http.get(url); 
+
+    if (response.statusCode == 200) {
+      final List<dynamic> jsonList = json.decode(response.body);
+      return jsonList.map((e) => ServiceModel.fromJson(e)).toList();
+    } else {
+      print("🚨 Error en búsqueda (${response.statusCode}): ${response.body}");
+      return []; 
     }
   }
 }

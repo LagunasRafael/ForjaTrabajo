@@ -1,13 +1,28 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+// 👇 Importamos el Auth Provider
+import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart'; 
 
-class AdminDashboardScreen extends StatelessWidget {
+// 👇 Lo cambiamos a ConsumerWidget para que pueda leer a Riverpod
+class AdminDashboardScreen extends ConsumerWidget {
   const AdminDashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // 👇 Extraemos el nombre del administrador
+    final authState = ref.watch(authProvider);
+    final userName = authState.user?.fullName ?? 'Administrador';
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Panel de Control Admin', style: TextStyle(color: Colors.black)),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Panel de Control', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 20)),
+            // 👇 Aquí imprimimos su nombre
+            Text('Hola, $userName', style: TextStyle(color: Colors.grey.shade600, fontSize: 14, fontWeight: FontWeight.normal)),
+          ],
+        ),
         backgroundColor: Colors.white,
         elevation: 0,
       ),
@@ -33,7 +48,7 @@ class AdminDashboardScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10)],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
