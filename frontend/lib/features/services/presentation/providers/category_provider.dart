@@ -1,14 +1,20 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../domain/entities/category_entity.dart';
 import '../../data/repositories/service_repository_impl.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 
 final selectedCategoryProvider = StateProvider<String?>((ref) => null);
 
+// 1. PROVEEDOR ORIGINAL: Trae TODAS las categorías (para el menú "Ver todas")
 final categoryListProvider = FutureProvider<List<CategoryEntity>>((ref) async {
   final repository = ref.watch(serviceRepositoryProvider);
   return await repository.getCategories(); 
+});
+
+// 👇 2. NUEVO PROVEEDOR: Trae SOLO EL TOP 5 (para el carrusel principal)
+final topCategoryListProvider = FutureProvider<List<CategoryEntity>>((ref) async {
+  final repository = ref.watch(serviceRepositoryProvider);
+  return await repository.getTopCategories(); // Llama a la nueva función
 });
 
 class CategoryActionNotifier extends AutoDisposeNotifier<AsyncValue<void>> {
@@ -18,17 +24,16 @@ class CategoryActionNotifier extends AutoDisposeNotifier<AsyncValue<void>> {
   Future<void> createCategory(String name, String description) async {
     state = const AsyncLoading();
     try {
-      // ✅ USAMOS TU API CLIENT (Igual que en Auth)
       final apiClient = ref.read(apiClientProvider);
       final token = await apiClient.storage.read(key: 'jwt_token') ?? '';
 
       final repository = ref.read(serviceRepositoryProvider);
-      
-      // Mandamos los tres datos al repo
       await repository.createCategory(name, description, token);
       
       state = const AsyncData(null);
+      // 👇 Refrescamos ambos proveedores para que la nueva categoría aparezca
       ref.invalidate(categoryListProvider); 
+      ref.invalidate(topCategoryListProvider); 
       
     } catch (e, stack) {
       state = AsyncError(e, stack);
@@ -38,7 +43,6 @@ class CategoryActionNotifier extends AutoDisposeNotifier<AsyncValue<void>> {
   Future<void> deleteCategory(String id) async {
     state = const AsyncLoading();
     try {
-      // ✅ USAMOS TU API CLIENT PARA SER CONSISTENTES
       final apiClient = ref.read(apiClientProvider);
       final token = await apiClient.storage.read(key: 'jwt_token') ?? '';
 
@@ -46,7 +50,9 @@ class CategoryActionNotifier extends AutoDisposeNotifier<AsyncValue<void>> {
       await repository.deleteCategory(id, token);
       
       state = const AsyncData(null);
+      // 👇 Refrescamos ambos proveedores
       ref.invalidate(categoryListProvider);
+      ref.invalidate(topCategoryListProvider);
     } catch (e, stack) {
       state = AsyncError(e, stack);
     }
