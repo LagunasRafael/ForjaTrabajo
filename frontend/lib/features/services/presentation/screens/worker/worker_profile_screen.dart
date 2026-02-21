@@ -5,7 +5,8 @@ import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
-// 👇 RUTAS CORREGIDAS
+// 👇 AQUÍ IMPORTAMOS TUS COMPONENTES COMPARTIDOS
+import 'package:forja_trabajo/features/auth/presentation/widgets/profile_shared_widgets.dart';
 
 class WorkerProfileScreen extends ConsumerWidget {
   const WorkerProfileScreen({super.key});
@@ -28,94 +29,78 @@ class WorkerProfileScreen extends ConsumerWidget {
         child: Column(
           children: [
             const SizedBox(height: 24),
-            _buildAvatar(user?.fullName ?? "Cargando..."),
+            
+            // 👇 1. EL AVATAR TOCABLE CON CÁMARA (Estilo WhatsApp)
+            EditableProfileAvatar(
+              imageUrl: user?.profilePictureUrl,
+              radius: 60,
+            ),
+            
             const SizedBox(height: 16),
-            Text(user?.fullName ?? "...", style: GoogleFonts.inter(fontSize: 24, fontWeight: FontWeight.bold)),
-            _buildRoleBadge("Trabajador"),
+            Text(user?.fullName ?? "Cargando...", style: GoogleFonts.inter(fontSize: 24, fontWeight: FontWeight.bold)),
+            
+            // 👇 2. EL BADGE DE ROL SIMPLIFICADO
+            Container(
+              margin: const EdgeInsets.only(top: 8, bottom: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppTheme.successEmerald.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text("TRABAJADOR", 
+                style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.successEmerald)),
+            ),
+
+            // 👇 3. LA UBICACIÓN ARREGLADA (user?.city)
+            InkWell(
+              onTap: () async {
+                await ref.read(authProvider.notifier).autoUpdateLocation();
+              },
+              borderRadius: BorderRadius.circular(8),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      LucideIcons.mapPin, 
+                      size: 16, 
+                      color: user?.city == null ? AppTheme.primaryColor : Colors.grey
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      user?.city ?? "Toca para activar ubicación", 
+                      style: GoogleFonts.inter(
+                        color: user?.city == null ? AppTheme.primaryColor : Colors.grey, 
+                        fontSize: 14, 
+                        fontWeight: user?.city == null ? FontWeight.bold : FontWeight.w500
+                      )
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            
             const SizedBox(height: 32),
-            _buildMenuCard([
-              _buildOption(LucideIcons.briefcase, 'Mi Portafolio', () {}),
-              _buildOption(LucideIcons.star, 'Mis Reseñas', () {}),
-              _buildOption(LucideIcons.history, 'Historial de Trabajos', () {}),
-            ]),
+            
+            // 👇 4. EL MENÚ LIMPIO (Usando Shared Widgets)
+            ProfileMenuCard(
+              children: [
+                ProfileMenuOption(icon: LucideIcons.briefcase, title: 'Mi Portafolio', onTap: () {}),
+                ProfileMenuOption(icon: LucideIcons.star, title: 'Mis Reseñas', onTap: () {}),
+                ProfileMenuOption(icon: LucideIcons.history, title: 'Historial de Trabajos', onTap: () {}),
+              ],
+            ),
+            
             const SizedBox(height: 32),
-            _buildLogoutButton(context, ref),
+            
+            // 👇 5. EL BOTÓN DE LOGOUT (Usando Shared Widgets)
+            const ProfileLogoutButton(),
+            
+            const SizedBox(height: 24), // Espacio al final
           ],
         ),
-      ),
-    );
-  }
-
-  // --- MÉTODOS DE APOYO (IDÉNTICOS PARA LOS 3) ---
-  Widget _buildAvatar(String name) {
-    return Center(
-      child: CircleAvatar(
-        radius: 60,
-        backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.1),
-        child: const Icon(LucideIcons.user, size: 60, color: AppTheme.primaryColor),
-      ),
-    );
-  }
-
-  Widget _buildRoleBadge(String label) {
-    return Container(
-      margin: const EdgeInsets.only(top: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      decoration: BoxDecoration(
-        color: AppTheme.successEmerald.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(label.toUpperCase(), 
-        style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.successEmerald)),
-    );
-  }
-
-  Widget _buildMenuCard(List<Widget> children) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 20)],
-      ),
-      child: Column(children: children),
-    );
-  }
-
-  Widget _buildOption(IconData icon, String title, VoidCallback onTap) {
-    return ListTile(
-      leading: Icon(icon, color: AppTheme.primaryColor, size: 20),
-      title: Text(title, style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w500)),
-      trailing: const Icon(LucideIcons.chevronRight, size: 20),
-      onTap: onTap,
-    );
-  }
-
-  Widget _buildLogoutButton(BuildContext context, WidgetRef ref) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: OutlinedButton.icon(
-        onPressed: () async {
-          // 1. Llamamos a la lógica de limpieza que pusimos arriba
-          await ref.read(authProvider.notifier).logoutUser();
-
-          // 2. Navegamos al Login y BORRAMOS todas las pantallas anteriores
-          // Esto hace que la app "olvide" que estaba en el perfil
-          if (context.mounted) {
-            Navigator.pushNamedAndRemoveUntil(
-              context, 
-              '/login', // Reemplaza por el nombre de tu ruta de Login o RoleSelection
-              (route) => false, 
-            );
-          }
-        },
-        style: OutlinedButton.styleFrom(
-          minimumSize: const Size(double.infinity, 56),
-          side: const BorderSide(color: AppTheme.dangerRose),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        ),
-        icon: const Icon(LucideIcons.logOut, color: AppTheme.dangerRose),
-        label: Text("Cerrar Sesión", style: GoogleFonts.inter(color: AppTheme.dangerRose, fontWeight: FontWeight.bold)),
       ),
     );
   }

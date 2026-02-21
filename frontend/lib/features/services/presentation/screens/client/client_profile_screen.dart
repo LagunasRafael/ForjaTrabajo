@@ -4,6 +4,7 @@ import 'package:forja_trabajo/core/theme/app_theme.dart';
 import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:forja_trabajo/features/auth/presentation/widgets/profile_shared_widgets.dart';
 
 class ClientProfileScreen extends ConsumerWidget {
   const ClientProfileScreen({super.key});
@@ -18,24 +19,31 @@ class ClientProfileScreen extends ConsumerWidget {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            _buildHeader(user?.fullName ?? "Cliente", user?.email ?? "", "Cliente"),
+            _buildHeader(user?.fullName ?? "Cliente", user?.email ?? "", "Cliente", user?.profilePictureUrl, user?.city, ref),
             const SizedBox(height: 30),
-            _buildMenuCard([
-              _buildOption(LucideIcons.user, 'Mi Información', () {}),
-              _buildOption(LucideIcons.shoppingBag, 'Mis Solicitudes de Servicio', () {}),
-              _buildOption(LucideIcons.creditCard, 'Métodos de Pago', () {}),
-              _buildOption(LucideIcons.bell, 'Notificaciones', () {}),
-            ]),
+            
+            // 👇 ¡MIRA QUÉ LIMPIO QUEDA! 👇
+            ProfileMenuCard(
+              children: [
+                ProfileMenuOption(icon: LucideIcons.user, title: 'Mi Información', onTap: () {}),
+                ProfileMenuOption(icon: LucideIcons.shoppingBag, title: 'Mis Solicitudes de Servicio', onTap: () {}),
+                ProfileMenuOption(icon: LucideIcons.creditCard, title: 'Métodos de Pago', onTap: () {}),
+                ProfileMenuOption(icon: LucideIcons.bell, title: 'Notificaciones', onTap: () {}),
+              ],
+            ),
             const SizedBox(height: 32),
-            _buildLogoutButton(context, ref),
+            const ProfileLogoutButton(), // 👈 Un solo widget que hace todo
           ],
         ),
       ),
     );
   }
 
+  // (Aquí dejas solo _buildHeader porque es exclusivo del cliente)
+}
+
   // --- WIDGETS REUTILIZABLES ---
-  Widget _buildHeader(String name, String email, String role) {
+  Widget _buildHeader(String name, String email, String role, String? imageUrl,String? city, WidgetRef ref) {
     return Container(
       padding: const EdgeInsets.only(top: 60, bottom: 30),
       decoration: const BoxDecoration(
@@ -44,15 +52,46 @@ class ClientProfileScreen extends ConsumerWidget {
       ),
       child: Column(
         children: [
-          CircleAvatar(
+          EditableProfileAvatar(
+            imageUrl: imageUrl, // 👈 Le pasamos la URL que recibimos
             radius: 50,
-            backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.1),
-            child: const Icon(LucideIcons.user, size: 50, color: AppTheme.primaryColor),
           ),
           const SizedBox(height: 16),
           Text(name, style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.bold)),
           Text(email, style: GoogleFonts.inter(color: Colors.grey)),
           const SizedBox(height: 12),
+          // 👇 LA NUEVA UBICACIÓN INTERACTIVA 👇
+          InkWell(
+            onTap: () async {
+              await ref.read(authProvider.notifier).autoUpdateLocation();
+            },
+            borderRadius: BorderRadius.circular(8),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min, // Para que el toque sea solo en el texto
+                children: [
+                  Icon(
+                    LucideIcons.mapPin, 
+                    size: 16, 
+                    // Si no hay ciudad, lo pintamos del color principal para que llame la atención
+                    color: city == null ? AppTheme.primaryColor : Colors.grey
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    city ?? "Toca para activar ubicación", 
+                    style: GoogleFonts.inter(
+                      color: city == null ? AppTheme.primaryColor : Colors.grey, 
+                      fontSize: 14, 
+                      fontWeight: city == null ? FontWeight.bold : FontWeight.w500
+                    )
+                  ),
+                ],
+              ),
+            ),
+          ),
+          // 👆 FIN DE LA UBICACIÓN INTERACTIVA 👆
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             decoration: BoxDecoration(
@@ -65,55 +104,3 @@ class ClientProfileScreen extends ConsumerWidget {
       ),
     );
   }
-
-  Widget _buildMenuCard(List<Widget> children) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 20)],
-      ),
-      child: Column(children: children),
-    );
-  }
-
-  Widget _buildOption(IconData icon, String title, VoidCallback onTap) {
-    return ListTile(
-      leading: Icon(icon, color: AppTheme.primaryColor, size: 20),
-      title: Text(title, style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w500)),
-      trailing: const Icon(Icons.chevron_right, size: 20),
-      onTap: onTap,
-    );
-  }
-
-  Widget _buildLogoutButton(BuildContext context, WidgetRef ref) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: OutlinedButton.icon(
-        onPressed: () async {
-            // 1. Llamamos a la lógica de limpieza que pusimos arriba
-            await ref.read(authProvider.notifier).logoutUser();
-
-            // 2. Navegamos al Login y BORRAMOS todas las pantallas anteriores
-            // Esto hace que la app "olvide" que estaba en el perfil
-            if (context.mounted) {
-              Navigator.pushNamedAndRemoveUntil(
-                context, 
-                '/login', // Reemplaza por el nombre de tu ruta de Login o RoleSelection
-                (route) => false, 
-              );
-            }
-          },
-        style: OutlinedButton.styleFrom(
-          minimumSize: const Size(double.infinity, 56),
-          side: const BorderSide(color: AppTheme.dangerRose),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        ),
-        icon: const Icon(LucideIcons.logOut, color: AppTheme.dangerRose),
-        label: Text("Cerrar Sesión", style: GoogleFonts.inter(color: AppTheme.dangerRose, fontWeight: FontWeight.bold)),
-      ),
-    );
-  }
-
-}
