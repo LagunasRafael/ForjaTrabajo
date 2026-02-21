@@ -11,8 +11,7 @@ abstract class ServiceRepository {
 
   // Categories
   Future<List<CategoryEntity>> getCategories();
-
-  // Busca esta línea y déjala así:
+  Future<List<CategoryEntity>> getTopCategories();
   Future<void> createCategory(String name, String description, String token);// 👈 Agregamos String token
   Future<void> deleteCategory(String id, String token);   // 👈 Agregamos String token
 
@@ -24,5 +23,8 @@ abstract class ServiceRepository {
   // Jobs
   Future<JobEntity> completeJob(String jobId, String token);
   Future<JobEntity> cancelJob(String jobId, String token);
+
+  // Busqueda
+  Future<List<ServiceEntity>> searchServices(String query);
   
 }

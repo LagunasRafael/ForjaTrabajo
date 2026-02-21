@@ -4,7 +4,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart';
 
 import '../../../../core/theme/app_theme.dart';
-import '../screens/login_screen.dart'; // Para poder regresar al login
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});

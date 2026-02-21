@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../domain/entities/category_entity.dart';
 import '../models/category_model.dart';
 
 final categoryRemoteDataSourceProvider = Provider((ref) => CategoryRemoteDataSource());
@@ -47,6 +48,24 @@ class CategoryRemoteDataSource {
 
     if (response.statusCode != 200 && response.statusCode != 204) {
       throw Exception('No se pudo eliminar la categoría');
+    }
+  }
+  Future<List<CategoryModel>> getTopCategories() async {
+    try {
+      // Usamos la URL base pero apuntando al nuevo endpoint del backend
+      final String topUrl = "http://127.0.0.1:8000/services/top-categories";
+      
+      final response = await http.get(Uri.parse(topUrl));
+      
+      if (response.statusCode == 200) {
+        final List<dynamic> jsonList = json.decode(response.body);
+        // Usamos CategoryModel.fromJson (que ya tienes definido arriba)
+        return jsonList.map((e) => CategoryModel.fromJson(e)).toList();
+      } else {
+        throw Exception('Error al cargar las top categorías');
+      }
+    } catch (e) {
+      throw Exception('Error de conexión: $e');
     }
   }
 }

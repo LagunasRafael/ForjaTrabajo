@@ -6,7 +6,9 @@ from sqlalchemy import (
     ForeignKey,
     Enum,
     Boolean,
-    Numeric
+    Numeric,
+    Float, # ✅ AÑADIDO: Para las coordenadas
+    JSON   # ✅ AÑADIDO: Para la lista de imágenes
 )
 from sqlalchemy.orm import relationship
 from datetime import datetime
@@ -53,8 +55,18 @@ class Service(Base):
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     title = Column(String(150), nullable=False)
+    
+    # ✅ NUEVOS CAMPOS AÑADIDOS
+    summary = Column(String(255), nullable=True)
+    
     description = Column(Text, nullable=False)
     base_price = Column(Numeric(10, 2), nullable=True) # Presupuesto estimado del cliente
+    
+    # ✅ NUEVOS CAMPOS DE UBICACIÓN Y MULTIMEDIA
+    latitude = Column(Float, nullable=True)
+    longitude = Column(Float, nullable=True)
+    exact_address = Column(Text, nullable=True)
+    image_urls = Column(JSON, default=list)
 
     category_id = Column(String(36), ForeignKey("categories.id"), nullable=False)
     

@@ -1,6 +1,6 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart'; // Solo añadimos esto
+import 'package:shared_preferences/shared_preferences.dart'; 
 import '../../data/datasources/auth_remote_data_source.dart';
 import '../../../../core/network/api_client.dart';
 import '../../domain/models/user_model.dart';
@@ -33,7 +33,7 @@ class AuthState {
   }
 }
 
-// 3. EL NUEVO CONTROLADOR (Estándar Moderno de Riverpod)
+// 3. EL NUEVO CONTROLADOR
 class AuthNotifier extends Notifier<AuthState> {
   
   @override
@@ -47,7 +47,7 @@ class AuthNotifier extends Notifier<AuthState> {
     final hasToken = await dataSource.hasValidToken();
     
     if (hasToken) {
-      await fetchProfile();
+      await fetchProfile(); // Descarga el perfil al abrir la app
       state = state.copyWith(status: 'authenticated');
     } else {
       state = state.copyWith(status: 'unauthenticated');
@@ -58,17 +58,13 @@ class AuthNotifier extends Notifier<AuthState> {
     state = state.copyWith(status: 'loading', errorMessage: '');
     try {
       final dataSource = ref.read(authDataSourceProvider);
-      
-      // ✅ Realizamos el login normal (esto ya guarda el token en SecureStorage)
       final token = await dataSource.login(email, password);
       
-      // 🆕 ADICIÓN: Guardamos una copia en SharedPreferences solo para que 
-      // el CategoryProvider lo encuentre fácil (esto no rompe nada de lo anterior)
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('token', token);
 
       state = state.copyWith(status: 'authenticated');
-      await fetchProfile();
+      await fetchProfile(); // 👇 Descarga el perfil al iniciar sesión (AQUÍ OBTIENES EL NOMBRE REAL)
     } catch (e) {
       state = state.copyWith(
         status: 'error', 
@@ -79,18 +75,11 @@ class AuthNotifier extends Notifier<AuthState> {
 
   Future<void> logoutUser() async {
     final dataSource = ref.read(authDataSourceProvider);
-    
-    // 🆕 Limpiamos el token de SharedPreferences también
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('token');
-
     await dataSource.logout(); 
     
-    state = AuthState(
-      status: 'unauthenticated',
-      user: null, 
-      errorMessage: ''
-    );
+    state = AuthState(status: 'unauthenticated', user: null, errorMessage: '');
   }
 
   Future<void> registerUser({
@@ -119,13 +108,34 @@ class AuthNotifier extends Notifier<AuthState> {
     }
   }
 
-  /// Detecta la ubicación automáticamente y actualiza el perfil
+  // 👇 FUNCIÓN ARREGLADA: Descarga el perfil real del usuario
+  Future<void> fetchProfile() async {
+    try {
+      final dataSource = ref.read(authDataSourceProvider);
+      final userData = await dataSource.getUserProfile();
+      
+      // Actualizamos el estado con el usuario real de FastAPI
+      state = state.copyWith(user: userData); 
+
+      // Si no tiene ciudad guardada, intentamos buscarla
+      if (userData.city == null || userData.city!.isEmpty) {
+        autoUpdateLocation();
+      }
+    } catch (e) {
+      debugPrint('Error descargando perfil: $e');
+    }
+  }
+
+  // 👇 FUNCIÓN ARREGLADA: Ya no crashea si el GPS devuelve nulo
   Future<void> autoUpdateLocation() async {
-    if (state.user == null || state.user?.city != null) return;
+    if (state.user == null) return;
 
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) return; 
+      if (!serviceEnabled) {
+        debugPrint('🚨 GPS apagado');
+        return; 
+      }
 
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
@@ -135,9 +145,17 @@ class AuthNotifier extends Notifier<AuthState> {
       
       if (permission == LocationPermission.deniedForever) return;
 
-      Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high
-      );
+      // Usamos getCurrentPosition con un timeout para que no se quede colgado
+      Position? position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      ).timeout(const Duration(seconds: 10), onTimeout: () => throw Exception('Timeout GPS'));
+
+      // ✅ EL BLINDAJE CONTRA EL ERROR NULL VALUE
+      // ignore: unnecessary_null_comparison
+      if (position == null) {
+         debugPrint('🚨 Geolocator devolvió null');
+         return;
+      }
 
       List<Placemark> placemarks = await placemarkFromCoordinates(
         position.latitude, 
@@ -146,16 +164,21 @@ class AuthNotifier extends Notifier<AuthState> {
 
       String cityName = "Desconocido";
       if (placemarks.isNotEmpty) {
-        Placemark place = placemarks[0];
-        cityName = "${place.locality}, ${place.administrativeArea}"; 
+        Placemark place = placemarks.first;
+        // Quitamos nulos de la dirección
+        final locality = place.locality ?? '';
+        final area = place.administrativeArea ?? '';
+        if (locality.isNotEmpty || area.isNotEmpty) {
+           cityName = "$locality, $area".trim().replaceAll(RegExp(r'^,|,$'), '');
+        }
       }
 
-      print('📍 Ubicación detectada automáticamente: $cityName');
+      print('📍 Ubicación detectada: $cityName');
 
       final updatedUser = User(
         id: state.user!.id,
         email: state.user!.email,
-        fullName: state.user!.fullName,
+        fullName: state.user!.fullName, // ✅ MANTIENE EL NOMBRE REAL
         role: state.user!.role,
         phone: state.user!.phone,
         latitude: position.latitude,
@@ -166,21 +189,7 @@ class AuthNotifier extends Notifier<AuthState> {
       state = state.copyWith(user: updatedUser);
 
     } catch (e) {
-      print('🚨 Error detectando ubicación automática: $e');
-    }
-  }
-
-  Future<void> fetchProfile() async {
-    try {
-      final dataSource = ref.read(authDataSourceProvider);
-      final userData = await dataSource.getUserProfile();
-      state = state.copyWith(user: userData); 
-
-      if (userData.city == null) {
-        autoUpdateLocation();
-      }
-    } catch (e) {
-      debugPrint('Error descargando perfil: $e');
+      print('🚨 Error silencioso detectando ubicación: $e');
     }
   }
 }

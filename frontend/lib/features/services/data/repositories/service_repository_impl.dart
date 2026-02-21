@@ -94,6 +94,13 @@ class ServiceRepositoryImpl implements ServiceRepository {
   @override
   Future<JobEntity> cancelJob(String jobId, String token) => 
       jobDS.cancelJob(jobId, token);
+
+  @override
+  Future<List<CategoryEntity>> getTopCategories() => categoryDS.getTopCategories();
+
+  @override
+  Future<List<ServiceEntity>> searchServices(String query) => 
+      serviceDS.searchServices(query);
 }
 
 // PROVIDER DEL REPOSITORIO
