@@ -54,3 +54,8 @@ class UserUpdate(BaseModel):
     full_name: Optional[str] = None
     role: Optional[str] = None # Cambia 'str' por tu enum 'Role' si lo tienes así
     is_active: Optional[bool] = None
+
+class LocationUpdate(BaseModel):
+    latitude: float
+    longitude: float
+    city: str

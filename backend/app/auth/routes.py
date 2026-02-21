@@ -131,3 +131,28 @@ async def upload_profile_picture(
 
     # 4. Devolvemos el usuario actualizado
     return user
+
+@router.put("/update-location/{user_id}")
+def update_location(
+    user_id: str, 
+    location_data: schemas.LocationUpdate, 
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    # 🔍 VALIDACIÓN DE PROPIEDAD: 
+    # ¿El ID del token es el mismo que el ID que queremos editar?
+    if current_user.id != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes permiso para actualizar la ubicación de otro usuario"
+        )
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    
+    user.latitude = location_data.latitude
+    user.longitude = location_data.longitude
+    user.city = location_data.city
+    
+    db.commit()
+    return {"status": "success", "city": user.city}
