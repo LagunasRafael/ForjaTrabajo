@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart'; 
 import '../../data/datasources/auth_remote_data_source.dart';
 import '../../../../core/network/api_client.dart';
@@ -7,6 +8,10 @@ import '../../domain/models/user_model.dart';
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
+import 'package:dio/dio.dart';
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
+
 
 // 1. INSTANCIAS GLOBALES
 final apiClientProvider = Provider((ref) => ApiClient());
@@ -131,32 +136,31 @@ class AuthNotifier extends Notifier<AuthState> {
     if (state.user == null) return;
 
     try {
+      // 1. Verificamos si el GPS está prendido
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
         debugPrint('🚨 GPS apagado');
         return; 
       }
 
+      // 2. Verificamos permisos
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) return; 
       }
       
-      if (permission == LocationPermission.deniedForever) return;
-
-      // Usamos getCurrentPosition con un timeout para que no se quede colgado
-      Position? position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-      ).timeout(const Duration(seconds: 10), onTimeout: () => throw Exception('Timeout GPS'));
-
-      // ✅ EL BLINDAJE CONTRA EL ERROR NULL VALUE
-      // ignore: unnecessary_null_comparison
-      if (position == null) {
-         debugPrint('🚨 Geolocator devolvió null');
-         return;
+      if (permission == LocationPermission.deniedForever) {
+        await Geolocator.openAppSettings();
+        return;
       }
 
+      // 3. Obtenemos la POSICIÓN (Aquí es donde se define 'position')
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      ).timeout(const Duration(seconds: 10));
+
+      // 4. Obtenemos la CIUDAD (Geocoding)
       List<Placemark> placemarks = await placemarkFromCoordinates(
         position.latitude, 
         position.longitude
@@ -165,36 +169,70 @@ class AuthNotifier extends Notifier<AuthState> {
       String cityName = "Desconocido";
       if (placemarks.isNotEmpty) {
         Placemark place = placemarks.first;
-        // Quitamos nulos de la dirección
         final locality = place.locality ?? '';
         final area = place.administrativeArea ?? '';
-        if (locality.isNotEmpty || area.isNotEmpty) {
-           cityName = "$locality, $area".trim().replaceAll(RegExp(r'^,|,$'), '');
-        }
+        cityName = locality.isNotEmpty ? "$locality, $area" : area;
       }
 
-      print('📍 Ubicación detectada: $cityName');
+      debugPrint('📍 Ubicación detectada: $cityName');
 
-      final updatedUser = User(
-        id: state.user!.id,
-        email: state.user!.email,
-        fullName: state.user!.fullName, // ✅ MANTIENE EL NOMBRE REAL
-        role: state.user!.role,
-        phone: state.user!.phone,
+      // 5. LLAMADA AL BACKEND (Usando 'position' que ya definimos arriba)
+      final dataSource = ref.read(authDataSourceProvider);
+      await dataSource.updateLocation(
+        userId: state.user!.id,
+        lat: position.latitude,  // 👈 Ahora sí reconoce 'position'
+        lng: position.longitude,
+        city: cityName,
+      );
+
+      // 6. ACTUALIZACIÓN DEL ESTADO LOCAL
+      final updatedUser = state.user!.copyWith(
         latitude: position.latitude,
         longitude: position.longitude,
         city: cityName, 
       );
 
       state = state.copyWith(user: updatedUser);
+      debugPrint('✅ Ubicación sincronizada con FastAPI');
 
     } catch (e) {
-      print('🚨 Error silencioso detectando ubicación: $e');
+      debugPrint('🚨 Error en autoUpdateLocation: $e');
     }
   }
+
+  Future<void> updateProfilePicture(XFile imageFile) async {
+    // Si no hay usuario logueado, no hacemos nada
+    if (state.user == null) return;
+
+    final dataSource = ref.read(authDataSourceProvider);
+
+    try {
+      // 1. Mostramos algún indicador de carga (opcional, por ahora lo dejamos simple)
+      
+      // 2. Llamamos a tu datasource para subir la foto a S3
+      final newPhotoUrl = await dataSource.uploadProfilePicture(
+        state.user!.id, 
+        imageFile
+      );
+
+      // 3. Actualizamos el estado actual del usuario con la nueva foto
+      // (Asegúrate de que tu modelo User tenga la propiedad copyWith)
+      final updatedUser = state.user!.copyWith(
+        profilePictureUrl: newPhotoUrl
+      );
+
+      // 4. Notificamos a toda la app (Riverpod) que hay una nueva foto
+      state = state.copyWith(user: updatedUser);
+      
+    } catch (e) {
+      debugPrint("Error subiendo foto: $e");
+    }
+  }
+
 }
 
 // 4. EL PROVIDER FINAL
 final authProvider = NotifierProvider<AuthNotifier, AuthState>(() {
   return AuthNotifier();
 });
+

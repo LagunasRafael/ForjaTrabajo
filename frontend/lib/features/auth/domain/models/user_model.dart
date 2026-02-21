@@ -35,4 +35,29 @@ class User {
       longitude: json['longitude'],
     );
   }
+
+  User copyWith({
+    String? id,
+    String? email,
+    String? fullName,
+    String? role,
+    String? phone,
+    String? profilePictureUrl,
+    String? city,
+    double? latitude,
+    double? longitude,
+  }) {
+    return User(
+      id: id ?? this.id,
+      email: email ?? this.email,
+      fullName: fullName ?? this.fullName,
+      role: role ?? this.role,
+      phone: phone ?? this.phone,
+      profilePictureUrl: profilePictureUrl ?? this.profilePictureUrl,
+      city: city ?? this.city,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+    );
+  }
 }
+

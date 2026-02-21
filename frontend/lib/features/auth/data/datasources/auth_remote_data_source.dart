@@ -2,6 +2,8 @@ import 'package:dio/dio.dart';
 import '../../../../core/network/api_client.dart';
 import '../../domain/models/user_model.dart';
 import 'package:flutter/foundation.dart';
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
 
 class AuthRemoteDataSource {
   final ApiClient apiClient;
@@ -128,4 +130,53 @@ class AuthRemoteDataSource {
       throw Exception('Falló el registro HTTP');
     }
   }
+
+  Future<String> uploadProfilePicture(String userId, XFile imageFile) async {
+    try {
+      // 1. Leemos el archivo como BYTES puros (Esto funciona perfecto en Web y Móvil)
+      final bytes = await imageFile.readAsBytes();
+
+      // 2. Empacamos los bytes para enviarlos a FastAPI
+      final formData = FormData.fromMap({
+        'file': MultipartFile.fromBytes(
+          bytes,
+          filename: imageFile.name, // XFile nos da el nombre seguro
+        ),
+      });
+
+      final response = await apiClient.dio.post(
+        '/auth/$userId/profile-picture',
+        data: formData,
+      );
+
+      return response.data['url']; 
+    } on DioException catch (e) {
+      debugPrint('🚨 ERROR AL SUBIR FOTO: ${e.response?.data}');
+      throw Exception('Error al subir la imagen a S3');
+    }
+  }
+
+  Future<void> updateLocation({
+    required String userId,
+    required double lat,
+    required double lng,
+    required String city,
+  }) async {
+    try {
+      // Usamos el cliente de Dio para mandarle los datos al backend
+      await apiClient.dio.put(
+        '/auth/update-location/$userId', // 👈 Ajusta esta ruta según tu FastAPI
+        data: {
+          'latitude': lat,
+          'longitude': lng,
+          'city': city,
+        },
+      );
+      debugPrint('🛰️ Ubicación enviada al servidor con éxito');
+    } on DioException catch (e) {
+      debugPrint('🚨 Error en DataSource al actualizar ubicación: ${e.response?.data}');
+      throw Exception('No se pudo guardar la ubicación en el servidor');
+    }
+  }
 }
+

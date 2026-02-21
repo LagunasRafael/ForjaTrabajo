@@ -256,13 +256,32 @@ class HomeClientScreen extends ConsumerWidget {
   Widget _buildHeader(String name) => Row(
     mainAxisAlignment: MainAxisAlignment.spaceBetween, 
     children: [
-      Column(
-        crossAxisAlignment: CrossAxisAlignment.start, 
-        children: [
-          const Text("Bienvenido de nuevo", style: TextStyle(color: Colors.grey, fontSize: 14)), 
-          Text("Hola, $name", style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800))
-        ]
+      // 1. Envolvemos la columna en un Expanded para que ocupe solo el espacio disponible
+      Expanded( 
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start, 
+          children: [
+            const Text(
+              "Bienvenido de nuevo", 
+              style: TextStyle(color: Colors.grey, fontSize: 14)
+            ), 
+            Text(
+              "Hola, $name", 
+              style: const TextStyle(
+                fontSize: 26, 
+                fontWeight: FontWeight.w800,
+                overflow: TextOverflow.ellipsis, // Si el nombre es EXTREMADAMENTE largo, pone "..."
+              ),
+              maxLines: 1, // Mantiene todo en una línea para no romper el diseño
+            )
+          ]
+        ),
       ),
+      
+      // 2. Un pequeño espacio de seguridad entre el texto y el avatar
+      const SizedBox(width: 12),
+
+      // 3. El avatar se mantiene fijo a la derecha
       CircleAvatar(
         radius: 24,
         backgroundColor: Colors.indigo.shade100,
