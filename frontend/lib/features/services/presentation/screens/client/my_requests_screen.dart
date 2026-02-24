@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../widgets/service_status_chip.dart';
 import '../../providers/service_list_provider.dart';
+import '/shared/widgets/empty_state_widget.dart';
+import '/shared/widgets/service_card_skeleton.dart';
 
 class MyRequestsScreen extends ConsumerWidget {
   const MyRequestsScreen({super.key});
@@ -45,20 +47,59 @@ class MyRequestsScreen extends ConsumerWidget {
 
     return servicesAsync.when(
       data: (services) {
-        // Filtramos por estado (esto asume que tu modelo tiene .status)
+        // Filtramos por estado
         final filtered = services.where((s) => s.status == status).toList();
 
+        // 👇 AQUÍ ENTRA LA MAGIA DEL EMPTY STATE
         if (filtered.isEmpty) {
-          return const Center(child: Text("No hay solicitudes en este estado"));
+          String title = "";
+          String message = "";
+          IconData icon = Icons.info_outline;
+
+          // Personalizamos el mensaje según la pestaña
+          switch (status) {
+            case 'open':
+              title = "Sin solicitudes abiertas";
+              message = "No tienes ningún servicio pendiente. ¿Necesitas ayuda con algún proyecto en casa o la oficina?";
+              icon = Icons.inbox_outlined;
+              break;
+            case 'in_progress':
+              title = "Nada en proceso";
+              message = "Actualmente no tienes trabajos realizándose. Aquí verás los servicios cuando el trabajador acepte tu solicitud.";
+              icon = Icons.handyman_outlined;
+              break;
+            case 'completed':
+              title = "Sin historial";
+              message = "Aún no tienes trabajos finalizados. ¡Todos tus proyectos completados con éxito aparecerán aquí!";
+              icon = Icons.history_outlined;
+              break;
+          }
+
+          return EmptyStateWidget(
+            icon: icon,
+            title: title,
+            message: message,
+            // Solo le ponemos botón a la pestaña de "Abiertos" para invitarlo a buscar
+            buttonText: status == 'open' ? "Buscar Servicios" : null,
+            onButtonPressed: status == 'open' ? () {
+              // TODO: Redirigir al inicio (Home)
+              print("Ir al inicio a buscar servicios");
+            } : null,
+          );
         }
 
+        // Si sí hay datos, mostramos tu ListView normal
         return ListView.builder(
           padding: const EdgeInsets.all(16),
           itemCount: filtered.length,
           itemBuilder: (context, index) => _buildRequestCard(context, filtered[index]),
         );
       },
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: 4, // Mostramos 4 tarjetas fantasma mientras carga
+        itemBuilder: (context, index) => const ServiceCardSkeleton(),
+      ),
       error: (e, s) => Center(child: Text("Error: $e")),
     );
   }

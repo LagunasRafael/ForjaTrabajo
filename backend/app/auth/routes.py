@@ -72,8 +72,12 @@ def update_user(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado")
     
     # 2. Actualizamos los campos
-    db_user.full_name = user_data.full_name
-    db_user.role = user_data.role
+    if user_data.full_name is not None:
+        db_user.full_name = user_data.full_name
+    if user_data.role is not None:
+        db_user.role = user_data.role
+    if user_data.phone is not None:
+        db_user.phone = user_data.phone
     
     # Si estás manejando is_active, descomenta esta línea:
     # db_user.is_active = user_data.is_active 

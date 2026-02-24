@@ -18,13 +18,6 @@ class WorkerProfileScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
-        title: Text('Mi Perfil de Trabajador', 
-          style: GoogleFonts.inter(color: AppTheme.textColor, fontWeight: FontWeight.bold)),
-      ),
       body: SingleChildScrollView(
         child: Column(
           children: [
