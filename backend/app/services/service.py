@@ -126,6 +126,66 @@ def get_services_by_category(db: Session, category_id: str):
         .all()
     )
 
+def update_service(
+    db: Session,
+    service_id: str,
+    data: schemas.ServiceUpdate,
+    user_id: str,
+    user_role: str
+):
+    service_entry = db.query(models.Service).filter(
+        models.Service.id == service_id
+    ).first()
+
+    if not service_entry:
+        raise HTTPException(status_code=404, detail="Servicio no encontrado")
+
+    # 🔐 permisos (solo dueño o admin)
+    is_admin = user_role == Role.ADMIN
+    is_owner = str(service_entry.client_id) == str(user_id)
+
+    if not (is_admin or is_owner):
+        raise HTTPException(status_code=403, detail="No tienes permiso")
+
+    # 🛡️ PROTECCIÓN DE MARKETPLACE
+    if service_entry.status != models.JobStatus.OPEN:
+        raise HTTPException(
+            status_code=400,
+            detail="No puedes editar un servicio que ya fue tomado o finalizado"
+        )
+
+    # validar categoría si viene
+    if data.category_id is not None:
+        category = db.query(models.Category).filter(
+            models.Category.id == str(data.category_id)
+        ).first()
+
+        if not category:
+            raise HTTPException(status_code=400, detail="La categoría no existe")
+
+        service_entry.category_id = str(data.category_id)
+
+    # actualización parcial
+    fields = [
+        "title",
+        "summary",
+        "description",
+        "base_price",
+        "latitude",
+        "longitude",
+        "exact_address",
+        "image_urls",
+    ]
+
+    for field in fields:
+        value = getattr(data, field, None)
+        if value is not None:
+            setattr(service_entry, field, value)
+
+    db.commit()
+    db.refresh(service_entry)
+    return service_entry
+
 def cancel_service(db: Session, service_id: str, user_id: str, user_role: str):
     """
     MODIFICADO: Solo el dueño, el worker asignado o un Admin pueden cancelar.

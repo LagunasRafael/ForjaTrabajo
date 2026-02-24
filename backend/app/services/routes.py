@@ -55,6 +55,21 @@ def list_services(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)
 def services_by_category(category_id: str, db: Session = Depends(get_db)):
     return service.get_services_by_category(db, category_id)
 
+@router.put("/{service_id}", response_model=schemas.Service)
+def update_service(
+    service_id: str,
+    service_data: schemas.ServiceUpdate,
+    db: Session = Depends(get_db),
+    current_user: auth_models.User = Depends(get_current_user),
+):
+    return service.update_service(
+        db,
+        service_id,
+        service_data,
+        current_user.id,
+        current_user.role,
+    )
+
 @router.delete("/{service_id}", status_code=status.HTTP_200_OK)
 def delete_service(
     service_id: str,

@@ -20,6 +20,8 @@ dependencies:
   geolocator: ^13.0.1
   geocoding: ^3.0.0
   shared_preferences: ^2.5.4
+  carousel_slider: ^5.0.0  # Para el carrusel de imágenes
+  readmore: ^3.0.0
 
 dev_dependencies:
   flutter_test:

@@ -56,6 +56,16 @@ class ServiceBase(BaseModel):
 class ServiceCreate(ServiceBase):
     pass
 
+class ServiceUpdate(BaseModel):
+    title: Optional[str] = None
+    summary: Optional[str] = None
+    description: Optional[str] = None
+    base_price: Optional[Decimal] = None
+    category_id: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    exact_address: Optional[str] = None
+    image_urls: Optional[List[str]] = None
 
 class Service(ServiceBase):
     id: str
