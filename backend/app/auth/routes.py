@@ -72,8 +72,12 @@ def update_user(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado")
     
     # 2. Actualizamos los campos
-    db_user.full_name = user_data.full_name
-    db_user.role = user_data.role
+    if user_data.full_name is not None:
+        db_user.full_name = user_data.full_name
+    if user_data.role is not None:
+        db_user.role = user_data.role
+    if user_data.phone is not None:
+        db_user.phone = user_data.phone
     
     # Si estás manejando is_active, descomenta esta línea:
     # db_user.is_active = user_data.is_active 
@@ -131,3 +135,28 @@ async def upload_profile_picture(
 
     # 4. Devolvemos el usuario actualizado
     return user
+
+@router.put("/update-location/{user_id}")
+def update_location(
+    user_id: str, 
+    location_data: schemas.LocationUpdate, 
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    # 🔍 VALIDACIÓN DE PROPIEDAD: 
+    # ¿El ID del token es el mismo que el ID que queremos editar?
+    if current_user.id != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes permiso para actualizar la ubicación de otro usuario"
+        )
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    
+    user.latitude = location_data.latitude
+    user.longitude = location_data.longitude
+    user.city = location_data.city
+    
+    db.commit()
+    return {"status": "success", "city": user.city}

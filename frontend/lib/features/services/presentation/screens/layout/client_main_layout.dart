@@ -58,11 +58,23 @@ class ClientMainLayout extends ConsumerWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: <Widget>[
-              _buildNavItem(icon: Icons.home_filled, label: 'Inicio', index: 0, ref: ref, currentIndex: currentIndex),
-              _buildNavItem(icon: Icons.chat_bubble_rounded, label: 'Mensajes', index: 1, ref: ref, currentIndex: currentIndex),
-              const SizedBox(width: 48), // Espacio para el botón flotante
-              _buildNavItem(icon: Icons.work, label: 'Mis Trabajos', index: 3, ref: ref, currentIndex: currentIndex),
-              _buildNavItem(icon: Icons.person, label: 'Perfil', index: 4, ref: ref, currentIndex: currentIndex),
+              // 👇 Envolvemos cada item en un Expanded para que se repartan el ancho
+              Expanded(
+                child: _buildNavItem(icon: Icons.home_filled, label: 'Inicio', index: 0, ref: ref, currentIndex: currentIndex),
+              ),
+              Expanded(
+                child: _buildNavItem(icon: Icons.chat_bubble_rounded, label: 'Mensajes', index: 1, ref: ref, currentIndex: currentIndex),
+              ),
+              
+              // El espacio del centro NO lleva Expanded, debe ser fijo
+              const SizedBox(width: 48), 
+              
+              Expanded(
+                child: _buildNavItem(icon: Icons.work, label: 'Mis Trabajos', index: 3, ref: ref, currentIndex: currentIndex),
+              ),
+              Expanded(
+                child: _buildNavItem(icon: Icons.person, label: 'Perfil', index: 4, ref: ref, currentIndex: currentIndex),
+              ),
             ],
           ),
         ),
@@ -75,7 +87,8 @@ class ClientMainLayout extends ConsumerWidget {
     final color = isSelected ? const Color(0xFF1E1B4B) : Colors.grey.shade400;
 
     return MaterialButton(
-      minWidth: 40,
+      minWidth: 0,
+      padding: EdgeInsets.zero,
       onPressed: () {
         ref.read(clientNavProvider.notifier).state = index;
       },
@@ -86,6 +99,7 @@ class ClientMainLayout extends ConsumerWidget {
           const SizedBox(height: 4),
           Text(
             label,
+            textAlign: TextAlign.center,
             style: TextStyle(color: color, fontSize: 10, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal),
           )
         ],

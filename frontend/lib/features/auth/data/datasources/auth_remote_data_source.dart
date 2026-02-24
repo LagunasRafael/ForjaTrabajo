@@ -2,6 +2,8 @@ import 'package:dio/dio.dart';
 import '../../../../core/network/api_client.dart';
 import '../../domain/models/user_model.dart';
 import 'package:flutter/foundation.dart';
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
 
 class AuthRemoteDataSource {
   final ApiClient apiClient;
@@ -114,11 +116,91 @@ class AuthRemoteDataSource {
       
       return User.fromJson(response.data);
     } on DioException catch (e) {
-      debugPrint('🚨 ERROR DE DIO AL PEDIR PERFIL: ${e.response?.data}'); // 👈 Y esto
-      throw Exception('Error al cargar el perfil HTTP');
-    } catch (e) {
-      debugPrint('🚨 ERROR AL CONVERTIR EL JSON (El modelo no cuadra): $e'); // 👈 Y esto
-      throw Exception('Error al procesar los datos');
+      // 1. Si el servidor respondió con un error (400, 422, 500)
+      if (e.response != null) {
+        debugPrint('🛑 EL SERVIDOR RESPONDIÓ CON ERROR: ${e.response?.statusCode}');
+        debugPrint('🛑 DETALLE DEL ERROR: ${e.response?.data}');
+      } 
+      // 2. Si el servidor NUNCA respondió (Apagado, sin internet, error de ruta)
+      else {
+        debugPrint('🚨 EL SERVIDOR NO RESPONDIÓ (¿Está apagado uvicorn?)');
+        debugPrint('🚨 TIPO DE ERROR DIO: ${e.type}');
+        debugPrint('🚨 MENSAJE: ${e.message}');
+      }
+      throw Exception('Falló el registro HTTP');
     }
   }
+
+  Future<String> uploadProfilePicture(String userId, XFile imageFile) async {
+    try {
+      // 1. Leemos el archivo como BYTES puros (Esto funciona perfecto en Web y Móvil)
+      final bytes = await imageFile.readAsBytes();
+
+      // 2. Empacamos los bytes para enviarlos a FastAPI
+      final formData = FormData.fromMap({
+        'file': MultipartFile.fromBytes(
+          bytes,
+          filename: imageFile.name, // XFile nos da el nombre seguro
+        ),
+      });
+
+      final response = await apiClient.dio.post(
+        '/auth/$userId/profile-picture',
+        data: formData,
+      );
+
+      final nuevaUrl = response.data['profile_picture_url']; 
+
+    if (nuevaUrl == null) {
+      // Esto te ayudará a debuggear si vuelve a fallar
+      debugPrint("JSON recibido: ${response.data}");
+      throw Exception("No se encontró 'profile_picture_url' en la respuesta");
+    }
+
+    return nuevaUrl.toString();
+
+  } catch (e) {
+    throw Exception('Error subiendo foto: $e');
+  }
+  }
+
+  Future<void> updateLocation({
+    required String userId,
+    required double lat,
+    required double lng,
+    required String city,
+  }) async {
+    try {
+      // Usamos el cliente de Dio para mandarle los datos al backend
+      await apiClient.dio.put(
+        '/auth/update-location/$userId', // 👈 Ajusta esta ruta según tu FastAPI
+        data: {
+          'latitude': lat,
+          'longitude': lng,
+          'city': city,
+        },
+      );
+      debugPrint('🛰️ Ubicación enviada al servidor con éxito');
+    } on DioException catch (e) {
+      debugPrint('🚨 Error en DataSource al actualizar ubicación: ${e.response?.data}');
+      throw Exception('No se pudo guardar la ubicación en el servidor');
+    }
+  }
+
+  Future<void> updateProfileData(String userId, String fullName, String phone) async {
+    try {
+      // 👇 Cambiamos la URL para que coincida con tu @router.put("/users/{user_id}")
+      await apiClient.dio.put(
+        '/auth/users/$userId', 
+        data: {
+          'full_name': fullName,
+          'phone': phone,
+        },
+      );
+    } catch (e) {
+      throw Exception('Error actualizando perfil: $e');
+    }
+  }
+
 }
+

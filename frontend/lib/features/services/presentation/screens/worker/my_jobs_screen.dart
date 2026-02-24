@@ -63,12 +63,14 @@ class MyJobsScreen extends ConsumerWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                ServiceStatusChip(status: job.status), 
+                
+                // Llamamos a una pequeña función traductora que vamos a crear
+                ServiceStatusChip(status: job.status.toString().split('.').last), 
               ],
             ),
             const SizedBox(height: 8),
             Text(
-              "Cliente: ${job.clientName ?? 'Usuario'}",
+              'Cliente Anónimo',
               style: TextStyle(color: Colors.grey.shade600),
             ),
             const SizedBox(height: 12),
@@ -77,7 +79,7 @@ class MyJobsScreen extends ConsumerWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  "\$${job.price}",
+                  "\$${job.basePrice}",
                   style: const TextStyle(
                     fontSize: 16, 
                     fontWeight: FontWeight.bold, 
