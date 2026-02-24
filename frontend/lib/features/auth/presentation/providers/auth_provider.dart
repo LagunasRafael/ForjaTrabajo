@@ -229,6 +229,30 @@ class AuthNotifier extends Notifier<AuthState> {
     }
   }
 
+  Future<void> updateUserInfo(String newName, String newPhone) async {
+    // Si no hay usuario, no hacemos nada
+    if (state.user == null) return;
+    
+    final dataSource = ref.read(authDataSourceProvider);
+    
+    try {
+      // 1. Disparamos el "dardo" hacia FastAPI usando la función que me acabas de mostrar
+      await dataSource.updateProfileData(state.user!.id, newName, newPhone);
+      
+      // 2. Actualizamos la memoria de la app para que la pantalla cambie al instante
+      final updatedUser = state.user!.copyWith(
+        fullName: newName,
+        phone: newPhone,
+      );
+      
+      // 3. Notificamos a toda la app
+      state = state.copyWith(user: updatedUser);
+      
+    } catch (e) {
+      debugPrint("🚨 Error al guardar perfil en Provider: $e");
+    }
+  }
+
 }
 
 // 4. EL PROVIDER FINAL

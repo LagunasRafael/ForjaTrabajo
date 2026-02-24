@@ -1,5 +1,6 @@
 
 import 'package:flutter/material.dart';
+import 'package:forja_trabajo/features/services/domain/entities/service_entity.dart';
 
 class ServiceStatusChip extends StatelessWidget {
   final String status;
@@ -55,4 +56,25 @@ class ServiceStatusChip extends StatelessWidget {
       ),
     );
   }
+
+  String _translateStatus(dynamic status) {
+    // 1. Lo convertimos a texto a la fuerza cortando el "JobStatus."
+    final statusString = status.toString().split('.').last.toLowerCase();
+
+    // 2. Lo traducimos a un español presentable
+    switch (statusString) {
+      case 'open':
+        return 'Disponible';
+      case 'inprogress':
+      case 'in_progress':
+        return 'En Progreso';
+      case 'completed':
+        return 'Completado';
+      case 'cancelled':
+        return 'Cancelado';
+      default:
+        return 'Pendiente';
+    }
+  }
+  
 }

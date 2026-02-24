@@ -149,11 +149,19 @@ class AuthRemoteDataSource {
         data: formData,
       );
 
-      return response.data['url']; 
-    } on DioException catch (e) {
-      debugPrint('🚨 ERROR AL SUBIR FOTO: ${e.response?.data}');
-      throw Exception('Error al subir la imagen a S3');
+      final nuevaUrl = response.data['profile_picture_url']; 
+
+    if (nuevaUrl == null) {
+      // Esto te ayudará a debuggear si vuelve a fallar
+      debugPrint("JSON recibido: ${response.data}");
+      throw Exception("No se encontró 'profile_picture_url' en la respuesta");
     }
+
+    return nuevaUrl.toString();
+
+  } catch (e) {
+    throw Exception('Error subiendo foto: $e');
+  }
   }
 
   Future<void> updateLocation({
@@ -178,5 +186,21 @@ class AuthRemoteDataSource {
       throw Exception('No se pudo guardar la ubicación en el servidor');
     }
   }
+
+  Future<void> updateProfileData(String userId, String fullName, String phone) async {
+    try {
+      // 👇 Cambiamos la URL para que coincida con tu @router.put("/users/{user_id}")
+      await apiClient.dio.put(
+        '/auth/users/$userId', 
+        data: {
+          'full_name': fullName,
+          'phone': phone,
+        },
+      );
+    } catch (e) {
+      throw Exception('Error actualizando perfil: $e');
+    }
+  }
+
 }
 
