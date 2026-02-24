@@ -6,6 +6,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:forja_trabajo/features/auth/presentation/widgets/profile_shared_widgets.dart';
 import 'package:forja_trabajo/features/services/presentation/screens/client/edit_profile_screen.dart';
+import 'package:forja_trabajo/features/profile/presentation/settings_screen.dart';
+import 'package:forja_trabajo/features/profile/presentation/settings_screen.dart';
 
 class ClientProfileScreen extends ConsumerWidget {
   const ClientProfileScreen({super.key});
@@ -37,6 +39,16 @@ class ClientProfileScreen extends ConsumerWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(builder: (context) => const EditProfileScreen()),
+                    );
+                  },
+                ),
+                ProfileMenuOption(
+                  icon: LucideIcons.settings,
+                  title: 'Configuración',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const SettingsScreen()),
                     );
                   },
                 ),

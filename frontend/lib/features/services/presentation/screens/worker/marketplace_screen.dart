@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja_trabajo/features/services/presentation/providers/category_provider.dart';
 import 'package:forja_trabajo/features/services/presentation/providers/service_list_provider.dart';
 import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart'; 
-import '../../providers/service_list_provider.dart';
 import '../../widgets/service_card.dart';
+import 'package:forja_trabajo/shared/widgets/service_card_skeleton.dart';
 
 class MarketplaceScreen extends ConsumerWidget {
   const MarketplaceScreen({super.key});
@@ -109,7 +109,11 @@ class MarketplaceScreen extends ConsumerWidget {
                   itemCount: services.length,
                   itemBuilder: (context, index) => ServiceCard(service: services[index]),
                 ),
-                loading: () => const Center(child: CircularProgressIndicator()),
+                loading: () => ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: 5,
+                  itemBuilder: (context, index) => const ServiceCardSkeleton(),
+                ),
                 error: (e, s) => Center(child: Text("Error: $e")),
               ),
             ),
