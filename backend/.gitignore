@@ -14,3 +14,19 @@ __pycache__/
 .vscode/
 
 .env
+
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+build/
+.pub-cache/
+.pub/
+
+**/android/.gradle/
+**/android/local.properties
+**/android/app/build/
+**/android/.idea/
+
+
+.DS_Store
+Thumbs.db

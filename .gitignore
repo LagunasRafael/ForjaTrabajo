@@ -1,51 +1,53 @@
-# Miscellaneous
-*.class
-*.log
-*.pyc
-*.swp
-.DS_Store
-.atom/
-.build/
-.buildlog/
-.history
-.svn/
-.swiftpm/
-migrate_working_dir/
+# Bases de Datos
+*.db
+forja.db
 
-# IntelliJ related
-*.iml
-*.ipr
-*.iws
+# Python / Backend
+.venv/
+env/
+venv/
+ENV/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Editores
+.vscode/
 .idea/
+*.swp
 
-# The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
-#.vscode/
+# Variables de entorno
+.env
 
-# Flutter/Dart/Pub related
-**/doc/api/
-**/ios/Flutter/.last_build_id
+# Flutter y Dart
 .dart_tool/
+.flutter-plugins
 .flutter-plugins-dependencies
+build/
 .pub-cache/
 .pub/
-/build/
-/coverage/
+generated/
 
-# Symbolication related
-app.*.symbols
+# Android
+**/android/.gradle/
+**/android/local.properties
+**/android/app/build/
+**/android/.idea/
+**/android/app/src/main/res/values/generated.xml
 
-# Obfuscation related
-app.*.map.json
+# iOS y macOS
+**/ios/Flutter/ephemeral/
+**/ios/Flutter/GeneratedPluginRegistrant.h
+**/ios/Flutter/GeneratedPluginRegistrant.m
+**/ios/.symlinks/
+**/ios/Pods/
+**/ios/Frameworks/
+**/macos/Flutter/ephemeral/
 
-# Android Studio will place build artifacts here
-/android/app/debug
-/android/app/profile
-/android/app/release
+# Windows
+**/windows/flutter/ephemeral/
+**/windows/flutter/generated_plugins.cmake
 
-#bases de datos locales
-*.db 
-
-#sqlite
-forja.db
+# Archivos basura del sistema
+.DS_Store
+Thumbs.db
