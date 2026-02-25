@@ -1,10 +1,13 @@
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.db.database import get_db
 import uuid
-from app.services.models import Job 
+from . import schemas, models, services  # Importamos tu service.py
+from app.auth.security import get_current_user
 from . import schemas, models
+import app.payments.services as services
+from app.auth import models as auth_models
 
 router = APIRouter()
 
@@ -23,53 +26,30 @@ def create_contract(contract: schemas.ContractCreate, db: Session = Depends(get_
 
 @router.post("/", response_model=schemas.PaymentResponse, status_code=201)
 def create_payment(payment: schemas.PaymentCreate, db: Session = Depends(get_db)):
-    # 1. Buscamos el contrato
-    db_contract = db.query(models.Contract).filter(models.Contract.id == payment.contract_id).first()
-    
-    # Bloqueamos si ya está pagado O si fue cancelado
-    if db_contract.status in ["in_progress", "cancelled"]:
-        raise HTTPException(
-            status_code=400, 
-            detail=f"No se puede procesar el pago. El contrato está {db_contract.status}."
-        )
-    
-    if not db_contract:
-        raise HTTPException(status_code=404, detail="Contrato no encontrado")
-    if db_contract.status == "in_progress":
-        raise HTTPException(
-            status_code=400, 
-            detail="Error: Este contrato ya fue pagado y está en progreso."
-        )
-    new_payment = models.Payment(
-        id=str(uuid.uuid4()),
-        contract_id=payment.contract_id,
-        amount=payment.amount,
-        payment_method=payment.payment_method,
-        status=models.PaymentStatus.COMPLETED
-    )
-    
-    # 3. Actualizamos el contrato y guardamos
-    db_contract.status = "in_progress"
-    db.add(new_payment)
-    db.commit()
-    db.refresh(new_payment)
-    
-    return new_payment
+    # Delegamos la creación y validación al service para mantener limpio el router
+    return services.create_payment(db=db, payment=payment)
+
+# --- RUTAS PROTEGIDAS Y FILTRADAS POR ROL ---
 
 @router.get("/contracts", response_model=List[schemas.ContractResponse])
-def get_contracts(db: Session = Depends(get_db)):
-    contracts = db.query(models.Contract).all()
-    for contract in contracts:
-        db_job = db.query(models.Job).filter(models.Job.id == contract.job_id).first()
-        if not db_job:
-            raise HTTPException(status_code=404, detail=f"El trabajo (Job) con ID {contract.job_id} no existe")
-    return contracts
+def get_contracts(
+    db: Session = Depends(get_db),
+    current_user: auth_models.User = Depends(get_current_user) # Obtenemos el usuario del token
+):
+    """
+    Obtiene los contratos filtrados según el rol del usuario.
+    """
+    # Usamos la función de filtrado que agregamos al service
+    return services.get_contracts_by_role(db=db, current_user=current_user)
 
 
 @router.get("/", response_model=List[schemas.PaymentResponse])
-def get_payments(db: Session = Depends(get_db)):
-    # Traemos todos los pagos de la base de datos
-    payments = db.query(models.Payment).all()
-    return payments
-
-
+def get_payments(
+    db: Session = Depends(get_db), 
+    current_user: auth_models.User = Depends(get_current_user) # Cambiado aquí
+):
+    """
+    Obtiene el historial de pagos filtrado por rol (Admin ve todo, Cliente solo lo suyo).
+    """
+    # Llamamos a la lógica de filtrado del service
+    return services.get_payments_by_role(db=db, current_user=current_user)

@@ -20,6 +20,7 @@ class ContractResponse(BaseModel):
 class PaymentCreate(BaseModel):
     contract_id: str  # Ya no pedimos payer_id
     payment_method: Optional[str] = "card"
+    amount: float
 
 class PaymentResponse(BaseModel):
     id: str
@@ -28,6 +29,7 @@ class PaymentResponse(BaseModel):
     status: str
     payment_method: str
     created_at: datetime
+    
 
     class Config:
         from_attributes = True

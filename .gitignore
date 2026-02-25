@@ -49,3 +49,53 @@ app.*.map.json
 
 #sqlite
 forja.db
+
+
+*.db
+forja.db
+
+.venv/
+env/
+venv/
+ENV/
+
+__pycache__/
+*.py[cod]
+*$py.class
+
+.vscode/
+
+.env
+
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+build/
+.pub-cache/
+.pub/
+
+**/android/.gradle/
+**/android/local.properties
+**/android/app/build/
+**/android/.idea/
+
+
+.DS_Store
+Thumbs.db
+# Windows
+**/windows/flutter/ephemeral/
+**/windows/flutter/generated_plugin_registrant.cc
+**/windows/flutter/generated_plugin_registrant.h
+**/windows/flutter/generated_plugins.cmake
+
+# macOS
+**/macos/Flutter/ephemeral/
+**/macos/Flutter/GeneratedPluginRegistrant.swift
+
+# iOS
+**/ios/Flutter/ephemeral/
+**/ios/Flutter/GeneratedPluginRegistrant.h
+**/ios/Flutter/GeneratedPluginRegistrant.m
+**/ios/.symlinks/
+**/ios/Pods/
+**/ios/Frameworks/

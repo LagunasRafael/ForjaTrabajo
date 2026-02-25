@@ -1,12 +1,16 @@
 from fastapi import FastAPI
 from app.db.database import engine
-from app.payments import models, routes
+# IMPORTACIONES CORREGIDAS: Quitamos la palabra "backend" del inicio
+from app.payments import models as payment_models, routes as payment_routes
+from app.auth import routes as auth_routes
+from app.services import routes as services_routes
 
-# Crea las tablas
-models.Base.metadata.create_all(bind=engine)
+# Crea las tablas de la base de datos
+payment_models.Base.metadata.create_all(bind=engine)
 
-# Inicia la app
-app = FastAPI() 
+app = FastAPI()
 
-# Conecta tus rutas
-app.include_router(routes.router, prefix="/payments", tags=["Payments"])
+# CONECTA TUS RUTAS (Corregido el error de duplicados de la imagen 99199f)
+app.include_router(payment_routes.router, prefix="/payments", tags=["Payments"])
+app.include_router(services_routes.router, prefix="/services", tags=["Services"])
+app.include_router(auth_routes.router, prefix="/auth", tags=["Auth"]) # Antes decía /payments

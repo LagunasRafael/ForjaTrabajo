@@ -1,0 +1,14 @@
+fastapi
+uvicorn[standard]
+pydantic
+pydantic-settings
+sqlalchemy
+psycopg2-binary
+python-multipart
+python-dotenv
+cors
+email-validator
+python-jose[cryptography]
+passlib[bcrypt]
+boto3
+Pillow
