@@ -7,6 +7,7 @@ import io
 from dotenv import load_dotenv, find_dotenv
 from PIL import Image
 from urllib.parse import urlparse
+import traceback
 
 # 1. Forzamos la búsqueda del archivo y vemos DÓNDE lo encuentra
 ruta_env = find_dotenv()
@@ -36,46 +37,53 @@ s3_client = boto3.client(
 
 
 async def upload_file_to_s3(file: UploadFile) -> str:
+    try:
+        # 🚨 Validación rápida
+        if not BUCKET_NAME or not AWS_ACCESS_KEY:
+            raise ValueError("Faltan las credenciales de AWS en el archivo .env")
 
-    # 🚨 Validación rápida para que sepas si el .env falló antes de procesar la imagen
-    if not BUCKET_NAME or not AWS_ACCESS_KEY:
-        raise ValueError("Faltan las credenciales de AWS en el archivo .env")
+        # 1. Leemos el archivo original
+        image_data = await file.read()
+        
+        # 2. Abrimos la imagen con Pillow
+        image = Image.open(io.BytesIO(image_data))
+        
+        # Si la imagen es PNG, la pasamos a RGB
+        if image.mode in ("RGBA", "P"):
+            image = image.convert("RGB")
+        
+        # 3. Comprimimos la imagen
+        compressed_image_io = io.BytesIO()
+        image.save(compressed_image_io, format='JPEG', optimize=True, quality=60) 
+        compressed_image_io.seek(0) 
+        
+        # 4. Generamos nombre único
+        file_extension = ".jpg"
+        unique_filename = f"users/profile_{uuid.uuid4()}{file_extension}"
+        
+        # 5. Subimos a AWS S3
+        print(f"🚀 Intentando subir a S3: {unique_filename}...")
+        s3_client.upload_fileobj(
+            compressed_image_io, 
+            BUCKET_NAME,
+            unique_filename,
+            ExtraArgs={
+                "ContentType": "image/jpeg",
+            }
+        )
+        print("✅ ¡Subida exitosa a AWS S3!")
+        
+        # 6. Devolvemos la URL
+        return f"https://{BUCKET_NAME}.s3.amazonaws.com/{unique_filename}"
 
-    # 1. Leemos el archivo original que subió el usuario
-    image_data = await file.read()
-    
-    # 2. Abrimos la imagen con Pillow
-    image = Image.open(io.BytesIO(image_data))
-    
-    # Si la imagen es PNG (tiene transparencia), la pasamos a RGB para poder hacerla JPEG
-    if image.mode in ("RGBA", "P"):
-        image = image.convert("RGB")
-    
-    # 3. Comprimimos la imagen en memoria (BytesIO)
-    compressed_image_io = io.BytesIO()
-    # quality=60 reduce muchísimo el peso casi sin perder nitidez visual
-    # optimize=True le dice a Pillow que quite metadatos innecesarios
-    image.save(compressed_image_io, format='JPEG', optimize=True, quality=60) 
-    compressed_image_io.seek(0) # Regresamos el "cursor" al inicio del archivo
-    
-    # 4. Generamos un nombre único y seguro
-    file_extension = ".jpg"
-    unique_filename = f"users/profile_{uuid.uuid4()}{file_extension}"
-    
-    # 5. Subimos la versión COMPRIMIDA a AWS S3
-    s3_client.upload_fileobj(
-        compressed_image_io, # Mandamos el archivo ligero
-        BUCKET_NAME,
-        unique_filename,
-        ExtraArgs={
-            "ContentType": "image/jpeg",
-            # "ACL": "public-read" # Descomenta esto si tu bucket permite archivos públicos
-        }
-    )
-    
-    # 6. Devolvemos la URL pública
-    file_url = f"https://{BUCKET_NAME}.s3.amazonaws.com/{unique_filename}"
-    return file_url
+    except Exception as e:
+        # 🚨 AQUÍ ATRAPAMOS AL FANTASMA
+        print("\n" + "="*50)
+        print("💥 ERROR CRÍTICO AL SUBIR LA IMAGEN A S3 💥")
+        print("="*50)
+        print(traceback.format_exc()) # Esto imprime la línea exacta del fallo
+        print("="*50 + "\n")
+        raise e # Volvemos a lanzar el error para que FastAPI responda 500
 
 def delete_old_file_from_s3(s3_url: str):
     try:

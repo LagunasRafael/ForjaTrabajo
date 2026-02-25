@@ -14,7 +14,8 @@ def create_user(db: Session, user_data: dict):
         email=user_data["email"],
         hashed_password=hash_password(user_data["password"]),
         full_name=user_data.get("full_name"),
-        role=user_data.get("role", Role.CLIENT)
+        role=user_data.get("role", Role.CLIENT),
+        phone=user_data.get("phone")
     )
     db.add(db_user)
     db.commit()

@@ -43,9 +43,14 @@ class CategoryUpdate(BaseModel):
 
 class ServiceBase(BaseModel):
     title: str
+    summary: Optional[str] = None          # ✅ AÑADIDO
     description: str
     base_price: Optional[Decimal] = None
     category_id: str  # Recibe el UUID como string
+    latitude: Optional[float] = None       # ✅ AÑADIDO
+    longitude: Optional[float] = None      # ✅ AÑADIDO
+    exact_address: Optional[str] = None    # ✅ AÑADIDO
+    image_urls: Optional[List[str]] = []   # ✅ AÑADIDO
 
 
 class ServiceCreate(ServiceBase):
