@@ -26,6 +26,15 @@ class ServiceModel extends ServiceEntity {
       );
     }
 
+    // 🛡️ Blindaje de lista de imágenes
+    List<String> parseImages(dynamic urls) {
+      if (urls == null) return [];
+      if (urls is List) {
+        return urls.map((e) => e.toString()).toList();
+      }
+      return [];
+    }
+
     double parsePrice(dynamic value) {
       if (value == null) return 0.0;
       if (value is num) return value.toDouble();
@@ -38,13 +47,13 @@ class ServiceModel extends ServiceEntity {
       title: json['title']?.toString() ?? '',
       summary: json['summary']?.toString(), // ✅ NUEVO
       description: json['description']?.toString() ?? '',
-      basePrice: parsePrice(json['base_price']),
+      basePrice: double.tryParse(json['base_price']?.toString() ?? '0') ?? 0.0,
       categoryId: json['category_id']?.toString() ?? '',
       clientId: json['client_id']?.toString() ?? '',
       latitude: json['latitude'] != null ? double.tryParse(json['latitude'].toString()) : null, // ✅ NUEVO
       longitude: json['longitude'] != null ? double.tryParse(json['longitude'].toString()) : null, // ✅ NUEVO
       exactAddress: json['exact_address']?.toString(), // ✅ NUEVO
-      imageUrls: List<String>.from(json['image_urls'] ?? []), // ✅ NUEVO
+      imageUrls: parseImages(json['image_urls'] ?? []), // ✅ NUEVO
       status: statusFromString(json['status']?.toString() ?? 'open'),
       isActive: json['is_active'] ?? true,
       createdAt: json['created_at'] != null 
