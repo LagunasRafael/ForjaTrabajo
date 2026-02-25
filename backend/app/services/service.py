@@ -3,6 +3,7 @@ from app.services import models, schemas
 from uuid import UUID
 from fastapi import HTTPException, status
 from datetime import datetime
+from sqlalchemy import func
 from app.core.roles import Role # Importante para validar el Admin
 
 # -------------------------------------------------------------------------
@@ -77,12 +78,27 @@ def delete_category_hard(db: Session, category_id: str):
 # -------------------------------------------------------------------------
 
 def create_service(db: Session, service_data: schemas.ServiceCreate, client_id: UUID):
+    
+    # 🚨 NUEVA VALIDACIÓN ESTRICTA: Verificamos que la categoría sea real
+    # Buscamos en la tabla de categorías si ese ID existe
+    category = db.query(models.Category).filter(models.Category.id == str(service_data.category_id)).first()
+    
+    if not category:
+        # Si no existe (o mandaron el campo vacío/inventado), bloqueamos la creación
+        raise HTTPException(status_code=400, detail="Error: El ID de categoría no existe o es inválido.")
+
+    # Si pasó la prueba de arriba, ahora sí lo guardamos
     db_service = models.Service(
         title=service_data.title,
+        summary=service_data.summary,
         description=service_data.description,
         base_price=service_data.base_price,
         category_id=str(service_data.category_id),
         client_id=str(client_id),
+        latitude=service_data.latitude,
+        longitude=service_data.longitude,
+        exact_address=service_data.exact_address,
+        image_urls=service_data.image_urls,
         status=models.JobStatus.OPEN 
     )
     db.add(db_service)
@@ -268,3 +284,39 @@ def cancel_job(db: Session, job_id: str, user_id: str, user_role: str):
     db.commit()
     db.refresh(job)
     return job
+
+# ==========================================
+# Busquedas y top categorias
+# ==========================================
+def get_top_categories(db: Session, limit: int = 5):
+    """
+    Busca todas las categorías, las cruza con los servicios,
+    cuenta cuántos servicios tiene cada una y las ordena de mayor a menor.
+    """
+    top_categories = (
+        db.query(models.Category)
+        .outerjoin(models.Service, models.Category.id == models.Service.category_id)
+        .group_by(models.Category.id)
+        .order_by(func.count(models.Service.id).desc())
+        .limit(limit)
+        .all()
+    )
+    return top_categories
+
+def search_services(db: Session, search_query: str):
+    """
+    Busca la palabra clave tanto en el título como en la descripción del servicio.
+    Usa 'ilike' para que no importe si escriben con mayúsculas o minúsculas.
+    """
+    # Los % son comodines de SQL para decir "que contenga esta palabra en cualquier parte"
+    search_term = f"%{search_query}%" 
+    
+    services = (
+        db.query(models.Service)
+        .filter(
+            (models.Service.title.ilike(search_term)) | 
+            (models.Service.description.ilike(search_term))
+        )
+        .all()
+    )
+    return services
