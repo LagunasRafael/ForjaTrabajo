@@ -1,11 +1,23 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:dio/dio.dart';
 import '../models/service_model.dart';
 
-final serviceRemoteDataSourceProvider = Provider((ref) => ServiceRemoteDataSource());
+// 👇 AQUÍ ESTÁ EL PRIMER FIX: Declaramos el Provider correctamente para pasar el Dio
+final serviceRemoteDataSourceProvider = Provider((ref) {
+  // Aquí usamos un Dio genérico. Lo ideal es usar un 'dioProvider' si tienes uno configurado.
+  return ServiceRemoteDataSource(Dio()); 
+});
 
 class ServiceRemoteDataSource {
+  final Dio _dio;
+  // 👇 SEGUNDO FIX: Constructor correcto
+  ServiceRemoteDataSource(this._dio); 
+  
+  // Ojo: Si usas emulador de Android, 127.0.0.1 a veces falla, mejor usa 10.0.2.2.
+  // Pero lo dejaré como lo tienes.
   final String baseUrl = "http://127.0.0.1:8000/services"; 
 
   Future<List<ServiceModel>> getServices() async {
@@ -28,20 +40,54 @@ class ServiceRemoteDataSource {
     }
   }
 
-  Future<ServiceModel> createService(ServiceModel service, String token) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/'),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
-      body: json.encode(service.toJson()),
-    );
+  // 👇 TERCER FIX: Un solo método limpio para crear el servicio
+  Future<ServiceModel> createService(
+    ServiceModel service,
+    String token,
+    {List<File>? images}
+  ) async {
+    final formData = FormData.fromMap({
+      'title': service.title,
+      'description': service.description,
+      'base_price': service.basePrice,
+      'category_id': service.categoryId,
+      'exact_address': service.exactAddress,
+      'latitude': service.latitude,
+      'longitude': service.longitude,
+      // Solo agregamos archivos si el usuario seleccionó fotos
+      if (images != null && images.isNotEmpty)
+        'files': [
+          for (var image in images)
+            await MultipartFile.fromFile(
+              image.path, 
+              filename: image.path.split('/').last
+            ),
+        ],
+    });
 
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      return ServiceModel.fromJson(json.decode(response.body));
-    } else {
-      throw Exception('Error al crear servicio: ${response.body}');
+    try {
+      final response = await _dio.post(
+        '$baseUrl/', // <-- Si FastAPI se pone estricto, intenta con '$baseUrl/'
+        data: formData,
+        options: Options(
+          headers: {'Authorization': 'Bearer $token'},
+          contentType: 'multipart/form-data',
+        ),
+      );
+
+      print("📦 RESPUESTA CRUDA DE FASTAPI: ${response.data}");
+
+      // Convertimos la respuesta exitosa en el modelo
+      return ServiceModel.fromJson(response.data); 
+      
+    } on DioException catch (e) {
+      print("🚨 Error de Dio al crear servicio: ${e.response?.data}");
+      throw Exception("Error de red: ${e.message}");
+    } catch (e, stacktrace) {
+      // 👇 3. AQUÍ ATRAPAMOS EL ERROR DE PARSEO SI LA APP INTENTA TRONAR
+      print("💥 ERROR FATAL DE PARSEO EN FLUTTER: $e");
+      print("🔍 STACKTRACE: $stacktrace");
+      throw Exception("Error al leer la respuesta del servidor: $e");
     }
   }
 

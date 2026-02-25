@@ -1,11 +1,15 @@
+import 'dart:io';
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+// Imports de Dominio
 import '../../domain/repositories/service_repository.dart';
 import '../../domain/entities/category_entity.dart';
 import '../../domain/entities/service_entity.dart';
 import '../../domain/entities/service_request_entity.dart';
 import '../../domain/entities/job_entity.dart';
 
-// Imports de DataSources y Models
+// Imports de Datos
 import '../datasources/category_remote_data_source.dart';
 import '../datasources/service_remote_data_source.dart';
 import '../datasources/service_request_remote_data_source.dart';
@@ -18,17 +22,22 @@ class ServiceRepositoryImpl implements ServiceRepository {
   final ServiceRemoteDataSource serviceDS;
   final ServiceRequestRemoteDataSource requestDS;
   final JobRemoteDataSource jobDS;
+  final Dio _dio; // Nuestra variable privada sigue igual
 
+  // 👇 CORRECCIÓN AQUÍ: Recibimos 'dio' y lo asignamos a '_dio'
   ServiceRepositoryImpl({
     required this.categoryDS,
     required this.serviceDS,
     required this.requestDS,
     required this.jobDS,
-  });
+    required Dio dio, // El parámetro con nombre no lleva guion bajo
+  }) : _dio = dio; // Se asigna aquí antes de entrar al cuerpo del constructor
 
-  // --- CATEGORÍAS ---
   @override
   Future<List<CategoryEntity>> getCategories() => categoryDS.getCategories();
+
+  @override
+  Future<List<CategoryEntity>> getTopCategories() => categoryDS.getTopCategories();
 
   @override
   Future<void> createCategory(String name, String description, String token) async {
@@ -40,7 +49,6 @@ class ServiceRepositoryImpl implements ServiceRepository {
     return await categoryDS.deleteCategory(id, token);
   }
 
-  // --- SERVICIOS ---
   @override
   Future<List<ServiceEntity>> getServices() => serviceDS.getServices();
 
@@ -49,7 +57,15 @@ class ServiceRepositoryImpl implements ServiceRepository {
       serviceDS.getServicesByCategory(id);
 
   @override
-  Future<ServiceEntity> createService(ServiceEntity service, String token) async {
+  Future<List<ServiceEntity>> searchServices(String query) => 
+      serviceDS.searchServices(query);
+
+  @override
+  Future<ServiceEntity> createService(
+    ServiceEntity service, 
+    String token, 
+    {List<File>? images}
+  ) async {
     final model = ServiceModel(
       id: service.id,
       title: service.title,
@@ -57,14 +73,17 @@ class ServiceRepositoryImpl implements ServiceRepository {
       basePrice: service.basePrice,
       categoryId: service.categoryId,
       clientId: service.clientId,
+      latitude: service.latitude, 
+      longitude: service.longitude,
+      exactAddress: service.exactAddress,
       status: service.status,
       isActive: service.isActive,
       createdAt: service.createdAt,
     );
-    return await serviceDS.createService(model, token);
+    
+    return await serviceDS.createService(model, token, images: images);
   }
 
-  // --- SOLICITUDES Y OFERTAS ---
   @override
   Future<ServiceRequestEntity> createRequest(ServiceRequestEntity request, String token) {
     final model = ServiceRequestModel(
@@ -86,7 +105,6 @@ class ServiceRepositoryImpl implements ServiceRepository {
   Future<JobEntity> acceptPostulation(String requestId, String token) => 
       requestDS.acceptPostulation(requestId, token);
 
-  // --- TRABAJOS (JOBS) ---
   @override
   Future<JobEntity> completeJob(String jobId, String token) => 
       jobDS.completeJob(jobId, token);
@@ -94,21 +112,18 @@ class ServiceRepositoryImpl implements ServiceRepository {
   @override
   Future<JobEntity> cancelJob(String jobId, String token) => 
       jobDS.cancelJob(jobId, token);
-
-  @override
-  Future<List<CategoryEntity>> getTopCategories() => categoryDS.getTopCategories();
-
-  @override
-  Future<List<ServiceEntity>> searchServices(String query) => 
-      serviceDS.searchServices(query);
 }
 
-// PROVIDER DEL REPOSITORIO
+// --- PROVIDER DEL REPOSITORIO ---
 final serviceRepositoryProvider = Provider<ServiceRepository>((ref) {
+  // Asegúrate de usar tu dioProvider aquí si ya lo tienes
+  // final dio = ref.watch(dioProvider); 
+  
   return ServiceRepositoryImpl(
     categoryDS: ref.watch(categoryRemoteDataSourceProvider),
     serviceDS: ref.watch(serviceRemoteDataSourceProvider),
     requestDS: ref.watch(serviceRequestRemoteDataSourceProvider),
     jobDS: ref.watch(jobRemoteDataSourceProvider),
+    dio: Dio(), // 👈 Pasamos 'dio' sin guion bajo
   );
 });

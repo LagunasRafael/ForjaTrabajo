@@ -1,83 +1,225 @@
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 
-class Step2Location extends StatelessWidget {
+class Step2Location extends StatefulWidget {
   final TextEditingController addressCtrl;
   final TextEditingController priceCtrl;
+  final double? lat;
+  final double? lng;
+  final Function(double lat, double lng) onLocationCaptured;
   final VoidCallback onNext;
 
-  const Step2Location({super.key, required this.addressCtrl, required this.priceCtrl, required this.onNext});
+  const Step2Location({
+    super.key,
+    required this.addressCtrl,
+    required this.priceCtrl,
+    required this.onLocationCaptured,
+    required this.onNext,
+    this.lat,
+    this.lng,
+  });
+
+  @override
+  State<Step2Location> createState() => _Step2LocationState();
+}
+
+class _Step2LocationState extends State<Step2Location> {
+  bool _isLocating = false;
+
+  // 1. FUNCIÓN MÁGICA PARA OBTENER EL GPS
+  Future<void> _handleGetLocation() async {
+    setState(() => _isLocating = true);
+
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) throw 'El GPS está desactivado.';
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) throw 'Permisos denegados.';
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        throw 'Los permisos están denegados permanentemente.';
+      }
+
+      // Obtenemos la posición actual
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high
+      );
+
+      // Enviamos las coordenadas al padre (al Stepper)
+      widget.onLocationCaptured(position.latitude, position.longitude);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("📍 Ubicación capturada con éxito")),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLocating = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final bool hasLocation = widget.lat != null && widget.lng != null;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text("¿Dónde se realizará?", style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+          const Text("¿Dónde se realizará?", 
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
           const SizedBox(height: 16),
           
-          Container(
-            height: 180,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: const Color(0xFFE5E7EB),
-              borderRadius: BorderRadius.circular(20),
-              image: const DecorationImage(image: NetworkImage('https://i.stack.imgur.com/vhoa0.jpg'), fit: BoxFit.cover, opacity: 0.3),
-              border: Border.all(color: Colors.grey.shade300),
-            ),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                const Positioned(top: 50, child: Icon(Icons.location_on, size: 50, color: Color(0xFFEF4444))),
-                Positioned(
-                  bottom: 12,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
-                    child: const Row(children: [Icon(Icons.map, size: 16, color: Color(0xFF4F46E5)), SizedBox(width: 8), Text("Ajustar en el mapa", style: TextStyle(color: Color(0xFF4F46E5), fontWeight: FontWeight.bold))]),
+          // MAPA INTERACTIVO (CONTENEDOR)
+          GestureDetector(
+            onTap: _isLocating ? null : _handleGetLocation,
+            child: Container(
+              height: 180,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: const Color(0xFFE5E7EB),
+                borderRadius: BorderRadius.circular(20),
+                image: const DecorationImage(
+                  image: NetworkImage('https://i.stack.imgur.com/vhoa0.jpg'), 
+                  fit: BoxFit.cover, 
+                  opacity: 0.4
+                ),
+                border: Border.all(
+                  color: hasLocation ? const Color(0xFF10B981) : Colors.grey.shade300,
+                  width: hasLocation ? 2 : 1,
+                ),
+              ),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Positioned(
+                    top: 50, 
+                    child: Icon(
+                      Icons.location_on, 
+                      size: 50, 
+                      color: hasLocation ? const Color(0xFF10B981) : const Color(0xFFEF4444)
+                    )
                   ),
-                )
-              ],
+                  Positioned(
+                    bottom: 12,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.white, 
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10)]
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            _isLocating ? Icons.sync : (hasLocation ? Icons.check_circle : Icons.map), 
+                            size: 16, 
+                            color: const Color(0xFF4F46E5)
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            _isLocating ? "Localizando..." : (hasLocation ? "Ubicación lista" : "Capturar ubicación actual"), 
+                            style: const TextStyle(color: Color(0xFF4F46E5), fontWeight: FontWeight.bold)
+                          )
+                        ]
+                      ),
+                    ),
+                  )
+                ],
+              ),
             ),
           ),
-          const SizedBox(height: 20),
+          
+          const SizedBox(height: 32),
 
-          const Text("Dirección detallada", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF4B5563))),
+          const Text("Dirección detallada", 
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF4B5563))),
           const SizedBox(height: 8),
-          TextFormField(
-            controller: addressCtrl,
-            decoration: InputDecoration(hintText: "Ej: Calle Morelos #45", prefixIcon: const Icon(Icons.my_location), filled: true, fillColor: Colors.white, border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.grey.shade200))),
+          _buildTextField(
+            widget.addressCtrl, 
+            "Ej: Calle Morelos #45, Col. Centro", 
+            Icons.my_location
           ),
           
           const SizedBox(height: 40),
-          const Text("Presupuesto estimado", style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+          const Text("Presupuesto estimado", 
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
           const SizedBox(height: 16),
           
-          TextFormField(
-            controller: priceCtrl,
-            keyboardType: TextInputType.number,
-            style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: Color(0xFF10B981)),
-            decoration: InputDecoration(
-              prefixText: "\$ ",
-              prefixStyle: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: Color(0xFF10B981)),
-              hintText: "0.00",
-              filled: true,
-              fillColor: Colors.white,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide(color: Colors.grey.shade200)),
-            ),
-          ),
+          _buildPriceField(widget.priceCtrl),
 
           const SizedBox(height: 40),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: onNext,
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF111827), padding: const EdgeInsets.symmetric(vertical: 18), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
-              child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [Text("Siguiente", style: TextStyle(fontSize: 16, color: Colors.white)), SizedBox(width: 8), Icon(Icons.arrow_forward_rounded, color: Colors.white)]),
-            ),
-          )
+          _buildNextButton(widget.onNext),
         ],
+      ),
+    );
+  }
+
+  // WIDGETS DE APOYO PARA MANTENER EL CÓDIGO LIMPIO
+  Widget _buildTextField(TextEditingController ctrl, String hint, IconData icon) {
+    return TextFormField(
+      controller: ctrl,
+      decoration: InputDecoration(
+        hintText: hint,
+        prefixIcon: Icon(icon, color: const Color(0xFF4F46E5)),
+        filled: true,
+        fillColor: Colors.white,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16), 
+          borderSide: BorderSide(color: Colors.grey.shade200)
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPriceField(TextEditingController ctrl) {
+    return TextFormField(
+      controller: ctrl,
+      keyboardType: TextInputType.number,
+      style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: Color(0xFF10B981)),
+      decoration: InputDecoration(
+        prefixText: "\$ ",
+        prefixStyle: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: Color(0xFF10B981)),
+        hintText: "0.00",
+        filled: true,
+        fillColor: Colors.white,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(20), 
+          borderSide: BorderSide(color: Colors.grey.shade200)
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNextButton(VoidCallback onPressed) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF111827), 
+          padding: const EdgeInsets.symmetric(vertical: 18), 
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))
+        ),
+        child: const Row(
+          mainAxisAlignment: MainAxisAlignment.center, 
+          children: [
+            Text("Siguiente", style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold)), 
+            SizedBox(width: 8), 
+            Icon(Icons.arrow_forward_rounded, color: Colors.white)
+          ]
+        ),
       ),
     );
   }

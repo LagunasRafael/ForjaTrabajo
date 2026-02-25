@@ -2,6 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'category_provider.dart';
 import '../../data/repositories/service_repository_impl.dart'; 
 import '../../domain/entities/service_entity.dart';
+import 'dart:io';
+
 
 // 1. EL BUSCADOR: Estado para la barra de búsqueda
 final searchQueryProvider = StateProvider<String>((ref) => "");
@@ -35,18 +37,22 @@ class ServiceController extends StateNotifier<AsyncValue<void>> {
   final Ref ref;
   ServiceController(this.ref) : super(const AsyncValue.data(null));
 
-  Future<void> createService(ServiceEntity service, String token) async {
+  Future<void> createService(ServiceEntity service, String token, {List<File>? images}) async {
     state = const AsyncValue.loading();
     try {
+      print("🟢 CONTROLLER: Iniciando petición de creación...");
       final repository = ref.read(serviceRepositoryProvider);
       
-      await repository.createService(service, token);
+      await repository.createService(service, token, images: images);
+      print("🟢 CONTROLLER: ¡Servicio creado en el backend con éxito!");
       
-      // Refrescamos la lista automáticamente para que aparezca el nuevo servicio
-      ref.invalidate(serviceListProvider); 
-      
+      print("🟢 CONTROLLER: Actualizando estado a completado...");
       state = const AsyncValue.data(null);
+
     } catch (e, st) {
+      // 👇 Si el error pasa aquí, lo atraparemos
+      print("🔴 ERROR EN EL CONTROLLER: $e");
+      print("🔴 STACKTRACE: $st");
       state = AsyncValue.error(e, st);
     }
   }

@@ -1,3 +1,4 @@
+import 'dart:io'; // 👈 Importante para usar File
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -9,12 +10,29 @@ class Step3Summary extends StatelessWidget {
   final String? categoryId;
   final AsyncValue<List<dynamic>> categoriesAsync;
   final bool isLoading;
+  
+  // 👇 NUEVOS PARÁMETROS AGREGADOS
+  final List<File> images;
+  final VoidCallback onAddImage;
+  final Function(int) onRemoveImage;
+  
   final VoidCallback onSubmit;
   final VoidCallback onEdit;
 
   const Step3Summary({
-    super.key, required this.title, required this.desc, required this.address, required this.price, 
-    required this.categoryId, required this.categoriesAsync, required this.isLoading, required this.onSubmit, required this.onEdit
+    super.key, 
+    required this.title, 
+    required this.desc, 
+    required this.address, 
+    required this.price, 
+    required this.categoryId, 
+    required this.categoriesAsync, 
+    required this.isLoading, 
+    required this.images,      // 👈
+    required this.onAddImage,   // 👈
+    required this.onRemoveImage, // 👈
+    required this.onSubmit, 
+    required this.onEdit
   });
 
   @override
@@ -32,12 +50,42 @@ class Step3Summary extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [const Text("Evidencia visual", style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)), Text("Opcional", style: TextStyle(color: Colors.grey[400], fontWeight: FontWeight.bold))]),
+          // --- SECCIÓN DE FOTOS ---
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween, 
+            children: [
+              const Text("Evidencia visual", style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)), 
+              Text("${images.length} fotos", style: TextStyle(color: Colors.grey[400], fontWeight: FontWeight.bold))
+            ]
+          ),
           const SizedBox(height: 16),
-          Row(children: [_buildPhotoPlaceholder(isAdd: true), const SizedBox(width: 12), _buildPhotoPlaceholder(), const SizedBox(width: 12), _buildPhotoPlaceholder()]),
+          
+          SizedBox(
+            height: 90,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: images.length + 1,
+              itemBuilder: (context, index) {
+                if (index == 0) {
+                  // Botón de Añadir Foto
+                  return _buildAddPhotoButton();
+                }
+                // Miniaturas de las fotos ya elegidas
+                return _buildImageThumbnail(index - 1);
+              },
+            ),
+          ),
+
           const SizedBox(height: 40),
 
-          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [const Text("Resumen de tu solicitud", style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)), GestureDetector(onTap: onEdit, child: const Text("Editar", style: TextStyle(color: Color(0xFF4F46E5), fontWeight: FontWeight.bold)))]),
+          // --- RESUMEN DE DATOS ---
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween, 
+            children: [
+              const Text("Resumen de tu solicitud", style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)), 
+              GestureDetector(onTap: onEdit, child: const Text("Editar", style: TextStyle(color: Color(0xFF4F46E5), fontWeight: FontWeight.bold)))
+            ]
+          ),
           const SizedBox(height: 16),
           Container(
             padding: const EdgeInsets.all(24),
@@ -55,18 +103,78 @@ class Step3Summary extends StatelessWidget {
               ],
             ),
           ),
+          
           const SizedBox(height: 40),
+          
+          // --- BOTÓN FINAL ---
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
               onPressed: isLoading ? null : onSubmit,
               icon: isLoading ? const SizedBox() : const Icon(Icons.check_circle_outline, color: Colors.white),
-              label: isLoading ? const CircularProgressIndicator(color: Colors.white) : const Text("Publicar Servicio", style: TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.w900)),
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF4F46E5), padding: const EdgeInsets.symmetric(vertical: 18), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
+              label: isLoading 
+                ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) 
+                : const Text("Publicar Servicio", style: TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.w900)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF4F46E5), 
+                padding: const EdgeInsets.symmetric(vertical: 18), 
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))
+              ),
             ),
           )
         ],
       ),
+    );
+  }
+
+  // --- WIDGETS INTERNOS ---
+
+  Widget _buildAddPhotoButton() {
+    return GestureDetector(
+      onTap: onAddImage,
+      child: Container(
+        width: 80,
+        margin: const EdgeInsets.only(right: 12),
+        decoration: BoxDecoration(
+          color: const Color(0xFFEEF2FF), 
+          borderRadius: BorderRadius.circular(16), 
+          border: Border.all(color: const Color(0xFF4F46E5).withOpacity(0.5), style: BorderStyle.solid)
+        ),
+        child: const Column(
+          mainAxisAlignment: MainAxisAlignment.center, 
+          children: [
+            Icon(Icons.add_a_photo, color: Color(0xFF4F46E5)), 
+            Text("Añadir", style: TextStyle(color: Color(0xFF4F46E5), fontSize: 12, fontWeight: FontWeight.bold))
+          ]
+        ),
+      ),
+    );
+  }
+
+  Widget _buildImageThumbnail(int index) {
+    return Stack(
+      children: [
+        Container(
+          width: 80,
+          margin: const EdgeInsets.only(right: 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            image: DecorationImage(image: FileImage(images[index]), fit: BoxFit.cover),
+          ),
+        ),
+        Positioned(
+          right: 16,
+          top: 4,
+          child: GestureDetector(
+            onTap: () => onRemoveImage(index),
+            child: Container(
+              padding: const EdgeInsets.all(2),
+              decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+              child: const Icon(Icons.close, size: 14, color: Colors.white),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -76,20 +184,16 @@ class Step3Summary extends StatelessWidget {
       children: [
         Icon(icon, size: 18, color: Colors.grey[400]),
         const SizedBox(width: 12),
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(label, style: TextStyle(color: Colors.grey[400], fontSize: 10, fontWeight: FontWeight.w900)), Text(value, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: valueColor ?? const Color(0xFF1F2937)))])),
-      ],
-    );
-  }
-
-  Widget _buildPhotoPlaceholder({bool isAdd = false}) {
-    return Expanded(
-      child: AspectRatio(
-        aspectRatio: 1,
-        child: Container(
-          decoration: BoxDecoration(color: isAdd ? const Color(0xFFEEF2FF) : const Color(0xFFF9FAFB), borderRadius: BorderRadius.circular(16), border: Border.all(color: isAdd ? const Color(0xFF4F46E5).withOpacity(0.5) : Colors.grey.shade300)),
-          child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(isAdd ? Icons.add_a_photo : Icons.image_outlined, color: isAdd ? const Color(0xFF4F46E5) : Colors.grey[400]), if (isAdd) const Text("Añadir", style: TextStyle(color: Color(0xFF4F46E5), fontSize: 12, fontWeight: FontWeight.bold))]),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start, 
+            children: [
+              Text(label, style: TextStyle(color: Colors.grey[400], fontSize: 10, fontWeight: FontWeight.w900)), 
+              Text(value, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: valueColor ?? const Color(0xFF1F2937)))
+            ]
+          )
         ),
-      ),
+      ],
     );
   }
 }
