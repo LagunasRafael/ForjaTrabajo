@@ -132,6 +132,9 @@ def get_services_by_category(db: Session, category_id: str):
         .all()
     )
 
+def get_service_by_id(db: Session, service_id: str):
+    return db.query(models.Service).filter(models.Service.id == service_id).first()    
+
 def update_service(db: Session, service_id: str, data: schemas.ServiceUpdate, user_id: str, user_role: str):
     service_entry = db.query(models.Service).filter(models.Service.id == service_id).first()
     if not service_entry:

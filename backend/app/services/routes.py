@@ -55,6 +55,13 @@ def list_services(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)
 def services_by_category(category_id: str, db: Session = Depends(get_db)):
     return service.get_services_by_category(db, category_id)
 
+@router.get("/{service_id}", response_model=schemas.Service) # schemas.Service es tu modelo de salida
+def read_service(service_id: str, db: Session = Depends(get_db)):
+    db_service = service.get_service_by_id(db, service_id=service_id)
+    if db_service is None:
+        raise HTTPException(status_code=404, detail="El servicio no existe")
+    return db_service
+
 @router.put("/{service_id}", response_model=schemas.Service)
 def update_service(
     service_id: str,
