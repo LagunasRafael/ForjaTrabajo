@@ -16,11 +16,11 @@ class ServiceModel extends ServiceEntity {
     required super.status,
     required super.isActive,
     required super.createdAt,
-    // 👇 1. Agregamos el nuevo campo al constructor
     super.authorName,
   });
 
   factory ServiceModel.fromJson(Map<String, dynamic> json) {
+    // 1. Helper para el Estatus
     JobStatus statusFromString(String val) {
       return JobStatus.values.firstWhere(
         (e) => e.name.toLowerCase() == val.toLowerCase(),
@@ -28,11 +28,17 @@ class ServiceModel extends ServiceEntity {
       );
     }
 
-    double parsePrice(dynamic value) {
-      if (value == null) return 0.0;
-      if (value is num) return value.toDouble();
-      if (value is String) return double.tryParse(value) ?? 0.0;
-      return 0.0;
+    // 2. Blindaje de lista de imágenes
+    List<String> parseImages(dynamic urls) {
+      if (urls == null) return [];
+      if (urls is List) return urls.map((e) => e.toString()).toList();
+      return [];
+    }
+
+    // 3. Conversión segura de coordenadas y precios
+    double? parseDouble(dynamic value) {
+      if (value == null) return null;
+      return double.tryParse(value.toString());
     }
 
     return ServiceModel(
@@ -40,20 +46,18 @@ class ServiceModel extends ServiceEntity {
       title: json['title']?.toString() ?? '',
       summary: json['summary']?.toString(),
       description: json['description']?.toString() ?? '',
-      basePrice: parsePrice(json['base_price']),
+      basePrice: parseDouble(json['base_price']) ?? 0.0,
       categoryId: json['category_id']?.toString() ?? '',
       clientId: json['client_id']?.toString() ?? '',
-      latitude: json['latitude'] != null ? double.tryParse(json['latitude'].toString()) : null,
-      longitude: json['longitude'] != null ? double.tryParse(json['longitude'].toString()) : null,
+      latitude: parseDouble(json['latitude']),
+      longitude: parseDouble(json['longitude']),
       exactAddress: json['exact_address']?.toString(),
-      imageUrls: List<String>.from(json['image_urls'] ?? []),
+      imageUrls: parseImages(json['image_urls']),
       status: statusFromString(json['status']?.toString() ?? 'open'),
       isActive: json['is_active'] ?? true,
       createdAt: json['created_at'] != null 
           ? DateTime.parse(json['created_at'].toString()) 
           : DateTime.now(),
-      
-      // 👇 2. Leemos el dato que manda el Backend (o ponemos default)
       authorName: json['author_name']?.toString() ?? "Usuario Cliente",
     );
   }
@@ -69,11 +73,12 @@ class ServiceModel extends ServiceEntity {
       'longitude': longitude,
       'exact_address': exactAddress,
       'image_urls': imageUrls,
-      // No enviamos author_name al backend porque el backend ya sabe quién eres por el token
+      // 'author_name' no se envía, el backend lo deduce del token
     };
   }
 
-  // 👇 3. Aseguramos que el nombre pase de Entidad a Modelo
+  // --- MÉTODOS DE CONVERSIÓN ---
+
   factory ServiceModel.fromEntity(ServiceEntity entity) {
     return ServiceModel(
       id: entity.id,
@@ -90,11 +95,10 @@ class ServiceModel extends ServiceEntity {
       status: entity.status,
       isActive: entity.isActive,
       createdAt: entity.createdAt,
-      authorName: entity.authorName, // <--- Aquí
+      authorName: entity.authorName,
     );
   }
 
-  // 👇 4. Aseguramos que el nombre pase de Modelo a Entidad (para la UI)
   ServiceEntity toEntity() {
     return ServiceEntity(
       id: id,
@@ -111,7 +115,7 @@ class ServiceModel extends ServiceEntity {
       status: status,
       isActive: isActive,
       createdAt: createdAt,
-      authorName: authorName, // <--- Y aquí
+      authorName: authorName,
     );
   }
 }

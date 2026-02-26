@@ -1,46 +1,100 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-// 👇 Imports limpios (asegúrate de que las rutas coincidan con tu carpetas)
+// 👇 Imports limpios (asegúrate de que las rutas coincidan)
 import '../../providers/job_management_provider.dart'; 
-import '../../widgets/service_status_chip.dart'; 
+import '../../widgets/service_status_chip.dart';
+import 'package:forja_trabajo/shared/widgets/empty_state_widget.dart';
+import 'package:forja_trabajo/shared/widgets/service_card_skeleton.dart'; 
 
 class MyJobsScreen extends ConsumerWidget {
   const MyJobsScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Escuchamos el provider que definiremos abajo
-    final jobsAsync = ref.watch(jobManagementProvider);
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Mis Trabajos', 
-          style: TextStyle(fontWeight: FontWeight.bold)
+    return DefaultTabController(
+      length: 3, // 1. Abiertos (Nuevos), 2. En Proceso, 3. Finalizados
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF8F9FA),
+        appBar: AppBar(
+          title: const Text('Mis Trabajos', 
+            style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)
+          ),
+          backgroundColor: Colors.white,
+          elevation: 0,
+          bottom: const TabBar(
+            labelColor: Color(0xFF4F46E5),
+            unselectedLabelColor: Colors.grey,
+            indicatorColor: Color(0xFF4F46E5),
+            tabs: [
+              Tab(text: 'Abiertos'),
+              Tab(text: 'En Curso'),
+              Tab(text: 'Historial'),
+            ],
+          ),
         ),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        elevation: 0,
-      ),
-      backgroundColor: const Color(0xFFF8F9FA),
-      body: jobsAsync.when(
-        data: (jobs) {
-          if (jobs.isEmpty) {
-            return _buildEmptyState();
-          }
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: jobs.length,
-            itemBuilder: (context, index) {
-              final job = jobs[index];
-              return _buildJobCard(context, job);
-            },
-          );
-        },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, s) => Center(child: Text("Error al cargar trabajos: $e")),
+        body: TabBarView(
+          children: [
+            _buildFilteredJobList(ref, 'open'),
+            _buildFilteredJobList(ref, 'in_progress'),
+            _buildFilteredJobList(ref, 'completed'),
+          ],
+        ),
       ),
     );
+  }
+
+  Widget _buildFilteredJobList(WidgetRef ref, String status) {
+    final jobsAsync = ref.watch(jobManagementProvider);
+
+    return jobsAsync.when(
+      data: (jobs) {
+        // 2. Filtramos la lista según el estado de la pestaña
+        final filtered = jobs.where((j) => j.status.toString().split('.').last == status).toList();
+
+        if (filtered.isEmpty) {
+          return _getEmptyStateForStatus(status);
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: filtered.length,
+          itemBuilder: (context, index) => _buildJobCard(context, filtered[index]),
+        );
+      },
+      loading: () => ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: 4,
+        itemBuilder: (context, index) => const ServiceCardSkeleton(),
+      ),
+      error: (e, s) => Center(child: Text("Error: $e")),
+    );
+  }
+
+  // ✨ Función para personalizar el Empty State según la pestaña del trabajador
+  Widget _getEmptyStateForStatus(String status) {
+    switch (status) {
+      case 'open':
+        return const EmptyStateWidget(
+          icon: Icons.assignment_late_outlined,
+          title: "No hay solicitudes",
+          message: "No tienes solicitudes nuevas pendientes de aceptar.",
+        );
+      case 'in_progress':
+        return const EmptyStateWidget(
+          icon: Icons.run_circle_outlined,
+          title: "Nada en curso",
+          message: "No tienes trabajos activos ahora mismo. ¡Manos a la obra!",
+        );
+      case 'completed':
+        return const EmptyStateWidget(
+          icon: Icons.check_circle_outline,
+          title: "Historial vacío",
+          message: "Aquí verás todos los trabajos que vayas terminando.",
+        );
+      default:
+        return const SizedBox.shrink();
+    }
   }
 
   Widget _buildJobCard(BuildContext context, dynamic job) {
@@ -56,20 +110,19 @@ class MyJobsScreen extends ConsumerWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Expanded( // Para evitar errores de renderizado si el título es largo
+                Expanded( 
                   child: Text(
                     job.title, 
                     style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                
-                // Llamamos a una pequeña función traductora que vamos a crear
                 ServiceStatusChip(status: job.status.toString().split('.').last), 
               ],
             ),
             const SizedBox(height: 8),
             Text(
+              // TODO: Cuando Juan Luis arregle el backend, cambiaremos esto por job.clientName
               'Cliente Anónimo',
               style: TextStyle(color: Colors.grey.shade600),
             ),
@@ -88,7 +141,7 @@ class MyJobsScreen extends ConsumerWidget {
                 ),
                 TextButton(
                   onPressed: () {
-                    // Acción para ver detalles
+                    // TODO: Acción para ver detalles del trabajo
                   },
                   child: const Text("Ver detalles"),
                 ),
@@ -96,22 +149,6 @@ class MyJobsScreen extends ConsumerWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.work_off_outlined, size: 80, color: Colors.grey.shade300),
-          const SizedBox(height: 16),
-          const Text(
-            "Aún no tienes trabajos asignados",
-            style: TextStyle(fontSize: 16, color: Colors.grey),
-          ),
-        ],
       ),
     );
   }

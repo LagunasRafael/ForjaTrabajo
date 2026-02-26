@@ -1,53 +1,40 @@
+import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja_trabajo/features/services/domain/entities/service_entity.dart';
-// Asegúrate de importar el repositorio correcto
 import 'package:forja_trabajo/features/services/data/repositories/service_repository_impl.dart';
 import 'category_provider.dart';
 
-// 1. EL BUSCADOR (Estado simple)
+// 1. ESTADO DEL BUSCADOR
 final searchQueryProvider = StateProvider<String>((ref) => "");
 
 // =======================================================
-// 2. LISTAS DE LECTURA (GET)
+// 2. PROVIDERS DE LECTURA (UI REACTIVA)
 // =======================================================
 
-// A) LISTA PÚBLICA (Para el Home)
-// Filtra por búsqueda o categoría, si no hay filtros, trae todo.
+// A) LISTA PÚBLICA (Home): Filtra por búsqueda > categoría > todo
 final serviceListProvider = FutureProvider<List<ServiceEntity>>((ref) async {
   final repository = ref.watch(serviceRepositoryProvider);
-  final categoryId = ref.watch(selectedCategoryProvider); // Filtro Categoría
-  final query = ref.watch(searchQueryProvider);           // Filtro Buscador
+  final categoryId = ref.watch(selectedCategoryProvider);
+  final query = ref.watch(searchQueryProvider);
 
+  if (query.isNotEmpty) return await repository.searchServices(query);
+  if (categoryId != null) return await repository.getServicesByCategory(categoryId);
 
-  // Prioridad 1: Búsqueda
-  if (query.isNotEmpty) {
-    return await repository.searchServices(query);
-  }
-  
-  // Prioridad 2: Filtro por categoría
-  if (categoryId != null) {
-    return await repository.getServicesByCategory(categoryId);
-  }
-
-  // Por defecto: Todo lo abierto
   return await repository.getServices();
 });
 
-// Este debe estar al nivel superior del archivo, no dentro de una clase
-final serviceDetailProvider = FutureProvider.family<ServiceEntity, String>((ref, serviceId) async {
-  final repository = ref.watch(serviceRepositoryProvider);
-  return await repository.getServiceById(serviceId);
+// B) DETALLE DE UN SERVICIO (Por ID)
+final serviceDetailProvider = FutureProvider.family<ServiceEntity, String>((ref, id) async {
+  return await ref.watch(serviceRepositoryProvider).getServiceById(id);
 });
 
-// B) LISTA PRIVADA (Para "Mis Trabajos") ✅ ESTA ES LA QUE TE FALTABA
-// Trae solo los trabajos creados por mí (Abiertos, En Proceso, Finalizados)
+// C) MIS TRABAJOS: Lista privada del usuario logueado
 final myRequestsProvider = FutureProvider<List<ServiceEntity>>((ref) async {
-  final repository = ref.watch(serviceRepositoryProvider);
-  return repository.getMyServices(); 
+  return await ref.watch(serviceRepositoryProvider).getMyServices(); 
 });
 
 // =======================================================
-// 3. EL CONTROLADOR (ACCIONES: Crear, Actualizar)
+// 3. CONTROLADOR DE ACCIONES (CREAR / ACTUALIZAR)
 // =======================================================
 
 final serviceControllerProvider = StateNotifierProvider<ServiceController, AsyncValue<void>>((ref) {
@@ -56,19 +43,18 @@ final serviceControllerProvider = StateNotifierProvider<ServiceController, Async
 
 class ServiceController extends StateNotifier<AsyncValue<void>> {
   final Ref ref;
-
   ServiceController(this.ref) : super(const AsyncValue.data(null));
 
-  Future<void> createService(ServiceEntity service, String token) async {
+  // --- CREAR SERVICIO (Soporta imágenes) ---
+  Future<void> createService(ServiceEntity service, String token, {List<File>? images}) async {
     state = const AsyncValue.loading();
     try {
       final repository = ref.read(serviceRepositoryProvider);
       
-      await repository.createService(service, token);
+      await repository.createService(service, token, images: images);
       
-      ref.invalidate(serviceListProvider);     
-      ref.invalidate(topCategoryListProvider);  
-      ref.invalidate(categoryListProvider);     
+      // 🧹 LIMPIEZA DE CACHÉ: Forzamos a la app a pedir las listas nuevas
+      _invalidateAll();
       
       state = const AsyncValue.data(null);
     } catch (e, st) {
@@ -76,22 +62,28 @@ class ServiceController extends StateNotifier<AsyncValue<void>> {
     }
   }
 
-  // --- ACTUALIZAR ---
+  // --- ACTUALIZAR SERVICIO ---
   Future<void> updateService(ServiceEntity service, String token) async {
     state = const AsyncValue.loading();
     try {
-      final repository = ref.read(serviceRepositoryProvider);
+      await ref.read(serviceRepositoryProvider).updateService(service, token);
       
-      // Llamamos al repositorio
-      await repository.updateService(service, token);
-      
-      // Refrescamos las listas para ver los cambios reflejados
-      ref.invalidate(serviceListProvider); 
-      ref.invalidate(myRequestsProvider); 
+      // Invalidamos el detalle específico y las listas
+      ref.invalidate(serviceDetailProvider(service.id));
+      _invalidateAll();
       
       state = const AsyncValue.data(null);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
     }
+  }
+
+  // Helper privado para no repetir código de invalidación
+  void _invalidateAll() {
+    ref.invalidate(serviceListProvider); 
+    ref.invalidate(myRequestsProvider);
+    // Invalidamos categorías por si el conteo de servicios cambió
+    ref.invalidate(categoryListProvider);
+    ref.invalidate(topCategoryListProvider);
   }
 }

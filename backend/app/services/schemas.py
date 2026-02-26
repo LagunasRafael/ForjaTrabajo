@@ -53,6 +53,7 @@ class ServiceBase(BaseModel):
     image_urls: Optional[List[str]] = []   # ✅ AÑADIDO
 
 
+
 class ServiceCreate(ServiceBase):
     pass
 
@@ -120,3 +121,6 @@ class Job(BaseModel):
 
     class Config:
         orm_mode = True
+
+class ServiceActiveUpdate(BaseModel):
+    is_active: bool

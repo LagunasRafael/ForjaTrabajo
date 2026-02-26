@@ -91,20 +91,30 @@ def create_service(db: Session, service_data: schemas.ServiceCreate, client_id: 
     db.refresh(db_service)
     return db_service
 
-def get_services(db: Session, skip: int = 0, limit: int = 100):
-    """Devuelve los servicios abiertos para la Home/Marketplace."""
+def get_services(
+    db: Session,
+    skip: int = 0,
+    limit: int = 100,
+    include_inactive: bool = False
+):
+    """Devuelve servicios para el marketplace con control de visibilidad."""
+    query = db.query(models.Service)
+
+    # Solo activos si no se pide incluir inactivos
+    if not include_inactive:
+        query = query.filter(models.Service.is_active == True)
+
+    # Marketplace solo muestra abiertos
+    query = query.filter(models.Service.status == models.JobStatus.OPEN)
+
     return (
-        db.query(models.Service)
-        .filter(
-            models.Service.is_active == True,
-            models.Service.status == models.JobStatus.OPEN
-        )
+        query
         .order_by(models.Service.created_at.desc())
         .offset(skip)
         .limit(limit)
         .all()
     )
-
+    
 def get_service_by_id(db: Session, service_id: str):
     """
     🚀 SOLUCIÓN AL ERROR: Esta función faltaba y es necesaria 
@@ -192,21 +202,24 @@ def cancel_service(db: Session, service_id: str, user_id: str, user_role: str):
 
 def delete_service(db: Session, service_id: str):
     service_entry = db.query(models.Service).filter(models.Service.id == service_id).first()
+    
     if not service_entry:
         raise HTTPException(status_code=404, detail="Servicio no encontrado")
 
-    service_entry.is_active = False
-    if service_entry.status == models.JobStatus.MATCHED:
-        job = db.query(models.Job).filter(
-            models.Job.client_id == service_entry.client_id,
-            models.Job.status == models.JobStatus.MATCHED
-        ).first()
-        if job:
-            job.status = models.JobStatus.CANCELLED
+    # 1. Borrar las postulaciones (Ofertas) asociadas para que PostgreSQL/MySQL no marque error de llave foránea
+    db.query(models.ServiceRequest).filter(models.ServiceRequest.service_id == service_id).delete()
+    
+    # 2. Borrar los Jobs (Trabajos) si es que ya se había generado un Match
+    db.query(models.Job).filter(
+        models.Job.client_id == service_entry.client_id,
+        # Si el Job tiene relación directa con el servicio, idealmente se filtra por request_id o service_id
+    ).delete() # Nota para Juan Luis: Ajustar este filtro según cómo tenga su modelo Job
 
+    # 3. BORRADO FÍSICO DEL SERVICIO
+    db.delete(service_entry)
     db.commit()
-    return {"message": "Servicio eliminado (desactivado) por el Administrador"}
-
+    
+    return {"message": "Servicio eliminado físicamente por completo de la base de datos"}
 
 # -------------------------------------------------------------------------
 # SERVICE REQUESTS (OFERTAS)
@@ -368,3 +381,19 @@ def search_services(db: Session, search_query: str):
         .filter(models.Service.status == models.JobStatus.OPEN) 
         .all()
     )
+    return services
+
+def update_service_images(db: Session, service_id: str, image_urls: list[str]):
+    """
+    Busca el servicio recién creado y le inyecta las URLs de AWS S3
+    """
+    # 1. Buscamos el servicio en la base de datos
+    db_service = db.query(models.Service).filter(models.Service.id == service_id).first()
+    
+    # 2. Si existe, actualizamos su arreglo de imágenes
+    if db_service:
+        db_service.image_urls = image_urls
+        db.commit()            # Guardamos cambios
+        db.refresh(db_service) # Refrescamos el objeto
+        
+    return db_service

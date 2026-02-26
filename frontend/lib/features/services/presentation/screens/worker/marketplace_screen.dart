@@ -4,6 +4,7 @@ import 'package:forja_trabajo/features/services/presentation/providers/category_
 import 'package:forja_trabajo/features/services/presentation/providers/service_list_provider.dart';
 import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart'; 
 import '../../widgets/service_card.dart';
+import 'package:forja_trabajo/shared/widgets/service_card_skeleton.dart';
 
 class MarketplaceScreen extends ConsumerWidget {
   const MarketplaceScreen({super.key});
@@ -34,6 +35,7 @@ class MarketplaceScreen extends ConsumerWidget {
       body: SafeArea(
         child: Column(
           children: [
+            // --- CABECERA Y CATEGORÍAS ---
             Container(
               padding: const EdgeInsets.all(20),
               color: Colors.white,
@@ -44,67 +46,16 @@ class MarketplaceScreen extends ConsumerWidget {
                   const SizedBox(height: 20),
                   _buildSearchBar(ref),
                   const SizedBox(height: 20),
-
-                  topCategoriesAsync.when(
-                    data: (topCategories) {
-                      return SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        physics: const BouncingScrollPhysics(),
-                        child: Row(
-                          children: [
-                            _buildCategoryChip(
-                              label: "Todos",
-                              isSelected: selectedCatId == null,
-                              onTap: () => ref.read(selectedCategoryProvider.notifier).state = null,
-                            ),
-                            
-                            ...topCategories.map((cat) => _buildCategoryChip(
-                              label: cat.name,
-                              isSelected: selectedCatId == cat.id,
-                              onTap: () => ref.read(selectedCategoryProvider.notifier).state = cat.id,
-                            )),
-                            
-                            allCategoriesAsync.maybeWhen(
-                              data: (allCats) => _buildCategoryChip(
-                                label: "Ver más",
-                                isSelected: false,
-                                icon: Icons.grid_view_rounded,
-                                onTap: () => _showAllCategoriesModal(context, allCats, ref, selectedCatId),
-                              ),
-                              orElse: () => const SizedBox(),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                    loading: () => const LinearProgressIndicator(),
-                    error: (e, s) => const Text("Error al cargar categorías"),
-                  ),
+                  _buildCategoryList(ref, topCategoriesAsync, allCategoriesAsync, selectedCatId),
                 ],
               ),
             ),
 
+            // --- LISTADO DE TRABAJOS ---
             Expanded(
               child: Column(
                 children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text("Trabajos Disponibles", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                        TextButton(
-                          onPressed: () {
-                             // Limpiar filtros
-                             ref.read(selectedCategoryProvider.notifier).state = null;
-                             ref.read(searchQueryProvider.notifier).state = "";
-                          },
-                          child: const Text("Ver todos", style: TextStyle(color: Color(0xFF2563EB), fontSize: 13)),
-                        ),
-                      ],
-                    ),
-                  ),
-                  
+                  _buildSectionHeader(ref),
                   Expanded(
                     child: servicesAsync.when(
                       data: (services) => services.isEmpty 
@@ -114,7 +65,12 @@ class MarketplaceScreen extends ConsumerWidget {
                             itemCount: services.length,
                             itemBuilder: (context, index) => ServiceCard(service: services[index]),
                           ),
-                      loading: () => const Center(child: CircularProgressIndicator()),
+                      // Usamos los esqueletos de develop para una carga elegante
+                      loading: () => ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: 5,
+                        itemBuilder: (context, index) => const ServiceCardSkeleton(),
+                      ),
                       error: (e, s) => Center(child: Text("Error: $e")),
                     ),
                   ),
@@ -127,72 +83,58 @@ class MarketplaceScreen extends ConsumerWidget {
     );
   }
 
-  void _showAllCategoriesModal(BuildContext context, List<dynamic> allCategories, WidgetRef ref, String? selectedCatId) {
-    showDialog(
-      context: context,
-      barrierDismissible: true,
-      builder: (context) {
-        return Dialog(
-          backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(20),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text("Todas las categorías", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                    IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
-                  ],
-                ),
-              ),
-              const Divider(height: 1, color: Color(0xFFF3F4F6)),
-              Flexible(
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: allCategories.length,
-                  itemBuilder: (context, i) {
-                    final cat = allCategories[i];
-                    final isSelected = selectedCatId == cat.id;
-                    return ListTile(
-                      leading: Icon(_getCategoryIcon(cat.name), color: isSelected ? const Color(0xFF4F46E5) : Colors.grey),
-                      title: Text(cat.name, style: TextStyle(fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
-                      onTap: () {
-                        ref.read(selectedCategoryProvider.notifier).state = cat.id;
-                        Navigator.pop(context);
-                      },
-                    );
-                  },
-                ),
-              ),
-            ],
+  // --- WIDGETS AUXILIARES ---
+
+  Widget _buildSectionHeader(WidgetRef ref) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const Text("Trabajos Disponibles", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          TextButton(
+            onPressed: () {
+              ref.read(selectedCategoryProvider.notifier).state = null;
+              ref.read(searchQueryProvider.notifier).state = "";
+            },
+            child: const Text("Ver todos", style: TextStyle(color: Color(0xFF2563EB), fontSize: 13)),
           ),
-        );
-      },
+        ],
+      ),
     );
   }
 
-  Widget _buildCategoryChip({required String label, required bool isSelected, required VoidCallback onTap, IconData? icon}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.only(right: 10),
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-        decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF4F46E5) : Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: isSelected ? Colors.transparent : Colors.grey.shade300),
-        ),
+  Widget _buildCategoryList(WidgetRef ref, AsyncValue topCats, AsyncValue allCats, String? selectedId) {
+    return topCats.when(
+      data: (categories) => SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
         child: Row(
           children: [
-            if (icon != null) Icon(icon, size: 16, color: isSelected ? Colors.white : Colors.grey[600]),
-            if (icon != null) const SizedBox(width: 6),
-            Text(label, style: TextStyle(color: isSelected ? Colors.white : Colors.grey[700], fontWeight: FontWeight.w600)),
+            _buildCategoryChip(
+              label: "Todos",
+              isSelected: selectedId == null,
+              onTap: () => ref.read(selectedCategoryProvider.notifier).state = null,
+            ),
+            ...categories.map((cat) => _buildCategoryChip(
+              label: cat.name,
+              isSelected: selectedId == cat.id,
+              onTap: () => ref.read(selectedCategoryProvider.notifier).state = cat.id,
+            )),
+            allCats.maybeWhen(
+              data: (list) => _buildCategoryChip(
+                label: "Ver más",
+                isSelected: false,
+                icon: Icons.grid_view_rounded,
+                onTap: () => _showAllCategoriesModal(ref.context, list, ref, selectedId),
+              ),
+              orElse: () => const SizedBox(),
+            ),
           ],
         ),
       ),
+      loading: () => const LinearProgressIndicator(),
+      error: (e, s) => const SizedBox(),
     );
   }
 
@@ -226,4 +168,70 @@ class MarketplaceScreen extends ConsumerWidget {
       decoration: const InputDecoration(hintText: "Buscar por título...", prefixIcon: Icon(Icons.search), border: InputBorder.none),
     ),
   );
+
+  Widget _buildCategoryChip({required String label, required bool isSelected, required VoidCallback onTap, IconData? icon}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(right: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF4F46E5) : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: isSelected ? Colors.transparent : Colors.grey.shade300),
+        ),
+        child: Row(
+          children: [
+            if (icon != null) Icon(icon, size: 16, color: isSelected ? Colors.white : Colors.grey[600]),
+            if (icon != null) const SizedBox(width: 6),
+            Text(label, style: TextStyle(color: isSelected ? Colors.white : Colors.grey[700], fontWeight: FontWeight.w600)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showAllCategoriesModal(BuildContext context, List<dynamic> allCategories, WidgetRef ref, String? selectedCatId) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text("Todas las categorías", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Flexible(
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: allCategories.length,
+                itemBuilder: (context, i) {
+                  final cat = allCategories[i];
+                  final isSelected = selectedCatId == cat.id;
+                  return ListTile(
+                    leading: Icon(_getCategoryIcon(cat.name), color: isSelected ? const Color(0xFF4F46E5) : Colors.grey),
+                    title: Text(cat.name, style: TextStyle(fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
+                    onTap: () {
+                      ref.read(selectedCategoryProvider.notifier).state = cat.id;
+                      Navigator.pop(context);
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
