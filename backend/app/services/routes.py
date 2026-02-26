@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Form, File, UploadFile
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 from uuid import UUID
+from app.utils.s3 import upload_service_evidence_to_s3
 
 from app.auth.security import check_role, get_current_user
 from app.core.roles import Role
@@ -40,12 +41,49 @@ def delete_category(category_id: str, db: Session = Depends(get_db), current_use
 # -----------------------------
 
 @router.post("/", response_model=schemas.Service)
-def create_service(
-    service_data: schemas.ServiceCreate,
+async def create_service(
+    title: str = Form(...),
+    description: str = Form(...),
+    category_id: str = Form(...),
+    base_price: float = Form(0.0), # Valor por defecto
+    summary: Optional[str] = Form(None),
+    latitude: Optional[float] = Form(None),
+    longitude: Optional[float] = Form(None),
+    exact_address: Optional[str] = Form(None),
+    files: Optional[List[UploadFile]] = File(None), # ¡Aquí vienen las fotos de Flutter!
     db: Session = Depends(get_db),
     current_user = Depends(check_role([Role.CLIENT, Role.ADMIN]))
 ):
-    return service.create_service(db, service_data, client_id=current_user.id)
+    # 1. Armamos el esquema MANUALMENTE
+    service_data = schemas.ServiceCreate(
+        title=title,
+        description=description,
+        summary=summary,
+        base_price=base_price,
+        category_id=category_id,
+        latitude=latitude,
+        longitude=longitude,
+        exact_address=exact_address,
+        image_urls=[] # Inicialmente vacío
+    )
+
+    # 2. Guardamos en la Base de Datos para obtener el ID
+    new_service = service.create_service(db, service_data, client_id=current_user.id)
+
+    # 3. Subimos las fotos a AWS S3 (Usando la nueva función que te doy abajo)
+    if files and len(files) > 0:
+        image_urls = []
+        for file in files:
+            # Usamos la nueva función adaptada para servicios
+            url = await upload_service_evidence_to_s3(file, new_service.id)
+            if url:
+                image_urls.append(url)
+        
+        # 4. Actualizamos el servicio en la DB con las URLs
+        # (Asegúrate de que Juan Luis tenga este método en su CRUD)
+        new_service = service.update_service_images(db, new_service.id, image_urls)
+
+    return new_service
 
 @router.get("/", response_model=List[schemas.Service])
 def list_services(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):

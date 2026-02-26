@@ -386,3 +386,19 @@ def search_services(db: Session, search_query: str):
         .filter(models.Service.status == models.JobStatus.OPEN) 
         .all()
     )
+    return services
+
+def update_service_images(db: Session, service_id: str, image_urls: list[str]):
+    """
+    Busca el servicio recién creado y le inyecta las URLs de AWS S3
+    """
+    # 1. Buscamos el servicio en la base de datos
+    db_service = db.query(models.Service).filter(models.Service.id == service_id).first()
+    
+    # 2. Si existe, actualizamos su arreglo de imágenes
+    if db_service:
+        db_service.image_urls = image_urls
+        db.commit()            # Guardamos cambios
+        db.refresh(db_service) # Refrescamos el objeto
+        
+    return db_service
