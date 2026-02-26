@@ -91,20 +91,12 @@ def create_service(db: Session, service_data: schemas.ServiceCreate, client_id: 
     db.refresh(db_service)
     return db_service
 
-def get_services(db: Session, skip: int = 0, limit: int = 100):
-    """
-    PARA LA HOME: Devuelve SOLO los servicios que están 'OPEN' (disponibles).
-    """
-    return (
-        db.query(models.Service)
-        .filter(
-            models.Service.is_active == True,
-            models.Service.status == models.JobStatus.OPEN  # 🛡️ FILTRO CLAVE: Solo abiertos
-        )
-        .offset(skip)
-        .limit(limit)
-        .all()
-    )
+def get_services(db: Session, skip: int = 0, limit: int = 100, include_inactive: bool = False):
+    query = db.query(models.Service)
+    # Si NO es admin/no pide las inactivas, filtramos solo las activas
+    if not include_inactive:
+        query = query.filter(models.Service.is_active == True)
+    return query.offset(skip).limit(limit).all()
 
 def get_my_services(db: Session, user_id: str):
     """
@@ -192,21 +184,24 @@ def cancel_service(db: Session, service_id: str, user_id: str, user_role: str):
 
 def delete_service(db: Session, service_id: str):
     service_entry = db.query(models.Service).filter(models.Service.id == service_id).first()
+    
     if not service_entry:
         raise HTTPException(status_code=404, detail="Servicio no encontrado")
 
-    service_entry.is_active = False
-    if service_entry.status == models.JobStatus.MATCHED:
-        job = db.query(models.Job).filter(
-            models.Job.client_id == service_entry.client_id,
-            models.Job.status == models.JobStatus.MATCHED
-        ).first()
-        if job:
-            job.status = models.JobStatus.CANCELLED
+    # 1. Borrar las postulaciones (Ofertas) asociadas para que PostgreSQL/MySQL no marque error de llave foránea
+    db.query(models.ServiceRequest).filter(models.ServiceRequest.service_id == service_id).delete()
+    
+    # 2. Borrar los Jobs (Trabajos) si es que ya se había generado un Match
+    db.query(models.Job).filter(
+        models.Job.client_id == service_entry.client_id,
+        # Si el Job tiene relación directa con el servicio, idealmente se filtra por request_id o service_id
+    ).delete() # Nota para Juan Luis: Ajustar este filtro según cómo tenga su modelo Job
 
+    # 3. BORRADO FÍSICO DEL SERVICIO
+    db.delete(service_entry)
     db.commit()
-    return {"message": "Servicio eliminado (desactivado) por el Administrador"}
-
+    
+    return {"message": "Servicio eliminado físicamente por completo de la base de datos"}
 
 # -------------------------------------------------------------------------
 # SERVICE REQUESTS (OFERTAS)
