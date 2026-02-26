@@ -93,6 +93,28 @@ def list_services(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)
 def services_by_category(category_id: str, db: Session = Depends(get_db)):
     return service.get_services_by_category(db, category_id)
 
+@router.get("/{service_id}", response_model=schemas.Service) # schemas.Service es tu modelo de salida
+def read_service(service_id: str, db: Session = Depends(get_db)):
+    db_service = service.get_service_by_id(db, service_id=service_id)
+    if db_service is None:
+        raise HTTPException(status_code=404, detail="El servicio no existe")
+    return db_service
+
+@router.put("/{service_id}", response_model=schemas.Service)
+def update_service(
+    service_id: str,
+    service_data: schemas.ServiceUpdate,
+    db: Session = Depends(get_db),
+    current_user: auth_models.User = Depends(get_current_user),
+):
+    return service.update_service(
+        db,
+        service_id,
+        service_data,
+        current_user.id,
+        current_user.role,
+    )
+
 @router.delete("/{service_id}", status_code=status.HTTP_200_OK)
 def delete_service(
     service_id: str,
@@ -115,6 +137,14 @@ def create_service_request(
     current_user: auth_models.User = Depends(check_role([Role.WORKER]))
 ):
     return service.create_service_request(db, request_data, worker_id=current_user.id)
+
+@router.get("/my-requests", response_model=List[schemas.Service])
+def read_my_requests(
+    db: Session = Depends(get_db),
+    current_user: auth_models.User = Depends(get_current_user)
+):
+    """Obtiene SOLO los servicios creados por el usuario logueado (Abiertos, Matched, etc.)"""
+    return service.get_my_services(db, user_id=str(current_user.id))
 
 # -----------------------------
 # FLUJO DE SELECCIÓN (CLIENTE)
@@ -146,7 +176,7 @@ def accept_worker_postulation(
 def complete_job_status(
     job_id: str,
     db: Session = Depends(get_db),
-    current_user: auth_models.User = Depends(check_role([Role.WORKER, Role.ADMIN]))
+    current_user: auth_models.User = Depends(check_role([Role.CLIENT, Role.ADMIN]))
 ):
     """El trabajador marca como terminado"""
     return service.complete_job(db, job_id, current_user.id)

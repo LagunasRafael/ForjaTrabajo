@@ -56,13 +56,25 @@ class ServiceBase(BaseModel):
 class ServiceCreate(ServiceBase):
     pass
 
+class ServiceUpdate(BaseModel):
+    title: Optional[str] = None
+    summary: Optional[str] = None
+    description: Optional[str] = None
+    base_price: Optional[Decimal] = None
+    category_id: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    exact_address: Optional[str] = None
+    image_urls: Optional[List[str]] = None
 
 class Service(ServiceBase):
     id: str
-    client_id: str  # Ahora es el cliente quien es dueño de la publicación
+    client_id: str  
     status: JobStatus
     is_active: bool
     created_at: datetime
+
+    author_name: Optional[str] = "Usuario Cliente"
 
     class Config:
         orm_mode = True
@@ -74,14 +86,19 @@ class Service(ServiceBase):
 
 class ServiceRequestCreate(BaseModel):
     service_id: str
-    description: str  # Mensaje de propuesta del worker
+    description: str  
+    proposed_price: Optional[Decimal] = None 
 
 class ServiceRequest(BaseModel):
     id: str
     service_id: str
-    worker_id: str  # Quién se postula
+    worker_id: str  
     status: str
     created_at: datetime
+
+    description: str
+    proposed_price: Optional[Decimal] = None
+    worker_name: Optional[str] = "Trabajador"  
 
     class Config:
         orm_mode = True
