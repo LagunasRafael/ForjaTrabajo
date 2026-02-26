@@ -1,16 +1,54 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../domain/entities/service_request_entity.dart';
-import '../../data/repositories/service_repository_impl.dart';
-// Aquí importarías: PostulateToServiceUseCase, GetServiceOffersUseCase
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
+// Importa el provider de la lista de ofertas para poder refrescarlo
+import 'service_offers_provider.dart'; 
 
-// Provider para ver las ofertas de un servicio (como Cliente)
-final serviceOffersProvider = FutureProvider.family<List<ServiceRequestEntity>, String>((ref, serviceId) async {
-  final repository = ref.watch(serviceRepositoryProvider);
-  // Asumimos que tienes el token guardado en algún lado, por ahora hardcodeado o null
-  // Lo ideal es leerlo de un authProvider
-  const fakeToken = "token_de_prueba"; 
-  return await repository.getOffers(serviceId, fakeToken);
+final serviceRequestProvider = StateNotifierProvider<ServiceRequestController, AsyncValue<void>>((ref) {
+  return ServiceRequestController(ref);
 });
 
-// Nota: Para CREAR una postulación (POST), generalmente usamos un StateNotifier, 
-// pero eso lo veremos cuando hagamos la pantalla de postulación.
+class ServiceRequestController extends StateNotifier<AsyncValue<void>> {
+  final Ref ref;
+  ServiceRequestController(this.ref) : super(const AsyncValue.data(null));
+
+  Future<bool> applyToService(String serviceId, String description, double price) async {
+    state = const AsyncValue.loading();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+      
+      final url = Uri.parse("http://127.0.0.1:8000/services/service-requests");
+
+      final response = await http.post(
+        url,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json'
+        },
+        body: json.encode({
+          "service_id": serviceId,
+          "description": description,
+          "proposed_price": price 
+        }),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        // 🔥 LA CLAVE: Invalidar la lista de ofertas para ese servicio
+        // Esto obliga al cliente a descargar la lista nueva donde YA aparece este worker
+        ref.invalidate(offersListProvider(serviceId));
+        
+        state = const AsyncValue.data(null);
+        return true;
+      } else {
+        final errorBody = json.decode(response.body);
+        state = AsyncValue.error(errorBody['detail'] ?? "Error desconocido", StackTrace.current);
+        return false;
+      }
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+      return false;
+    }
+  }
+}

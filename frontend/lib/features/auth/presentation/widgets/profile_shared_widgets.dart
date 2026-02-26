@@ -7,7 +7,11 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 
-// 1. EL MENÚ BLANCO CON SOMBRA
+// 👇 IMPORTS NECESARIOS PARA LIMPIAR LA MEMORIA
+import 'package:forja_trabajo/features/services/presentation/providers/service_list_provider.dart';
+// Si tienes un provider para el índice del menú (ej. bottomNavIndexProvider), impórtalo aquí.
+
+// 1. EL MENÚ BLANCO CON SOMBRA (Sin cambios)
 class ProfileMenuCard extends StatelessWidget {
   final List<Widget> children;
   
@@ -22,7 +26,7 @@ class ProfileMenuCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03), 
+            color: Colors.black.withOpacity(0.03), 
             blurRadius: 20
           )
         ],
@@ -32,7 +36,7 @@ class ProfileMenuCard extends StatelessWidget {
   }
 }
 
-// 2. CADA OPCIÓN DEL MENÚ
+// 2. CADA OPCIÓN DEL MENÚ (Sin cambios)
 class ProfileMenuOption extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -56,7 +60,8 @@ class ProfileMenuOption extends StatelessWidget {
   }
 }
 
-// 3. EL BOTÓN ROJO DE CERRAR SESIÓN
+// 3. EL BOTÓN ROJO DE CERRAR SESIÓN (MODIFICADO 🚀)
+// 3. EL BOTÓN ROJO DE CERRAR SESIÓN (CORREGIDO)
 class ProfileLogoutButton extends ConsumerWidget {
   const ProfileLogoutButton({super.key});
 
@@ -66,9 +71,30 @@ class ProfileLogoutButton extends ConsumerWidget {
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: OutlinedButton.icon(
         onPressed: () async {
+          // 1. Borramos token y datos de sesión
           await ref.read(authProvider.notifier).logoutUser();
+          
+          // 2. 🧹 LIMPIEZA PROFUNDA DE MEMORIA (Invalidamos todo lo que tenga datos viejos)
+          // Esto soluciona el error "No se pudo validar la sesión"
+          ref.invalidate(myRequestsProvider); 
+          ref.invalidate(serviceListProvider); 
+          ref.invalidate(authProvider); // Invalidamos también la auth para asegurar
+
+          // 3. 🔄 RESETEAR EL MENÚ AL INICIO (Soluciona que inicie en la página incorrecta)
+          // IMPORTANTE: Cambia 'bottomNavIndexProvider' por el nombre real de tu provider del menú
+          try {
+             // Si usas StateProvider:
+             // ref.read(bottomNavIndexProvider.notifier).state = 0; 
+             
+             // O simplemente invalídalo para que vuelva a su valor original (0):
+             // ref.invalidate(bottomNavIndexProvider);
+          } catch (e) {
+             print("Ojo: No encontré el provider del menú, revisa el nombre");
+          }
+
+          // 4. Navegación radical: Borra todo el historial y manda al Login
           if (context.mounted) {
-            Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+            Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
           }
         },
         style: OutlinedButton.styleFrom(
@@ -83,6 +109,7 @@ class ProfileLogoutButton extends ConsumerWidget {
   }
 }
 
+// 4. AVATAR EDITABLE (Sin cambios)
 class EditableProfileAvatar extends ConsumerWidget {
   final String? imageUrl;
   final double radius;
@@ -93,10 +120,8 @@ class EditableProfileAvatar extends ConsumerWidget {
     this.radius = 50,
   });
 
-  // 1. CREAMOS LA FUNCIÓN PARA ABRIR LA CÁMARA O GALERÍA
   Future<void> _pickImage(BuildContext context, WidgetRef ref, ImageSource source) async {
     final picker = ImagePicker();
-    // Le bajamos la calidad a 80 para que suba rapidísimo a AWS sin gastar tantos datos
     final pickedFile = await picker.pickImage(source: source, imageQuality: 80); 
     
     if (pickedFile != null) {
@@ -104,7 +129,6 @@ class EditableProfileAvatar extends ConsumerWidget {
     }
   }
 
-  // 2. CREAMOS EL MENÚ INFERIOR ESTILO WHATSAPP
   void _showOptionsBottomSheet(BuildContext context, WidgetRef ref) {
     showModalBottomSheet(
       context: context,
@@ -129,30 +153,30 @@ class EditableProfileAvatar extends ConsumerWidget {
                   leading: Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                      color: AppTheme.primaryColor.withOpacity(0.1),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(LucideIcons.camera, color: AppTheme.primaryColor),
                   ),
                   title: Text('Tomar foto', style: GoogleFonts.inter(fontWeight: FontWeight.w500)),
                   onTap: () {
-                    Navigator.pop(context); // Cerramos el menú
-                    _pickImage(context, ref, ImageSource.camera); // Abrimos cámara
+                    Navigator.pop(context); 
+                    _pickImage(context, ref, ImageSource.camera); 
                   },
                 ),
                 ListTile(
                   leading: Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                      color: AppTheme.primaryColor.withOpacity(0.1),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(LucideIcons.image, color: AppTheme.primaryColor),
                   ),
                   title: Text('Elegir de la galería', style: GoogleFonts.inter(fontWeight: FontWeight.w500)),
                   onTap: () {
-                    Navigator.pop(context); // Cerramos el menú
-                    _pickImage(context, ref, ImageSource.gallery); // Abrimos galería
+                    Navigator.pop(context); 
+                    _pickImage(context, ref, ImageSource.gallery); 
                   },
                 ),
               ],
@@ -166,14 +190,13 @@ class EditableProfileAvatar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return GestureDetector(
-      // 👇 3. AL TOCAR EL AVATAR, ABRIMOS EL MENÚ EN VEZ DE LA GALERÍA DIRECTA
       onTap: () => _showOptionsBottomSheet(context, ref),
       child: Stack(
         alignment: Alignment.bottomRight,
         children: [
           CircleAvatar(
             radius: radius,
-            backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.1),
+            backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
             backgroundImage: imageUrl != null ? NetworkImage(imageUrl!) : null,
             child: imageUrl == null 
                 ? Icon(LucideIcons.user, size: radius, color: AppTheme.primaryColor)

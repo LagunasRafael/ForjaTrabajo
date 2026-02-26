@@ -1,183 +1,132 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../widgets/service_status_chip.dart';
-import '../../providers/service_list_provider.dart';
-import '/shared/widgets/empty_state_widget.dart';
-import '/shared/widgets/service_card_skeleton.dart';
+import 'package:forja_trabajo/features/services/domain/entities/service_entity.dart';
+import 'package:forja_trabajo/features/services/presentation/providers/service_list_provider.dart';
 
-class MyRequestsScreen extends ConsumerWidget {
+// Providers
+import 'package:forja_trabajo/features/services/presentation/providers/nav_providers.dart';
+// 👇 IMPORTS CORREGIDOS: Copia y pega estas 3 líneas
+import 'package:forja_trabajo/features/services/presentation/widgets/client_open_job_card.dart';
+import 'package:forja_trabajo/features/services/presentation/widgets/client_matched_job_card.dart';
+import 'package:forja_trabajo/features/services/presentation/widgets/client_completed_job_card.dart';
+
+class MyRequestsScreen extends ConsumerStatefulWidget {
   const MyRequestsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return DefaultTabController(
-      length: 3,
-      child: Scaffold(
-        backgroundColor: const Color(0xFFF8F9FA),
-        appBar: AppBar(
-          title: const Text('Mis Solicitudes', 
-            style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)
-          ),
-          backgroundColor: Colors.white,
-          elevation: 0,
-          bottom: const TabBar(
-            labelColor: Color(0xFF4F46E5),
-            unselectedLabelColor: Colors.grey,
-            indicatorColor: Color(0xFF4F46E5),
-            tabs: [
-              Tab(text: 'Abiertos'),
-              Tab(text: 'En Proceso'),
-              Tab(text: 'Finalizados'),
-            ],
-          ),
-        ),
-        body: TabBarView(
-          children: [
-            _buildRequestList(ref, 'open'),
-            _buildRequestList(ref, 'in_progress'),
-            _buildRequestList(ref, 'completed'),
+  ConsumerState<MyRequestsScreen> createState() => _MyRequestsScreenState();
+}
+
+class _MyRequestsScreenState extends ConsumerState<MyRequestsScreen> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 3, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // 👂 AQUÍ OCURRE EL MILAGRO:
+    // Escuchamos si alguien (como la pantalla de ofertas) quiere cambiar la pestaña
+    ref.listen<int>(myRequestsTabProvider, (previous, nextIndex) {
+      _tabController.animateTo(nextIndex);
+    });
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8F9FA),
+      appBar: AppBar(
+        title: const Text('Mis Trabajos', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        centerTitle: true,
+        bottom: TabBar(
+          controller: _tabController,
+          labelColor: const Color(0xFF4F46E5),
+          unselectedLabelColor: Colors.grey,
+          indicatorColor: const Color(0xFF4F46E5),
+          indicatorWeight: 3,
+          labelStyle: const TextStyle(fontWeight: FontWeight.bold),
+          tabs: const [
+            Tab(text: 'Abiertos'),
+            Tab(text: 'En Proceso'),
+            Tab(text: 'Finalizados'),
           ],
         ),
+      ),
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          // 0. Abiertos
+          _buildRequestList(ref, JobStatus.open),
+          // 1. En Proceso (Matched)
+          _buildRequestList(ref, JobStatus.matched),
+          // 2. Finalizados
+          _buildRequestList(ref, JobStatus.completed),
+        ],
       ),
     );
   }
 
-  Widget _buildRequestList(WidgetRef ref, String status) {
-    final servicesAsync = ref.watch(serviceListProvider);
+  Widget _buildRequestList(WidgetRef ref, JobStatus status) {
+    final servicesAsync = ref.watch(myRequestsProvider);
 
     return servicesAsync.when(
       data: (services) {
-        // Filtramos por estado
         final filtered = services.where((s) => s.status == status).toList();
 
-        // 👇 AQUÍ ENTRA LA MAGIA DEL EMPTY STATE
         if (filtered.isEmpty) {
-          String title = "";
-          String message = "";
-          IconData icon = Icons.info_outline;
-
-          // Personalizamos el mensaje según la pestaña
-          switch (status) {
-            case 'open':
-              title = "Sin solicitudes abiertas";
-              message = "No tienes ningún servicio pendiente. ¿Necesitas ayuda con algún proyecto en casa o la oficina?";
-              icon = Icons.inbox_outlined;
-              break;
-            case 'in_progress':
-              title = "Nada en proceso";
-              message = "Actualmente no tienes trabajos realizándose. Aquí verás los servicios cuando el trabajador acepte tu solicitud.";
-              icon = Icons.handyman_outlined;
-              break;
-            case 'completed':
-              title = "Sin historial";
-              message = "Aún no tienes trabajos finalizados. ¡Todos tus proyectos completados con éxito aparecerán aquí!";
-              icon = Icons.history_outlined;
-              break;
-          }
-
-          return EmptyStateWidget(
-            icon: icon,
-            title: title,
-            message: message,
-            // Solo le ponemos botón a la pestaña de "Abiertos" para invitarlo a buscar
-            buttonText: status == 'open' ? "Buscar Servicios" : null,
-            onButtonPressed: status == 'open' ? () {
-              // TODO: Redirigir al inicio (Home)
-              print("Ir al inicio a buscar servicios");
-            } : null,
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.folder_open, size: 60, color: Colors.grey[300]),
+                const SizedBox(height: 10),
+                Text(_getEmptyMessage(status), style: TextStyle(color: Colors.grey[500])),
+              ],
+            ),
           );
         }
 
-        // Si sí hay datos, mostramos tu ListView normal
         return ListView.builder(
-          padding: const EdgeInsets.all(16),
+          physics: const BouncingScrollPhysics(), // 👈 Hace que el scroll se sienta premium
+          padding: const EdgeInsets.all(20),
           itemCount: filtered.length,
-          itemBuilder: (context, index) => _buildRequestCard(context, filtered[index]),
+          itemBuilder: (context, index) {
+            final service = filtered[index];
+            
+            // 👇 AHORA SÍ, USAMOS UN SWITCH PARA REPARTIR LAS TARJETAS CORRECTAS
+            switch (status) {
+              case JobStatus.open:
+                return ClientOpenJobCard(service: service);
+              case JobStatus.matched:
+                return ClientMatchedJobCard(service: service);
+              case JobStatus.completed:
+                return ClientCompletedJobCard(service: service);
+              default:
+                return const SizedBox();
+            }
+          },
         );
       },
-      loading: () => ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: 4, // Mostramos 4 tarjetas fantasma mientras carga
-        itemBuilder: (context, index) => const ServiceCardSkeleton(),
-      ),
+      loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, s) => Center(child: Text("Error: $e")),
     );
   }
 
-  Widget _buildRequestCard(BuildContext context, dynamic service) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const CircleAvatar(
-                  backgroundColor: Color(0xFFEEF2FF),
-                  child: Icon(Icons.air_outlined, color: Color(0xFF4F46E5)),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(service.title, 
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                      Text(service.categoryName ?? 'Servicio', 
-                        style: const TextStyle(color: Colors.grey, fontSize: 12)),
-                    ],
-                  ),
-                ),
-                ServiceStatusChip(status: service.status),
-              ],
-            ),
-            const SizedBox(height: 16),
-            const Text("Descripción del problema o tarea realizada...", 
-              style: TextStyle(color: Colors.black54, fontSize: 14)),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text("Worker asignado:", style: TextStyle(fontSize: 12, color: Colors.grey)),
-                TextButton(
-                  onPressed: () {}, 
-                  child: const Text("Ver Detalles", style: TextStyle(fontWeight: FontWeight.bold))
-                ),
-              ],
-            ),
-            // BOTONES DE ACCIÓN (Como en tu foto)
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () {},
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.red,
-                      side: const BorderSide(color: Colors.red),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))
-                    ),
-                    child: const Text("Cancelar"),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () {},
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF4F46E5),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))
-                    ),
-                    child: const Text("Contactar"),
-                  ),
-                ),
-              ],
-            )
-          ],
-        ),
-      ),
-    );
+  String _getEmptyMessage(JobStatus status) {
+    switch (status) {
+      case JobStatus.open: return "No hay trabajos publicados";
+      case JobStatus.matched: return "No tienes trabajos en curso";
+      case JobStatus.completed: return "Historial vacío";
+      default: return "No hay datos";
+    }
   }
 }

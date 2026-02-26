@@ -1,55 +1,88 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../models/service_request_model.dart';
-import '../models/job_model.dart'; // Importante para acceptPostulation
 
-final serviceRequestRemoteDataSourceProvider = Provider((ref) => ServiceRequestRemoteDataSource());
-
+// 1. Definimos la clase que conecta con Internet
 class ServiceRequestRemoteDataSource {
+  // Asegúrate de que este puerto sea el correcto (8000 si usas uvicorn por defecto)
   final String baseUrl = "http://127.0.0.1:8000/services"; 
 
-  // Worker se postula
-  Future<ServiceRequestModel> createRequest(ServiceRequestModel request, String token) async {
+  // ---------------------------------------------------------------------------
+  // CREAR UNA OFERTA (Worker)
+  // ---------------------------------------------------------------------------
+  Future<Map<String, dynamic>> createRequest(Map<String, dynamic> requestData, String token) async {
+    final url = Uri.parse('$baseUrl/service-requests');
+    
     final response = await http.post(
-      Uri.parse('$baseUrl/service-requests'),
+      url,
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/json; charset=UTF-8', // Importante para enviar tildes bien
         'Authorization': 'Bearer $token',
       },
-      body: json.encode(request.toJson()),
+      body: json.encode(requestData),
     );
+
     if (response.statusCode == 200 || response.statusCode == 201) {
-      return ServiceRequestModel.fromJson(json.decode(response.body));
+      // ✅ Usamos utf8.decode para leer la respuesta completa sin errores de caracteres
+      return json.decode(utf8.decode(response.bodyBytes));
     } else {
-      throw Exception('Error al postularse');
+      throw Exception('Error al crear postulación (${response.statusCode}): ${utf8.decode(response.bodyBytes)}');
     }
   }
 
-  // Cliente ve ofertas
-  Future<List<ServiceRequestModel>> getOffers(String serviceId, String token) async {
+  // ---------------------------------------------------------------------------
+  // OBTENER OFERTAS DE UN SERVICIO (Cliente)
+  // ---------------------------------------------------------------------------
+  Future<List<Map<String, dynamic>>> getOffers(String serviceId, String token) async {
+    final url = Uri.parse('$baseUrl/$serviceId/offers');
+
     final response = await http.get(
-      Uri.parse('$baseUrl/$serviceId/offers'),
-      headers: {'Authorization': 'Bearer $token'},
+      url,
+      headers: {
+        'Content-Type': 'application/json; charset=UTF-8',
+        'Authorization': 'Bearer $token',
+      },
     );
+
     if (response.statusCode == 200) {
-      final List<dynamic> jsonList = json.decode(response.body);
-      return jsonList.map((e) => ServiceRequestModel.fromJson(e)).toList();
+      // ✅ 1. Decodificamos los bytes para asegurar acentos y caracteres especiales
+      String body = utf8.decode(response.bodyBytes);
+      
+      // ✅ 2. Convertimos a Lista dinámica
+      final List<dynamic> decodedList = json.decode(body);
+      
+      // ✅ 3. Creamos una lista TIPIFICADA segura. 
+      // Esto asegura que cada elemento se trate como un Mapa real y no se pierda nada.
+      return List<Map<String, dynamic>>.from(decodedList);
     } else {
-      throw Exception('Error obteniendo ofertas');
+      throw Exception('Error al cargar ofertas (${response.statusCode}): ${utf8.decode(response.bodyBytes)}');
     }
   }
 
-  // Cliente acepta oferta -> Retorna un Job
-  Future<JobModel> acceptPostulation(String requestId, String token) async {
+  // ---------------------------------------------------------------------------
+  // ACEPTAR UNA OFERTA (Cliente)
+  // ---------------------------------------------------------------------------
+  Future<Map<String, dynamic>> acceptPostulation(String requestId, String token) async {
+    final url = Uri.parse('$baseUrl/accept-postulation/$requestId');
+
     final response = await http.post(
-      Uri.parse('$baseUrl/accept-postulation/$requestId'),
-      headers: {'Authorization': 'Bearer $token'},
+      url,
+      headers: {
+        'Content-Type': 'application/json; charset=UTF-8',
+        'Authorization': 'Bearer $token',
+      },
     );
+
     if (response.statusCode == 200) {
-      return JobModel.fromJson(json.decode(response.body));
+      // ✅ Decodificación segura
+      return json.decode(utf8.decode(response.bodyBytes));
     } else {
-      throw Exception('Error al aceptar postulación');
+      throw Exception('Error al aceptar postulación (${response.statusCode}): ${utf8.decode(response.bodyBytes)}');
     }
   }
 }
+
+// 2. Definimos el Provider para que el Repositorio lo encuentre
+final serviceRequestRemoteDataSourceProvider = Provider<ServiceRequestRemoteDataSource>((ref) {
+  return ServiceRequestRemoteDataSource();
+});
