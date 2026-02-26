@@ -7,6 +7,7 @@ import { CategoriesPage } from '../modules/services/pages/categoriesPage';
 import { ServicesPage } from '../modules/services/pages/ServicesPage';
 import { JobsPage } from '../modules/jobs/pages/JobsPage';
 import { ProfilePage } from '../modules/admin/pages/ProfilePage';
+import { ServiceDetail } from '../modules/services/pages/ServiceDetail';
 
 export const router = createBrowserRouter([
   // 1. Ruta Pública (Login)
@@ -33,6 +34,7 @@ export const router = createBrowserRouter([
         path: 'users',
         element: <UsersPage />,
       },
+
       // Redirigir cualquier ruta desconocida al dashboard
       {
         path: '*',
@@ -42,6 +44,15 @@ export const router = createBrowserRouter([
         path: 'services',
         element: <ServicesPage />,
       },
+      // 🟢 2. AGREGA LA RUTA DINÁMICA AQUÍ
+      // El ":id" es lo que permite que useService(id) funcione
+      { path: 'services/:id', element: <ServiceDetail /> }, 
+      
+      { path: 'categories', element: <CategoriesPage /> },
+      { path: 'jobs', element: <JobsPage /> },
+
+      // 🟡 3. EL COMODÍN SIEMPRE AL FINAL
+      { path: '*', element: <Navigate to="/" replace /> },
       {
         path: 'categories',
         element: <CategoriesPage />,
