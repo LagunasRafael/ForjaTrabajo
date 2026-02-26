@@ -93,6 +93,14 @@ def create_service_request(
 ):
     return service.create_service_request(db, request_data, worker_id=current_user.id)
 
+@router.get("/my-requests", response_model=List[schemas.Service])
+def read_my_requests(
+    db: Session = Depends(get_db),
+    current_user: auth_models.User = Depends(get_current_user)
+):
+    """Obtiene SOLO los servicios creados por el usuario logueado (Abiertos, Matched, etc.)"""
+    return service.get_my_services(db, user_id=str(current_user.id))
+
 # -----------------------------
 # FLUJO DE SELECCIÓN (CLIENTE)
 # -----------------------------
@@ -123,7 +131,7 @@ def accept_worker_postulation(
 def complete_job_status(
     job_id: str,
     db: Session = Depends(get_db),
-    current_user: auth_models.User = Depends(check_role([Role.WORKER, Role.ADMIN]))
+    current_user: auth_models.User = Depends(check_role([Role.CLIENT, Role.ADMIN]))
 ):
     """El trabajador marca como terminado"""
     return service.complete_job(db, job_id, current_user.id)

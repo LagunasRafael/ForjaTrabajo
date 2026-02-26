@@ -4,32 +4,26 @@ from uuid import UUID
 from fastapi import HTTPException, status
 from datetime import datetime
 from sqlalchemy import func
-from app.core.roles import Role # Importante para validar el Admin
+from app.core.roles import Role
 
 # -------------------------------------------------------------------------
 # CATEGORIES 
 # -------------------------------------------------------------------------
 
 def create_category(db: Session, category: schemas.CategoryCreate):
-    # 1. Buscamos si ya existe una categoría con ese nombre (activa o inactiva)
-    # Nota: Es recomendable usar .lower() si quieres evitar "Carpinteria" vs "carpinteria"
     existing_category = db.query(models.Category).filter(
         models.Category.name == category.name
     ).first()
 
     if existing_category:
         if existing_category.is_active:
-            # Si ya está activa, lanzamos el error de que ya existe
             raise HTTPException(status_code=400, detail="La categoría ya existe y está activa.")
-        
-        # 🚀 RE-ACTIVACIÓN: Si existe pero estaba oculta (is_active=False)
         existing_category.is_active = True
         existing_category.description = category.description
         db.commit()
         db.refresh(existing_category)
         return existing_category
 
-    # 2. Si realmente no existe en la base de datos, la creamos normal
     db_category = models.Category(**category.dict())
     db.add(db_category)
     db.commit()
@@ -63,13 +57,10 @@ def delete_category_hard(db: Session, category_id: str):
     category = db.query(models.Category).filter(
         models.Category.id == category_id
     ).first()
-
     if not category:
         raise HTTPException(status_code=404, detail="Categoría no encontrada")
-
     db.delete(category)
     db.commit()
-
     return {"message": "Categoría eliminada correctamente"}
 
 
@@ -78,16 +69,10 @@ def delete_category_hard(db: Session, category_id: str):
 # -------------------------------------------------------------------------
 
 def create_service(db: Session, service_data: schemas.ServiceCreate, client_id: UUID):
-    
-    # 🚨 NUEVA VALIDACIÓN ESTRICTA: Verificamos que la categoría sea real
-    # Buscamos en la tabla de categorías si ese ID existe
     category = db.query(models.Category).filter(models.Category.id == str(service_data.category_id)).first()
-    
     if not category:
-        # Si no existe (o mandaron el campo vacío/inventado), bloqueamos la creación
         raise HTTPException(status_code=400, detail="Error: El ID de categoría no existe o es inválido.")
 
-    # Si pasó la prueba de arriba, ahora sí lo guardamos
     db_service = models.Service(
         title=service_data.title,
         summary=service_data.summary,
@@ -107,11 +92,32 @@ def create_service(db: Session, service_data: schemas.ServiceCreate, client_id: 
     return db_service
 
 def get_services(db: Session, skip: int = 0, limit: int = 100):
+    """
+    PARA LA HOME: Devuelve SOLO los servicios que están 'OPEN' (disponibles).
+    """
     return (
         db.query(models.Service)
-        .filter(models.Service.is_active == True)
+        .filter(
+            models.Service.is_active == True,
+            models.Service.status == models.JobStatus.OPEN  # 🛡️ FILTRO CLAVE: Solo abiertos
+        )
         .offset(skip)
         .limit(limit)
+        .all()
+    )
+
+def get_my_services(db: Session, user_id: str):
+    """
+    🚀 NUEVO: Para la pestaña 'Mis Trabajos'.
+    Devuelve TODOS los servicios creados por mí, sin importar si están OPEN, MATCHED o COMPLETED.
+    """
+    return (
+        db.query(models.Service)
+        .filter(
+            models.Service.client_id == user_id,
+            models.Service.is_active == True
+        )
+        .order_by(models.Service.created_at.desc()) # Los más recientes primero
         .all()
     )
 
@@ -126,57 +132,27 @@ def get_services_by_category(db: Session, category_id: str):
         .all()
     )
 
-def update_service(
-    db: Session,
-    service_id: str,
-    data: schemas.ServiceUpdate,
-    user_id: str,
-    user_role: str
-):
-    service_entry = db.query(models.Service).filter(
-        models.Service.id == service_id
-    ).first()
-
+def update_service(db: Session, service_id: str, data: schemas.ServiceUpdate, user_id: str, user_role: str):
+    service_entry = db.query(models.Service).filter(models.Service.id == service_id).first()
     if not service_entry:
         raise HTTPException(status_code=404, detail="Servicio no encontrado")
 
-    # 🔐 permisos (solo dueño o admin)
     is_admin = user_role == Role.ADMIN
     is_owner = str(service_entry.client_id) == str(user_id)
 
     if not (is_admin or is_owner):
         raise HTTPException(status_code=403, detail="No tienes permiso")
 
-    # 🛡️ PROTECCIÓN DE MARKETPLACE
     if service_entry.status != models.JobStatus.OPEN:
-        raise HTTPException(
-            status_code=400,
-            detail="No puedes editar un servicio que ya fue tomado o finalizado"
-        )
+        raise HTTPException(status_code=400, detail="No puedes editar un servicio que ya fue tomado o finalizado")
 
-    # validar categoría si viene
     if data.category_id is not None:
-        category = db.query(models.Category).filter(
-            models.Category.id == str(data.category_id)
-        ).first()
-
+        category = db.query(models.Category).filter(models.Category.id == str(data.category_id)).first()
         if not category:
             raise HTTPException(status_code=400, detail="La categoría no existe")
-
         service_entry.category_id = str(data.category_id)
 
-    # actualización parcial
-    fields = [
-        "title",
-        "summary",
-        "description",
-        "base_price",
-        "latitude",
-        "longitude",
-        "exact_address",
-        "image_urls",
-    ]
-
+    fields = ["title", "summary", "description", "base_price", "latitude", "longitude", "exact_address", "image_urls"]
     for field in fields:
         value = getattr(data, field, None)
         if value is not None:
@@ -187,25 +163,19 @@ def update_service(
     return service_entry
 
 def cancel_service(db: Session, service_id: str, user_id: str, user_role: str):
-    """
-    MODIFICADO: Solo el dueño, el worker asignado o un Admin pueden cancelar.
-    """
     service_entry = db.query(models.Service).filter(models.Service.id == service_id).first()
-    
     if not service_entry:
         raise HTTPException(status_code=404, detail="Servicio no encontrado")
     
-    # 1. ¿Es Admin?
     is_admin = user_role == Role.ADMIN
-    # 2. ¿Es el Cliente dueño?
     is_owner = service_entry.client_id == str(user_id)
-    # 3. ¿Es el Worker asignado? (Solo si ya hay match)
     is_assigned_worker = False
+    
     if service_entry.status == models.JobStatus.MATCHED:
         active_job = db.query(models.Job).filter(
-            models.Job.client_id == service_entry.client_id, # Filtro por el cliente
+            models.Job.client_id == service_entry.client_id,
             models.Job.status == models.JobStatus.MATCHED
-        ).first() # Nota: esto es una simplificación, lo ideal es por request_id
+        ).first()
         if active_job and str(active_job.provider_id) == str(user_id):
             is_assigned_worker = True
 
@@ -218,23 +188,12 @@ def cancel_service(db: Session, service_id: str, user_id: str, user_role: str):
     return {"message": "Servicio cancelado correctamente", "status": "cancelled"}
 
 def delete_service(db: Session, service_id: str):
-    """
-    ELIMINAR SERVICIO: Solo el Admin puede ejecutar esto.
-    Realiza un borrado lógico para mantener integridad referencial.
-    """
-    service_entry = db.query(models.Service).filter(
-        models.Service.id == service_id
-    ).first()
-
+    service_entry = db.query(models.Service).filter(models.Service.id == service_id).first()
     if not service_entry:
         raise HTTPException(status_code=404, detail="Servicio no encontrado")
 
-    # Borrado lógico: lo hacemos invisible
     service_entry.is_active = False
-    
-    # Si tiene un Job asociado, también lo desactivamos
     if service_entry.status == models.JobStatus.MATCHED:
-        # Buscamos el job y lo cancelamos por seguridad
         job = db.query(models.Job).filter(
             models.Job.client_id == service_entry.client_id,
             models.Job.status == models.JobStatus.MATCHED
@@ -245,14 +204,26 @@ def delete_service(db: Session, service_id: str):
     db.commit()
     return {"message": "Servicio eliminado (desactivado) por el Administrador"}
 
+
 # -------------------------------------------------------------------------
 # SERVICE REQUESTS (OFERTAS)
 # -------------------------------------------------------------------------
 
 def create_service_request(db: Session, request_data: schemas.ServiceRequestCreate, worker_id: UUID):
+    # 🛡️ 1. VALIDACIÓN ANTISPAM: Verificar si ya existe postulación
+    existing_request = db.query(models.ServiceRequest).filter(
+        models.ServiceRequest.service_id == str(request_data.service_id),
+        models.ServiceRequest.worker_id == str(worker_id)
+    ).first()
+
+    if existing_request:
+        raise HTTPException(status_code=400, detail="Ya enviaste una propuesta a este trabajo.")
+
+    # 2. CREACIÓN NORMAL
     db_request = models.ServiceRequest(
         service_id=str(request_data.service_id),
         description=request_data.description,
+        proposed_price=request_data.proposed_price, 
         worker_id=str(worker_id),
         status="pending"
     )
@@ -266,10 +237,14 @@ def get_offers_by_service(db: Session, service_id: str, client_id: str):
     if not db_service:
         raise HTTPException(status_code=404, detail="Servicio no encontrado")
 
-    if str(db_service.client_id) != str(client_id):
-        raise HTTPException(status_code=403, detail="No tienes permiso")
+    if str(db_service.client_id) == str(client_id):
+        return db_service.requests
 
-    return db_service.requests
+    my_requests = [
+        req for req in db_service.requests 
+        if str(req.worker_id) == str(client_id)
+    ]
+    return my_requests
 
 
 # -------------------------------------------------------------------------
@@ -289,14 +264,17 @@ def accept_postulation(db: Session, request_id: str, current_user_id: str):
         raise HTTPException(status_code=400, detail="Servicio no disponible")
 
     try:
-        service_entry.status = models.JobStatus.MATCHED 
+        # 🚀 CAMBIO DE ESTADO CLAVE
+        service_entry.status = models.JobStatus.MATCHED  # Esto lo saca de la Home y lo mueve a En Proceso
+        
         postulation.status = "accepted"
+        
         new_job = models.Job(
             request_id=postulation.id,
             provider_id=postulation.worker_id,
             client_id=service_entry.client_id,
             status=models.JobStatus.MATCHED,
-            final_price=service_entry.base_price,
+            final_price=postulation.proposed_price if postulation.proposed_price else service_entry.base_price,
             started_at=datetime.utcnow()
         )
         db.add(new_job)
@@ -308,24 +286,51 @@ def accept_postulation(db: Session, request_id: str, current_user_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 def complete_job(db: Session, job_id: str, user_id: str):
-    job = db.query(models.Job).filter(models.Job.id == job_id).first()
-    if not job:
-        raise HTTPException(status_code=404, detail="No existe")
-    if job.provider_id != str(user_id):
-        raise HTTPException(status_code=403, detail="Solo el worker finaliza")
+    print(f"🔍 Intentando finalizar. ID recibido: {job_id} | Usuario solicitante: {user_id}")
 
+    # 1. BÚSQUEDA INTELIGENTE:
+    # Como Flutter manda el ID del Servicio, primero buscamos si hay un trabajo activo para ese servicio.
+    job = db.query(models.Job).join(models.ServiceRequest).filter(
+        models.ServiceRequest.service_id == job_id,
+        models.Job.status == models.JobStatus.MATCHED
+    ).first()
+
+    # Si no encontró por servicio, intentamos buscar directo por ID de Job (por si acaso)
+    if not job:
+        print("⚠️ No se encontró por ID de servicio, buscando por ID de Job...")
+        job = db.query(models.Job).filter(models.Job.id == job_id).first()
+
+    if not job:
+        print("❌ Error 404: No se encontró ningún trabajo activo.")
+        raise HTTPException(status_code=404, detail="No existe el trabajo activo")
+
+    # 2. VERIFICACIÓN DE PERMISOS (Aquí estaba tu error 403)
+    is_client = str(job.client_id) == str(user_id)
+    is_worker = str(job.provider_id) == str(user_id)
+
+    print(f"👤 Dueño del trabajo: {job.client_id}")
+    print(f"👷 Trabajador: {job.provider_id}")
+    print(f"✅ ¿Es Cliente?: {is_client} | ¿Es Worker?: {is_worker}")
+
+    # PERMITIR A AMBOS (Cliente O Trabajador)
+    if not (is_client or is_worker):
+        print("⛔ Error 403: Usuario no autorizado.")
+        raise HTTPException(status_code=403, detail="No tienes permiso (Solo Cliente o Worker)")
+
+    # 3. CAMBIAR ESTADO A COMPLETADO
     job.status = models.JobStatus.COMPLETED
     job.completed_at = datetime.utcnow()
-    job.request.service.status = models.JobStatus.COMPLETED
+    
+    # Sincronizamos el servicio padre para que la App lo mueva de pestaña
+    if job.request and job.request.service:
+        job.request.service.status = models.JobStatus.COMPLETED
+
     db.commit()
     db.refresh(job)
+    print("🎉 Trabajo finalizado con éxito.")
     return job
 
 def cancel_job(db: Session, job_id: str, user_id: str, user_role: str):
-    """
-    NUEVA: Cancela un Job activo. Sincroniza Service y Job a CANCELLED.
-    Permitido para: CLIENTE, WORKER asignado y ADMIN.
-    """
     job = db.query(models.Job).filter(models.Job.id == job_id).first()
     if not job:
         raise HTTPException(status_code=404, detail="Job no encontrado")
@@ -338,45 +343,43 @@ def cancel_job(db: Session, job_id: str, user_id: str, user_role: str):
         raise HTTPException(status_code=403, detail="No tienes permiso para cancelar este trabajo")
 
     job.status = models.JobStatus.CANCELLED
-    # Sincronizamos el servicio padre a Cancelado también
     job.request.service.status = models.JobStatus.CANCELLED
     
     db.commit()
     db.refresh(job)
     return job
 
-# ==========================================
-# Busquedas y top categorias
-# ==========================================
+# -------------------------------------------------------------------------
+# Busquedas y Stats
+# -------------------------------------------------------------------------
+
+from sqlalchemy import func, and_
+
 def get_top_categories(db: Session, limit: int = 5):
-    """
-    Busca todas las categorías, las cruza con los servicios,
-    cuenta cuántos servicios tiene cada una y las ordena de mayor a menor.
-    """
-    top_categories = (
+    return (
         db.query(models.Category)
-        .outerjoin(models.Service, models.Category.id == models.Service.category_id)
+        .outerjoin(
+            models.Service,
+            and_(
+                models.Category.id == models.Service.category_id,
+                models.Service.is_active == True
+            )
+        )
         .group_by(models.Category.id)
         .order_by(func.count(models.Service.id).desc())
         .limit(limit)
         .all()
     )
-    return top_categories
 
 def search_services(db: Session, search_query: str):
-    """
-    Busca la palabra clave tanto en el título como en la descripción del servicio.
-    Usa 'ilike' para que no importe si escriben con mayúsculas o minúsculas.
-    """
-    # Los % son comodines de SQL para decir "que contenga esta palabra en cualquier parte"
     search_term = f"%{search_query}%" 
-    
-    services = (
+    return (
         db.query(models.Service)
         .filter(
             (models.Service.title.ilike(search_term)) | 
             (models.Service.description.ilike(search_term))
         )
+        # Solo buscamos en los abiertos para que no salgan trabajos privados
+        .filter(models.Service.status == models.JobStatus.OPEN) 
         .all()
     )
-    return services

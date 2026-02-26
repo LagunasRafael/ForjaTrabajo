@@ -24,7 +24,7 @@ app = FastAPI(
 # 🔥 CORS - Desarrollo (Flutter Web cambia puerto dinámicamente)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # En desarrollo
+    allow_origins=["*"],  # En producción cambia "*" por tu URL de Flutter
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
