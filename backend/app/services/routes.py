@@ -86,8 +86,13 @@ async def create_service(
     return new_service
 
 @router.get("/", response_model=List[schemas.Service])
-def list_services(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    return service.get_services(db, skip=skip, limit=limit)
+def list_services(
+    skip: int = 0, 
+    limit: int = 100, 
+    include_inactive: bool = False, # 👈 Nuevo parámetro opcional
+    db: Session = Depends(get_db)
+):
+    return service.get_services(db, skip=skip, limit=limit, include_inactive=include_inactive)
 
 @router.get("/category/{category_id}", response_model=List[schemas.Service])
 def services_by_category(category_id: str, db: Session = Depends(get_db)):
@@ -221,3 +226,22 @@ def search_services_route(
 ):
     """Busca servicios por título o descripción."""
     return service.search_services(db, query)
+
+@router.patch("/{service_id}/active", response_model=schemas.Service)
+def toggle_service_visibility(
+    service_id: str,
+    payload: schemas.ServiceActiveUpdate,
+    db: Session = Depends(get_db),
+    current_user: auth_models.User = Depends(check_role([Role.ADMIN]))
+):
+    """Permite al administrador ocultar o mostrar un servicio sin borrarlo"""
+    db_service = service.get_service_by_id(db, service_id)
+    if not db_service:
+        raise HTTPException(status_code=404, detail="Servicio no encontrado")
+    
+    # Actualiza el estado
+    db_service.is_active = payload.is_active
+    db.commit()
+    db.refresh(db_service)
+    
+    return db_service
