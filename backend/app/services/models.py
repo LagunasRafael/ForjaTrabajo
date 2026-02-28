@@ -94,9 +94,16 @@ class Service(Base):
             return self.owner.full_name
         return "Usuario Cliente"
 
+    @property
+    def author_image_url(self):
+        """Devuelve la foto de perfil del dueño del servicio"""
+        if self.owner and hasattr(self.owner, 'profile_picture_url') and self.owner.profile_picture_url:
+            return self.owner.profile_picture_url
+        return None
+
 
 # -----------------------------
-# SERVICE REQUEST (POSTULACIÓN DEL WORKER)
+# SERVICE REQUEST (POSTULACIÓN DEL WORKER)  
 # -----------------------------
 
 class ServiceRequest(Base):
@@ -128,6 +135,15 @@ class ServiceRequest(Base):
         if self.worker and self.worker.full_name:
             return self.worker.full_name
         return "Trabajador Interesado"
+
+    @property
+    def author_image_url(self):
+        """Devuelve la URL de la foto de perfil del trabajador"""
+        # (Nota: Asumo que en tu modelo User la foto se llama 'profile_picture_url'. 
+        # Si se llama distinto, cámbialo aquí)
+        if self.worker and self.worker.profile_picture_url: 
+            return self.worker.profile_picture_url
+        return None
 
 
 # -----------------------------

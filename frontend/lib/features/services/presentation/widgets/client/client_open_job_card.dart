@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja_trabajo/features/services/domain/entities/service_entity.dart';
-import '../screens/client/offers_received_screen.dart'; // Para navegar al ver postulados
+import 'package:forja_trabajo/features/services/presentation/screens/client/offers_received_screen.dart';
+
 
 class ClientOpenJobCard extends StatelessWidget {
   final ServiceEntity service;

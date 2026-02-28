@@ -17,6 +17,7 @@ class ServiceModel extends ServiceEntity {
     required super.isActive,
     required super.createdAt,
     super.authorName,
+    super.profilePictureUrl, // 👈 NUEVO: Pasa el dato al padre
   });
 
   factory ServiceModel.fromJson(Map<String, dynamic> json) {
@@ -59,6 +60,7 @@ class ServiceModel extends ServiceEntity {
           ? DateTime.parse(json['created_at'].toString()) 
           : DateTime.now(),
       authorName: json['author_name']?.toString() ?? "Usuario Cliente",
+      profilePictureUrl: json['author_image_url']?.toString(), // 👈 NUEVO: Lee del JSON de FastAPI
     );
   }
 
@@ -96,6 +98,7 @@ class ServiceModel extends ServiceEntity {
       isActive: entity.isActive,
       createdAt: entity.createdAt,
       authorName: entity.authorName,
+      profilePictureUrl: entity.profilePictureUrl,
     );
   }
 
@@ -116,6 +119,7 @@ class ServiceModel extends ServiceEntity {
       isActive: isActive,
       createdAt: createdAt,
       authorName: authorName,
+      profilePictureUrl: profilePictureUrl,
     );
   }
 }

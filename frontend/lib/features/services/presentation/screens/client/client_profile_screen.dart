@@ -7,7 +7,6 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:forja_trabajo/features/auth/presentation/widgets/profile_shared_widgets.dart';
 import 'package:forja_trabajo/features/services/presentation/screens/client/edit_profile_screen.dart';
 import 'package:forja_trabajo/features/profile/presentation/settings_screen.dart';
-import 'package:forja_trabajo/features/profile/presentation/settings_screen.dart';
 
 class ClientProfileScreen extends ConsumerWidget {
   const ClientProfileScreen({super.key});

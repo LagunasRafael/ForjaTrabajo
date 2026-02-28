@@ -29,10 +29,18 @@ class AcceptOfferController extends StateNotifier<AsyncValue<void>> {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token') ?? '';
 
+      if (token.isEmpty) throw Exception("Token no encontrado");
+
+      // Llamada al repositorio
       await repository.acceptPostulation(requestId, token);
+      
       state = const AsyncValue.data(null);
       return true;
     } catch (e, st) {
+      // 👇 ESTO TE DIRÁ EL ERROR REAL EN LA CONSOLA
+      print("🚨 ERROR EN ACCEPT_WORKER: $e");
+      print("📌 STACKTRACE: $st");
+      
       state = AsyncValue.error(e, st);
       return false;
     }

@@ -61,15 +61,34 @@ class _ServiceDetailScreenState extends ConsumerState<ServiceDetailScreen> {
         );
 
         return Scaffold(
-          backgroundColor: Colors.white,
-          body: ServiceDetailBody(
-            service: _currentService,
-            categoryName: displayCat,
-            authorName: _isOwner ? "${widget.currentUser.fullName} (Tú)" : (_currentService.authorName ?? "Cliente"),
-            isOwner: _isOwner,
-          ),
-          bottomNavigationBar: _buildBottomAction(hasApplied),
-        );
+            backgroundColor: Colors.white,
+            appBar: AppBar(
+              backgroundColor: Colors.white,
+              elevation: 0,
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.black),
+                onPressed: () => Navigator.pop(context),
+              ),
+              title: const Text(
+                "Detalles del Servicio", 
+                style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 18)
+              ),
+              centerTitle: true,
+            ),
+            body: ServiceDetailBody(
+              service: _currentService,
+              categoryName: displayCat,
+              authorName: _isOwner ? "${widget.currentUser.fullName} (Tú)" : (_currentService.authorName ?? "Cliente"),
+              isOwner: _isOwner,
+              
+              // 👇 AQUÍ ENVIAMOS LA IMAGEN. Si es el dueño usa su propia foto, si no, usa la que viene en el servicio
+              authorImageUrl: _isOwner 
+      ? widget.currentUser.profilePictureUrl 
+      : _currentService.profilePictureUrl,
+              
+            ),
+            bottomNavigationBar: _buildBottomAction(hasApplied),
+          );
       },
     );
   }
@@ -86,7 +105,7 @@ class _ServiceDetailScreenState extends ConsumerState<ServiceDetailScreen> {
           ? ElevatedButton.icon(onPressed: null, icon: const Icon(Icons.check_circle, color: Colors.white), 
               label: const Text("Ya te has postulado", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
               style: _btnStyle(Colors.grey))
-          : ElevatedButton(onPressed: () => showWorkerApplyModal(context, ref, _currentService), // 👈 Llamada al Modal Externo
+          : ElevatedButton(onPressed: () => showWorkerApplyModal(context, ref, _currentService), 
               style: _btnStyle(const Color(0xFF6200EE)), 
               child: const Text("Postularme al Trabajo", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold))),
       );

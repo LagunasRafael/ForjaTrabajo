@@ -7,10 +7,11 @@ class ServiceRequestEntity extends Equatable {
   final String description;
   final String status;
   final DateTime createdAt;
-
-  // 👇 AGREGA ESTOS DOS CAMPOS
   final String? workerName;     
   final double? proposedPrice;  
+  
+  // 👇 Usamos el nombre alineado con tu schema y el resto de tu app
+  final String? authorImageUrl;
 
   const ServiceRequestEntity({
     required this.id,
@@ -19,12 +20,13 @@ class ServiceRequestEntity extends Equatable {
     required this.description,
     required this.status,
     required this.createdAt,
-    this.workerName,      // <--- Aquí
-    this.proposedPrice,   // <--- Aquí
+    this.workerName,      
+    this.proposedPrice,   
+    this.authorImageUrl, // <--- Aquí
   });
 
   @override
   List<Object?> get props => [
-    id, serviceId, workerId, description, status, createdAt, workerName, proposedPrice
+    id, serviceId, workerId, description, status, createdAt, workerName, proposedPrice, authorImageUrl
   ];
 }

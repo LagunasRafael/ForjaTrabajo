@@ -5,7 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 // 1. Definimos la clase que conecta con Internet
 class ServiceRequestRemoteDataSource {
   // Asegúrate de que este puerto sea el correcto (8000 si usas uvicorn por defecto)
-  final String baseUrl = "http://127.0.0.1:8000/services"; 
+  //final String baseUrl = "http://127.0.0.1:8000/services"; 
+  final String baseUrl = "http://10.0.2.2:8000/services";
 
   // ---------------------------------------------------------------------------
   // CREAR UNA OFERTA (Worker)

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // 👈 IMPORTANTE PARA EL FORMATEADOR
 import 'package:geolocator/geolocator.dart';
 
 class Step2Location extends StatefulWidget {
@@ -44,17 +45,15 @@ class _Step2LocationState extends State<Step2Location> {
         throw 'Los permisos están denegados permanentemente.';
       }
 
-      // Obtenemos la posición actual
       Position position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high
       );
 
-      // Enviamos las coordenadas al padre (al Stepper)
       widget.onLocationCaptured(position.latitude, position.longitude);
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("📍 Ubicación capturada con éxito")),
+          const SnackBar(content: Text("📍 Ubicación capturada con éxito"), backgroundColor: Color(0xFF10B981)),
         );
       }
     } catch (e) {
@@ -90,11 +89,11 @@ class _Step2LocationState extends State<Step2Location> {
               decoration: BoxDecoration(
                 color: const Color(0xFFE5E7EB),
                 borderRadius: BorderRadius.circular(20),
-                image: const DecorationImage(
-                  image: NetworkImage('https://i.stack.imgur.com/vhoa0.jpg'), 
-                  fit: BoxFit.cover, 
-                  opacity: 0.4
-                ),
+                  image: const DecorationImage(
+                    image: NetworkImage('https://placehold.co/600x400/e5e7eb/a3a8b8?text=Mapa+Interactivo'), 
+                    fit: BoxFit.cover, 
+                    opacity: 0.4
+                  ),
                 border: Border.all(
                   color: hasLocation ? const Color(0xFF10B981) : Colors.grey.shade300,
                   width: hasLocation ? 2 : 1,
@@ -166,7 +165,6 @@ class _Step2LocationState extends State<Step2Location> {
     );
   }
 
-  // WIDGETS DE APOYO PARA MANTENER EL CÓDIGO LIMPIO
   Widget _buildTextField(TextEditingController ctrl, String hint, IconData icon) {
     return TextFormField(
       controller: ctrl,
@@ -186,12 +184,17 @@ class _Step2LocationState extends State<Step2Location> {
   Widget _buildPriceField(TextEditingController ctrl) {
     return TextFormField(
       controller: ctrl,
-      keyboardType: TextInputType.number,
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      // 👇 AQUÍ CONECTAMOS EL FORMATEADOR MÁGICO
+      inputFormatters: [
+        FilteringTextInputFormatter.digitsOnly,
+        CurrencyInputFormatter(),
+      ],
       style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: Color(0xFF10B981)),
       decoration: InputDecoration(
         prefixText: "\$ ",
         prefixStyle: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: Color(0xFF10B981)),
-        hintText: "0.00",
+        hintText: "00.00",
         filled: true,
         fillColor: Colors.white,
         border: OutlineInputBorder(
@@ -221,6 +224,37 @@ class _Step2LocationState extends State<Step2Location> {
           ]
         ),
       ),
+    );
+  }
+}
+
+// 👇 ESTA ES LA CLASE QUE HACE EL TRUCO DEL PRECIO
+class CurrencyInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    // Si borramos todo, lo dejamos en blanco
+    if (newValue.text.isEmpty) {
+      return newValue.copyWith(text: '');
+    }
+
+    // Quitamos cualquier cosa que no sea número
+    String digitsOnly = newValue.text.replaceAll(RegExp(r'[^\d]'), '');
+    
+    // Si después de limpiar no hay nada, devolvemos 00.00
+    if (digitsOnly.isEmpty) {
+      return const TextEditingValue(text: '00.00', selection: TextSelection.collapsed(offset: 4));
+    }
+
+    // Convertimos los dígitos a decimal dividiendo entre 100
+    double value = double.parse(digitsOnly) / 100;
+    
+    // Lo formateamos a 2 decimales (ej. 12.50)
+    String formatted = value.toStringAsFixed(2);
+
+    // Devolvemos el texto con el cursor siempre al final
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
     );
   }
 }

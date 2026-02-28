@@ -6,9 +6,9 @@ import 'package:forja_trabajo/features/services/presentation/providers/service_l
 // Providers
 import 'package:forja_trabajo/features/services/presentation/providers/nav_providers.dart';
 // 👇 IMPORTS CORREGIDOS: Copia y pega estas 3 líneas
-import 'package:forja_trabajo/features/services/presentation/widgets/client_open_job_card.dart';
-import 'package:forja_trabajo/features/services/presentation/widgets/client_matched_job_card.dart';
-import 'package:forja_trabajo/features/services/presentation/widgets/client_completed_job_card.dart';
+import 'package:forja_trabajo/features/services/presentation/widgets/client/client_open_job_card.dart';
+import 'package:forja_trabajo/features/services/presentation/widgets/client/client_matched_job_card.dart';
+import 'package:forja_trabajo/features/services/presentation/widgets/client/client_completed_job_card.dart';
 
 class MyRequestsScreen extends ConsumerStatefulWidget {
   const MyRequestsScreen({super.key});

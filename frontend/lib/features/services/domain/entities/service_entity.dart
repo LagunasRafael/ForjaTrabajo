@@ -16,6 +16,7 @@ class ServiceEntity {
   final bool isActive;
   final DateTime createdAt;
   final String? authorName;
+  final String? profilePictureUrl;
 
   ServiceEntity({
     required this.id,
@@ -33,5 +34,6 @@ class ServiceEntity {
     required this.isActive,
     required this.createdAt,
     this.authorName,
+    this.profilePictureUrl,
   });
 }

@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+from sqlalchemy.orm import joinedload  # 👈 AÑADE ESTO ARRIBA
 from app.services import models, schemas
 from uuid import UUID
 from fastapi import HTTPException, status
@@ -98,7 +99,7 @@ def get_services(
     include_inactive: bool = False
 ):
     """Devuelve servicios para el marketplace con control de visibilidad."""
-    query = db.query(models.Service)
+    query = db.query(models.Service).options(joinedload(models.Service.owner))
 
     # Solo activos si no se pide incluir inactivos
     if not include_inactive:
@@ -116,11 +117,12 @@ def get_services(
     )
     
 def get_service_by_id(db: Session, service_id: str):
-    """
-    🚀 SOLUCIÓN AL ERROR: Esta función faltaba y es necesaria 
-    para ver los detalles de un servicio específico.
-    """
-    return db.query(models.Service).filter(models.Service.id == service_id).first()
+    return (
+        db.query(models.Service)
+        .options(joinedload(models.Service.owner)) # 👈 AÑADE ESTA LÍNEA AQUÍ
+        .filter(models.Service.id == service_id)
+        .first()
+    )
 
 def get_my_services(db: Session, user_id: str):
     """Devuelve todos los servicios creados por el usuario logueado."""
@@ -266,21 +268,26 @@ def get_offers_by_service(db: Session, service_id: str, client_id: str):
 # -------------------------------------------------------------------------
 
 def accept_postulation(db: Session, request_id: str, current_user_id: str):
+    # 1. Buscar la postulación
     postulation = db.query(models.ServiceRequest).filter(models.ServiceRequest.id == request_id).first()
     if not postulation:
-        raise HTTPException(status_code=404, detail="Postulación no encontrada")
+        raise HTTPException(status_code=404, detail="La postulación no existe")
 
     service_entry = postulation.service
-    if service_entry.client_id != str(current_user_id):
-        raise HTTPException(status_code=403, detail="Solo el dueño elige")
+    
+    # 2. Castear IDs a string para comparar sin errores de tipo UUID
+    if str(service_entry.client_id) != str(current_user_id):
+        raise HTTPException(status_code=403, detail="No tienes permiso")
 
     if service_entry.status != models.JobStatus.OPEN:
         raise HTTPException(status_code=400, detail="Servicio no disponible")
 
     try:
+        # 3. Actualizar estados
         service_entry.status = models.JobStatus.MATCHED
         postulation.status = "accepted"
         
+        # 4. Crear el Job
         new_job = models.Job(
             request_id=postulation.id,
             provider_id=postulation.worker_id,
@@ -289,15 +296,13 @@ def accept_postulation(db: Session, request_id: str, current_user_id: str):
             final_price=postulation.proposed_price if postulation.proposed_price else service_entry.base_price,
             started_at=datetime.utcnow()
         )
+        
         db.add(new_job)
         db.commit()
-        # Ya no hacemos db.refresh ni return new_job para evitar problemas
-        return True
         
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
-        
+        # 5. RETORNAR DICCIONARIO (JSON) PARA FLUTTER
+        return {"status": "success", "message": "Aceptado correctamente"}
+
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))

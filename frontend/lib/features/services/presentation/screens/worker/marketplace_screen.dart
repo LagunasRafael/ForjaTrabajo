@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja_trabajo/features/services/presentation/providers/category_provider.dart';
 import 'package:forja_trabajo/features/services/presentation/providers/service_list_provider.dart';
-import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart'; 
+import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart';
+import 'package:forja_trabajo/shared/widgets/service_card_skeleton.dart'; 
 import '../../widgets/service_card.dart';
-import 'package:forja_trabajo/shared/widgets/service_card_skeleton.dart';
 
 class MarketplaceScreen extends ConsumerWidget {
   const MarketplaceScreen({super.key});

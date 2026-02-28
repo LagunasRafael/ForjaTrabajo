@@ -10,9 +10,9 @@ class ServiceRequestModel extends ServiceRequestEntity {
     required super.createdAt,
     super.workerName,
     super.proposedPrice,
+    super.authorImageUrl, // <--- Aquí
   });
 
-  // ✅ Actualiza el fromEntity
   factory ServiceRequestModel.fromEntity(ServiceRequestEntity entity) {
     return ServiceRequestModel(
       id: entity.id,
@@ -23,6 +23,7 @@ class ServiceRequestModel extends ServiceRequestEntity {
       createdAt: entity.createdAt,
       workerName: entity.workerName,
       proposedPrice: entity.proposedPrice,
+      authorImageUrl: entity.authorImageUrl, // <--- Aquí
     );
   }
 
@@ -36,12 +37,13 @@ class ServiceRequestModel extends ServiceRequestEntity {
       createdAt: json['created_at'] != null 
           ? DateTime.parse(json['created_at']) 
           : DateTime.now(),
-      // 👇 LEEMOS LOS NUEVOS CAMPOS DEL JSON
       workerName: json['worker_name']?.toString() ?? "Trabajador",
       proposedPrice: json['proposed_price'] != null 
           ? double.tryParse(json['proposed_price'].toString()) 
           : null,
-
+      
+      // 👇 Usamos la llave exacta de tu backend
+      authorImageUrl: json['author_image_url']?.toString(), 
     );
   }
 
