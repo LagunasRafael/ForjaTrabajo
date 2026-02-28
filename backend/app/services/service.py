@@ -1,9 +1,10 @@
 from sqlalchemy.orm import Session
+from sqlalchemy.orm import joinedload  # 👈 AÑADE ESTO ARRIBA
 from app.services import models, schemas
 from uuid import UUID
 from fastapi import HTTPException, status
 from datetime import datetime
-from sqlalchemy import func
+from sqlalchemy import func, and_
 from app.core.roles import Role
 
 # -------------------------------------------------------------------------
@@ -91,25 +92,47 @@ def create_service(db: Session, service_data: schemas.ServiceCreate, client_id: 
     db.refresh(db_service)
     return db_service
 
-def get_services(db: Session, skip: int = 0, limit: int = 100, include_inactive: bool = False):
-    query = db.query(models.Service)
-    # Si NO es admin/no pide las inactivas, filtramos solo las activas
+def get_services(
+    db: Session,
+    skip: int = 0,
+    limit: int = 100,
+    include_inactive: bool = False
+):
+    """Devuelve servicios para el marketplace con control de visibilidad."""
+    query = db.query(models.Service).options(joinedload(models.Service.owner))
+
+    # Solo activos si no se pide incluir inactivos
     if not include_inactive:
         query = query.filter(models.Service.is_active == True)
-    return query.offset(skip).limit(limit).all()
+
+    # Marketplace solo muestra abiertos
+    query = query.filter(models.Service.status == models.JobStatus.OPEN)
+
+    return (
+        query
+        .order_by(models.Service.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+    
+def get_service_by_id(db: Session, service_id: str):
+    return (
+        db.query(models.Service)
+        .options(joinedload(models.Service.owner)) # 👈 AÑADE ESTA LÍNEA AQUÍ
+        .filter(models.Service.id == service_id)
+        .first()
+    )
 
 def get_my_services(db: Session, user_id: str):
-    """
-    🚀 NUEVO: Para la pestaña 'Mis Trabajos'.
-    Devuelve TODOS los servicios creados por mí, sin importar si están OPEN, MATCHED o COMPLETED.
-    """
+    """Devuelve todos los servicios creados por el usuario logueado."""
     return (
         db.query(models.Service)
         .filter(
             models.Service.client_id == user_id,
             models.Service.is_active == True
         )
-        .order_by(models.Service.created_at.desc()) # Los más recientes primero
+        .order_by(models.Service.created_at.desc())
         .all()
     )
 
@@ -123,9 +146,6 @@ def get_services_by_category(db: Session, category_id: str):
         )
         .all()
     )
-
-def get_service_by_id(db: Session, service_id: str):
-    return db.query(models.Service).filter(models.Service.id == service_id).first()    
 
 def update_service(db: Session, service_id: str, data: schemas.ServiceUpdate, user_id: str, user_role: str):
     service_entry = db.query(models.Service).filter(models.Service.id == service_id).first()
@@ -208,7 +228,6 @@ def delete_service(db: Session, service_id: str):
 # -------------------------------------------------------------------------
 
 def create_service_request(db: Session, request_data: schemas.ServiceRequestCreate, worker_id: UUID):
-    # 🛡️ 1. VALIDACIÓN ANTISPAM: Verificar si ya existe postulación
     existing_request = db.query(models.ServiceRequest).filter(
         models.ServiceRequest.service_id == str(request_data.service_id),
         models.ServiceRequest.worker_id == str(worker_id)
@@ -217,7 +236,6 @@ def create_service_request(db: Session, request_data: schemas.ServiceRequestCrea
     if existing_request:
         raise HTTPException(status_code=400, detail="Ya enviaste una propuesta a este trabajo.")
 
-    # 2. CREACIÓN NORMAL
     db_request = models.ServiceRequest(
         service_id=str(request_data.service_id),
         description=request_data.description,
@@ -250,23 +268,26 @@ def get_offers_by_service(db: Session, service_id: str, client_id: str):
 # -------------------------------------------------------------------------
 
 def accept_postulation(db: Session, request_id: str, current_user_id: str):
+    # 1. Buscar la postulación
     postulation = db.query(models.ServiceRequest).filter(models.ServiceRequest.id == request_id).first()
     if not postulation:
-        raise HTTPException(status_code=404, detail="Postulación no encontrada")
+        raise HTTPException(status_code=404, detail="La postulación no existe")
 
     service_entry = postulation.service
-    if service_entry.client_id != str(current_user_id):
-        raise HTTPException(status_code=403, detail="Solo el dueño elige")
+    
+    # 2. Castear IDs a string para comparar sin errores de tipo UUID
+    if str(service_entry.client_id) != str(current_user_id):
+        raise HTTPException(status_code=403, detail="No tienes permiso")
 
     if service_entry.status != models.JobStatus.OPEN:
         raise HTTPException(status_code=400, detail="Servicio no disponible")
 
     try:
-        # 🚀 CAMBIO DE ESTADO CLAVE
-        service_entry.status = models.JobStatus.MATCHED  # Esto lo saca de la Home y lo mueve a En Proceso
-        
+        # 3. Actualizar estados
+        service_entry.status = models.JobStatus.MATCHED
         postulation.status = "accepted"
         
+        # 4. Crear el Job
         new_job = models.Job(
             request_id=postulation.id,
             provider_id=postulation.worker_id,
@@ -275,57 +296,43 @@ def accept_postulation(db: Session, request_id: str, current_user_id: str):
             final_price=postulation.proposed_price if postulation.proposed_price else service_entry.base_price,
             started_at=datetime.utcnow()
         )
+        
         db.add(new_job)
         db.commit()
-        db.refresh(new_job)
-        return new_job
+        
+        # 5. RETORNAR DICCIONARIO (JSON) PARA FLUTTER
+        return {"status": "success", "message": "Aceptado correctamente"}
+
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
 
 def complete_job(db: Session, job_id: str, user_id: str):
-    print(f"🔍 Intentando finalizar. ID recibido: {job_id} | Usuario solicitante: {user_id}")
-
-    # 1. BÚSQUEDA INTELIGENTE:
-    # Como Flutter manda el ID del Servicio, primero buscamos si hay un trabajo activo para ese servicio.
     job = db.query(models.Job).join(models.ServiceRequest).filter(
         models.ServiceRequest.service_id == job_id,
         models.Job.status == models.JobStatus.MATCHED
     ).first()
 
-    # Si no encontró por servicio, intentamos buscar directo por ID de Job (por si acaso)
     if not job:
-        print("⚠️ No se encontró por ID de servicio, buscando por ID de Job...")
         job = db.query(models.Job).filter(models.Job.id == job_id).first()
 
     if not job:
-        print("❌ Error 404: No se encontró ningún trabajo activo.")
         raise HTTPException(status_code=404, detail="No existe el trabajo activo")
 
-    # 2. VERIFICACIÓN DE PERMISOS (Aquí estaba tu error 403)
     is_client = str(job.client_id) == str(user_id)
     is_worker = str(job.provider_id) == str(user_id)
 
-    print(f"👤 Dueño del trabajo: {job.client_id}")
-    print(f"👷 Trabajador: {job.provider_id}")
-    print(f"✅ ¿Es Cliente?: {is_client} | ¿Es Worker?: {is_worker}")
-
-    # PERMITIR A AMBOS (Cliente O Trabajador)
     if not (is_client or is_worker):
-        print("⛔ Error 403: Usuario no autorizado.")
-        raise HTTPException(status_code=403, detail="No tienes permiso (Solo Cliente o Worker)")
+        raise HTTPException(status_code=403, detail="No tienes permiso")
 
-    # 3. CAMBIAR ESTADO A COMPLETADO
     job.status = models.JobStatus.COMPLETED
     job.completed_at = datetime.utcnow()
     
-    # Sincronizamos el servicio padre para que la App lo mueva de pestaña
     if job.request and job.request.service:
         job.request.service.status = models.JobStatus.COMPLETED
 
     db.commit()
     db.refresh(job)
-    print("🎉 Trabajo finalizado con éxito.")
     return job
 
 def cancel_job(db: Session, job_id: str, user_id: str, user_role: str):
@@ -338,10 +345,11 @@ def cancel_job(db: Session, job_id: str, user_id: str, user_role: str):
     is_worker = str(job.provider_id) == str(user_id)
 
     if not (is_admin or is_client or is_worker):
-        raise HTTPException(status_code=403, detail="No tienes permiso para cancelar este trabajo")
+        raise HTTPException(status_code=403, detail="No tienes permiso")
 
     job.status = models.JobStatus.CANCELLED
-    job.request.service.status = models.JobStatus.CANCELLED
+    if job.request and job.request.service:
+        job.request.service.status = models.JobStatus.CANCELLED
     
     db.commit()
     db.refresh(job)
@@ -350,8 +358,6 @@ def cancel_job(db: Session, job_id: str, user_id: str, user_role: str):
 # -------------------------------------------------------------------------
 # Busquedas y Stats
 # -------------------------------------------------------------------------
-
-from sqlalchemy import func, and_
 
 def get_top_categories(db: Session, limit: int = 5):
     return (
@@ -377,7 +383,6 @@ def search_services(db: Session, search_query: str):
             (models.Service.title.ilike(search_term)) | 
             (models.Service.description.ilike(search_term))
         )
-        # Solo buscamos en los abiertos para que no salgan trabajos privados
         .filter(models.Service.status == models.JobStatus.OPEN) 
         .all()
     )

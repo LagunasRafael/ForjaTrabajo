@@ -1,16 +1,47 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../domain/entities/service_request_entity.dart';
-import '../../data/repositories/service_repository_impl.dart';
-// Aquí importarías: PostulateToServiceUseCase, GetServiceOffersUseCase
+import 'package:dio/dio.dart';
+import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart';
+import '../../../../core/network/api_client.dart'; // 👈 Asegúrate que la ruta sea correcta
+import 'service_offers_provider.dart'; 
 
-// Provider para ver las ofertas de un servicio (como Cliente)
-final serviceOffersProvider = FutureProvider.family<List<ServiceRequestEntity>, String>((ref, serviceId) async {
-  final repository = ref.watch(serviceRepositoryProvider);
-  // Asumimos que tienes el token guardado en algún lado, por ahora hardcodeado o null
-  // Lo ideal es leerlo de un authProvider
-  const fakeToken = "token_de_prueba"; 
-  return await repository.getOffers(serviceId, fakeToken);
+final serviceRequestProvider = StateNotifierProvider<ServiceRequestController, AsyncValue<void>>((ref) {
+  // Obtenemos el cliente de red global
+  final apiClient = ref.watch(apiClientProvider); 
+  return ServiceRequestController(ref, apiClient);
 });
 
-// Nota: Para CREAR una postulación (POST), generalmente usamos un StateNotifier, 
-// pero eso lo veremos cuando hagamos la pantalla de postulación.
+class ServiceRequestController extends StateNotifier<AsyncValue<void>> {
+  final Ref ref;
+  final ApiClient apiClient;
+
+  ServiceRequestController(this.ref, this.apiClient) : super(const AsyncValue.data(null));
+
+  Future<bool> applyToService(String serviceId, String description, double price) async {
+    state = const AsyncValue.loading();
+    try {
+      // 🚀 USAMOS DIO PARA QUE SEA COMPATIBLE CON TU BACKEND
+      await apiClient.dio.post(
+        '/services/service-requests', 
+        data: {
+          "service_id": serviceId,
+          "description": description,
+          "proposed_price": price 
+        },
+      );
+
+      // 🔥 Refrescamos la lista para que el cliente vea que ya te postulaste
+      ref.invalidate(offersListProvider(serviceId));
+      
+      state = const AsyncValue.data(null);
+      return true;
+      
+    } on DioException catch (e) {
+      final errorMsg = e.response?.data['detail'] ?? "Error al enviar postulación";
+      state = AsyncValue.error(errorMsg, StackTrace.current);
+      return false;
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+      return false;
+    }
+  }
+}
