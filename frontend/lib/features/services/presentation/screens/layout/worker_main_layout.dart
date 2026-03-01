@@ -1,41 +1,75 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../providers/nav_index_provider.dart';
+// 👇 Importamos el provider que acabamos de crear
+import 'package:forja_trabajo/features/services/presentation/providers/nav_providers.dart';
 
-// 👇 TUS PANTALLAS (Usando tu nombre original MyJobsScreen)
-import '../worker/marketplace_screen.dart'; 
-import '../worker/my_jobs_screen.dart';       // <--- AQUÍ ESTÁ EL CAMBIO
+// Pantallas del Trabajador
+import '../worker/marketplace_screen.dart'; // O HomeClientScreen si reúsas
+import '../worker/my_jobs_screen.dart';      // Tus postulaciones
 import '../shared/chat_list_screen.dart';
 import '../shared/notifications_screen.dart';
-import '../worker/worker_profile_screen.dart';
+import '../worker/worker_profile_screen.dart'; // O ClientProfileScreen si reúsas
 
 class WorkerMainLayout extends ConsumerWidget {
   const WorkerMainLayout({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // 1. Escuchamos al provider del TRABAJADOR
     final currentIndex = ref.watch(workerNavProvider);
 
-    // 👇 LA LISTA DE TUS 5 PANTALLAS
     final List<Widget> screens = [
-      const MarketplaceScreen(),
-      const MyJobsScreen(),                   // <--- AQUÍ ESTÁ EL CAMBIO
-      const ChatListScreen(),
-      const NotificationsScreen(),
-      const WorkerProfileScreen(),
+      const MarketplaceScreen(),      // 0
+      const MyJobsScreen(),           // 1
+      const ChatListScreen(),         // 2
+      const NotificationsScreen(),    // 3
+      const WorkerProfileScreen(),    // 4
     ];
 
     return Scaffold(
-      body: IndexedStack(index: currentIndex, children: screens),
+      body: IndexedStack(
+        index: currentIndex,
+        children: screens,
+      ),
+      
+      // 🚫 SIN BOTÓN FLOTANTE
+      // 🚫 SIN RECORTE
+
+      // ✅ BARRA SÓLIDA ESTÁNDAR
       bottomNavigationBar: NavigationBar(
         selectedIndex: currentIndex,
-        onDestinationSelected: (index) => ref.read(workerNavProvider.notifier).state = index,
+        onDestinationSelected: (index) {
+          ref.read(workerNavProvider.notifier).state = index;
+        },
+        backgroundColor: Colors.white,
+        elevation: 3,
+        indicatorColor: const Color(0xFF1E1B4B).withOpacity(0.1),
         destinations: const [
-          NavigationDestination(icon: Icon(Icons.search), selectedIcon: Icon(Icons.search), label: 'Explorar'),
-          NavigationDestination(icon: Icon(Icons.work_history_outlined), selectedIcon: Icon(Icons.work_history), label: 'Mis Trabajos'), // <--- Actualicé el texto aquí
-          NavigationDestination(icon: Icon(Icons.chat_bubble_outline), selectedIcon: Icon(Icons.chat_bubble), label: 'Chats'),
-          NavigationDestination(icon: Icon(Icons.notifications_outlined), selectedIcon: Icon(Icons.notifications), label: 'Avisos'),
-          NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Perfil'),
+          NavigationDestination(
+            icon: Icon(Icons.search),
+            selectedIcon: Icon(Icons.search, color: Color(0xFF1E1B4B)),
+            label: 'Explorar',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.work_history_outlined),
+            selectedIcon: Icon(Icons.work_history, color: Color(0xFF1E1B4B)),
+            label: 'Mis Tareas',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.chat_bubble_outline),
+            selectedIcon: Icon(Icons.chat_bubble, color: Color(0xFF1E1B4B)),
+            label: 'Chats',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.notifications_outlined),
+            selectedIcon: Icon(Icons.notifications, color: Color(0xFF1E1B4B)),
+            label: 'Avisos',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.person_outline),
+            selectedIcon: Icon(Icons.person, color: Color(0xFF1E1B4B)),
+            label: 'Perfil',
+          ),
         ],
       ),
     );

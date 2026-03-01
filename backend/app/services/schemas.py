@@ -76,6 +76,7 @@ class Service(ServiceBase):
     created_at: datetime
 
     author_name: Optional[str] = "Usuario Cliente"
+    author_image_url: Optional[str] = None
 
     class Config:
         orm_mode = True
@@ -100,6 +101,9 @@ class ServiceRequest(BaseModel):
     description: str
     proposed_price: Optional[Decimal] = None
     worker_name: Optional[str] = "Trabajador"  
+    
+    # 👇 1. AGREGA ESTA LÍNEA
+    author_image_url: Optional[str] = None 
 
     class Config:
         orm_mode = True
