@@ -98,15 +98,19 @@ def get_services(
     limit: int = 100,
     include_inactive: bool = False
 ):
-    """Devuelve servicios para el marketplace con control de visibilidad."""
+    """Devuelve servicios para el marketplace o el panel de administración."""
     query = db.query(models.Service).options(joinedload(models.Service.owner))
 
-    # Solo activos si no se pide incluir inactivos
+    # 🟢 Lógica para el Marketplace (Usuario normal)
     if not include_inactive:
-        query = query.filter(models.Service.is_active == True)
-
-    # Marketplace solo muestra abiertos
-    query = query.filter(models.Service.status == models.JobStatus.OPEN)
+        query = query.filter(
+            models.Service.is_active == True,
+            models.Service.status == models.JobStatus.OPEN
+        )
+    
+    # 🟢 Lógica para el Administrador (include_inactive == True)
+    # Al no entrar en el 'if' anterior, el administrador recibirá 
+    # TODO: OPEN, MATCHED, CANCELLED, etc.
 
     return (
         query
