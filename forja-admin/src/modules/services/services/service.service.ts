@@ -1,6 +1,6 @@
 import api from '../../../api/client';
 
-export type JobStatus = 'open' | 'in_progress' | 'completed' | 'cancelled';
+export type JobStatus = 'open' | 'in_progress' | 'completed' | 'matched' |'cancelled';
 
 export interface ServiceEntity {
   id: string;
@@ -38,24 +38,31 @@ interface ServiceDTO {
   created_at: string;
 }
 
-const mapServiceFromApi = (dto: ServiceDTO): ServiceEntity => ({
-  id: dto.id,
-  title: dto.title,
-  summary: dto.summary,
-  description: dto.description,
-  basePrice: dto.base_price,
-  categoryId: dto.category_id,
-  location: {
-    lat: dto.latitude,
-    lng: dto.longitude,
-    address: dto.exact_address,
-  },
-  imageUrls: dto.image_urls,
-  clientId: dto.client_id,
-  status: dto.status as JobStatus,
-  isActive: dto.is_active,
-  createdAt: dto.created_at,
-});
+const mapServiceFromApi = (dto: ServiceDTO): ServiceEntity => {
+  // 🟢 AGREGA ESTE LOG TEMPORAL:
+  if (dto.status !== 'open') {
+    console.log(`🔍 Servicio [${dto.id}] -> Status en JSON:`, dto.status);
+  }
+
+  return {
+    id: dto.id,
+    title: dto.title,
+    summary: dto.summary,
+    description: dto.description,
+    basePrice: dto.base_price,
+    categoryId: dto.category_id,
+    location: {
+      lat: dto.latitude,
+      lng: dto.longitude,
+      address: dto.exact_address,
+    },
+    imageUrls: dto.image_urls,
+    clientId: dto.client_id,
+    status: (dto.status?.toLowerCase() || 'open') as JobStatus, // 🛡️ Blindaje: lo pasamos a minúsculas
+    isActive: dto.is_active,
+    createdAt: dto.created_at,
+  };
+};
 
 export const getServiceById = async (id: string): Promise<ServiceEntity> => {
   const { data } = await api.get<ServiceDTO>(`/services/${id}`);

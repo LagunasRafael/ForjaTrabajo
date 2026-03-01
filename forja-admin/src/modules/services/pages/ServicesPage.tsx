@@ -15,7 +15,7 @@ export const ServicesPage = () => {
   const [users, setUsers] = useState<any[]>([]);
   
   // 🟢 Estado de las pestañas
-  const [filterMode, setFilterMode] = useState<'active' | 'inactive' | 'all'>('active');
+  const [filterMode, setFilterMode] = useState<'active' | 'inactive' | 'MATCHED' | 'COMPLETED' |'all'>('active');
 
   useEffect(() => {
     const fetchAllData = async () => {
@@ -26,6 +26,8 @@ export const ServicesPage = () => {
           getCategories(),
           getUsersApi()
         ]);
+
+        console.log("👀 RAW DATA DE FASTAPI:", servicesData); // 🟢 Agrega esto temporalmente
         
         setServices(servicesData);
         setCategories(categoriesData);
@@ -42,14 +44,31 @@ export const ServicesPage = () => {
   // 🟢 LÓGICA COMBINADA: Pestañas + Buscador
   const filteredServices = useMemo(() => {
     return services.filter(service => {
-      // 1. Filtro por Pestaña
-      // Nota: Asegúrate de que tu backend mande 'isActive'. Si manda 'is_active', cámbialo aquí.
-      const statusMatch = 
-        filterMode === 'active' ? service.isActive === true :
-        filterMode === 'inactive' ? service.isActive === false :
-        true; // 'all'
+      // 1. Normalizamos a MAYÚSCULAS para comparar con seguridad
+      const currentStatus = (service.status || 'OPEN').toUpperCase();
+      
+      let statusMatch = false;
 
-      // 2. Filtro por Búsqueda de texto
+      if (filterMode === 'active') {
+        // Pestaña Activas: Está activo Y no ha sido aceptado
+        statusMatch = service.isActive === true && currentStatus === 'OPEN';
+      } 
+      else if (filterMode === 'inactive') {
+        // Pestaña Baneadas: Solo las que tú deshabilitaste
+        statusMatch = service.isActive === false && currentStatus !== 'MATCHED';
+      } 
+      else if (filterMode === 'MATCHED') {
+        // 🟢 Pestaña En Proceso: SOLO los que tienen el estado MATCHED
+        // Aquí ignoramos el isActive, porque un trabajo aceptado ya no está "activo" en el mercado
+        statusMatch = currentStatus === 'MATCHED';
+      } 
+      else if (filterMode === 'COMPLETED') {
+      statusMatch = currentStatus === 'COMPLETED';
+      }
+      else {
+        statusMatch = true; // 'all'
+      }
+
       const searchMatch = 
         service.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         service.description?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -128,6 +147,26 @@ export const ServicesPage = () => {
           }`}
         >
           Publicaciones Activas
+        </button>
+
+        <button
+          onClick={() => setFilterMode('MATCHED')}
+          className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+            filterMode === 'MATCHED' ? 'bg-emerald-500 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          En Proceso 
+        </button>
+
+        <button
+          onClick={() => setFilterMode('COMPLETED')}
+          className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+            filterMode === 'COMPLETED' 
+              ? 'bg-blue-500 text-white shadow-md' 
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          Terminados 
         </button>
         
         <button
