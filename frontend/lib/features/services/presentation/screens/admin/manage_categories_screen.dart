@@ -28,7 +28,7 @@ class ManageCategoriesScreen extends ConsumerWidget {
               child: ListTile(
                 leading: const Icon(Icons.category, color: Color(0xFF4F46E5)),
                 title: Text(cat.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: Text(cat.description ?? ''), // Mostramos la descripción
+                subtitle: Text(cat.description), // Mostramos la descripción
                 trailing: IconButton(
                   icon: const Icon(Icons.delete_outline, color: Colors.red),
                   onPressed: () => _showDeleteConfirm(context, ref, cat.id, cat.name),

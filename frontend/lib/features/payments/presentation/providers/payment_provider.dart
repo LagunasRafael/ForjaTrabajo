@@ -1,5 +1,4 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart'; // 1. Usa este, no legacy
-import 'package:flutter_riverpod/legacy.dart';
 import 'package:forja_trabajo/features/payments/domain/entities/payment.dart';
 import '../../data/models/payment_model.dart';
 import '../../domain/usescases/process_payment.dart';

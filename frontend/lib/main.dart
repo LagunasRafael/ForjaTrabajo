@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-// Imports de tu lógica de pagos y contenedor de dependencias
 import 'package:forja_trabajo/features/payments/presentation/screens/home_screen.dart';
+import 'package:forja_trabajo/features/services/presentation/screens/client/payment_history_screen.dart';
+import 'package:forja_trabajo/features/services/presentation/screens/shared/contracts_screen.dart';
 import 'injection_container.dart' as di;
-
-// Imports de la lógica de Rafa y Luis (Auth y Layouts)
 import 'core/theme/app_theme.dart';
 import 'features/auth/presentation/screens/role_selection_screen.dart';
 import 'features/auth/presentation/screens/login_screen.dart';
@@ -39,7 +37,7 @@ class ForjaTrabajoApp extends StatelessWidget {
       theme: AppTheme.theme, 
 
       // Iniciamos con la selección de roles para obtener el Token y evitar el error 401
-      home: const RoleSelectionScreen(),
+      home: const LoginScreen(),
 
       // Registro de rutas para navegar entre módulos
       routes: {
@@ -48,8 +46,9 @@ class ForjaTrabajoApp extends StatelessWidget {
         '/client_home': (context) => const ClientMainLayout(),
         '/worker_home': (context) => const WorkerMainLayout(),
         '/admin_home':  (context) => const AdminMainLayout(),
-        // Agregamos tu ruta de pagos por si la necesitas llamar después
         '/payments':    (context) => const HomeScreen(), 
+        '/client/contracts': (context) => const ContractsScreen(),
+        '/client/payment_history': (context) => const PaymentHistoryScreen(),
       },
     );
   }

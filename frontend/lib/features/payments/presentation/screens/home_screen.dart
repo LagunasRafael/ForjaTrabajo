@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:forja_trabajo/features/payments/presentation/screens/checkout_screen.dart';
-import 'package:forja_trabajo/features/payments/presentation/screens/payment_history_screen.dart';
+import 'package:forja_trabajo/features/services/presentation/screens/client/checkout_screen.dart';
+import 'package:forja_trabajo/features/services/presentation/screens/client/payment_history_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});

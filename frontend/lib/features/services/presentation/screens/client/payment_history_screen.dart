@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_riverpod/legacy.dart';
 import 'package:intl/intl.dart';
 
 // --- TUS IMPORTS (Asegúrate de que las rutas sean correctas) ---
-import '../../domain/entities/payment.dart';
-import '../providers/payment_provider.dart';
+import '../../../../payments/domain/entities/payment.dart';
+import '../../../../payments/presentation/providers/payment_provider.dart';
 
 final paymentFilterProvider = StateProvider<String>((ref) => 'All');
 

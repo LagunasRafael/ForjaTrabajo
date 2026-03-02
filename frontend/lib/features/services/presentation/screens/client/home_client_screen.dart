@@ -3,8 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/service_list_provider.dart';
 // Importamos los providers de servicios
 import 'package:forja_trabajo/features/services/presentation/providers/category_provider.dart';
-import 'package:forja_trabajo/features/services/presentation/providers/service_list_provider.dart';
-
 // 👇 IMPORTANTE: Importamos tu AuthProvider para sacar el nombre del usuario
 import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart'; 
 

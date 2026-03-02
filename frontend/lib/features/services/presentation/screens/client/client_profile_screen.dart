@@ -26,21 +26,33 @@ class ClientProfileScreen extends ConsumerWidget {
             // 👇 ¡MIRA QUÉ LIMPIO QUEDA! 👇
             ProfileMenuCard(
               children: [
-                ProfileMenuOption(icon: LucideIcons.user, title: 'Mi Información', onTap: () {}),
-                ProfileMenuOption(icon: LucideIcons.shoppingBag, title: 'Mis Solicitudes de Servicio', onTap: () {}),
-                ProfileMenuOption(icon: LucideIcons.creditCard, title: 'Métodos de Pago', onTap: () {}),
-                ProfileMenuOption(icon: LucideIcons.bell, title: 'Notificaciones', onTap: () {}),
-                ProfileMenuOption(
-                  icon: LucideIcons.pencil,
-                  title: 'Editar Perfil',
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const EditProfileScreen()),
-                    );
-                  },
-                ),
-              ],
+               ProfileMenuOption(icon: LucideIcons.user, title: 'Mi Información', onTap: () {}),
+               ProfileMenuOption(icon: LucideIcons.shoppingBag, title: 'Mis Solicitudes de Servicio', onTap: () {}),
+    
+              // 👇 --- TUS NUEVAS OPCIONES ---
+    ProfileMenuOption(
+      icon: LucideIcons.fileText, // Icono de contrato/documento
+      title: 'Mis Contratos', 
+      onTap: () => Navigator.pushNamed(context, '/client/contracts'),
+    ),
+    ProfileMenuOption(
+      icon: LucideIcons.history, // Icono de historial
+      title: 'Historial de Pagos', 
+      onTap: () => Navigator.pushNamed(context, '/client/payment_history'),
+    ),
+    ProfileMenuOption(icon: LucideIcons.creditCard, title: 'Métodos de Pago', onTap: () {}),
+    ProfileMenuOption(icon: LucideIcons.bell, title: 'Notificaciones', onTap: () {}),
+    ProfileMenuOption(
+      icon: LucideIcons.pencil,
+      title: 'Editar Perfil',
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const EditProfileScreen()),
+              );
+            },
+           ),
+          ],  
             ),
             const SizedBox(height: 32),
             const ProfileLogoutButton(), // 👈 Un solo widget que hace todo
@@ -50,7 +62,6 @@ class ClientProfileScreen extends ConsumerWidget {
     );
   }
 
-  // (Aquí dejas solo _buildHeader porque es exclusivo del cliente)
 }
 
   // --- WIDGETS REUTILIZABLES ---

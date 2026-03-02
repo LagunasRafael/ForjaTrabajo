@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../domain/entities/category_entity.dart';
 import '../models/category_model.dart';
 
 final categoryRemoteDataSourceProvider = Provider((ref) => CategoryRemoteDataSource());

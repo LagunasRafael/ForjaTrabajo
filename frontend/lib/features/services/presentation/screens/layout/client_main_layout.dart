@@ -5,7 +5,6 @@ import '../../providers/nav_index_provider.dart';
 import '../client/home_client_screen.dart'; 
 import '../client/my_requests_screen.dart';
 import '../shared/chat_list_screen.dart';
-import '../shared/notifications_screen.dart';
 import '../client/client_profile_screen.dart';
 // 👇 Importamos la pantalla de crear servicio
 import '../client/create_services_screen.dart'; 

@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_riverpod/legacy.dart';
-
 // --- TUS IMPORTS ---
-import '../../data/models/payment_model.dart';
-import '../providers/payment_provider.dart';
-import '../providers/payment_state.dart';
+import '../../../../payments/data/models/payment_model.dart';
+import '../../../../payments/presentation/providers/payment_provider.dart';
+import '../../../../payments/presentation/providers/payment_state.dart';
 
 // Provider local para la selección del método de pago
 final selectedMethodProvider = StateProvider<String>((ref) => 'visa_4242');
