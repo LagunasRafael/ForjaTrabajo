@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../providers/nav_index_provider.dart';
-
+// 👇 Importamos el provider que acabamos de crear
+import 'package:forja_trabajo/features/services/presentation/providers/nav_providers.dart';
+// Pantallas del Cliente
 import '../client/home_client_screen.dart'; 
 import '../client/my_requests_screen.dart';
 import '../shared/chat_list_screen.dart';
+import '../shared/notifications_screen.dart'; // (Opcional si la usas)
 import '../client/client_profile_screen.dart';
-// 👇 Importamos la pantalla de crear servicio
 import '../client/create_services_screen.dart'; 
 
 class ClientMainLayout extends ConsumerWidget {
@@ -14,14 +15,15 @@ class ClientMainLayout extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // 1. Escuchamos al provider del CLIENTE
     final currentIndex = ref.watch(clientNavProvider);
 
     final List<Widget> screens = [
-      const HomeClientScreen(),
-      const ChatListScreen(), // Índice 1: Mensajes (como en la imagen)
-      const SizedBox(), // Índice 2: VACÍO (Aquí va el botón de en medio, nunca se muestra esta pantalla)
-      const MyRequestsScreen(), // Índice 3: Mis Trabajos
-      const ClientProfileScreen(), // Índice 4: Perfil
+      const HomeClientScreen(),     // 0
+      const ChatListScreen(),       // 1
+      const SizedBox(),             // 2 (Espacio vacío para el botón flotante)
+      const MyRequestsScreen(),     // 3
+      const ClientProfileScreen(),  // 4
     ];
 
     return Scaffold(
@@ -29,13 +31,13 @@ class ClientMainLayout extends ConsumerWidget {
         index: currentIndex,
         children: screens,
       ),
-      // 👇 EL BOTÓN FLOTANTE GIGANTE EN MEDIO
+      
+      // ✅ BOTÓN FLOTANTE (Solo para Cliente)
       floatingActionButton: FloatingActionButton(
-        backgroundColor: const Color(0xFF1E1B4B), // Azul fuerte de tu diseño
-        elevation: 8,
+        backgroundColor: const Color(0xFF1E1B4B),
+        elevation: 6,
         shape: const CircleBorder(),
         onPressed: () {
-          // Navega a la pantalla de crear servicio
           Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => const CreateServiceScreen()),
@@ -43,37 +45,27 @@ class ClientMainLayout extends ConsumerWidget {
         },
         child: const Icon(Icons.add, color: Colors.white, size: 32),
       ),
-      // 👇 POSICIÓN DEL BOTÓN FLOTANTE
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       
-      // 👇 LA BARRA CON EL RECORTE
-      // 👇 LA BARRA CON EL RECORTE
+      // ✅ BARRA CON RECORTE (Notch)
       bottomNavigationBar: BottomAppBar(
         shape: const CircularNotchedRectangle(),
         notchMargin: 8.0,
         color: Colors.white,
+        elevation: 10,
+        shadowColor: Colors.black.withOpacity(0.4),
         child: SizedBox(
           height: 60,
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: <Widget>[
-              // 👇 Envolvemos cada item en un Expanded para que se repartan el ancho
-              Expanded(
-                child: _buildNavItem(icon: Icons.home_filled, label: 'Inicio', index: 0, ref: ref, currentIndex: currentIndex),
-              ),
-              Expanded(
-                child: _buildNavItem(icon: Icons.chat_bubble_rounded, label: 'Mensajes', index: 1, ref: ref, currentIndex: currentIndex),
-              ),
+              Expanded(child: _buildNavItem(Icons.home_filled, 'Inicio', 0, ref, currentIndex)),
+              Expanded(child: _buildNavItem(Icons.chat_bubble_rounded, 'Mensajes', 1, ref, currentIndex)),
               
-              // El espacio del centro NO lleva Expanded, debe ser fijo
-              const SizedBox(width: 48), 
+              const SizedBox(width: 48), // 👈 El hueco para el botón
               
-              Expanded(
-                child: _buildNavItem(icon: Icons.work, label: 'Mis Trabajos', index: 3, ref: ref, currentIndex: currentIndex),
-              ),
-              Expanded(
-                child: _buildNavItem(icon: Icons.person, label: 'Perfil', index: 4, ref: ref, currentIndex: currentIndex),
-              ),
+              Expanded(child: _buildNavItem(Icons.work, 'Mis Trabajos', 3, ref, currentIndex)),
+              Expanded(child: _buildNavItem(Icons.person, 'Perfil', 4, ref, currentIndex)),
             ],
           ),
         ),
@@ -81,26 +73,18 @@ class ClientMainLayout extends ConsumerWidget {
     );
   }
 
-  Widget _buildNavItem({required IconData icon, required String label, required int index, required WidgetRef ref, required int currentIndex}) {
+  Widget _buildNavItem(IconData icon, String label, int index, WidgetRef ref, int currentIndex) {
     final isSelected = currentIndex == index;
     final color = isSelected ? const Color(0xFF1E1B4B) : Colors.grey.shade400;
 
-    return MaterialButton(
-      minWidth: 0,
-      padding: EdgeInsets.zero,
-      onPressed: () {
-        ref.read(clientNavProvider.notifier).state = index;
-      },
+    return InkWell(
+      onTap: () => ref.read(clientNavProvider.notifier).state = index,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, color: color, size: 24),
+          Icon(icon, color: color, size: 26),
           const SizedBox(height: 4),
-          Text(
-            label,
-            textAlign: TextAlign.center,
-            style: TextStyle(color: color, fontSize: 10, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal),
-          )
+          Text(label, style: TextStyle(color: color, fontSize: 10, fontWeight: isSelected ? FontWeight.bold : FontWeight.w500))
         ],
       ),
     );

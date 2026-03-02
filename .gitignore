@@ -1,8 +1,29 @@
-# Bases de Datos
+# ========================
+# GLOBAL & SYSTEM
+# ========================
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+*.swp
+.env
+.env.*
+coverage/
+dist/
+build/
+
 *.db
 forja.db
 
-# Python / Backend
+# ========================
+# EDITORS
+# ========================
+.vscode/
+.idea/
+
+# ========================
+# PYTHON / BACKEND
+# ========================
 .venv/
 env/
 venv/
@@ -10,41 +31,44 @@ ENV/
 __pycache__/
 *.py[cod]
 *$py.class
+backend/node_modules/
+backend/dist/
+backend/.env
 
-# Editores
-.vscode/
-.idea/
-*.swp
-
-# Variables de entorno
-.env
-
-# Flutter y Dart
+# ========================
+# FRONTEND (Flutter)
+# ========================
+frontend/.dart_tool/
+frontend/.flutter-plugins
+frontend/.flutter-plugins-dependencies
+frontend/.pub-cache/
+frontend/.pub/
+frontend/build/
 .dart_tool/
-.flutter-plugins
-.flutter-plugins-dependencies
 build/
-.pub-cache/
-.pub/
 generated/
 
-# Android
+# ========================
+# ADMIN (React/Node)
+# ========================
+forja-admin/node_modules/
+forja-admin/dist/
+forja-admin/.env
+forja-admin/docs/credenciales.txt
+node_modules/
+
+# ========================
+# MOBILE & DESKTOP BUILDS
+# ========================
 **/android/.gradle/
 **/android/local.properties
 **/android/app/build/
-**/android/.idea/
-**/android/app/src/main/res/values/generated.xml
-
-# iOS y macOS
-**/ios/Flutter/ephemeral/
-**/ios/Flutter/GeneratedPluginRegistrant.h
-**/ios/Flutter/GeneratedPluginRegistrant.m
+**/ios/Flutter/GeneratedPluginRegistrant.*
 **/ios/.symlinks/
 **/ios/Pods/
-**/ios/Frameworks/
-**/macos/Flutter/ephemeral/
-
-# Windows
 **/windows/flutter/ephemeral/
 **/windows/flutter/generated_plugins.cmake
 
+=======
+**/linux/flutter/ephemeral/
+**/macos/Flutter/ephemeral/

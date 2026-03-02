@@ -79,13 +79,32 @@ class AuthNotifier extends Notifier<AuthState> {
   }
 
   Future<void> logoutUser() async {
+  try {
+    // 1. Obtenemos las preferencias
+    final prefs = await SharedPreferences.getInstance();
+    
+    // 2. Intentamos avisar al servidor (opcional, por eso va en el try)
     final dataSource = ref.read(authDataSourceProvider);
+    await dataSource.logout(); 
+
+    // 3. Borramos el token pase lo que pase con el servidor
+    await prefs.remove('token');
+    // await prefs.clear(); // 👈 Usa esto si quieres borrar TODA la config local
+    
+  } catch (e) {
+    // Si el servidor falla, igual queremos que el usuario pueda salir de la app
+    debugPrint("Error al avisar al servidor del logout: $e");
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('token');
-    await dataSource.logout(); 
-    
-    state = AuthState(status: 'unauthenticated', user: null, errorMessage: '');
+  } finally {
+    // 4. Reset del estado de Riverpod (Siempre ocurre al final)
+    state = AuthState(
+      status: 'unauthenticated', 
+      user: null, 
+      errorMessage: ''
+    );
   }
+}
 
   Future<void> registerUser({
     required String fullName,

@@ -84,9 +84,26 @@ class Service(Base):
     # Mantenemos la relación con User (ahora apunta al cliente creador)
     owner = relationship("User", back_populates="services")
 
+    @property
+    def author_name(self):
+        """
+        Si existe el usuario dueño (owner), devuelve su nombre real.
+        Si no, devuelve un texto por defecto.
+        """
+        if self.owner and self.owner.full_name:
+            return self.owner.full_name
+        return "Usuario Cliente"
+
+    @property
+    def author_image_url(self):
+        """Devuelve la foto de perfil del dueño del servicio"""
+        if self.owner and hasattr(self.owner, 'profile_picture_url') and self.owner.profile_picture_url:
+            return self.owner.profile_picture_url
+        return None
+
 
 # -----------------------------
-# SERVICE REQUEST (POSTULACIÓN DEL WORKER)
+# SERVICE REQUEST (POSTULACIÓN DEL WORKER)  
 # -----------------------------
 
 class ServiceRequest(Base):
@@ -98,19 +115,35 @@ class ServiceRequest(Base):
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     service_id = Column(String(36), ForeignKey("services.id"), nullable=False)
     
-    # El worker que se postula
     worker_id = Column(String(36), ForeignKey("users.id"), nullable=False) 
 
-    description = Column(Text, nullable=False) # Propuesta del worker: "Lo arreglo en 2 horas"
-    proposed_price = Column(Numeric(10, 2), nullable=True) # Cuánto quiere cobrar el worker
+    description = Column(Text, nullable=False) 
+    proposed_price = Column(Numeric(10, 2), nullable=True) 
     
-    # Estado de la postulación individual
     status = Column(String(20), default="pending") 
 
     created_at = Column(DateTime, default=datetime.utcnow)
 
     service = relationship("Service", back_populates="requests")
     job = relationship("Job", back_populates="request", uselist=False)
+
+    worker = relationship("User", foreign_keys=[worker_id])
+
+    @property
+    def worker_name(self):
+        """Devuelve el nombre real del trabajador que se postuló"""
+        if self.worker and self.worker.full_name:
+            return self.worker.full_name
+        return "Trabajador Interesado"
+
+    @property
+    def author_image_url(self):
+        """Devuelve la URL de la foto de perfil del trabajador"""
+        # (Nota: Asumo que en tu modelo User la foto se llama 'profile_picture_url'. 
+        # Si se llama distinto, cámbialo aquí)
+        if self.worker and self.worker.profile_picture_url: 
+            return self.worker.profile_picture_url
+        return None
 
 
 # -----------------------------

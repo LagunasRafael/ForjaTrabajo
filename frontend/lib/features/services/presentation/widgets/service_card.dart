@@ -1,17 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../domain/entities/service_entity.dart';
-import '../providers/category_provider.dart';
+
+import 'package:forja_trabajo/features/services/domain/entities/service_entity.dart';
+import 'package:forja_trabajo/features/services/presentation/providers/category_provider.dart';
+import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart';
+import 'package:forja_trabajo/features/services/presentation/screens/shared/service_detail_screen.dart';
 
 class ServiceCard extends ConsumerWidget {
   final ServiceEntity service;
   const ServiceCard({super.key, required this.service});
 
-  // Íconos y colores simulando tu imagen
+  // --- Tus Helpers Visuales Originales ---
   IconData _getCategoryIcon(String categoryName) {
     final name = categoryName.toLowerCase();
     if (name.contains('font') || name.contains('plom') || name.contains('fuga')) return Icons.plumbing;
-    if (name.contains('electr')) return Icons.lightbulb_outline;
+    if (name.contains('electr') || name.contains('luz')) return Icons.electric_bolt;
     if (name.contains('mueb') || name.contains('carp')) return Icons.chair_alt;
     if (name.contains('pint')) return Icons.format_paint;
     return Icons.home_repair_service;
@@ -19,28 +22,58 @@ class ServiceCard extends ConsumerWidget {
 
   Color _getIconBackgroundColor(String title) {
     final t = title.toLowerCase();
-    if (t.contains('fuga')) return const Color(0xFFF3F4F6); // Gris clarito
-    if (t.contains('eléctr')) return const Color(0xFFFEF3C7); // Amarillito
-    if (t.contains('roble') || t.contains('mueb')) return const Color(0xFFF3F4F6); 
-    if (t.contains('pint')) return const Color(0xFFECFDF5); // Verdecito
+    if (t.contains('fuga')) return const Color(0xFFF3F4F6);
+    if (t.contains('eléctr')) return const Color(0xFFFEF3C7);
+    if (t.contains('pint')) return const Color(0xFFECFDF5);
     return const Color(0xFFEEF2FF);
   }
 
   Color _getIconColor(String title) {
     final t = title.toLowerCase();
-    if (t.contains('fuga')) return const Color(0xFF2563EB); // Azul
-    if (t.contains('eléctr')) return const Color(0xFFD97706); // Naranja
-    if (t.contains('roble') || t.contains('mueb')) return const Color(0xFF2563EB);
-    if (t.contains('pint')) return const Color(0xFF10B981); // Verde
+    if (t.contains('fuga')) return const Color(0xFF2563EB);
+    if (t.contains('eléctr')) return const Color(0xFFD97706);
+    if (t.contains('pint')) return const Color(0xFF10B981);
     return const Color(0xFF4F46E5);
+  }
+
+  // --- Lógica de Navegación (CORREGIDA) ---
+  void _onCardTap(BuildContext context, WidgetRef ref) {
+    final authState = ref.read(authProvider);
+    final currentUser = authState.user;
+
+    if (currentUser == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Inicia sesión para ver detalles")));
+      return;
+    }
+
+    final categoriesAsync = ref.read(categoryListProvider);
+    String catName = "Servicio";
+    
+    categoriesAsync.whenData((cats) {
+      // ✅ ARREGLO AQUÍ: Comparación segura de IDs para evitar el error de Null
+      final found = cats.where((c) => c.id.toString() == service.categoryId.toString());
+      if (found.isNotEmpty) {
+        catName = found.first.name;
+      }
+    });
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ServiceDetailScreen(
+          service: service,
+          currentUser: currentUser,
+          categoryName: catName,
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final categoriesAsync = ref.watch(categoryListProvider);
-    
-    // Para ver si mostramos botón azul fuerte o clarito (como en tu imagen)
     final isUrgent = service.title.toLowerCase().contains('urgente');
+    final themeColor = _getIconColor(service.title);
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
@@ -50,131 +83,114 @@ class ServiceCard extends ConsumerWidget {
         border: Border.all(color: Colors.grey.shade100),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 10,
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 12,
             offset: const Offset(0, 4),
           ),
         ],
       ),
-      child: ClipRRect(
+      child: Material(
+        color: Colors.transparent,
         borderRadius: BorderRadius.circular(16),
-        child: Stack(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // --- LADO IZQUIERDO: Ícono Cuadrado Grande ---
-                  categoriesAsync.when(
-                    data: (categories) {
-                      final categoryName = categories.where((c) => c.id == service.categoryId).map((c) => c.name).firstWhere((name) => true, orElse: () => "");
-                      return Container(
-                        width: 65,
-                        height: 65,
-                        decoration: BoxDecoration(
-                          color: _getIconBackgroundColor(service.title),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Icon(
-                          _getCategoryIcon(categoryName.isEmpty ? service.title : categoryName), 
-                          color: _getIconColor(service.title), 
-                          size: 32
-                        ),
-                      );
-                    },
-                    loading: () => Container(width: 65, height: 65, color: Colors.grey[100]),
-                    error: (_, __) => Container(width: 65, height: 65, color: Colors.grey[100]),
-                  ),
-
-                  const SizedBox(width: 16),
-
-                  // --- LADO DERECHO: Toda la información ---
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // 1. Título
-                        Text(
-                          service.title,
-                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF111827)),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 6),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () => _onCardTap(context, ref),
+          child: Stack(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // --- ICONO DINÁMICO ---
+                    categoriesAsync.when(
+                      data: (categories) {
+                        String catName = "";
+                        final found = categories.where((c) => c.id.toString() == service.categoryId.toString());
+                        if (found.isNotEmpty) catName = found.first.name;
                         
-                        // 2. Ubicación con el Pin 📍 (Sustituye al tiempo)
-                        Row(
-                          children: [
-                            Icon(Icons.location_on, size: 14, color: Colors.grey[500]),
-                            const SizedBox(width: 4),
-                            Expanded(
-                              child: Text(
-                                service.exactAddress ?? "A 2km, Col. Centro", // Si no hay, pone el de tu imagen
-                                style: TextStyle(color: Colors.grey[500], fontSize: 13),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        
-                        // 3. Precio y Botón
-                        // 3. Precio y Botón
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            // 👇 ENVOLVEMOS EL PRECIO EN UN FLEXIBLE PARA EVITAR EL OVERFLOW (RAYAS AMARILLAS)
-                            Flexible(
-                              child: Text(
-                                "\$${service.basePrice.toStringAsFixed(0)} MXN",
-                                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF10B981)), // Verde
-                                overflow: TextOverflow.ellipsis, // Si no cabe, pone "..."
-                              ),
-                            ),
-                            const SizedBox(width: 8), // Un pequeño respiro de separación
-                            SizedBox(
-                              height: 36,
-                              child: ElevatedButton(
-                                onPressed: () {},
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: isUrgent ? const Color(0xFF1D04F8) : const Color(0xFFE0E7FF),
-                                  foregroundColor: isUrgent ? Colors.white : const Color(0xFF1D04F8),
-                                  elevation: 0,
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                                ),
-                                child: const Text("Ver Detalles", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
+                        return Container(
+                          width: 65, height: 65,
+                          decoration: BoxDecoration(
+                            color: _getIconBackgroundColor(service.title),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(
+                            _getCategoryIcon(catName.isEmpty ? service.title : catName), 
+                            color: themeColor, 
+                            size: 32
+                          ),
+                        );
+                      },
+                      loading: () => Container(width: 65, height: 65, decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(12))),
+                      error: (_, __) => Container(width: 65, height: 65, child: const Icon(Icons.error, color: Colors.grey)),
                     ),
-                  ),
-                ],
-              ),
-            ),
-            
-            // --- ETIQUETA "URGENTE" (Top Right) ---
-            if (isUrgent)
-              Positioned(
-                right: 0,
-                top: 0,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFFFE4E6), // Rojito claro
-                    borderRadius: BorderRadius.only(bottomLeft: Radius.circular(8)),
-                  ),
-                  child: const Text(
-                    "URGENTE",
-                    style: TextStyle(color: Color(0xFFE11D48), fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.5),
-                  ),
+                    
+                    const SizedBox(width: 16),
+                    
+                    // --- CONTENIDO ---
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          categoriesAsync.when(
+                            data: (categories) {
+                              String catName = "Servicio General";
+                              final found = categories.where((c) => c.id.toString() == service.categoryId.toString());
+                              if (found.isNotEmpty) catName = found.first.name;
+
+                              return Text(
+                                catName.toUpperCase(),
+                                style: TextStyle(color: themeColor, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 0.8),
+                              );
+                            },
+                            loading: () => const SizedBox(height: 10), 
+                            error: (_, __) => const SizedBox(),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(service.title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF111827), height: 1.2), maxLines: 2, overflow: TextOverflow.ellipsis),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Icon(Icons.location_on, size: 14, color: Colors.grey[400]),
+                              const SizedBox(width: 4),
+                              Expanded(child: Text(service.exactAddress ?? "Ubicación remota", style: TextStyle(color: Colors.grey[500], fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text("\$${service.basePrice.toStringAsFixed(0)}", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF10B981))),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                decoration: BoxDecoration(color: isUrgent ? const Color(0xFF1D04F8) : const Color(0xFFF3F4F6), borderRadius: BorderRadius.circular(8)),
+                                child: Text("Ver Detalles", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: isUrgent ? Colors.white : Colors.black87)),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
-          ],
+
+              // --- ETIQUETA URGENTE ---
+              if (isUrgent)
+                Positioned(
+                  right: 0, top: 0,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFFFE4E6),
+                      borderRadius: BorderRadius.only(topRight: Radius.circular(16), bottomLeft: Radius.circular(16)),
+                    ),
+                    child: const Text("URGENTE", style: TextStyle(color: Color(0xFFE11D48), fontSize: 10, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );

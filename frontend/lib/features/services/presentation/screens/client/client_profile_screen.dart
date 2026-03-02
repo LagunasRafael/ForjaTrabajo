@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:forja_trabajo/features/auth/presentation/widgets/profile_shared_widgets.dart';
 import 'package:forja_trabajo/features/services/presentation/screens/client/edit_profile_screen.dart';
+import 'package:forja_trabajo/features/profile/presentation/settings_screen.dart';
 
 class ClientProfileScreen extends ConsumerWidget {
   const ClientProfileScreen({super.key});
@@ -20,69 +21,109 @@ class ClientProfileScreen extends ConsumerWidget {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            _buildHeader(user?.fullName ?? "Cliente", user?.email ?? "", "Cliente", user?.profilePictureUrl, user?.city, ref),
+            // 1. Header con datos del usuario
+            _buildHeader(
+              user?.fullName ?? "Cliente",
+              user?.email ?? "",
+              "Cliente",
+              user?.profilePictureUrl,
+              user?.city,
+              ref,
+              context // Añadimos context para que funcione el Navigator
+            ),
+            
             const SizedBox(height: 30),
             
-            // 👇 ¡MIRA QUÉ LIMPIO QUEDA! 👇
+            // 2. MENÚ DE OPCIONES (Sin la palabra 'children:')
             ProfileMenuCard(
-              children: [
-               ProfileMenuOption(icon: LucideIcons.user, title: 'Mi Información', onTap: () {}),
-               ProfileMenuOption(icon: LucideIcons.shoppingBag, title: 'Mis Solicitudes de Servicio', onTap: () {}),
-    
-              // 👇 --- TUS NUEVAS OPCIONES ---
-    ProfileMenuOption(
-      icon: LucideIcons.fileText, // Icono de contrato/documento
-      title: 'Mis Contratos', 
-      onTap: () => Navigator.pushNamed(context, '/client/contracts'),
-    ),
-    ProfileMenuOption(
-      icon: LucideIcons.history, // Icono de historial
-      title: 'Historial de Pagos', 
-      onTap: () => Navigator.pushNamed(context, '/client/payment_history'),
-    ),
-    ProfileMenuOption(icon: LucideIcons.creditCard, title: 'Métodos de Pago', onTap: () {}),
-    ProfileMenuOption(icon: LucideIcons.bell, title: 'Notificaciones', onTap: () {}),
-    ProfileMenuOption(
-      icon: LucideIcons.pencil,
-      title: 'Editar Perfil',
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const EditProfileScreen()),
-              );
-            },
-           ),
-          ],  
+              [ // 👈 Pasamos la lista directamente (Argumento posicional)
+                ProfileMenuOption(
+                  icon: LucideIcons.user, 
+                  title: 'Mi Información', 
+                  onTap: () {}
+                ),
+                ProfileMenuOption(
+                  icon: LucideIcons.shoppingBag, 
+                  title: 'Mis Solicitudes de Servicio', 
+                  onTap: () {}
+                ),
+                
+                // 👇 TUS NUEVAS OPCIONES INTEGRADAS
+                ProfileMenuOption(
+                  icon: LucideIcons.fileText, 
+                  title: 'Mis Contratos', 
+                  onTap: () => Navigator.pushNamed(context, '/client/contracts'),
+                ),
+                ProfileMenuOption(
+                  icon: LucideIcons.history, 
+                  title: 'Historial de Pagos', 
+                  onTap: () => Navigator.pushNamed(context, '/client/payment_history'),
+                ),
+                
+                ProfileMenuOption(
+                  icon: LucideIcons.creditCard, 
+                  title: 'Métodos de Pago', 
+                  onTap: () {}
+                ),
+                ProfileMenuOption(
+                  icon: LucideIcons.bell, 
+                  title: 'Notificaciones', 
+                  onTap: () {}
+                ),
+                ProfileMenuOption(
+                  icon: LucideIcons.pencil,
+                  title: 'Editar Perfil',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const EditProfileScreen()),
+                    );
+                  },
+                ),
+                ProfileMenuOption(
+                  icon: LucideIcons.settings,
+                  title: 'Configuración',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const SettingsScreen()),
+                    );
+                  },
+                ),
+              ],
             ),
+            
             const SizedBox(height: 32),
-            const ProfileLogoutButton(), // 👈 Un solo widget que hace todo
+            const ProfileLogoutButton(),
+            const SizedBox(height: 40),
           ],
         ),
       ),
     );
   }
 
-}
-
   // --- WIDGETS REUTILIZABLES ---
-  Widget _buildHeader(String name, String email, String role, String? imageUrl,String? city, WidgetRef ref) {
+  Widget _buildHeader(String name, String email, String role, String? imageUrl, String? city, WidgetRef ref, BuildContext context) {
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.only(top: 60, bottom: 30),
       decoration: const BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.vertical(bottom: Radius.circular(32)),
       ),
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           EditableProfileAvatar(
-            imageUrl: imageUrl, // 👈 Le pasamos la URL que recibimos
+            imageUrl: imageUrl,
             radius: 50,
           ),
           const SizedBox(height: 16),
           Text(name, style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.bold)),
           Text(email, style: GoogleFonts.inter(color: Colors.grey)),
           const SizedBox(height: 12),
-          // 👇 LA NUEVA UBICACIÓN INTERACTIVA 👇
+          
+          // UBICACIÓN INTERACTIVA
           InkWell(
             onTap: () async {
               await ref.read(authProvider.notifier).autoUpdateLocation();
@@ -92,12 +133,11 @@ class ClientProfileScreen extends ConsumerWidget {
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
-                mainAxisSize: MainAxisSize.min, // Para que el toque sea solo en el texto
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
                     LucideIcons.mapPin, 
                     size: 16, 
-                    // Si no hay ciudad, lo pintamos del color principal para que llame la atención
                     color: city == null ? AppTheme.primaryColor : Colors.grey
                   ),
                   const SizedBox(width: 4),
@@ -113,16 +153,23 @@ class ClientProfileScreen extends ConsumerWidget {
               ),
             ),
           ),
-          // 👆 FIN DE LA UBICACIÓN INTERACTIVA 👆
+          
+          const SizedBox(height: 12),
+
+          // ETIQUETA DE ROL
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             decoration: BoxDecoration(
-              color: AppTheme.primaryColor.withValues(alpha: 0.1),
+              color: AppTheme.primaryColor.withOpacity(0.1),
               borderRadius: BorderRadius.circular(20),
             ),
-            child: Text(role.toUpperCase(), style: const TextStyle(color: AppTheme.primaryColor, fontSize: 10, fontWeight: FontWeight.bold)),
+            child: Text(
+              role.toUpperCase(), 
+              style: const TextStyle(color: AppTheme.primaryColor, fontSize: 10, fontWeight: FontWeight.bold)
+            ),
           ),
         ],
       ),
     );
   }
+}

@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:forja_trabajo/features/services/presentation/providers/nav_providers.dart';
 
 import '../../../services/presentation/screens/layout/client_main_layout.dart';
 import '../../../services/presentation/screens/layout/worker_main_layout.dart';
@@ -9,6 +10,10 @@ import '../../../services/presentation/screens/layout/admin_main_layout.dart';
 import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart';
 import 'package:forja_trabajo/core/theme/app_theme.dart';
 import 'register_screen.dart';
+
+// Imports para limpieza de memoria
+import 'package:forja_trabajo/features/services/presentation/providers/service_list_provider.dart';
+import 'package:forja_trabajo/features/services/presentation/providers/category_provider.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -33,6 +38,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   void _submit() {
     if (_formKey.currentState!.validate()) {
       FocusScope.of(context).unfocus();
+      
+      // ✅ CORREGIDO: Usamos 'loginUser' que es como se llama en tu AuthNotifier
       ref.read(authProvider.notifier).loginUser(
         _emailController.text.trim(),
         _passwordController.text.trim(),
@@ -45,37 +52,37 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final authState = ref.watch(authProvider);
     final isLoading = authState.status == 'loading';
 
-ref.listen<AuthState>(authProvider, (previous, next) {
-      if (next.status == 'error') {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(next.errorMessage), backgroundColor: AppTheme.dangerRose),
-        );
-      } 
-      // 👇 ¡EL SECRETO ESTÁ AQUÍ! Le decimos que espere a que next.user ya tenga datos
-      else if (next.status == 'authenticated' && next.user != null) { 
-        
-        Widget nextScreen;
-        
-        // Como ya sabemos que no es null, podemos leer el rol seguros
-        final role = next.user!.role.toLowerCase().trim();
-        
-        debugPrint('🚀 AHORA SÍ, ROL DETECTADO: "$role"');
+    // LÓGICA DE NAVEGACIÓN Y LIMPIEZA
+    ref.listen<AuthState>(authProvider, (previous, next) {
+  if (next.status == 'authenticated' && next.user != null) {
+    
+    // 🧹 1. LIMPIEZA DE DATOS
+    ref.invalidate(myRequestsProvider); 
+    ref.invalidate(serviceListProvider);
+    ref.invalidate(categoryListProvider);
+    
+    // 🔄 2. RESETEO DE NAVEGACIÓN (La clave para que no inicie en Perfil)
+    ref.invalidate(clientNavProvider);      // Cliente al Home
+    ref.invalidate(workerNavProvider);      // Worker al Home
+    ref.invalidate(myRequestsTabProvider);  // Pestañas internas a "Abiertos"
 
-        if (role == 'admin' || role == 'administrador') {
-          nextScreen = const AdminMainLayout(); // Tu panel de admin
-        } else if (role == 'worker' || role == 'trabajador') {
-          nextScreen = const WorkerMainLayout(); // Tu panel de trabajador
-        } else {
-          nextScreen = const ClientMainLayout(); // El de cliente
-        }
+    // 3. DIRIGIR AL USUARIO
+    Widget nextScreen;
+    final role = next.user!.role.toLowerCase().trim();
 
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (context) => nextScreen),
-          (route) => false, 
-        );
-      }
-    });
+    if (role.contains('worker') || role.contains('trabajador')) {
+      nextScreen = const WorkerMainLayout();
+    } else {
+      nextScreen = const ClientMainLayout();
+    }
+
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (context) => nextScreen),
+      (route) => false, 
+    );
+  }
+});
 
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
@@ -94,7 +101,7 @@ ref.listen<AuthState>(authProvider, (previous, next) {
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: AppTheme.primaryColor.withValues(alpha: 0.08),
+                          color: AppTheme.primaryColor.withOpacity(0.08),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: const Icon(Icons.handyman_outlined, size: 48, color: AppTheme.primaryColor),
@@ -173,5 +180,5 @@ ref.listen<AuthState>(authProvider, (previous, next) {
     focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2)),
   );
 
-  Widget _buildBlurCircle({double size = 200}) => Container(width: size, height: size, decoration: BoxDecoration(shape: BoxShape.circle, color: AppTheme.primaryColor.withValues(alpha: 0.08)), child: BackdropFilter(filter: ImageFilter.blur(sigmaX: 50, sigmaY: 50), child: Container(color: Colors.transparent)));
+  Widget _buildBlurCircle({double size = 200}) => Container(width: size, height: size, decoration: BoxDecoration(shape: BoxShape.circle, color: AppTheme.primaryColor.withOpacity(0.08)), child: BackdropFilter(filter: ImageFilter.blur(sigmaX: 50, sigmaY: 50), child: Container(color: Colors.transparent)));
 }

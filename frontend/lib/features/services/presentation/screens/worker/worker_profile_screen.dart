@@ -7,6 +7,9 @@ import 'package:lucide_icons/lucide_icons.dart';
 
 // 👇 AQUÍ IMPORTAMOS TUS COMPONENTES COMPARTIDOS
 import 'package:forja_trabajo/features/auth/presentation/widgets/profile_shared_widgets.dart';
+import 'package:forja_trabajo/features/profile/presentation/settings_screen.dart';
+import 'package:forja_trabajo/features/services/presentation/screens/client/edit_profile_screen.dart';
+import 'package:forja_trabajo/features/profile/presentation/settings_screen.dart';
 
 class WorkerProfileScreen extends ConsumerWidget {
   const WorkerProfileScreen({super.key});
@@ -80,9 +83,22 @@ class WorkerProfileScreen extends ConsumerWidget {
             // 👇 4. EL MENÚ LIMPIO (Usando Shared Widgets)
             ProfileMenuCard(
               children: [
+                ProfileMenuOption(icon: LucideIcons.user, title: 'Editar Perfil', onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const EditProfileScreen()),
+                  );
+                }),
                 ProfileMenuOption(icon: LucideIcons.briefcase, title: 'Mi Portafolio', onTap: () {}),
                 ProfileMenuOption(icon: LucideIcons.star, title: 'Mis Reseñas', onTap: () {}),
                 ProfileMenuOption(icon: LucideIcons.history, title: 'Historial de Trabajos', onTap: () {}),
+                ProfileMenuOption(icon: LucideIcons.history, title: 'Mis Solicitudes', onTap: () {}),
+                ProfileMenuOption(icon: LucideIcons.settings, title: 'Configuración', onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const SettingsScreen()),
+                  );
+                }),
               ],
             ),
             
