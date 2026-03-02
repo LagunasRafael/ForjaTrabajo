@@ -87,20 +87,6 @@ export const DashboardPage = () => {
     .slice(0, 6); // Mostramos solo las 6 más populares
 }, [services, categories]);
 
-const totalEarnings = useMemo(() => {
-  return services
-    .filter(s => (s.status || '').toUpperCase() === 'COMPLETED')
-    .reduce((acc, curr) => acc + (curr.basePrice || 0), 0);
-}, [services]);
-
-// Función para formatear a Moneda (MXN)
-const formatCurrency = (value: number) => {
-  return new Intl.NumberFormat('es-MX', {
-    style: 'currency',
-    currency: 'MXN',
-  }).format(value);
-};
-
   // --- COMPONENTE INTERNO: TARJETA DE KPI ---
   const StatCard = ({ title, value, icon, trend, colorClass }: any) => (
     <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/50 p-6 backdrop-blur-sm group hover:border-slate-700 transition-all duration-300">
@@ -125,8 +111,6 @@ const formatCurrency = (value: number) => {
     </div>
   );
 
-  
-
   return (
     <div className="space-y-8 animate-in fade-in duration-500 pb-10">
       
@@ -142,18 +126,6 @@ const formatCurrency = (value: number) => {
         <StatCard title="Categorías" value={stats.categories} trend="Estable" colorClass="text-emerald-400" icon={<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>} />
         <StatCard title="Servicios Totales" value={stats.services} trend="+28%" colorClass="text-indigo-400" icon={<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M15 18a3 3 0 1 0-6 0"/><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2-2h12a2 2 0 0 0 2-2V7z"/><circle cx="12" cy="13" r="2"/></svg>} />
         <StatCard title="En Proceso (Match)" value={stats.activeRequests} trend="En curso" colorClass="text-rose-400" icon={<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>} />
-        <StatCard 
-        title="Impacto Económico" 
-        value={isLoading ? "..." : formatCurrency(totalEarnings)} 
-        trend="Ingreso Real" 
-        colorClass="text-amber-400 shadow-[0_0_15px_rgba(251,191,36,0.15)]" 
-        icon={
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="12" y1="1" x2="12" y2="23" />
-            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-          </svg>
-        } 
-        />
       </div>
 
       {/* 3. SECCIÓN DE ANÁLISIS VISUAL Y USUARIOS */}
