@@ -99,3 +99,50 @@ def delete_old_file_from_s3(s3_url: str):
         
     except Exception as e:
         print(f"❌ Error al intentar borrar de S3: {e}")
+
+async def upload_service_evidence_to_s3(file: UploadFile, service_id: str) -> str:
+    """
+    Sube una foto de evidencia a S3 en su propia carpeta por servicio.
+    Ruta en S3: servicios/{service_id}/evidencias/{uuid}.jpg
+    """
+    try:
+        if not BUCKET_NAME or not AWS_ACCESS_KEY:
+            raise ValueError("Faltan credenciales de AWS.")
+
+        # 1. Procesamiento de imagen (igual que antes)
+        image_data = await file.read()
+        image = Image.open(io.BytesIO(image_data))
+        
+        if image.mode in ("RGBA", "P"):
+            image = image.convert("RGB")
+            
+        compressed_image_io = io.BytesIO()
+        # Calidad 70 es un buen balance para evidencias
+        image.save(compressed_image_io, format='JPEG', optimize=True, quality=70) 
+        compressed_image_io.seek(0) 
+
+        # 2. Generamos la RUTA DINÁMICA
+        file_extension = ".jpg"
+        # 👇 LA MAGIA ESTÁ AQUÍ: Estructura de carpetas limpia
+        s3_key = f"servicios/{service_id}/evidencias/foto_{uuid.uuid4()}{file_extension}"
+
+        print(f"🚀 Subiendo evidencia a S3 en: {s3_key}...")
+        
+        # 3. Subimos a AWS
+        s3_client.upload_fileobj(
+            compressed_image_io, 
+            BUCKET_NAME,
+            s3_key,
+            ExtraArgs={
+                "ContentType": "image/jpeg",
+            }
+        )
+        print("✅ ¡Evidencia subida exitosamente!")
+
+        # 4. Devolvemos la URL pública
+        return f"https://{BUCKET_NAME}.s3.amazonaws.com/{s3_key}"
+
+    except Exception as e:
+        print("💥 ERROR AL SUBIR EVIDENCIA A S3 💥")
+        print(traceback.format_exc())
+        return None # Retornamos None si falla, para que no truene todo el endpoint

@@ -15,6 +15,8 @@ class ServiceEntity {
   final JobStatus status;
   final bool isActive;
   final DateTime createdAt;
+  final String? authorName;
+  final String? profilePictureUrl;
 
   ServiceEntity({
     required this.id,
@@ -31,5 +33,7 @@ class ServiceEntity {
     required this.status,
     required this.isActive,
     required this.createdAt,
+    this.authorName,
+    this.profilePictureUrl,
   });
 }

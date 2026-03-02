@@ -8,7 +8,8 @@ final categoryRemoteDataSourceProvider = Provider((ref) => CategoryRemoteDataSou
 
 class CategoryRemoteDataSource {
   // Plural "services" para que no de 404
-  final String baseUrl = "http://127.0.0.1:8000/services/categories"; 
+  //final String baseUrl = "http://127.0.0.1:8000/services/categories"; 
+    final String baseUrl = "http://10.0.2.2:8000/services/categories"; 
 
   Future<List<CategoryModel>> getCategories() async {
     final response = await http.get(Uri.parse(baseUrl));
@@ -53,7 +54,8 @@ class CategoryRemoteDataSource {
   Future<List<CategoryModel>> getTopCategories() async {
     try {
       // Usamos la URL base pero apuntando al nuevo endpoint del backend
-      final String topUrl = "http://127.0.0.1:8000/services/top-categories";
+    //  final String topUrl = "http://127.0.0.1:8000/services/top-categories";
+      final String topUrl = "http://10.0.2.2:8000/services/top-categories";
       
       final response = await http.get(Uri.parse(topUrl));
       

@@ -24,10 +24,16 @@ android {
         applicationId = "com.example.forja_trabajo"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
+        
+        // 🔴 1. CAMBIA ESTO: Fija el SDK mínimo a 21 (Soporte nativo moderno)
+        minSdk = flutter.minSdkVersion 
+        
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        // 🟢 2. AGREGA ESTA LÍNEA: Previene el crash del límite de métodos
+        multiDexEnabled = true
     }
 
     buildTypes {
