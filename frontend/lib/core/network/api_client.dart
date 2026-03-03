@@ -9,11 +9,11 @@ class ApiClient {
   ApiClient()
       : dio = Dio(
           BaseOptions(
-            // OJO: Esta URL cambiará dependiendo de Project IDX. 
+            // OJO: Esta URL cambiará dependiendo de Project IDX.
             // Por ahora ponemos la estándar de FastAPI local.
-           
-           // baseUrl: 'http://127.0.0.1:8000', 
-           baseUrl: 'http://10.0.2.2:8000',
+
+            // baseUrl: 'http://127.0.0.1:8000',
+            baseUrl: 'http://10.0.2.2:8000',
             connectTimeout: const Duration(seconds: 10),
             receiveTimeout: const Duration(seconds: 10),
             headers: {
@@ -33,23 +33,67 @@ class ApiClient {
         onRequest: (options, handler) async {
           // 1. Antes de que el mensaje salga del celular, buscamos el Token
           final token = await storage.read(key: 'jwt_token');
-          
+
           // 2. Si el usuario ya hizo login y tiene token, se lo pegamos en la cabecera
           if (token != null) {
             options.headers['Authorization'] = 'Bearer $token';
           }
-          
+
           // 3. Dejamos que el mensaje continúe su camino al backend
           return handler.next(options);
         },
         onError: (DioException e, handler) async {
           // Si el backend nos responde con 401 (No Autorizado / Token Expirado)
           if (e.response?.statusCode == 401) {
-            // Borramos el token caducado
+            // Evitar bucle infinito si la petición de refresh falla
+            if (e.requestOptions.extra['isRetry'] == true) {
+              return handler.next(e);
+            }
+
+            final refreshToken = await storage.read(key: 'refresh_token');
+
+            if (refreshToken != null && refreshToken.isNotEmpty) {
+              try {
+                // Creamos un Dio nuevo SIN interceptores para evitar bucles
+                final retryDio = Dio(BaseOptions(baseUrl: dio.options.baseUrl));
+
+                final refreshResponse = await retryDio.post(
+                  '/auth/refresh',
+                  data: {'refresh_token': refreshToken},
+                );
+
+                if (refreshResponse.statusCode == 200) {
+                  final newAccessToken = refreshResponse.data['access_token'];
+                  final newRefreshToken = refreshResponse.data['refresh_token'];
+
+                  // Guardamos los nuevos tokens
+                  await storage.write(key: 'jwt_token', value: newAccessToken);
+                  if (newRefreshToken != null) {
+                    await storage.write(
+                        key: 'refresh_token', value: newRefreshToken);
+                  }
+
+                  // Actualizamos el header de la petición fallida
+                  e.requestOptions.headers['Authorization'] =
+                      'Bearer $newAccessToken';
+                  e.requestOptions.extra['isRetry'] =
+                      true; // Marcamos como reintento
+
+                  // Reintentamos la petición original instanciando una nueva
+                  final retryResponse = await dio.fetch(e.requestOptions);
+                  return handler.resolve(retryResponse);
+                }
+              } catch (refreshException) {
+                print('🚨 Error al refrescar token: $refreshException');
+              }
+            }
+
+            // Si no hay refresh_token o el refresco falló: cerramos sesión
             await storage.delete(key: 'jwt_token');
-            
+            await storage.delete(key: 'refresh_token');
+
             // TODO: Aquí luego pondremos código para mandar al usuario a la pantalla de Login
-            print('🚨 Token expirado. Cerrando sesión...');
+            print('🚨 Sesión totalmente expirada. Limpiando tokens...');
           }
           return handler.next(e);
         },
