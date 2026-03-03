@@ -6,14 +6,15 @@ from app.auth import schemas
 from app.auth import service
 from app.auth import models
 from app.db.database import get_db
-from app.auth.security import create_access_token, get_current_user
+from app.auth.security import create_access_token, create_refresh_token, get_current_user, SECRET_KEY, ALGORITHM
 from app.core.roles import Role # Para forzar el rol en el registro
 from app.utils.s3 import upload_file_to_s3, delete_old_file_from_s3
-from fastapi import Request
+from jose import jwt, JWTError
+from fastapi import APIRouter, Request
+
+from app.core.rate_limit import limiter
 
 router = APIRouter()
-
-from app.main import limiter
 
 @router.post("/register", response_model=schemas.UserResponse, status_code=status.HTTP_201_CREATED)
 @limiter.limit("3/minute")
@@ -48,9 +49,43 @@ def login(request: Request, data: schemas.UserLogin, db: Session = Depends(get_d
 
     # El 'sub' (subject) del JWT debe ser el identificador único
     token = create_access_token({"sub": str(user.id)})
+    refresh_token = create_refresh_token({"sub": str(user.id)})
 
     return {
         "access_token": token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer",
+        "user": user
+    }
+
+@router.post("/refresh", response_model=schemas.Token)
+def refresh_token(data: schemas.TokenRefresh, db: Session = Depends(get_db)):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Token de refresco inválido o expirado",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(data.refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id: str = payload.get("sub")
+        token_type: str = payload.get("type")
+        
+        if user_id is None or token_type != "refresh":
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if user is None or not user.is_active:
+        raise credentials_exception
+
+    # Generamos nuevos tokens
+    new_access_token = create_access_token({"sub": str(user.id)})
+    new_refresh_token = create_refresh_token({"sub": str(user.id)})
+
+    return {
+        "access_token": new_access_token,
+        "refresh_token": new_refresh_token,
         "token_type": "bearer",
         "user": user
     }
