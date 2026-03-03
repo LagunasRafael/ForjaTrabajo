@@ -64,3 +64,6 @@ class LocationUpdate(BaseModel):
     latitude: float
     longitude: float
     city: str
+
+class FcmTokenUpdate(BaseModel):
+    fcm_token: str

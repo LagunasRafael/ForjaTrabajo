@@ -212,4 +212,16 @@ class AuthRemoteDataSource {
       throw Exception('Error actualizando perfil: $e');
     }
   }
+
+  Future<void> updateFcmToken(String fcmToken) async {
+    try {
+      await apiClient.dio.put(
+        '/auth/fcm-token',
+        data: {'fcm_token': fcmToken},
+      );
+      debugPrint('📱 FCM Token actualizado en el servidor');
+    } catch (e) {
+      debugPrint('🚨 Error actualizando FCM Token: $e');
+    }
+  }
 }

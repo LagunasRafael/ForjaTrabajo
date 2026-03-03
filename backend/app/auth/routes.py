@@ -200,3 +200,13 @@ def update_location(
     
     db.commit()
     return {"status": "success", "city": user.city}
+
+@router.put("/fcm-token")
+def update_fcm_token(
+    data: schemas.FcmTokenUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    current_user.fcm_token = data.fcm_token
+    db.commit()
+    return {"status": "success", "message": "FCM token actualizado"}
