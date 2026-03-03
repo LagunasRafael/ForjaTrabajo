@@ -9,11 +9,15 @@ from app.db.database import get_db
 from app.auth.security import create_access_token, get_current_user
 from app.core.roles import Role # Para forzar el rol en el registro
 from app.utils.s3 import upload_file_to_s3, delete_old_file_from_s3
+from fastapi import Request
 
 router = APIRouter()
 
+from app.main import limiter
+
 @router.post("/register", response_model=schemas.UserResponse, status_code=status.HTTP_201_CREATED)
-def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
+@limiter.limit("3/minute")
+def register(request: Request, user: schemas.UserCreate, db: Session = Depends(get_db)):
     # SEGURIDAD FASE 2: Forzamos que el registro público sea siempre 'user'
     # Así, aunque envíen "role": "admin" en el JSON, se ignora.
     user_data = user.model_dump()
@@ -30,7 +34,8 @@ def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
     return service.create_user(db, user_data)
 
 @router.post("/login", response_model=schemas.Token)
-def login(data: schemas.UserLogin, db: Session = Depends(get_db)):
+@limiter.limit("5/minute")
+def login(request: Request, data: schemas.UserLogin, db: Session = Depends(get_db)):
     user = service.authenticate_user(db, data.email, data.password)
 
     if not user:
