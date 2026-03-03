@@ -47,8 +47,12 @@ class UserLogin(BaseModel):
 # 5. Esquema para el Token JWT
 class Token(BaseModel):
     access_token: str
+    refresh_token: str
     token_type: str = "bearer"
     user: UserResponse
+
+class TokenRefresh(BaseModel):
+    refresh_token: str
 
 class UserUpdate(BaseModel):
     full_name: Optional[str] = None
@@ -60,3 +64,6 @@ class LocationUpdate(BaseModel):
     latitude: float
     longitude: float
     city: str
+
+class FcmTokenUpdate(BaseModel):
+    fcm_token: str

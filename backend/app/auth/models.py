@@ -1,6 +1,7 @@
 import enum
 import uuid
-from sqlalchemy import Column, Integer, String, Boolean, Enum, Float
+from datetime import datetime
+from sqlalchemy import Column, Integer, String, Boolean, Enum, Float, DateTime
 from app.db.database import Base
 from sqlalchemy.orm import relationship
 
@@ -19,7 +20,9 @@ class User(Base):
     full_name = Column(String, nullable=True)
     profile_picture_url = Column(String, nullable=True)
     phone = Column(String, nullable=True)
-    city = Column(String, nullable=True)
+    city = Column(String, nullable=True)     # "Zitácuaro, Mich."
+    fcm_token = Column(String, nullable=True) # Token para notificaciones Push
+    created_at = Column(DateTime, default=datetime.utcnow)
     latitude = Column(Float, nullable=True)
     longitude = Column(Float, nullable=True)
     

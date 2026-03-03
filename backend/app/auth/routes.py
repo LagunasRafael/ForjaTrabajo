@@ -6,14 +6,19 @@ from app.auth import schemas
 from app.auth import service
 from app.auth import models
 from app.db.database import get_db
-from app.auth.security import create_access_token, get_current_user
+from app.auth.security import create_access_token, create_refresh_token, get_current_user, SECRET_KEY, ALGORITHM
 from app.core.roles import Role # Para forzar el rol en el registro
 from app.utils.s3 import upload_file_to_s3, delete_old_file_from_s3
+from jose import jwt, JWTError
+from fastapi import APIRouter, Request
+
+from app.core.rate_limit import limiter
 
 router = APIRouter()
 
 @router.post("/register", response_model=schemas.UserResponse, status_code=status.HTTP_201_CREATED)
-def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
+@limiter.limit("3/minute")
+def register(request: Request, user: schemas.UserCreate, db: Session = Depends(get_db)):
     # SEGURIDAD FASE 2: Forzamos que el registro público sea siempre 'user'
     # Así, aunque envíen "role": "admin" en el JSON, se ignora.
     user_data = user.model_dump()
@@ -30,7 +35,8 @@ def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
     return service.create_user(db, user_data)
 
 @router.post("/login", response_model=schemas.Token)
-def login(data: schemas.UserLogin, db: Session = Depends(get_db)):
+@limiter.limit("5/minute")
+def login(request: Request, data: schemas.UserLogin, db: Session = Depends(get_db)):
     user = service.authenticate_user(db, data.email, data.password)
 
     if not user:
@@ -43,9 +49,43 @@ def login(data: schemas.UserLogin, db: Session = Depends(get_db)):
 
     # El 'sub' (subject) del JWT debe ser el identificador único
     token = create_access_token({"sub": str(user.id)})
+    refresh_token = create_refresh_token({"sub": str(user.id)})
 
     return {
         "access_token": token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer",
+        "user": user
+    }
+
+@router.post("/refresh", response_model=schemas.Token)
+def refresh_token(data: schemas.TokenRefresh, db: Session = Depends(get_db)):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Token de refresco inválido o expirado",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(data.refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id: str = payload.get("sub")
+        token_type: str = payload.get("type")
+        
+        if user_id is None or token_type != "refresh":
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if user is None or not user.is_active:
+        raise credentials_exception
+
+    # Generamos nuevos tokens
+    new_access_token = create_access_token({"sub": str(user.id)})
+    new_refresh_token = create_refresh_token({"sub": str(user.id)})
+
+    return {
+        "access_token": new_access_token,
+        "refresh_token": new_refresh_token,
         "token_type": "bearer",
         "user": user
     }
@@ -160,3 +200,13 @@ def update_location(
     
     db.commit()
     return {"status": "success", "city": user.city}
+
+@router.put("/fcm-token")
+def update_fcm_token(
+    data: schemas.FcmTokenUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    current_user.fcm_token = data.fcm_token
+    db.commit()
+    return {"status": "success", "message": "FCM token actualizado"}

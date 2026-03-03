@@ -16,11 +16,11 @@ const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
-    
+
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-    
+
     return config;
   },
   (error) => {
@@ -35,12 +35,44 @@ api.interceptors.response.use(
     // Si la respuesta es exitosa (200-299), la dejamos pasar limpia
     return response;
   },
-  (error) => {
+  async (error) => {
+    const originalRequest = error.config;
+
     // A. Error de Autenticación (401) -> Token vencido o inválido
-    if (error.response && error.response.status === 401) {
-      // Evitamos un bucle infinito si ya estamos en login
+    if (error.response && error.response.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true; // Evitar bucle infinito
+
+      // 1. Intentamos refrescar el token
+      try {
+        const refreshToken = localStorage.getItem('refresh_token');
+        if (refreshToken) {
+          // Usamos axios puro (no 'api') para evitar que se intercepte de nuevo este refresco
+          const response = await axios.post(`${api.defaults.baseURL}/auth/refresh`, {
+            refresh_token: refreshToken
+          });
+
+          const newAccessToken = response.data.access_token;
+          const newRefreshToken = response.data.refresh_token;
+
+          // Guardamos los nuevos tokens
+          localStorage.setItem('token', newAccessToken);
+          localStorage.setItem('refresh_token', newRefreshToken);
+
+          // Actualizamos el header de la petición fallida y la reintentamos
+          originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+          return api(originalRequest);
+        }
+      } catch (refreshError) {
+        // Falló el refresco (ej. token_refresco expirado)
+        console.error("No se pudo refrescar el token", refreshError);
+        // Continuamos al flujo de "Limpiar y Redirigir" que sigue...
+      }
+
+      // Si no tenemos refresh token o falló el refresco, desconectamos al usuario
       if (window.location.pathname !== '/login') {
         localStorage.removeItem('token'); // Borramos el token vencido
+        localStorage.removeItem('refresh_token');
+        localStorage.removeItem('user');
         window.location.href = '/login'; // Redirigimos al usuario
         toast.error('Tu sesión ha expirado. Por favor ingresa nuevamente.');
       }

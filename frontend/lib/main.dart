@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_core/firebase_core.dart';
 
 import 'core/theme/app_theme.dart';
 import 'features/auth/presentation/screens/role_selection_screen.dart';
@@ -10,8 +11,9 @@ import 'features/services/presentation/screens/layout/client_main_layout.dart';
 import 'features/services/presentation/screens/layout/worker_main_layout.dart';
 import 'features/services/presentation/screens/layout/admin_main_layout.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
 
   runApp(
     const ProviderScope(
@@ -35,8 +37,9 @@ class ForjaTrabajoApp extends StatelessWidget {
 
       // 👇 RUTAS REGISTRADAS
       routes: {
-        '/login':       (context) => const LoginScreen(),         // 👈 RUTA CLAVE PARA CERRAR SESIÓN
-        '/roles':       (context) => const RoleSelectionScreen(),
+        '/login': (context) =>
+            const LoginScreen(), // 👈 RUTA CLAVE PARA CERRAR SESIÓN
+        '/roles': (context) => const RoleSelectionScreen(),
         '/client_home': (context) => const ClientMainLayout(),
         '/worker_home': (context) => const WorkerMainLayout(),
         '/admin_home': (context) => AdminMainLayout(), // ✅ ASÍ ESTÁ BIEN
