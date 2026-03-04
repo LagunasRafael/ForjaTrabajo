@@ -1,0 +1,35 @@
+version: "3.8"
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: forja_db
+    restart: always
+    environment:
+      POSTGRES_USER: forja_user
+      POSTGRES_PASSWORD: forja_password
+      POSTGRES_DB: forjadb
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  api:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: forja_api
+    restart: always
+    depends_on:
+      - db
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://forja_user:forja_password@db:5432/forjadb
+      # Agrega aquí tus otras variables (o usa env_file: ./backend/.env)
+    volumes:
+      - ./backend:/app
+      - /app/venv # Ignorar el venv local dentro de Docker
+
+volumes:
+  postgres_data:
