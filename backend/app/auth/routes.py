@@ -9,8 +9,9 @@ from app.db.database import get_db
 from app.auth.security import create_access_token, create_refresh_token, get_current_user, SECRET_KEY, ALGORITHM
 from app.core.roles import Role # Para forzar el rol en el registro
 from app.utils.s3 import upload_file_to_s3, delete_old_file_from_s3
+from app.utils.email import generate_verification_code, send_verification_email
 from jose import jwt, JWTError
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, BackgroundTasks
 
 from app.core.rate_limit import limiter
 
@@ -18,7 +19,7 @@ router = APIRouter()
 
 @router.post("/register", response_model=schemas.UserResponse, status_code=status.HTTP_201_CREATED)
 @limiter.limit("3/minute")
-def register(request: Request, user: schemas.UserCreate, db: Session = Depends(get_db)):
+def register(request: Request, user: schemas.UserCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     # SEGURIDAD FASE 2: Forzamos que el registro público sea siempre 'user'
     # Así, aunque envíen "role": "admin" en el JSON, se ignora.
     user_data = user.model_dump()
@@ -32,7 +33,66 @@ def register(request: Request, user: schemas.UserCreate, db: Session = Depends(g
             detail="El correo ya está registrado"
         )
     
-    return service.create_user(db, user_data)
+    # 2. Verificar que el teléfono tampoco exista
+    if user.phone:
+        db_phone = service.get_user_by_phone(db, phone=user.phone)
+        if db_phone:
+            raise HTTPException(
+                status_code=400, 
+                detail="El número de teléfono ya está en uso"
+            )
+            
+    # 3. Generar código de 6 dígitos
+    verification_code = generate_verification_code()
+    
+    # 4. Crear el usuario en la BD (is_email_verified=False inicial)
+    new_user = service.create_user(db, user_data, verification_code=verification_code)
+    
+    # 5. Enviar el correo en segundo plano para no hacer esperar al usuario
+    background_tasks.add_task(send_verification_email, new_user.email, verification_code)
+    
+    return new_user
+
+@router.post("/verify-code")
+def verify_email_code(data: schemas.VerifyCodeRequest, db: Session = Depends(get_db)):
+    user = service.get_user_by_email(db, email=data.email)
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+        
+    if user.is_email_verified:
+        return {"status": "success", "message": "El correo ya estaba verificado"}
+        
+    if user.verification_code != data.code:
+        raise HTTPException(status_code=400, detail="Código de verificación incorrecto")
+        
+    # Verificar, limpiar el código y guardar
+    user.is_email_verified = True
+    user.verification_code = None
+    db.commit()
+    
+    return {"status": "success", "message": "Correo verificado exitosamente"}
+
+@router.post("/resend-code")
+@limiter.limit("3/minute")
+def resend_verification_code(request: Request, data: schemas.ResendCodeRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+    user = service.get_user_by_email(db, email=data.email)
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+        
+    if user.is_email_verified:
+        raise HTTPException(status_code=400, detail="El correo ya está verificado")
+        
+    # Generar un nuevo código
+    new_code = generate_verification_code()
+    user.verification_code = new_code
+    db.commit()
+    
+    # Reenviar el correo
+    background_tasks.add_task(send_verification_email, user.email, new_code)
+    
+    return {"status": "success", "message": "Nuevo código enviado"}
 
 @router.post("/login", response_model=schemas.Token)
 @limiter.limit("5/minute")
