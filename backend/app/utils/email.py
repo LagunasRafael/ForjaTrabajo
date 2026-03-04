@@ -16,7 +16,7 @@ if not logger.handlers:
     logger.addHandler(ch)
 
 SMTP_SERVER = "smtp.gmail.com"
-SMTP_PORT = 587
+SMTP_PORT = 465 # Puerto SSL para brincar los firewalls de Render
 
 
 def generate_verification_code() -> str:
@@ -55,10 +55,9 @@ def send_verification_email(to_email: str, code: str):
         
         msg.attach(MIMEText(html_body, 'html'))
 
-        # Conectar al servidor SMTP
-        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+        # Conectar al servidor SMTP mediante SSL Directo (suele saltarse los firewalls)
+        server = smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT, timeout=10)
         server.set_debuglevel(1) # Forzar prints del servidor SMTP
-        server.starttls()  # Encriptación
         server.login(smtp_user, smtp_password)
         server.send_message(msg)
         server.quit()
