@@ -106,6 +106,22 @@ class ServiceRepositoryImpl implements ServiceRepository {
     }
   }
 
+@override
+  Future<List<ServiceEntity>> getMyApplications(String token) async {
+    // 1. Obtenemos la lista de JSONs desde el DataSource
+    final List<Map<String, dynamic>> data = await requestDS.getMyApplications(token);
+    
+    // 2. Usamos tu ServiceModel para mapear el JSON y luego lo convertimos a Entity
+    return data.map((json) {
+      final model = ServiceModel.fromJson(json);
+      return model.toEntity();
+    }).toList();
+  }
+
+  @override
+  Future<bool> updatePostulation(String requestId, String description, double proposedPrice, String token) {
+    return requestDS.updatePostulation(requestId, description, proposedPrice, token);
+  }
   // --- TRABAJOS (JOBS) ---
   @override
   Future<JobEntity> completeJob(String jobId, String token) => jobDS.completeJob(jobId, token);
@@ -115,9 +131,23 @@ class ServiceRepositoryImpl implements ServiceRepository {
 
   @override
   Future<bool> completeService(String serviceId) async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token') ?? '';
-    return await serviceDS.completeService(serviceId, token);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token') ?? '';
+      
+      if (token.isEmpty) return false;
+
+      // 🚀 CAMBIO CLAVE: Usamos jobDS en lugar de serviceDS
+      // Porque lo que estamos terminando es un contrato (JOB)
+      // Y nos aseguramos de que el resultado sea un bool para tu SnackBar
+      final result = await jobDS.completeJob(serviceId, token);
+      
+      // Si el objeto Job regresa con ID, significa que fue un éxito
+      return result.id.isNotEmpty;
+    } catch (e) {
+      print("🚨 Error en Repository.completeService: $e");
+      return false;
+    }
   }
 }
 

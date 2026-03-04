@@ -4,12 +4,14 @@ class CategoryChip extends StatelessWidget {
   final String label;
   final bool isSelected;
   final VoidCallback onTap;
+  final IconData? icon; // ✅ 1. Agregamos el ícono como opcional
 
   const CategoryChip({
     super.key,
     required this.label,
     required this.isSelected,
     required this.onTap,
+    this.icon, // ✅ 2. Lo declaramos aquí
   });
 
   @override
@@ -26,12 +28,28 @@ class CategoryChip extends StatelessWidget {
             color: isSelected ? Colors.transparent : Colors.grey.shade300,
           ),
         ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected ? Colors.white : Colors.black87,
-            fontWeight: FontWeight.w500,
-          ),
+        // ✅ 3. Envolvemos el texto en un Row para que quepa el ícono al lado
+        child: Row(
+          mainAxisSize: MainAxisSize.min, // Para que el botón no ocupe toda la pantalla
+          children: [
+            // Si le pasamos un ícono, lo dibuja junto con un pequeño espacio
+            if (icon != null) ...[
+              Icon(
+                icon, 
+                size: 18, 
+                color: isSelected ? Colors.white : Colors.grey[600]
+              ),
+              const SizedBox(width: 6),
+            ],
+            // Tu texto original intacto
+            Text(
+              label,
+              style: TextStyle(
+                color: isSelected ? Colors.white : Colors.black87,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
         ),
       ),
     );

@@ -1,4 +1,4 @@
-enum JobStatus { open, matched, completed, cancelled }
+enum JobStatus { open, matched, waiting_confirmation, completed, cancelled }
 
 class ServiceEntity {
   final String id;

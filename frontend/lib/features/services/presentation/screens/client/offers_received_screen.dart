@@ -91,22 +91,17 @@ class _CandidateCardState extends State<_CandidateCard> {
       final success = await widget.ref.read(acceptOfferProvider.notifier).acceptWorker(widget.offer.id);
 
       if (success && mounted) {
-        // Refrescar las listas
-        widget.ref.invalidate(myRequestsProvider);
-        widget.ref.invalidate(offersListProvider(widget.serviceId));
-
-        // 👇 CAMBIO AQUÍ: Regresamos a la pestaña "Abiertos" (Índice 0)
-        widget.ref.read(myRequestsTabProvider.notifier).state = 0;
-
-        await Future.delayed(const Duration(milliseconds: 100));
+        await widget.ref.refresh(myRequestsProvider.future); 
         
+        widget.ref.read(myRequestsTabProvider.notifier).state = 1;
+
         if (mounted) {
           Navigator.of(context).pop(); // Quita Loader
           Navigator.of(context).pop(); // Regresa de pantalla
           
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text("Postulante aceptado"), 
+              content: Text("✅ Trabajador contratado. ¡A darle!"), 
               behavior: SnackBarBehavior.floating,
               backgroundColor: Color(0xFF10B981),
             )
@@ -114,7 +109,7 @@ class _CandidateCardState extends State<_CandidateCard> {
         }
       } else {
         if (mounted) Navigator.of(context).pop(); 
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Error al aceptar")));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("❌ Error al aceptar")));
       }
     } catch (e) {
       if (mounted) Navigator.of(context).pop();
@@ -124,7 +119,6 @@ class _CandidateCardState extends State<_CandidateCard> {
 
   @override
   Widget build(BuildContext context) {
-    // 👇 SE RESPETA TODA TU LÓGICA DE IMÁGENES
     final String? imgUrl = widget.offer.authorImageUrl; 
     
     String inicial = "U";

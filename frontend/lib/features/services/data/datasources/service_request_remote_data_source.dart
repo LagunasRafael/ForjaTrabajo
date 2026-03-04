@@ -81,6 +81,51 @@ class ServiceRequestRemoteDataSource {
       throw Exception('Error al aceptar postulación (${response.statusCode}): ${utf8.decode(response.bodyBytes)}');
     }
   }
+
+// ---------------------------------------------------------------------------
+  // OBTENER MIS POSTULACIONES (Worker)
+  // ---------------------------------------------------------------------------
+  Future<List<Map<String, dynamic>>> getMyApplications(String token) async {
+    final url = Uri.parse('$baseUrl/worker/my-applications');
+
+    final response = await http.get(
+      url,
+      headers: {
+        'Content-Type': 'application/json; charset=UTF-8',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      String body = utf8.decode(response.bodyBytes);
+      final List<dynamic> decodedList = json.decode(body);
+      return List<Map<String, dynamic>>.from(decodedList);
+    } else {
+      throw Exception('Error al cargar mis postulaciones (${response.statusCode}): ${utf8.decode(response.bodyBytes)}');
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // ACTUALIZAR UNA POSTULACIÓN (Worker)
+  // ---------------------------------------------------------------------------
+  Future<bool> updatePostulation(String requestId, String description, double proposedPrice, String token) async {
+    final url = Uri.parse('$baseUrl/service-requests/$requestId');
+
+    final response = await http.put(
+      url,
+      headers: {
+        'Content-Type': 'application/json; charset=UTF-8',
+        'Authorization': 'Bearer $token',
+      },
+      body: json.encode({
+        "description": description,
+        "proposed_price": proposedPrice,
+      }),
+    );
+
+    return response.statusCode == 200 || response.statusCode == 201;
+  }
+
 }
 
 // 2. Definimos el Provider para que el Repositorio lo encuentre

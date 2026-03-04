@@ -63,6 +63,8 @@ class _MyRequestsScreenState extends ConsumerState<MyRequestsScreen> with Single
       ),
       body: TabBarView(
         controller: _tabController,
+        // 🚀 LA MAGIA: Esto desactiva el deslizamiento lateral (swipe)
+        physics: const NeverScrollableScrollPhysics(), 
         children: [
           // 0. Abiertos
           _buildRequestList(ref, JobStatus.open),
@@ -80,7 +82,12 @@ class _MyRequestsScreenState extends ConsumerState<MyRequestsScreen> with Single
 
     return servicesAsync.when(
       data: (services) {
-        final filtered = services.where((s) => s.status == status).toList();
+        final filtered = services.where((s) {
+          if (status == JobStatus.matched) {
+            return s.status == JobStatus.matched || s.status == JobStatus.waiting_confirmation;
+          }
+          return s.status == status;
+        }).toList();
 
         if (filtered.isEmpty) {
           return Center(

@@ -1,155 +1,143 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-// 👇 Imports limpios (asegúrate de que las rutas coincidan)
+import 'package:forja_trabajo/features/services/domain/entities/service_entity.dart';
 import '../../providers/job_management_provider.dart'; 
-import '../../widgets/service_status_chip.dart';
 import 'package:forja_trabajo/shared/widgets/empty_state_widget.dart';
-import 'package:forja_trabajo/shared/widgets/service_card_skeleton.dart'; 
+import 'package:forja_trabajo/shared/widgets/service_card_skeleton.dart';
+import 'package:forja_trabajo/features/services/presentation/widgets/worker/worker_pending_job_card.dart';
+import 'package:forja_trabajo/features/services/presentation/widgets/worker/worker_active_job_card.dart';
+import 'package:forja_trabajo/features/services/presentation/widgets/worker/worker_completed_job_card.dart';
 
-class MyJobsScreen extends ConsumerWidget {
+class MyJobsScreen extends ConsumerStatefulWidget {
   const MyJobsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return DefaultTabController(
-      length: 3, // 1. Abiertos (Nuevos), 2. En Proceso, 3. Finalizados
-      child: Scaffold(
-        backgroundColor: const Color(0xFFF8F9FA),
-        appBar: AppBar(
-          title: const Text('Mis Trabajos', 
-            style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)
-          ),
-          backgroundColor: Colors.white,
-          elevation: 0,
-          bottom: const TabBar(
-            labelColor: Color(0xFF4F46E5),
-            unselectedLabelColor: Colors.grey,
-            indicatorColor: Color(0xFF4F46E5),
-            tabs: [
-              Tab(text: 'Abiertos'),
-              Tab(text: 'En Curso'),
-              Tab(text: 'Historial'),
-            ],
-          ),
-        ),
-        body: TabBarView(
-          children: [
-            _buildFilteredJobList(ref, 'open'),
-            _buildFilteredJobList(ref, 'in_progress'),
-            _buildFilteredJobList(ref, 'completed'),
+  ConsumerState<MyJobsScreen> createState() => _WorkerMyJobsScreenState();
+}
+
+class _WorkerMyJobsScreenState extends ConsumerState<MyJobsScreen> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    // 3 Pestañas: Postulaciones, En Curso, Historial
+    _tabController = TabController(length: 3, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8F9FA),
+      appBar: AppBar(
+        title: const Text('Mis Empleos', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        centerTitle: true,
+        bottom: TabBar(
+          controller: _tabController,
+          labelColor: const Color(0xFF10B981),
+          unselectedLabelColor: Colors.grey,
+          indicatorColor: const Color(0xFF10B981),
+          indicatorWeight: 3,
+          labelStyle: const TextStyle(fontWeight: FontWeight.bold),
+          tabs: const [
+            Tab(text: 'Postulaciones'),
+            Tab(text: 'En Curso'),
+            Tab(text: 'Historial'),
           ],
         ),
+      ),
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          // 0. Postulaciones
+          _buildFilteredJobList(ref, JobStatus.open),
+          // 1. En Curso
+          _buildFilteredJobList(ref, JobStatus.matched),
+          // 2. Historial
+          _buildFilteredJobList(ref, JobStatus.completed),
+        ],
       ),
     );
   }
 
-  Widget _buildFilteredJobList(WidgetRef ref, String status) {
-    final jobsAsync = ref.watch(jobManagementProvider);
-
+  Widget _buildFilteredJobList(WidgetRef ref, JobStatus status) {
+    final jobsAsync = ref.watch(workerJobsProvider); 
+    
     return jobsAsync.when(
       data: (jobs) {
-        // 2. Filtramos la lista según el estado de la pestaña
-        final filtered = jobs.where((j) => j.status.toString().split('.').last == status).toList();
+        // Filtramos asegurándonos de que JobStatus coincida exactamente con el objeto
+        final filtered = jobs.where((j) {
+          if (status == JobStatus.matched) {
+            return j.status == JobStatus.matched || j.status == JobStatus.waiting_confirmation;
+          }
+          return j.status == status;
+        }).toList();
 
         if (filtered.isEmpty) {
-          return _getEmptyStateForStatus(status);
+          return Center(child: _getEmptyStateForStatus(status));
         }
-
-        return ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: filtered.length,
-          itemBuilder: (context, index) => _buildJobCard(context, filtered[index]),
+        
+        // 🚀 AGREGAMOS REFRESH INDICATOR: Para que puedas jalar hacia abajo y actualizar
+        return RefreshIndicator(
+          onRefresh: () => ref.refresh(workerJobsProvider.future),
+          color: const Color(0xFF10B981),
+          child: ListView.builder(
+            physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+            padding: const EdgeInsets.all(16),
+            itemCount: filtered.length,
+            itemBuilder: (context, index) {
+              final job = filtered[index];
+              
+              switch (status) {
+                case JobStatus.open:
+                  return WorkerPendingJobCard(job: job);
+                case JobStatus.matched:
+                  return WorkerActiveJobCard(job: job);
+                case JobStatus.completed:
+                  return WorkerCompletedJobCard(job: job);
+                default:
+                  return const SizedBox.shrink();
+              }
+            },
+          ),
         );
       },
-      loading: () => ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: 4,
-        itemBuilder: (context, index) => const ServiceCardSkeleton(),
-      ),
+      loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, s) => Center(child: Text("Error: $e")),
     );
   }
 
-  // ✨ Función para personalizar el Empty State según la pestaña del trabajador
-  Widget _getEmptyStateForStatus(String status) {
+  // ✨ Textos personalizados
+  Widget _getEmptyStateForStatus(JobStatus status) {
     switch (status) {
-      case 'open':
+      case JobStatus.open:
         return const EmptyStateWidget(
           icon: Icons.assignment_late_outlined,
-          title: "No hay solicitudes",
-          message: "No tienes solicitudes nuevas pendientes de aceptar.",
+          title: "Sin postulaciones",
+          message: "No tienes ofertas pendientes. ¡Busca nuevos servicios y postúlate!",
         );
-      case 'in_progress':
+      case JobStatus.matched:
         return const EmptyStateWidget(
           icon: Icons.run_circle_outlined,
           title: "Nada en curso",
           message: "No tienes trabajos activos ahora mismo. ¡Manos a la obra!",
         );
-      case 'completed':
+      case JobStatus.completed:
         return const EmptyStateWidget(
           icon: Icons.check_circle_outline,
           title: "Historial vacío",
-          message: "Aquí verás todos los trabajos que vayas terminando.",
+          message: "Aquí verás todos los trabajos que vayas terminando y cobrando.",
         );
       default:
         return const SizedBox.shrink();
     }
-  }
-
-  Widget _buildJobCard(BuildContext context, dynamic job) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded( 
-                  child: Text(
-                    job.title, 
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                ServiceStatusChip(status: job.status.toString().split('.').last), 
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              // TODO: Cuando Juan Luis arregle el backend, cambiaremos esto por job.clientName
-              'Cliente Anónimo',
-              style: TextStyle(color: Colors.grey.shade600),
-            ),
-            const SizedBox(height: 12),
-            const Divider(),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  "\$${job.basePrice}",
-                  style: const TextStyle(
-                    fontSize: 16, 
-                    fontWeight: FontWeight.bold, 
-                    color: Color(0xFF4F46E5)
-                  ),
-                ),
-                TextButton(
-                  onPressed: () {
-                    // TODO: Acción para ver detalles del trabajo
-                  },
-                  child: const Text("Ver detalles"),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }
