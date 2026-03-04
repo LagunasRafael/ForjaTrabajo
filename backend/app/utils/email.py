@@ -3,6 +3,17 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import os
 import random
+import logging
+
+# Configurar el logger para que imprima directamente en consola (útil para Render)
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+if not logger.handlers:
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.INFO)
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    ch.setFormatter(formatter)
+    logger.addHandler(ch)
 
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
@@ -19,7 +30,7 @@ def send_verification_email(to_email: str, code: str):
     smtp_password = os.getenv("SMTP_PASSWORD", "").replace('"', '').replace("'", '').strip()
     
     if not smtp_user or not smtp_password:
-        print(f"⚠️ [MOCK EMAIL] Para {to_email}. Código generado: {code}. (Faltan credenciales SMTP)")
+        logger.warning(f"⚠️ [MOCK EMAIL] Para {to_email}. Código modificado: {code}. (Faltan credenciales SMTP, smtp_user='{smtp_user}')")
         return
         
     try:
@@ -46,14 +57,15 @@ def send_verification_email(to_email: str, code: str):
 
         # Conectar al servidor SMTP
         server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+        server.set_debuglevel(1) # Forzar prints del servidor SMTP
         server.starttls()  # Encriptación
         server.login(smtp_user, smtp_password)
         server.send_message(msg)
         server.quit()
         
-        print(f"✅ Correo de verificación enviado exitosamente a {to_email}")
+        logger.info(f"✅ Correo de verificación enviado exitosamente a {to_email}")
         
     except Exception as e:
-        print(f"❌ Error al enviar el correo a {to_email}: {str(e)}")
+        logger.error(f"❌ Error al enviar el correo a {to_email}", exc_info=True)
         # No lanzamos excepción para no romper el registro de usuario si el mail falla,
         # pero en producción podrías querer manejarlo distinto.
