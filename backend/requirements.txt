@@ -25,7 +25,7 @@ python-dotenv==1.2.1
 python-jose==3.5.0
 python-multipart==0.0.22
 rsa==4.9.1
-slowapi==0.1.91
+slowapi==0.1.9
 s3transfer==0.16.0
 six==1.17.0
 SQLAlchemy==2.0.46
