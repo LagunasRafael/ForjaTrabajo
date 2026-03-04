@@ -6,9 +6,7 @@ import random
 
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
-# Se leerán del archivo .env
-SMTP_USER = os.getenv("SMTP_USER")
-SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
+
 
 def generate_verification_code() -> str:
     """Genera un código numérico aleatorio de 6 dígitos."""
@@ -17,13 +15,16 @@ def generate_verification_code() -> str:
 def send_verification_email(to_email: str, code: str):
     """Envía un correo electrónico con el código de verificación."""
     
-    if not SMTP_USER or not SMTP_PASSWORD:
-        print(f"⚠️ [MOCK EMAIL] Para {to_email}. Código generado: {code}. (Faltan credenciales SMTP en .env)")
+    smtp_user = os.getenv("SMTP_USER", "").replace('"', '').replace("'", '').strip()
+    smtp_password = os.getenv("SMTP_PASSWORD", "").replace('"', '').replace("'", '').strip()
+    
+    if not smtp_user or not smtp_password:
+        print(f"⚠️ [MOCK EMAIL] Para {to_email}. Código generado: {code}. (Faltan credenciales SMTP)")
         return
         
     try:
         msg = MIMEMultipart()
-        msg['From'] = SMTP_USER
+        msg['From'] = smtp_user
         msg['To'] = to_email
         msg['Subject'] = "Verifica tu cuenta - Forja Trabajo"
 
@@ -46,7 +47,7 @@ def send_verification_email(to_email: str, code: str):
         # Conectar al servidor SMTP
         server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
         server.starttls()  # Encriptación
-        server.login(SMTP_USER, SMTP_PASSWORD)
+        server.login(smtp_user, smtp_password)
         server.send_message(msg)
         server.quit()
         
