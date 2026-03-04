@@ -6,7 +6,7 @@ from fastapi import HTTPException, status
 from datetime import datetime
 from sqlalchemy import func, and_
 from app.core.roles import Role
-
+from sqlalchemy import or_
 # -------------------------------------------------------------------------
 # CATEGORIES 
 # -------------------------------------------------------------------------
@@ -101,11 +101,9 @@ def get_services(
     """Devuelve servicios para el marketplace con control de visibilidad."""
     query = db.query(models.Service).options(joinedload(models.Service.owner))
 
-    # Solo activos si no se pide incluir inactivos
     if not include_inactive:
         query = query.filter(models.Service.is_active == True)
 
-    # Marketplace solo muestra abiertos
     query = query.filter(models.Service.status == models.JobStatus.OPEN)
 
     return (
@@ -130,7 +128,6 @@ def get_my_services(db: Session, user_id: str):
         db.query(models.Service)
         .filter(
             models.Service.client_id == user_id,
-            models.Service.is_active == True
         )
         .order_by(models.Service.created_at.desc())
         .all()
@@ -208,16 +205,12 @@ def delete_service(db: Session, service_id: str):
     if not service_entry:
         raise HTTPException(status_code=404, detail="Servicio no encontrado")
 
-    # 1. Borrar las postulaciones (Ofertas) asociadas para que PostgreSQL/MySQL no marque error de llave foránea
     db.query(models.ServiceRequest).filter(models.ServiceRequest.service_id == service_id).delete()
     
-    # 2. Borrar los Jobs (Trabajos) si es que ya se había generado un Match
     db.query(models.Job).filter(
         models.Job.client_id == service_entry.client_id,
-        # Si el Job tiene relación directa con el servicio, idealmente se filtra por request_id o service_id
-    ).delete() # Nota para Juan Luis: Ajustar este filtro según cómo tenga su modelo Job
+    ).delete() 
 
-    # 3. BORRADO FÍSICO DEL SERVICIO
     db.delete(service_entry)
     db.commit()
     
@@ -262,13 +255,98 @@ def get_offers_by_service(db: Session, service_id: str, client_id: str):
     ]
     return my_requests
 
+def update_service_request(db: Session, request_id: str, description: str, proposed_price: float):
+    postulation = db.query(models.ServiceRequest).filter(
+        models.ServiceRequest.id == request_id
+    ).first()
+
+    if not postulation:
+        raise HTTPException(status_code=404, detail="Postulación no encontrada")
+
+    postulation.description = description
+    postulation.proposed_price = proposed_price
+
+    db.commit()
+    db.refresh(postulation)
+    
+    return postulation
+
+def get_worker_applications(db: Session, worker_id: str):
+    try:
+        unique_results = {}
+
+        jobs = db.query(models.Job).filter(models.Job.provider_id == worker_id).all()
+
+        for job in jobs:
+            req = job.request
+            srv = req.service if req else None
+            
+            if not srv: continue
+            
+            # Usamos 'started_at' porque tu modelo Job no tiene 'created_at'
+            fecha_buscada = job.started_at.isoformat() if job.started_at else None
+            
+            # Usamos 'proposed_price' de la solicitud porque 'final_price' podría estar vacío
+            precio_mosca = req.proposed_price if req else srv.base_price
+
+            unique_results[str(srv.id)] = {
+                "id": str(job.id), 
+                "title": srv.title,
+                "description": srv.description, 
+                "base_price": float(precio_mosca) if precio_mosca else 0.0,
+                "category_id": str(srv.category_id),
+                "client_id": str(job.client_id),
+                "latitude": srv.latitude,
+                "longitude": srv.longitude,
+                "exact_address": srv.exact_address,
+                # Usamos el enum JobStatus que ya tienes definido
+                "status": job.status.value if hasattr(job.status, 'value') else str(job.status),
+                "is_active": srv.is_active,
+                "created_at": fecha_buscada, 
+                "image_urls": srv.image_urls if srv.image_urls else [], 
+            }
+
+        # 2. BUSCAMOS EN LA TABLA DE SERVICE_REQUESTS (Postulaciones pendientes)
+        postulations = db.query(models.ServiceRequest, models.Service).join(
+            models.Service, models.ServiceRequest.service_id == models.Service.id
+        ).filter(
+            models.ServiceRequest.worker_id == worker_id,
+            models.ServiceRequest.status == "pending",
+            models.Service.is_active == True
+        ).all()
+
+        for req, srv in postulations:
+            service_id_str = str(srv.id)
+            
+            # Si el servicio ya está procesado como Job, no lo duplicamos
+            if service_id_str not in unique_results:
+                unique_results[service_id_str] = {
+                    "id": str(req.id), 
+                    "title": srv.title,
+                    "description": req.description, 
+                    "base_price": float(req.proposed_price) if req.proposed_price else 0.0,
+                    "category_id": str(srv.category_id),
+                    "client_id": str(srv.client_id),
+                    "latitude": srv.latitude,
+                    "longitude": srv.longitude,
+                    "exact_address": srv.exact_address,
+                    "status": "open", # Pestaña 1 en Flutter
+                    "is_active": srv.is_active,
+                    "created_at": req.created_at.isoformat() if req.created_at else None,
+                    "image_urls": srv.image_urls if srv.image_urls else [], 
+                }
+                
+        return list(unique_results.values())
+        
+    except Exception as e:
+        print(f"🚨 Error real en get_worker_applications: {e}")
+        raise e
 
 # -------------------------------------------------------------------------
 # JOBS & MATCH
 # -------------------------------------------------------------------------
 
 def accept_postulation(db: Session, request_id: str, current_user_id: str):
-    # 1. Buscar la postulación
     postulation = db.query(models.ServiceRequest).filter(models.ServiceRequest.id == request_id).first()
     if not postulation:
         raise HTTPException(status_code=404, detail="La postulación no existe")
@@ -309,31 +387,48 @@ def accept_postulation(db: Session, request_id: str, current_user_id: str):
 
 def complete_job(db: Session, job_id: str, user_id: str):
     job = db.query(models.Job).join(models.ServiceRequest).filter(
-        models.ServiceRequest.service_id == job_id,
-        models.Job.status == models.JobStatus.MATCHED
+        or_(
+            models.Job.id == job_id,
+            models.ServiceRequest.id == job_id,
+            models.ServiceRequest.service_id == job_id
+        ),
+        models.Job.status.in_([models.JobStatus.MATCHED, models.JobStatus.WAITING_CONFIRMATION])
     ).first()
 
     if not job:
-        job = db.query(models.Job).filter(models.Job.id == job_id).first()
+        raise HTTPException(status_code=404, detail="Trabajo no encontrado o ya finalizado")
 
-    if not job:
-        raise HTTPException(status_code=404, detail="No existe el trabajo activo")
-
+    # 2. Verificación de identidad (Seguridad total)
     is_client = str(job.client_id) == str(user_id)
     is_worker = str(job.provider_id) == str(user_id)
 
     if not (is_client or is_worker):
-        raise HTTPException(status_code=403, detail="No tienes permiso")
+        raise HTTPException(status_code=403, detail="No tienes permiso para modificar este trabajo")
 
-    job.status = models.JobStatus.COMPLETED
-    job.completed_at = datetime.utcnow()
-    
-    if job.request and job.request.service:
-        job.request.service.status = models.JobStatus.COMPLETED
+    if is_worker:
+        if job.status == models.JobStatus.WAITING_CONFIRMATION:
+            return job 
+        
+        job.status = models.JobStatus.WAITING_CONFIRMATION
+        
+        if job.request and job.request.service:
+            job.request.service.status = models.JobStatus.WAITING_CONFIRMATION
+            
+        db.commit()
+        db.refresh(job)
+        return job
 
-    db.commit()
-    db.refresh(job)
-    return job
+    elif is_client:
+        job.status = models.JobStatus.COMPLETED
+        job.completed_at = datetime.utcnow()
+        
+        if job.request and job.request.service:
+            job.request.service.status = models.JobStatus.COMPLETED
+            job.request.service.is_active = False
+
+        db.commit()
+        db.refresh(job)
+        return job
 
 def cancel_job(db: Session, job_id: str, user_id: str, user_role: str):
     job = db.query(models.Job).filter(models.Job.id == job_id).first()
