@@ -7,9 +7,11 @@ class ApiClient {
   late Dio dio;
   final FlutterSecureStorage storage;
 
-  final String _baseUrl =
+   final String _baseUrl =
       'https://forja-api-rw0r.onrender.com'; // ✨ URL DE PRODUCCIÓN
-  // final String _baseUrl = Platform.isAndroid ? 'http://10.0.2.2:8000' : 'http://localhost:8000'; // 💻 URL DE DESARROLLO
+  // final String _baseUrl = Platform.isAndroid
+  //     ? 'http://10.0.2.2:8000'
+  //     : 'http://localhost:8000'; // 💻 URL DE DESARROLLO
 
   factory ApiClient() => _instance;
 

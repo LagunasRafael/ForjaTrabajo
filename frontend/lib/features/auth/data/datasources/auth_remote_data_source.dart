@@ -224,4 +224,49 @@ class AuthRemoteDataSource {
       debugPrint('🚨 Error actualizando FCM Token: $e');
     }
   }
+
+  /// Verifica el código de 6 dígitos enviado al correo
+  Future<void> verifyEmailCode(String email, String code) async {
+    try {
+      await apiClient.dio.post(
+        '/auth/verify-code',
+        data: {
+          'email': email,
+          'code': code,
+        },
+      );
+    } on DioException catch (e) {
+      String errorMessage = 'Error al verificar el código';
+      if (e.response != null && e.response?.data != null) {
+        if (e.response?.data['detail'] is String) {
+          errorMessage = e.response?.data['detail'];
+        }
+      }
+      throw Exception(errorMessage);
+    } catch (e) {
+      throw Exception('Error de conexión');
+    }
+  }
+
+  /// Reenvía el código de verificación por correo
+  Future<void> resendVerificationCode(String email) async {
+    try {
+      await apiClient.dio.post(
+        '/auth/resend-code',
+        data: {
+          'email': email,
+        },
+      );
+    } on DioException catch (e) {
+      String errorMessage = 'Error al reenviar el código';
+      if (e.response != null && e.response?.data != null) {
+        if (e.response?.data['detail'] is String) {
+          errorMessage = e.response?.data['detail'];
+        }
+      }
+      throw Exception(errorMessage);
+    } catch (e) {
+      throw Exception('Error de conexión');
+    }
+  }
 }
