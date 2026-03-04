@@ -19,7 +19,7 @@ router = APIRouter()
 
 @router.post("/register", response_model=schemas.UserResponse, status_code=status.HTTP_201_CREATED)
 @limiter.limit("3/minute")
-def register(request: Request, user: schemas.UserCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+def register(request: Request, user: schemas.UserCreate, db: Session = Depends(get_db)):
     # SEGURIDAD FASE 2: Forzamos que el registro público sea siempre 'user'
     # Así, aunque envíen "role": "admin" en el JSON, se ignora.
     user_data = user.model_dump()
@@ -48,8 +48,10 @@ def register(request: Request, user: schemas.UserCreate, background_tasks: Backg
     # 4. Crear el usuario en la BD (is_email_verified=False inicial)
     new_user = service.create_user(db, user_data, verification_code=verification_code)
     
-    # 5. Enviar el correo en segundo plano para no hacer esperar al usuario
-    background_tasks.add_task(send_verification_email, new_user.email, verification_code)
+    # 5. Enviar el correo sincrónicamente para forzar el registro de errores en Render
+    print("DEBUG: Intentando enviar correo sincrónicamente...")
+    send_verification_email(new_user.email, verification_code)
+    print("DEBUG: Fin de intento de correo.")
     
     return new_user
 
@@ -75,7 +77,7 @@ def verify_email_code(data: schemas.VerifyCodeRequest, db: Session = Depends(get
 
 @router.post("/resend-code")
 @limiter.limit("3/minute")
-def resend_verification_code(request: Request, data: schemas.ResendCodeRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+def resend_verification_code(request: Request, data: schemas.ResendCodeRequest, db: Session = Depends(get_db)):
     user = service.get_user_by_email(db, email=data.email)
     
     if not user:
@@ -89,8 +91,10 @@ def resend_verification_code(request: Request, data: schemas.ResendCodeRequest, 
     user.verification_code = new_code
     db.commit()
     
-    # Reenviar el correo
-    background_tasks.add_task(send_verification_email, user.email, new_code)
+    # Reenviar el correo sincrónicamente
+    print("DEBUG: Intentando reenviar correo sincrónicamente...")
+    send_verification_email(user.email, new_code)
+    print("DEBUG: Fin de reenvío de correo.")
     
     return {"status": "success", "message": "Nuevo código enviado"}
 
