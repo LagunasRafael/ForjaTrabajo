@@ -4,6 +4,18 @@ from email.mime.multipart import MIMEMultipart
 import os
 import random
 import logging
+import socket
+
+# --- PARCHE PARA RENDER (Forzar IPv4) ---
+# En algunos servidores Linux/Docker, Python intenta usar la dirección IPv6 de Gmail
+# pero la red no tiene ruta IPv6 (causando Errno 101 Network is unreachable).
+old_getaddrinfo = socket.getaddrinfo
+def new_getaddrinfo(*args, **kwargs):
+    responses = old_getaddrinfo(*args, **kwargs)
+    # Filtramos para que solo devuelva direcciones IPv4 (AF_INET)
+    return [response for response in responses if response[0] == socket.AF_INET]
+socket.getaddrinfo = new_getaddrinfo
+# ----------------------------------------
 
 # Configurar el logger para que imprima directamente en consola (útil para Render)
 logger = logging.getLogger(__name__)
