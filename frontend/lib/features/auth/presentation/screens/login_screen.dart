@@ -78,6 +78,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
         // 🛡️ BARRERA DE SEGURIDAD: Si no ha verificado el correo, no pasa al Home
         if (!next.user!.isEmailVerified) {
+          // Reenviamos el código automáticamente para comodidad del usuario
+          ref.read(authProvider.notifier).resendEmail(next.user!.email);
           nextScreen = VerificationScreen(email: next.user!.email);
         }
 

@@ -2,12 +2,19 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/job_model.dart';
+import '../../../../core/network/api_client.dart';
 
-final jobRemoteDataSourceProvider = Provider((ref) => JobRemoteDataSource());
+final jobRemoteDataSourceProvider = Provider((ref) {
+  final apiClient = ApiClient();
+  return JobRemoteDataSource(apiClient);
+});
 
 class JobRemoteDataSource {
-  //final String baseUrl = "http://127.0.0.1:8000/services/jobs"; // Ajusta según tu router prefix
-  final String baseUrl = "http://10.0.2.2:8000/services/jobs";
+  final ApiClient _apiClient;
+
+  JobRemoteDataSource(this._apiClient);
+
+  String get baseUrl => '${_apiClient.dio.options.baseUrl}/services/jobs';
 
   Future<JobModel> completeJob(String jobId, String token) async {
     final response = await http.put(

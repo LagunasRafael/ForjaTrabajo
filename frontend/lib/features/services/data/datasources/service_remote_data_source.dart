@@ -4,23 +4,26 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
 import '../models/service_model.dart';
+import '../../../../core/network/api_client.dart';
 
-// 1. PROVIDER: Configurado para inyectar Dio
+// 1. PROVIDER: Configurado para inyectar Dio y ApiClient
 final serviceRemoteDataSourceProvider = Provider((ref) {
-  return ServiceRemoteDataSource(Dio()); 
+  final apiClient = ApiClient();
+  return ServiceRemoteDataSource(apiClient.dio, apiClient);
 });
 
 class ServiceRemoteDataSource {
   final Dio _dio;
- // final String baseUrl = "http://127.0.0.1:8000/services"; 
-  final String baseUrl = "http://10.0.2.2:8000/services"; 
+  final ApiClient _apiClient;
 
-  ServiceRemoteDataSource(this._dio); 
+  ServiceRemoteDataSource(this._dio, this._apiClient);
+
+  String get baseUrl => '${_apiClient.dio.options.baseUrl}/services';
 
   // --- MÉTODOS DE CONSULTA (GET) ---
 
   Future<List<ServiceModel>> getServices() async {
-    final response = await http.get(Uri.parse('$baseUrl/')); 
+    final response = await http.get(Uri.parse('$baseUrl/'));
     if (response.statusCode == 200) {
       final List<dynamic> jsonList = json.decode(response.body);
       return jsonList.map((e) => ServiceModel.fromJson(e)).toList();
@@ -50,11 +53,8 @@ class ServiceRemoteDataSource {
 
   // --- CREACIÓN CON IMÁGENES (Usa Dio + FormData) ---
 
-  Future<ServiceModel> createService(
-    ServiceModel service,
-    String token,
-    {List<File>? images}
-  ) async {
+  Future<ServiceModel> createService(ServiceModel service, String token,
+      {List<File>? images}) async {
     // Preparamos los datos incluyendo archivos si existen
     final formData = FormData.fromMap({
       'title': service.title,
@@ -67,16 +67,14 @@ class ServiceRemoteDataSource {
       if (images != null && images.isNotEmpty)
         'files': [
           for (var image in images)
-            await MultipartFile.fromFile(
-              image.path, 
-              filename: image.path.split('/').last
-            ),
+            await MultipartFile.fromFile(image.path,
+                filename: image.path.split('/').last),
         ],
     });
 
     try {
       final response = await _dio.post(
-        '$baseUrl/', 
+        '$baseUrl/',
         data: formData,
         options: Options(
           headers: {'Authorization': 'Bearer $token'},
@@ -85,8 +83,7 @@ class ServiceRemoteDataSource {
       );
 
       print("📦 RESPUESTA CRUDA DE FASTAPI: ${response.data}");
-      return ServiceModel.fromJson(response.data); 
-      
+      return ServiceModel.fromJson(response.data);
     } on DioException catch (e) {
       print("🚨 Error de Dio al crear servicio: ${e.response?.data}");
       throw Exception("Error de red: ${e.message}");
@@ -99,17 +96,16 @@ class ServiceRemoteDataSource {
   // --- OTROS MÉTODOS ---
 
   Future<List<ServiceModel>> searchServices(String searchText) async {
-    final url = Uri.parse("$baseUrl/search").replace(
-      queryParameters: {'query': searchText} 
-    );
+    final url = Uri.parse("$baseUrl/search")
+        .replace(queryParameters: {'query': searchText});
 
-    final response = await http.get(url); 
+    final response = await http.get(url);
     if (response.statusCode == 200) {
       final List<dynamic> jsonList = json.decode(response.body);
       return jsonList.map((e) => ServiceModel.fromJson(e)).toList();
     } else {
       print("🚨 Error en búsqueda: ${response.body}");
-      return []; 
+      return [];
     }
   }
 
@@ -123,7 +119,7 @@ class ServiceRemoteDataSource {
         },
         body: json.encode(service.toJson()),
       );
-      
+
       if (response.statusCode == 200) {
         return ServiceModel.fromJson(json.decode(response.body));
       } else {
