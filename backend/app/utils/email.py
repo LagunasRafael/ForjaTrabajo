@@ -13,16 +13,6 @@ if not logger.handlers:
     ch.setFormatter(formatter)
     logger.addHandler(ch)
 
-# Configurar el logger para que imprima directamente en consola (útil para Render)
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-if not logger.handlers:
-    ch = logging.StreamHandler()
-    ch.setLevel(logging.INFO)
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    ch.setFormatter(formatter)
-    logger.addHandler(ch)
-
 
 
 
@@ -56,6 +46,9 @@ def send_verification_email(to_email: str, code: str):
         </html>
         """
         
+        # En Resend.com (modo gratuito/testing sin dominio verificado):
+        # 1. El remitente ("from") siempre DEBE ser "onboarding@resend.dev"
+        # 2. El destinatario ("to") temporalmente DEBE ser el mismo correo con el que abriste tu cuenta en Resend.
         params = {
             "from": "Forja Trabajo <onboarding@resend.dev>",
             "to": [to_email],
