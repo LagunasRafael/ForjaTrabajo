@@ -17,7 +17,8 @@ class MyRequestsScreen extends ConsumerStatefulWidget {
   ConsumerState<MyRequestsScreen> createState() => _MyRequestsScreenState();
 }
 
-class _MyRequestsScreenState extends ConsumerState<MyRequestsScreen> with SingleTickerProviderStateMixin {
+class _MyRequestsScreenState extends ConsumerState<MyRequestsScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
   @override
@@ -40,11 +41,17 @@ class _MyRequestsScreenState extends ConsumerState<MyRequestsScreen> with Single
       _tabController.animateTo(nextIndex);
     });
 
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text('Mis Trabajos', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white,
+        title: Text('Mis Trabajos',
+            style: TextStyle(
+                color: theme.textTheme.titleLarge?.color,
+                fontWeight: FontWeight.bold)),
+        backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
         elevation: 0,
         centerTitle: true,
         bottom: TabBar(
@@ -89,19 +96,21 @@ class _MyRequestsScreenState extends ConsumerState<MyRequestsScreen> with Single
               children: [
                 Icon(Icons.folder_open, size: 60, color: Colors.grey[300]),
                 const SizedBox(height: 10),
-                Text(_getEmptyMessage(status), style: TextStyle(color: Colors.grey[500])),
+                Text(_getEmptyMessage(status),
+                    style: TextStyle(color: Colors.grey[500])),
               ],
             ),
           );
         }
 
         return ListView.builder(
-          physics: const BouncingScrollPhysics(), // 👈 Hace que el scroll se sienta premium
+          physics:
+              const BouncingScrollPhysics(), // 👈 Hace que el scroll se sienta premium
           padding: const EdgeInsets.all(20),
           itemCount: filtered.length,
           itemBuilder: (context, index) {
             final service = filtered[index];
-            
+
             // 👇 AHORA SÍ, USAMOS UN SWITCH PARA REPARTIR LAS TARJETAS CORRECTAS
             switch (status) {
               case JobStatus.open:
@@ -123,10 +132,14 @@ class _MyRequestsScreenState extends ConsumerState<MyRequestsScreen> with Single
 
   String _getEmptyMessage(JobStatus status) {
     switch (status) {
-      case JobStatus.open: return "No hay trabajos publicados";
-      case JobStatus.matched: return "No tienes trabajos en curso";
-      case JobStatus.completed: return "Historial vacío";
-      default: return "No hay datos";
+      case JobStatus.open:
+        return "No hay trabajos publicados";
+      case JobStatus.matched:
+        return "No tienes trabajos en curso";
+      case JobStatus.completed:
+        return "Historial vacío";
+      default:
+        return "No hay datos";
     }
   }
 }

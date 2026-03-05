@@ -5,7 +5,7 @@ import 'package:forja_trabajo/features/services/presentation/providers/nav_provi
 
 // Pantallas del Trabajador
 import '../worker/marketplace_screen.dart'; // O HomeClientScreen si reúsas
-import '../worker/my_jobs_screen.dart';      // Tus postulaciones
+import '../worker/my_jobs_screen.dart'; // Tus postulaciones
 import '../shared/chat_list_screen.dart';
 import '../shared/notifications_screen.dart';
 import '../worker/worker_profile_screen.dart'; // O ClientProfileScreen si reúsas
@@ -15,15 +15,16 @@ class WorkerMainLayout extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // 1. Escuchamos al provider del TRABAJADOR
     final currentIndex = ref.watch(workerNavProvider);
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     final List<Widget> screens = [
-      const MarketplaceScreen(),      // 0
-      const MyJobsScreen(),           // 1
-      const ChatListScreen(),         // 2
-      const NotificationsScreen(),    // 3
-      const WorkerProfileScreen(),    // 4
+      const MarketplaceScreen(), // 0
+      const MyJobsScreen(), // 1
+      const ChatListScreen(), // 2
+      const NotificationsScreen(), // 3
+      const WorkerProfileScreen(), // 4
     ];
 
     return Scaffold(
@@ -31,7 +32,7 @@ class WorkerMainLayout extends ConsumerWidget {
         index: currentIndex,
         children: screens,
       ),
-      
+
       // 🚫 SIN BOTÓN FLOTANTE
       // 🚫 SIN RECORTE
 
@@ -41,9 +42,11 @@ class WorkerMainLayout extends ConsumerWidget {
         onDestinationSelected: (index) {
           ref.read(workerNavProvider.notifier).state = index;
         },
-        backgroundColor: Colors.white,
+        backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
         elevation: 3,
-        indicatorColor: const Color(0xFF1E1B4B).withOpacity(0.1),
+        indicatorColor: isDark
+            ? const Color(0xFF4F46E5).withOpacity(0.2)
+            : const Color(0xFF1E1B4B).withOpacity(0.1),
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.search),

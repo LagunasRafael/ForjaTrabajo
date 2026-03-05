@@ -35,13 +35,19 @@ class ClientMatchedJobCard extends ConsumerWidget {
     final imageUrl = (service.imageUrls.isNotEmpty)
         ? service.imageUrls.first
         : 'https://picsum.photos/seed/${service.id}/400/200';
+    final theme = Theme.of(context);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 15, offset: const Offset(0, 5))],
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withOpacity(0.06),
+              blurRadius: 15,
+              offset: const Offset(0, 5))
+        ],
       ),
       child: Material(
         color: Colors.transparent,
@@ -73,67 +79,106 @@ class ClientMatchedJobCard extends ConsumerWidget {
   Widget _buildImage(String url) => ClipRRect(
         borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
         child: Stack(children: [
-          Image.network(url, height: 140, width: double.infinity, fit: BoxFit.cover),
+          Image.network(url,
+              height: 140, width: double.infinity, fit: BoxFit.cover),
           Positioned(
-            top: 10, right: 10,
+            top: 10,
+            right: 10,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(color: Colors.orange, borderRadius: BorderRadius.circular(20)),
-              child: const Text("EN PROCESO", style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+              decoration: BoxDecoration(
+                  color: Colors.orange,
+                  borderRadius: BorderRadius.circular(20)),
+              child: const Text("EN PROCESO",
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold)),
             ),
           ),
         ]),
       );
 
   Widget _buildTitlePrice() => Row(children: [
-        Expanded(child: Text(service.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18))),
-        Text("\$${service.basePrice.toStringAsFixed(0)}", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
+        Expanded(
+            child: Text(service.title,
+                style: const TextStyle(
+                    fontWeight: FontWeight.bold, fontSize: 18))),
+        Text("\$${service.basePrice.toStringAsFixed(0)}",
+            style: const TextStyle(
+                fontWeight: FontWeight.bold, color: Colors.green)),
       ]);
 
   Widget _buildLocation() => Row(children: [
         const Icon(Icons.location_on, size: 14, color: Colors.grey),
         const SizedBox(width: 4),
-        Text(service.exactAddress ?? 'Ubicación remota', style: const TextStyle(color: Colors.grey)),
+        Text(service.exactAddress ?? 'Ubicación remota',
+            style: const TextStyle(color: Colors.grey)),
       ]);
 
-  Widget _buildActions(BuildContext context, WidgetRef ref) => Column(children: [
+  Widget _buildActions(BuildContext context, WidgetRef ref) =>
+      Column(children: [
         const Divider(height: 24),
         Row(children: [
-          _btn("Contactar", Icons.chat_bubble_outline, isOutlined: true, onPressed: () {
+          _btn("Contactar", Icons.chat_bubble_outline, isOutlined: true,
+              onPressed: () {
             // Lógica del chat (Pendiente)
           }),
           const SizedBox(width: 12),
-          _btn("Finalizar", Icons.check_circle_outline, color: Colors.green, onPressed: () async {
+          _btn("Finalizar", Icons.check_circle_outline, color: Colors.green,
+              onPressed: () async {
             final confirm = await showDialog<bool>(
               context: context,
               builder: (ctx) => AlertDialog(
                 title: const Text('¿Finalizar trabajo?'),
-                content: const Text('Confirmas que el servicio se ha completado.'),
+                content:
+                    const Text('Confirmas que el servicio se ha completado.'),
                 actions: [
-                  TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('No')),
-                  TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Sí, finalizar')),
+                  TextButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      child: const Text('No')),
+                  TextButton(
+                      onPressed: () => Navigator.pop(ctx, true),
+                      child: const Text('Sí, finalizar')),
                 ],
               ),
             );
 
             if (confirm != true) return;
 
-            final success = await ref.read(serviceRepositoryProvider).completeService(service.id);
+            final success = await ref
+                .read(serviceRepositoryProvider)
+                .completeService(service.id);
             if (success) {
               ref.invalidate(myRequestsProvider);
               if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("✅ Trabajo completado"), backgroundColor: Colors.green));
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                    content: Text("✅ Trabajo completado"),
+                    backgroundColor: Colors.green));
               }
             } else if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("❌ Error al finalizar")));
+              ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("❌ Error al finalizar")));
             }
           }),
         ]),
       ]);
 
-  Widget _btn(String label, IconData icon, {required VoidCallback onPressed, bool isOutlined = false, Color color = const Color(0xFF4F46E5)}) => Expanded(
+  Widget _btn(String label, IconData icon,
+          {required VoidCallback onPressed,
+          bool isOutlined = false,
+          Color color = const Color(0xFF4F46E5)}) =>
+      Expanded(
         child: isOutlined
-            ? OutlinedButton.icon(onPressed: onPressed, icon: Icon(icon, size: 18), label: Text(label))
-            : ElevatedButton.icon(onPressed: onPressed, icon: Icon(icon, size: 18), label: Text(label), style: ElevatedButton.styleFrom(backgroundColor: color, foregroundColor: Colors.white)),
+            ? OutlinedButton.icon(
+                onPressed: onPressed,
+                icon: Icon(icon, size: 18),
+                label: Text(label))
+            : ElevatedButton.icon(
+                onPressed: onPressed,
+                icon: Icon(icon, size: 18),
+                label: Text(label),
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: color, foregroundColor: Colors.white)),
       );
 }

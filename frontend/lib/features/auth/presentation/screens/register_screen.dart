@@ -88,19 +88,21 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         );
       }
     });
+    final theme = Theme.of(context);
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: theme.scaffoldBackgroundColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: AppTheme.textColor),
+          icon: Icon(Icons.arrow_back_ios_new, color: theme.iconTheme.color),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           'Crear Cuenta',
           style: GoogleFonts.inter(
-            color: AppTheme.textColor,
+            color: theme.textTheme.titleLarge?.color,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -277,10 +279,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   // --- WIDGETS CONSTRUCTORES ---
 
   Widget _buildRoleToggle() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Container(
       height: 50,
       decoration: BoxDecoration(
-        color: Colors.grey.shade100,
+        color: isDark ? const Color(0xFF1E293B) : Colors.grey.shade100,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -291,7 +296,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               child: Container(
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: !_isWorker ? Colors.white : Colors.transparent,
+                  color: !_isWorker ? theme.cardColor : Colors.transparent,
                   borderRadius: BorderRadius.circular(10),
                   boxShadow: !_isWorker
                       ? [
@@ -321,7 +326,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               child: Container(
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: _isWorker ? Colors.white : Colors.transparent,
+                  color: _isWorker ? theme.cardColor : Colors.transparent,
                   borderRadius: BorderRadius.circular(10),
                   boxShadow: _isWorker
                       ? [
@@ -359,6 +364,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     TextInputType keyboardType = TextInputType.text,
     String? Function(String?)? validator,
   }) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -367,20 +375,20 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           style: GoogleFonts.inter(
               fontSize: 14,
               fontWeight: FontWeight.w600,
-              color: Colors.grey.shade700),
+              color: isDark ? Colors.grey.shade300 : Colors.grey.shade700),
         ),
         const SizedBox(height: 8),
         TextFormField(
           controller: controller,
           obscureText: isPassword && !_showPassword,
           keyboardType: keyboardType,
-          style: GoogleFonts.inter(color: AppTheme.textColor),
+          style: GoogleFonts.inter(color: theme.textTheme.bodyLarge?.color),
           validator: validator,
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: TextStyle(color: Colors.grey.shade400),
+            hintStyle: TextStyle(color: Colors.grey.shade500),
             filled: true,
-            fillColor: Colors.white,
+            fillColor: theme.cardColor,
             prefixIcon: Icon(icon, color: Colors.grey.shade400),
             suffixIcon: isPassword
                 ? IconButton(
@@ -395,10 +403,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
-                borderSide: BorderSide(color: Colors.grey.shade200)),
+                borderSide: BorderSide(
+                    color:
+                        isDark ? Colors.grey.shade700 : Colors.grey.shade200)),
             enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
-                borderSide: BorderSide(color: Colors.grey.shade200)),
+                borderSide: BorderSide(
+                    color:
+                        isDark ? Colors.grey.shade700 : Colors.grey.shade200)),
             focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
                 borderSide:

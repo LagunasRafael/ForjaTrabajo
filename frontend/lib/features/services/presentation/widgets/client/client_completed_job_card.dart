@@ -32,13 +32,16 @@ class ClientCompletedJobCard extends ConsumerWidget {
     final imageUrl = (service.imageUrls.isNotEmpty)
         ? service.imageUrls.first
         : 'https://picsum.photos/seed/${service.id}/400/200';
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade200), // Borde suave como en el diseño
+        border: Border.all(
+            color: isDark ? const Color(0xFF334155) : Colors.grey.shade200),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.03),
@@ -52,7 +55,8 @@ class ClientCompletedJobCard extends ConsumerWidget {
         borderRadius: BorderRadius.circular(16),
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
-          onTap: () => _goToDetails(context, ref), // Tocar tarjeta para ver detalles
+          onTap: () =>
+              _goToDetails(context, ref), // Tocar tarjeta para ver detalles
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -84,12 +88,14 @@ class ClientCompletedJobCard extends ConsumerWidget {
         borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
         child: Stack(
           children: [
-            Image.network(url, height: 140, width: double.infinity, fit: BoxFit.cover),
+            Image.network(url,
+                height: 140, width: double.infinity, fit: BoxFit.cover),
             Positioned(
               top: 12,
               right: 12,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
                   color: const Color(0xFF10B981), // Verde exacto de la imagen
                   borderRadius: BorderRadius.circular(20),
@@ -101,7 +107,11 @@ class ClientCompletedJobCard extends ConsumerWidget {
                     SizedBox(width: 4),
                     Text(
                       "COMPLETADO",
-                      style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.5),
                     ),
                   ],
                 ),
@@ -118,7 +128,10 @@ class ClientCompletedJobCard extends ConsumerWidget {
           Expanded(
             child: Text(
               service.title,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87),
+              style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: Colors.black87),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -126,7 +139,8 @@ class ClientCompletedJobCard extends ConsumerWidget {
           Row(
             children: List.generate(
               5,
-              (index) => const Icon(Icons.star, color: Color(0xFFFBBF24), size: 16), // Color amarillo/dorado
+              (index) => const Icon(Icons.star,
+                  color: Color(0xFFFBBF24), size: 16), // Color amarillo/dorado
             ),
           ),
         ],
@@ -138,7 +152,8 @@ class ClientCompletedJobCard extends ConsumerWidget {
           const Icon(Icons.person, size: 14, color: Colors.grey),
           const SizedBox(width: 6),
           Text(
-            service.authorName ?? "Trabajador asignado", // Si tienes el nombre del worker, úsalo aquí
+            service.authorName ??
+                "Trabajador asignado", // Si tienes el nombre del worker, úsalo aquí
             style: const TextStyle(color: Colors.grey, fontSize: 13),
           ),
         ],
@@ -147,7 +162,8 @@ class ClientCompletedJobCard extends ConsumerWidget {
   // --- 4. Descripción breve ---
   Widget _buildDescription() => Text(
         service.summary ?? service.description,
-        style: TextStyle(color: Colors.grey.shade700, fontSize: 13, height: 1.4),
+        style:
+            TextStyle(color: Colors.grey.shade700, fontSize: 13, height: 1.4),
         maxLines: 2,
         overflow: TextOverflow.ellipsis,
       );
@@ -159,17 +175,19 @@ class ClientCompletedJobCard extends ConsumerWidget {
           Expanded(
             child: ElevatedButton.icon(
               onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Funcionalidad de factura en desarrollo..."))
-                );
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                    content:
+                        Text("Funcionalidad de factura en desarrollo...")));
               },
               icon: const Icon(Icons.receipt_long, size: 18),
-              label: const Text("Pedir Factura", style: TextStyle(fontWeight: FontWeight.bold)),
+              label: const Text("Pedir Factura",
+                  style: TextStyle(fontWeight: FontWeight.bold)),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF2563EB), // Azul fuerte
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
                 elevation: 0,
               ),
             ),
@@ -186,9 +204,8 @@ class ClientCompletedJobCard extends ConsumerWidget {
             child: IconButton(
               icon: const Icon(Icons.star_rate_rounded, color: Colors.black54),
               onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Pantalla de calificación próximamente..."))
-                );
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                    content: Text("Pantalla de calificación próximamente...")));
               },
             ),
           )
