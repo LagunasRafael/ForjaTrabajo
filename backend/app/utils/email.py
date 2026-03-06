@@ -50,7 +50,7 @@ def send_verification_email(to_email: str, code: str):
         # 1. El remitente ("from") siempre DEBE ser "onboarding@resend.dev"
         # 2. El destinatario ("to") temporalmente DEBE ser el mismo correo con el que abriste tu cuenta en Resend.
         params = {
-            "from": "Forja Trabajo <onboarding@resend.dev>",
+            "from": "Forja Trabajo <hola@forjatrabajo.com.mx>",
             "to": [to_email],
             "subject": "Verifica tu cuenta - Forja Trabajo",
             "html": html_body,
