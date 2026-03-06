@@ -3,13 +3,19 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/entities/category_entity.dart';
 import '../models/category_model.dart';
+import '../../../../core/network/api_client.dart';
 
-final categoryRemoteDataSourceProvider = Provider((ref) => CategoryRemoteDataSource());
+final categoryRemoteDataSourceProvider = Provider((ref) {
+  final apiClient = ApiClient();
+  return CategoryRemoteDataSource(apiClient);
+});
 
 class CategoryRemoteDataSource {
-  // Plural "services" para que no de 404
-  //final String baseUrl = "http://127.0.0.1:8000/services/categories"; 
-    final String baseUrl = "http://10.0.2.2:8000/services/categories"; 
+  final ApiClient _apiClient;
+
+  CategoryRemoteDataSource(this._apiClient);
+
+  String get baseUrl => '${_apiClient.dio.options.baseUrl}/services/categories';
 
   Future<List<CategoryModel>> getCategories() async {
     final response = await http.get(Uri.parse(baseUrl));
@@ -21,24 +27,25 @@ class CategoryRemoteDataSource {
     }
   }
 
-    Future<void> createCategory(String name, String description, String token) async {
-      final response = await http.post(
-        Uri.parse(baseUrl),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: json.encode({
-          'name': name,
-          'description': description, // 👈 Agregamos la descripción aquí
-        }),
-      );
+  Future<void> createCategory(
+      String name, String description, String token) async {
+    final response = await http.post(
+      Uri.parse(baseUrl),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: json.encode({
+        'name': name,
+        'description': description, // 👈 Agregamos la descripción aquí
+      }),
+    );
 
-      if (response.statusCode != 200 && response.statusCode != 201) {
-        throw Exception('Error al crear categoría: ${response.body}');
-      }
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw Exception('Error al crear categoría: ${response.body}');
     }
-    
+  }
+
   Future<void> deleteCategory(String id, String token) async {
     final response = await http.delete(
       Uri.parse("$baseUrl/$id"),
@@ -51,14 +58,15 @@ class CategoryRemoteDataSource {
       throw Exception('No se pudo eliminar la categoría');
     }
   }
+
   Future<List<CategoryModel>> getTopCategories() async {
     try {
       // Usamos la URL base pero apuntando al nuevo endpoint del backend
-    //  final String topUrl = "http://127.0.0.1:8000/services/top-categories";
-      final String topUrl = "http://10.0.2.2:8000/services/top-categories";
-      
+      final String topUrl =
+          "${_apiClient.dio.options.baseUrl}/services/top-categories";
+
       final response = await http.get(Uri.parse(topUrl));
-      
+
       if (response.statusCode == 200) {
         final List<dynamic> jsonList = json.decode(response.body);
         // Usamos CategoryModel.fromJson (que ya tienes definido arriba)

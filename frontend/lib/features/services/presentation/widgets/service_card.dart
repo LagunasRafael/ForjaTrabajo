@@ -13,8 +13,10 @@ class ServiceCard extends ConsumerWidget {
   // --- Tus Helpers Visuales Originales ---
   IconData _getCategoryIcon(String categoryName) {
     final name = categoryName.toLowerCase();
-    if (name.contains('font') || name.contains('plom') || name.contains('fuga')) return Icons.plumbing;
-    if (name.contains('electr') || name.contains('luz')) return Icons.electric_bolt;
+    if (name.contains('font') || name.contains('plom') || name.contains('fuga'))
+      return Icons.plumbing;
+    if (name.contains('electr') || name.contains('luz'))
+      return Icons.electric_bolt;
     if (name.contains('mueb') || name.contains('carp')) return Icons.chair_alt;
     if (name.contains('pint')) return Icons.format_paint;
     return Icons.home_repair_service;
@@ -42,16 +44,18 @@ class ServiceCard extends ConsumerWidget {
     final currentUser = authState.user;
 
     if (currentUser == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Inicia sesión para ver detalles")));
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Inicia sesión para ver detalles")));
       return;
     }
 
     final categoriesAsync = ref.read(categoryListProvider);
     String catName = "Servicio";
-    
+
     categoriesAsync.whenData((cats) {
       // ✅ ARREGLO AQUÍ: Comparación segura de IDs para evitar el error de Null
-      final found = cats.where((c) => c.id.toString() == service.categoryId.toString());
+      final found =
+          cats.where((c) => c.id.toString() == service.categoryId.toString());
       if (found.isNotEmpty) {
         catName = found.first.name;
       }
@@ -74,16 +78,19 @@ class ServiceCard extends ConsumerWidget {
     final categoriesAsync = ref.watch(categoryListProvider);
     final isUrgent = service.title.toLowerCase().contains('urgente');
     final themeColor = _getIconColor(service.title);
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade100),
+        border: Border.all(
+            color: isDark ? const Color(0xFF334155) : Colors.grey.shade100),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withOpacity(isDark ? 0.15 : 0.04),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -106,28 +113,38 @@ class ServiceCard extends ConsumerWidget {
                     categoriesAsync.when(
                       data: (categories) {
                         String catName = "";
-                        final found = categories.where((c) => c.id.toString() == service.categoryId.toString());
+                        final found = categories.where((c) =>
+                            c.id.toString() == service.categoryId.toString());
                         if (found.isNotEmpty) catName = found.first.name;
-                        
+
                         return Container(
-                          width: 65, height: 65,
+                          width: 65,
+                          height: 65,
                           decoration: BoxDecoration(
                             color: _getIconBackgroundColor(service.title),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Icon(
-                            _getCategoryIcon(catName.isEmpty ? service.title : catName), 
-                            color: themeColor, 
-                            size: 32
-                          ),
+                              _getCategoryIcon(
+                                  catName.isEmpty ? service.title : catName),
+                              color: themeColor,
+                              size: 32),
                         );
                       },
-                      loading: () => Container(width: 65, height: 65, decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(12))),
-                      error: (_, __) => Container(width: 65, height: 65, child: const Icon(Icons.error, color: Colors.grey)),
+                      loading: () => Container(
+                          width: 65,
+                          height: 65,
+                          decoration: BoxDecoration(
+                              color: Colors.grey[100],
+                              borderRadius: BorderRadius.circular(12))),
+                      error: (_, __) => Container(
+                          width: 65,
+                          height: 65,
+                          child: const Icon(Icons.error, color: Colors.grey)),
                     ),
-                    
+
                     const SizedBox(width: 16),
-                    
+
                     // --- CONTENIDO ---
                     Expanded(
                       child: Column(
@@ -136,36 +153,74 @@ class ServiceCard extends ConsumerWidget {
                           categoriesAsync.when(
                             data: (categories) {
                               String catName = "Servicio General";
-                              final found = categories.where((c) => c.id.toString() == service.categoryId.toString());
+                              final found = categories.where((c) =>
+                                  c.id.toString() ==
+                                  service.categoryId.toString());
                               if (found.isNotEmpty) catName = found.first.name;
 
                               return Text(
                                 catName.toUpperCase(),
-                                style: TextStyle(color: themeColor, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 0.8),
+                                style: TextStyle(
+                                    color: themeColor,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 0.8),
                               );
                             },
-                            loading: () => const SizedBox(height: 10), 
+                            loading: () => const SizedBox(height: 10),
                             error: (_, __) => const SizedBox(),
                           ),
                           const SizedBox(height: 4),
-                          Text(service.title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF111827), height: 1.2), maxLines: 2, overflow: TextOverflow.ellipsis),
+                          Text(service.title,
+                              style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: theme.textTheme.bodyLarge?.color ??
+                                      const Color(0xFF111827),
+                                  height: 1.2),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis),
                           const SizedBox(height: 8),
                           Row(
                             children: [
-                              Icon(Icons.location_on, size: 14, color: Colors.grey[400]),
+                              Icon(Icons.location_on,
+                                  size: 14, color: Colors.grey[400]),
                               const SizedBox(width: 4),
-                              Expanded(child: Text(service.exactAddress ?? "Ubicación remota", style: TextStyle(color: Colors.grey[500], fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                              Expanded(
+                                  child: Text(
+                                      service.exactAddress ??
+                                          "Ubicación remota",
+                                      style: TextStyle(
+                                          color: Colors.grey[500],
+                                          fontSize: 13),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis)),
                             ],
                           ),
                           const SizedBox(height: 12),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text("\$${service.basePrice.toStringAsFixed(0)}", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF10B981))),
+                              Text("\$${service.basePrice.toStringAsFixed(0)}",
+                                  style: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w900,
+                                      color: Color(0xFF10B981))),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                decoration: BoxDecoration(color: isUrgent ? const Color(0xFF1D04F8) : const Color(0xFFF3F4F6), borderRadius: BorderRadius.circular(8)),
-                                child: Text("Ver Detalles", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: isUrgent ? Colors.white : Colors.black87)),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 6),
+                                decoration: BoxDecoration(
+                                    color: isUrgent
+                                        ? const Color(0xFF1D04F8)
+                                        : const Color(0xFFF3F4F6),
+                                    borderRadius: BorderRadius.circular(8)),
+                                child: Text("Ver Detalles",
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 12,
+                                        color: isUrgent
+                                            ? Colors.white
+                                            : Colors.black87)),
                               ),
                             ],
                           ),
@@ -179,14 +234,22 @@ class ServiceCard extends ConsumerWidget {
               // --- ETIQUETA URGENTE ---
               if (isUrgent)
                 Positioned(
-                  right: 0, top: 0,
+                  right: 0,
+                  top: 0,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: const BoxDecoration(
                       color: Color(0xFFFFE4E6),
-                      borderRadius: BorderRadius.only(topRight: Radius.circular(16), bottomLeft: Radius.circular(16)),
+                      borderRadius: BorderRadius.only(
+                          topRight: Radius.circular(16),
+                          bottomLeft: Radius.circular(16)),
                     ),
-                    child: const Text("URGENTE", style: TextStyle(color: Color(0xFFE11D48), fontSize: 10, fontWeight: FontWeight.bold)),
+                    child: const Text("URGENTE",
+                        style: TextStyle(
+                            color: Color(0xFFE11D48),
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold)),
                   ),
                 ),
             ],

@@ -19,22 +19,26 @@ class WorkerProfileScreen extends ConsumerWidget {
     final authState = ref.watch(authProvider);
     final user = authState.user;
 
+    final theme = Theme.of(context);
+
     return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: SingleChildScrollView(
         child: Column(
           children: [
             const SizedBox(height: 24),
-            
+
             // 👇 1. EL AVATAR TOCABLE CON CÁMARA (Estilo WhatsApp)
             EditableProfileAvatar(
               imageUrl: user?.profilePictureUrl,
               radius: 60,
             ),
-            
+
             const SizedBox(height: 16),
-            Text(user?.fullName ?? "Cargando...", style: GoogleFonts.inter(fontSize: 24, fontWeight: FontWeight.bold)),
-            
+            Text(user?.fullName ?? "Cargando...",
+                style: GoogleFonts.inter(
+                    fontSize: 24, fontWeight: FontWeight.bold)),
+
             // 👇 2. EL BADGE DE ROL SIMPLIFICADO
             Container(
               margin: const EdgeInsets.only(top: 8, bottom: 8),
@@ -43,8 +47,11 @@ class WorkerProfileScreen extends ConsumerWidget {
                 color: AppTheme.successEmerald.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: Text("TRABAJADOR", 
-                style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.successEmerald)),
+              child: Text("TRABAJADOR",
+                  style: GoogleFonts.inter(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.successEmerald)),
             ),
 
             // 👇 3. LA UBICACIÓN ARREGLADA (user?.city)
@@ -59,54 +66,73 @@ class WorkerProfileScreen extends ConsumerWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
-                      LucideIcons.mapPin, 
-                      size: 16, 
-                      color: user?.city == null ? AppTheme.primaryColor : Colors.grey
-                    ),
+                    Icon(LucideIcons.mapPin,
+                        size: 16,
+                        color: user?.city == null
+                            ? AppTheme.primaryColor
+                            : Colors.grey),
                     const SizedBox(width: 4),
-                    Text(
-                      user?.city ?? "Toca para activar ubicación", 
-                      style: GoogleFonts.inter(
-                        color: user?.city == null ? AppTheme.primaryColor : Colors.grey, 
-                        fontSize: 14, 
-                        fontWeight: user?.city == null ? FontWeight.bold : FontWeight.w500
-                      )
-                    ),
+                    Text(user?.city ?? "Toca para activar ubicación",
+                        style: GoogleFonts.inter(
+                            color: user?.city == null
+                                ? AppTheme.primaryColor
+                                : Colors.grey,
+                            fontSize: 14,
+                            fontWeight: user?.city == null
+                                ? FontWeight.bold
+                                : FontWeight.w500)),
                   ],
                 ),
               ),
             ),
-            
+
             const SizedBox(height: 32),
-            
+
             // 👇 4. EL MENÚ LIMPIO (Usando Shared Widgets)
             ProfileMenuCard(
               children: [
-                ProfileMenuOption(icon: LucideIcons.user, title: 'Editar Perfil', onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const EditProfileScreen()),
-                  );
-                }),
-                ProfileMenuOption(icon: LucideIcons.briefcase, title: 'Mi Portafolio', onTap: () {}),
-                ProfileMenuOption(icon: LucideIcons.star, title: 'Mis Reseñas', onTap: () {}),
-                ProfileMenuOption(icon: LucideIcons.history, title: 'Historial de Trabajos', onTap: () {}),
-                ProfileMenuOption(icon: LucideIcons.history, title: 'Mis Solicitudes', onTap: () {}),
-                ProfileMenuOption(icon: LucideIcons.settings, title: 'Configuración', onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const SettingsScreen()),
-                  );
-                }),
+                ProfileMenuOption(
+                    icon: LucideIcons.user,
+                    title: 'Editar Perfil',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => const EditProfileScreen()),
+                      );
+                    }),
+                ProfileMenuOption(
+                    icon: LucideIcons.briefcase,
+                    title: 'Mi Portafolio',
+                    onTap: () {}),
+                ProfileMenuOption(
+                    icon: LucideIcons.star, title: 'Mis Reseñas', onTap: () {}),
+                ProfileMenuOption(
+                    icon: LucideIcons.history,
+                    title: 'Historial de Trabajos',
+                    onTap: () {}),
+                ProfileMenuOption(
+                    icon: LucideIcons.history,
+                    title: 'Mis Solicitudes',
+                    onTap: () {}),
+                ProfileMenuOption(
+                    icon: LucideIcons.settings,
+                    title: 'Configuración',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => const SettingsScreen()),
+                      );
+                    }),
               ],
             ),
-            
+
             const SizedBox(height: 32),
-            
+
             // 👇 5. EL BOTÓN DE LOGOUT (Usando Shared Widgets)
             const ProfileLogoutButton(),
-            
+
             const SizedBox(height: 24), // Espacio al final
           ],
         ),

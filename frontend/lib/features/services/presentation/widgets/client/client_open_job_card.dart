@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:forja_trabajo/features/services/domain/entities/service_entity.dart';
 import 'package:forja_trabajo/features/services/presentation/screens/client/offers_received_screen.dart';
 
-
 class ClientOpenJobCard extends StatelessWidget {
   final ServiceEntity service;
 
@@ -10,15 +9,15 @@ class ClientOpenJobCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Si no hay imagen, usamos una por defecto
     final imageUrl = (service.imageUrls.isNotEmpty)
         ? service.imageUrls.first
         : 'https://picsum.photos/seed/${service.id}/800/400';
+    final theme = Theme.of(context);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -61,10 +60,11 @@ class ClientOpenJobCard extends StatelessWidget {
                     Expanded(
                       child: Text(
                         service.title,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontWeight: FontWeight.w800,
                           fontSize: 18,
-                          color: Color(0xFF111827),
+                          color: theme.textTheme.bodyLarge?.color ??
+                              const Color(0xFF111827),
                           height: 1.2,
                         ),
                         maxLines: 2,
@@ -82,9 +82,9 @@ class ClientOpenJobCard extends StatelessWidget {
                     ),
                   ],
                 ),
-                
+
                 const SizedBox(height: 6),
-                
+
                 // Ubicación y Fecha (Metadata)
                 Text(
                   "Publicado el ${_formatDate(service.createdAt)} • ${service.exactAddress ?? 'Ubicación remota'}",
@@ -107,24 +107,29 @@ class ClientOpenJobCard extends StatelessWidget {
                           // Navegamos a la pantalla de ofertas
                           Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (_) => OffersReceivedScreen(service: service)),
+                            MaterialPageRoute(
+                                builder: (_) =>
+                                    OffersReceivedScreen(service: service)),
                           );
                         },
                         icon: const Icon(Icons.people_alt_rounded, size: 20),
-                        label: const Text("Ver Postulados"), 
+                        label: const Text("Ver Postulados"),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF4F46E5), // Azul/Indigo
+                          backgroundColor:
+                              const Color(0xFF4F46E5), // Azul/Indigo
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
                           elevation: 0,
-                          textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                          textStyle: const TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 15),
                         ),
                       ),
                     ),
-                    
+
                     const SizedBox(width: 12),
-                    
+
                     // Botón Secundario: Cancelar (La X roja)
                     Container(
                       decoration: BoxDecoration(
@@ -137,8 +142,9 @@ class ClientOpenJobCard extends StatelessWidget {
                         onPressed: () {
                           // Aquí implementaremos la lógica de borrar después
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text("Opción de eliminar pendiente"))
-                          );
+                              const SnackBar(
+                                  content:
+                                      Text("Opción de eliminar pendiente")));
                         },
                       ),
                     ),

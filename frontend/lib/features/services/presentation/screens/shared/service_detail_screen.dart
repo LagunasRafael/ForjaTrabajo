@@ -14,10 +14,15 @@ class ServiceDetailScreen extends ConsumerStatefulWidget {
   final User currentUser;
   final String categoryName;
 
-  const ServiceDetailScreen({super.key, required this.service, required this.currentUser, required this.categoryName});
+  const ServiceDetailScreen(
+      {super.key,
+      required this.service,
+      required this.currentUser,
+      required this.categoryName});
 
   @override
-  ConsumerState<ServiceDetailScreen> createState() => _ServiceDetailScreenState();
+  ConsumerState<ServiceDetailScreen> createState() =>
+      _ServiceDetailScreenState();
 }
 
 class _ServiceDetailScreenState extends ConsumerState<ServiceDetailScreen> {
@@ -29,13 +34,20 @@ class _ServiceDetailScreenState extends ConsumerState<ServiceDetailScreen> {
     _currentService = widget.service;
   }
 
-  bool get _isOwner => widget.currentUser.id.toString() == _currentService.clientId.toString();
-  bool get _isWorker => widget.currentUser.role.toString().toLowerCase().contains('worker') || 
-                        widget.currentUser.role.toString().toLowerCase().contains('trabajador');
+  bool get _isOwner =>
+      widget.currentUser.id.toString() == _currentService.clientId.toString();
+  bool get _isWorker =>
+      widget.currentUser.role.toString().toLowerCase().contains('worker') ||
+      widget.currentUser.role.toString().toLowerCase().contains('trabajador');
 
   Future<void> _navigateToEdit() async {
-    final updated = await Navigator.push(context, MaterialPageRoute(builder: (_) => CreateServiceScreen(serviceToEdit: _currentService)));
-    if (updated != null && updated is ServiceEntity) setState(() => _currentService = updated);
+    final updated = await Navigator.push(
+        context,
+        MaterialPageRoute(
+            builder: (_) =>
+                CreateServiceScreen(serviceToEdit: _currentService)));
+    if (updated != null && updated is ServiceEntity)
+      setState(() => _currentService = updated);
   }
 
   @override
@@ -45,50 +57,57 @@ class _ServiceDetailScreenState extends ConsumerState<ServiceDetailScreen> {
     final categoriesAsync = ref.watch(categoryListProvider);
 
     return serviceAsync.when(
-      loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
+      loading: () =>
+          const Scaffold(body: Center(child: CircularProgressIndicator())),
       error: (err, _) => Scaffold(body: Center(child: Text("Error: $err"))),
       data: (freshService) {
         _currentService = freshService;
         String displayCat = widget.categoryName;
         categoriesAsync.whenData((cats) {
-          final found = cats.where((c) => c.id.toString() == freshService.categoryId.toString());
+          final found = cats.where(
+              (c) => c.id.toString() == freshService.categoryId.toString());
           if (found.isNotEmpty) displayCat = found.first.name;
         });
 
         final hasApplied = offersAsync.maybeWhen(
-          data: (offers) => offers.any((o) => o.workerId.toString().trim() == widget.currentUser.id.toString().trim()),
+          data: (offers) => offers.any((o) =>
+              o.workerId.toString().trim() ==
+              widget.currentUser.id.toString().trim()),
           orElse: () => false,
         );
 
         return Scaffold(
-            backgroundColor: Colors.white,
-            appBar: AppBar(
-              backgroundColor: Colors.white,
-              elevation: 0,
-              leading: IconButton(
-                icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.black),
-                onPressed: () => Navigator.pop(context),
-              ),
-              title: const Text(
-                "Detalles del Servicio", 
-                style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 18)
-              ),
-              centerTitle: true,
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+          appBar: AppBar(
+            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+            elevation: 0,
+            leading: IconButton(
+              icon: Icon(Icons.arrow_back_ios_new_rounded,
+                  color: Theme.of(context).textTheme.bodyLarge?.color),
+              onPressed: () => Navigator.pop(context),
             ),
-            body: ServiceDetailBody(
-              service: _currentService,
-              categoryName: displayCat,
-              authorName: _isOwner ? "${widget.currentUser.fullName} (Tú)" : (_currentService.authorName ?? "Cliente"),
-              isOwner: _isOwner,
-              
-              // 👇 AQUÍ ENVIAMOS LA IMAGEN. Si es el dueño usa su propia foto, si no, usa la que viene en el servicio
-              authorImageUrl: _isOwner 
-      ? widget.currentUser.profilePictureUrl 
-      : _currentService.profilePictureUrl,
-              
-            ),
-            bottomNavigationBar: _buildBottomAction(hasApplied),
-          );
+            title: Text("Detalles del Servicio",
+                style: TextStyle(
+                    color: Theme.of(context).textTheme.titleLarge?.color,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18)),
+            centerTitle: true,
+          ),
+          body: ServiceDetailBody(
+            service: _currentService,
+            categoryName: displayCat,
+            authorName: _isOwner
+                ? "${widget.currentUser.fullName} (Tú)"
+                : (_currentService.authorName ?? "Cliente"),
+            isOwner: _isOwner,
+
+            // 👇 AQUÍ ENVIAMOS LA IMAGEN. Si es el dueño usa su propia foto, si no, usa la que viene en el servicio
+            authorImageUrl: _isOwner
+                ? widget.currentUser.profilePictureUrl
+                : _currentService.profilePictureUrl,
+          ),
+          bottomNavigationBar: _buildBottomAction(hasApplied),
+        );
       },
     );
   }
@@ -96,36 +115,58 @@ class _ServiceDetailScreenState extends ConsumerState<ServiceDetailScreen> {
   Widget? _buildBottomAction(bool hasApplied) {
     if (_isOwner || widget.currentUser.role.contains('admin')) {
       return _BottomBarContainer(
-        child: ElevatedButton(onPressed: _navigateToEdit, style: _btnStyle(const Color(0xFF2563EB)), 
-        child: const Text("Editar Servicio", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold))),
+        child: ElevatedButton(
+            onPressed: _navigateToEdit,
+            style: _btnStyle(const Color(0xFF2563EB)),
+            child: const Text("Editar Servicio",
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold))),
       );
     } else if (_isWorker) {
       return _BottomBarContainer(
-        child: hasApplied 
-          ? ElevatedButton.icon(onPressed: null, icon: const Icon(Icons.check_circle, color: Colors.white), 
-              label: const Text("Ya te has postulado", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-              style: _btnStyle(Colors.grey))
-          : ElevatedButton(onPressed: () => showWorkerApplyModal(context, ref, _currentService), 
-              style: _btnStyle(const Color(0xFF6200EE)), 
-              child: const Text("Postularme al Trabajo", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold))),
+        child: hasApplied
+            ? ElevatedButton.icon(
+                onPressed: null,
+                icon: const Icon(Icons.check_circle, color: Colors.white),
+                label: const Text("Ya te has postulado",
+                    style: TextStyle(
+                        color: Colors.white, fontWeight: FontWeight.bold)),
+                style: _btnStyle(Colors.grey))
+            : ElevatedButton(
+                onPressed: () =>
+                    showWorkerApplyModal(context, ref, _currentService),
+                style: _btnStyle(const Color(0xFF6200EE)),
+                child: const Text("Postularme al Trabajo",
+                    style:
+                        TextStyle(fontSize: 16, fontWeight: FontWeight.bold))),
       );
     }
     return null;
   }
 
   ButtonStyle _btnStyle(Color color) => ElevatedButton.styleFrom(
-    backgroundColor: color, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 16),
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-  );
+        backgroundColor: color,
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      );
 }
 
 class _BottomBarContainer extends StatelessWidget {
   final Widget child;
   const _BottomBarContainer({required this.child});
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(20),
-    decoration: const BoxDecoration(color: Colors.white, boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, -5))]),
-    child: child,
-  );
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: theme.scaffoldBackgroundColor,
+        boxShadow: const [
+          BoxShadow(
+              color: Colors.black12, blurRadius: 10, offset: Offset(0, -5))
+        ],
+      ),
+      child: child,
+    );
+  }
 }

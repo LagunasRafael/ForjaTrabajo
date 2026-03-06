@@ -1,28 +1,33 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'dart:io' show Platform; // Import Platform for conditional baseUrl
 
 class ApiClient {
-  final Dio dio;
+  static final ApiClient _instance = ApiClient._internal();
+  late Dio dio;
   final FlutterSecureStorage storage;
 
-  // Constructor
-  ApiClient()
-      : dio = Dio(
-          BaseOptions(
-            // OJO: Esta URL cambiará dependiendo de Project IDX.
-            // Por ahora ponemos la estándar de FastAPI local.
+   final String _baseUrl =
+      'https://forja-api-rw0r.onrender.com'; // ✨ URL DE PRODUCCIÓN
+  // final String _baseUrl = Platform.isAndroid
+  //     ? 'http://10.0.2.2:8000'
+  //     : 'http://localhost:8000'; // 💻 URL DE DESARROLLO
 
-            // baseUrl: 'http://127.0.0.1:8000',
-            baseUrl: 'http://10.0.2.2:8000',
-            connectTimeout: const Duration(seconds: 10),
-            receiveTimeout: const Duration(seconds: 10),
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-            },
-          ),
-        ),
-        storage = const FlutterSecureStorage() {
+  factory ApiClient() => _instance;
+
+  // Constructor interno privado
+  ApiClient._internal() : storage = const FlutterSecureStorage() {
+    dio = Dio(
+      BaseOptions(
+        baseUrl: _baseUrl,
+        connectTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 10),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      ),
+    );
     _initializeInterceptors();
   }
 

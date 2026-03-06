@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+import os
 from jose import jwt, JWTError
 from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, status
@@ -9,8 +10,8 @@ from app.db.database import get_db
 from app.auth import models
 from app.core.roles import Role # Importante para validaciones
 
-# ⚠️ En producción, esto debe venir de una variable de entorno (.env)
-SECRET_KEY = "TU_LLAVE_SUPER_SECRETA_DE_SISTEMAS" 
+# Leemos desde el .env, si no hay, usamos una temporal para desarrollo
+SECRET_KEY = os.getenv("SECRET_KEY", "TU_LLAVE_SUPER_SECRETA_DE_SISTEMAS") 
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
 REFRESH_TOKEN_EXPIRE_DAYS = 7

@@ -2,25 +2,29 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 // 👇 Imports limpios (asegúrate de que las rutas coincidan)
-import '../../providers/job_management_provider.dart'; 
+import '../../providers/job_management_provider.dart';
 import '../../widgets/service_status_chip.dart';
 import 'package:forja_trabajo/shared/widgets/empty_state_widget.dart';
-import 'package:forja_trabajo/shared/widgets/service_card_skeleton.dart'; 
+import 'package:forja_trabajo/shared/widgets/service_card_skeleton.dart';
 
 class MyJobsScreen extends ConsumerWidget {
   const MyJobsScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return DefaultTabController(
-      length: 3, // 1. Abiertos (Nuevos), 2. En Proceso, 3. Finalizados
+      length: 3,
       child: Scaffold(
-        backgroundColor: const Color(0xFFF8F9FA),
+        backgroundColor: theme.scaffoldBackgroundColor,
         appBar: AppBar(
-          title: const Text('Mis Trabajos', 
-            style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)
-          ),
-          backgroundColor: Colors.white,
+          title: Text('Mis Trabajos',
+              style: TextStyle(
+                  color: theme.textTheme.titleLarge?.color,
+                  fontWeight: FontWeight.bold)),
+          backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
           elevation: 0,
           bottom: const TabBar(
             labelColor: Color(0xFF4F46E5),
@@ -50,7 +54,9 @@ class MyJobsScreen extends ConsumerWidget {
     return jobsAsync.when(
       data: (jobs) {
         // 2. Filtramos la lista según el estado de la pestaña
-        final filtered = jobs.where((j) => j.status.toString().split('.').last == status).toList();
+        final filtered = jobs
+            .where((j) => j.status.toString().split('.').last == status)
+            .toList();
 
         if (filtered.isEmpty) {
           return _getEmptyStateForStatus(status);
@@ -59,7 +65,8 @@ class MyJobsScreen extends ConsumerWidget {
         return ListView.builder(
           padding: const EdgeInsets.all(16),
           itemCount: filtered.length,
-          itemBuilder: (context, index) => _buildJobCard(context, filtered[index]),
+          itemBuilder: (context, index) =>
+              _buildJobCard(context, filtered[index]),
         );
       },
       loading: () => ListView.builder(
@@ -110,14 +117,16 @@ class MyJobsScreen extends ConsumerWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Expanded( 
+                Expanded(
                   child: Text(
-                    job.title, 
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    job.title,
+                    style: const TextStyle(
+                        fontSize: 18, fontWeight: FontWeight.bold),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                ServiceStatusChip(status: job.status.toString().split('.').last), 
+                ServiceStatusChip(
+                    status: job.status.toString().split('.').last),
               ],
             ),
             const SizedBox(height: 8),
@@ -134,10 +143,9 @@ class MyJobsScreen extends ConsumerWidget {
                 Text(
                   "\$${job.basePrice}",
                   style: const TextStyle(
-                    fontSize: 16, 
-                    fontWeight: FontWeight.bold, 
-                    color: Color(0xFF4F46E5)
-                  ),
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF4F46E5)),
                 ),
                 TextButton(
                   onPressed: () {

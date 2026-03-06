@@ -148,6 +148,39 @@ class AuthNotifier extends Notifier<AuthState> {
     }
   }
 
+  Future<void> verifyEmail(String email, String code) async {
+    state = state.copyWith(status: 'loading', errorMessage: '');
+    try {
+      final dataSource = ref.read(authDataSourceProvider);
+      await dataSource.verifyEmailCode(email, code);
+
+      // Actualizamos el usuario localmente para que sepa que ya está verificado
+      if (state.user != null) {
+        final updatedUser = state.user!.copyWith(isEmailVerified: true);
+        state = state.copyWith(status: 'email_verified', user: updatedUser);
+      } else {
+        state = state.copyWith(status: 'email_verified');
+      }
+    } catch (e) {
+      state = state.copyWith(
+          status: 'error',
+          errorMessage: e.toString().replaceAll('Exception: ', ''));
+    }
+  }
+
+  Future<void> resendEmail(String email) async {
+    state = state.copyWith(status: 'loading', errorMessage: '');
+    try {
+      final dataSource = ref.read(authDataSourceProvider);
+      await dataSource.resendVerificationCode(email);
+      state = state.copyWith(status: 'email_resent', errorMessage: '');
+    } catch (e) {
+      state = state.copyWith(
+          status: 'error',
+          errorMessage: e.toString().replaceAll('Exception: ', ''));
+    }
+  }
+
   // 👇 FUNCIÓN ARREGLADA: Descarga el perfil real del usuario
   Future<void> fetchProfile() async {
     try {
