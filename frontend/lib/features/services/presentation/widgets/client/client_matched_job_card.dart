@@ -4,13 +4,8 @@ import 'package:forja_trabajo/features/services/domain/entities/service_entity.d
 import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart';
 import 'package:forja_trabajo/features/services/presentation/screens/shared/service_detail_screen.dart';
 import 'package:forja_trabajo/features/services/presentation/screens/shared/widgets/shared_job_widgets.dart';
-
-// Providers y UseCases
 import 'package:forja_trabajo/features/services/domain/usecases/jobs/complete_job_usecase.dart';
 import 'package:forja_trabajo/features/services/presentation/providers/service_list_provider.dart';
-// 🚀 Asegúrate de importar el provider de "Mis Trabajos"
-import 'package:forja_trabajo/features/services/presentation/providers/nav_providers.dart'; // O donde tengas myRequestsProvider
-
 
 class ClientMatchedJobCard extends ConsumerWidget {
   final ServiceEntity service;
@@ -20,20 +15,36 @@ class ClientMatchedJobCard extends ConsumerWidget {
     final user = ref.read(authProvider).user;
     if (user == null) return;
     Navigator.push(context, MaterialPageRoute(
-      builder: (_) => ServiceDetailScreen(service: service, currentUser: user, categoryName: "Servicio en Curso")
+      builder: (_) => ServiceDetailScreen(
+        service: service, 
+        currentUser: user, 
+        categoryName: "Servicio en Curso"
+      )
     ));
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isWaiting = service.status == JobStatus.waiting_confirmation;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
       decoration: BoxDecoration(
-        color: Colors.white, 
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 15, offset: const Offset(0, 5))],
+        border: Border.all(
+          color: isDark ? const Color(0xFF334155) : Colors.transparent,
+          width: 1
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(isDark ? 0.2 : 0.06),
+            blurRadius: 15,
+            offset: const Offset(0, 5)
+          )
+        ],
       ),
       child: InkWell(
         onTap: () => _goToDetails(context, ref),
@@ -43,7 +54,7 @@ class ClientMatchedJobCard extends ConsumerWidget {
             SharedJobImage(
               imageUrls: service.imageUrls,
               badgeText: isWaiting ? "LISTO PARA REVISIÓN" : "EN PROCESO",
-              badgeColor: isWaiting ? Colors.green : Colors.orange,
+              badgeColor: isWaiting ? const Color(0xFF10B981) : Colors.orange,
             ),
             Padding(
               padding: const EdgeInsets.all(16),
@@ -54,7 +65,6 @@ class ClientMatchedJobCard extends ConsumerWidget {
                     price: service.basePrice, 
                     location: service.exactAddress ?? 'Ubicación remota'
                   ),
-                  // Separamos las acciones para mantener la tarjeta limpia
                   _ClientMatchedActions(service: service, isWaiting: isWaiting),
                 ],
               ),
@@ -66,9 +76,6 @@ class ClientMatchedJobCard extends ConsumerWidget {
   }
 }
 
-// =======================================================
-// LÓGICA DE BOTONES Y USECASES AISLADA
-// =======================================================
 class _ClientMatchedActions extends ConsumerWidget {
   final ServiceEntity service;
   final bool isWaiting;
@@ -89,16 +96,19 @@ class _ClientMatchedActions extends ConsumerWidget {
               label: "Chat", 
               icon: Icons.chat_bubble_outline, 
               isOutlined: true, 
-              onPressed: isCompleting ? null : () {}
+              onPressed: isCompleting ? null : () {
+              }
             ),
             const SizedBox(width: 12),
             _btn(
               context: context,
               label: isWaiting ? "Confirmar Fin" : "En curso...",
               icon: isWaiting ? Icons.check_circle_outline : Icons.hourglass_empty,
-              color: isWaiting ? Colors.green : Colors.orange,
+              color: isWaiting ? const Color(0xFF10B981) : Colors.orange,
               isLoading: isCompleting,
-              onPressed: (isWaiting && !isCompleting) ? () => _handleComplete(context, ref) : null,
+              onPressed: (isWaiting && !isCompleting) 
+                ? () => _handleComplete(context, ref) 
+                : null,
             ),
           ],
         ),
@@ -106,44 +116,45 @@ class _ClientMatchedActions extends ConsumerWidget {
     );
   }
 
-  // 1. EXTRAEMOS LA LÓGICA PRINCIPAL (Limpia y directa)
   Future<void> _handleComplete(BuildContext context, WidgetRef ref) async {
     final confirm = await _showConfirmDialog(context);
-    if (confirm != true) return; // Si dice "No" o cierra, abortamos.
+    if (confirm != true) return;
 
-    // Iniciamos carga
     ref.read(completingJobProvider(service.id).notifier).state = true;
     
-    // Ejecutamos UseCase
-    final success = await ref.read(completeJobUseCaseProvider).execute(service.id);
-    
-    // Terminamos carga
-    ref.read(completingJobProvider(service.id).notifier).state = false;
-
-    // Consecuencias del éxito
-    if (success && context.mounted) {
-      // 🚀 OPTIMIZACIÓN: Refrescamos la lista del cliente (MyRequestsScreen)
-      ref.invalidate(myRequestsProvider); 
-      ref.invalidate(serviceListProvider);
+    try {
+      final success = await ref.read(completeJobUseCaseProvider).execute(service.id);
       
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("✅ Trabajo finalizado exitosamente."), backgroundColor: Colors.green)
-      );
+      if (success && context.mounted) {
+        ref.invalidate(myRequestsProvider); 
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("✅ Trabajo finalizado exitosamente."), 
+            backgroundColor: Color(0xFF10B981)
+          )
+        );
+      }
+    } finally {
+      ref.read(completingJobProvider(service.id).notifier).state = false;
     }
   }
 
-  // 2. EXTRAEMOS EL DIÁLOGO (Para no abultar el método principal)
   Future<bool?> _showConfirmDialog(BuildContext context) {
     return showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('¿Finalizar trabajo?'),
-        content: const Text('¿Confirmas que el servicio se completó? Se cerrará el empleo y se liberará el pago.'),
+        content: const Text('¿Confirmas que el servicio se completó correctamente? Se cerrará el empleo.'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('No')),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true), 
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.green), 
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF10B981),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))
+            ), 
             child: const Text('Sí, finalizar', style: TextStyle(color: Colors.white))
           ),
         ],
@@ -151,7 +162,6 @@ class _ClientMatchedActions extends ConsumerWidget {
     );
   }
 
-  // 3. WIDGET DE BOTÓN GENÉRICO LIMPIO
   Widget _btn({
     required BuildContext context, 
     required String label, 
@@ -177,12 +187,13 @@ class _ClientMatchedActions extends ConsumerWidget {
             icon: isLoading 
               ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
               : Icon(icon, size: 18), 
-            label: Text(label, style: const TextStyle(fontSize: 12)),
+            label: Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
             style: ElevatedButton.styleFrom(
               backgroundColor: color, 
               foregroundColor: Colors.white, 
               disabledBackgroundColor: Colors.grey.shade300, 
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              elevation: 0
             )
           ),
     );

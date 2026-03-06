@@ -9,38 +9,31 @@ from PIL import Image
 from urllib.parse import urlparse
 import traceback
 
-# 1. Forzamos la búsqueda del archivo y vemos DÓNDE lo encuentra
-ruta_env = find_dotenv()
-print("👀 RUTA DEL ARCHIVO .ENV:", ruta_env)
+# Eliminamos la carga global de credenciales porque falla en producción
+# si las variables tienen comillas o se leen muy pronto.
 
-# 2. Cargamos el archivo
-load_dotenv(ruta_env)
-
-# 3. Leemos las variables
-AWS_ACCESS_KEY = os.getenv('AWS_ACCESS_KEY_ID')
-AWS_SECRET_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
-AWS_REGION = os.getenv('AWS_REGION', 'us-east-1')
-
-# OJO AQUÍ: Asegúrate de que el nombre de la variable coincida con tu .env
-BUCKET_NAME = os.getenv('AWS_BUCKET_NAME') 
-
-# 4. IMPRIMIMOS LO QUE PYTHON VE (solo para encontrar el error)
-print("🔑 ACCESS KEY CARGADA:", "SÍ" if AWS_ACCESS_KEY else "NO (Está vacía)")
-print("🪣 BUCKET NAME CARGADO:", BUCKET_NAME)
-# Configuramos el cliente de Amazon
-s3_client = boto3.client(
-    's3',
-    aws_access_key_id=os.getenv('AWS_ACCESS_KEY_ID'),
-    aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY'),
-    region_name=os.getenv('AWS_REGION', 'us-east-1')
-)
+def get_s3_config():
+    """Obtiene y limpia las credenciales cada vez que se necesitan."""
+    access_key = os.getenv('AWS_ACCESS_KEY_ID', '').replace('"', '').replace("'", '').strip()
+    secret_key = os.getenv('AWS_SECRET_ACCESS_KEY', '').replace('"', '').replace("'", '').strip()
+    region = os.getenv('AWS_REGION', 'us-east-1').replace('"', '').replace("'", '').strip()
+    bucket_name = os.getenv('AWS_BUCKET_NAME', '').replace('"', '').replace("'", '').strip()
+    
+    if not access_key or not secret_key or not bucket_name:
+        raise ValueError("Faltan credenciales de AWS o el nombre del Bucket en el entorno.")
+        
+    s3_client = boto3.client(
+        's3',
+        aws_access_key_id=access_key,
+        aws_secret_access_key=secret_key,
+        region_name=region
+    )
+    return s3_client, bucket_name
 
 
 async def upload_file_to_s3(file: UploadFile) -> str:
     try:
-        # 🚨 Validación rápida
-        if not BUCKET_NAME or not AWS_ACCESS_KEY:
-            raise ValueError("Faltan las credenciales de AWS en el archivo .env")
+        s3_client, bucket_name = get_s3_config()
 
         # 1. Leemos el archivo original
         image_data = await file.read()
@@ -65,7 +58,7 @@ async def upload_file_to_s3(file: UploadFile) -> str:
         print(f"🚀 Intentando subir a S3: {unique_filename}...")
         s3_client.upload_fileobj(
             compressed_image_io, 
-            BUCKET_NAME,
+            bucket_name,
             unique_filename,
             ExtraArgs={
                 "ContentType": "image/jpeg",
@@ -74,7 +67,7 @@ async def upload_file_to_s3(file: UploadFile) -> str:
         print("✅ ¡Subida exitosa a AWS S3!")
         
         # 6. Devolvemos la URL
-        return f"https://{BUCKET_NAME}.s3.amazonaws.com/{unique_filename}"
+        return f"https://{bucket_name}.s3.amazonaws.com/{unique_filename}"
 
     except Exception as e:
         # 🚨 AQUÍ ATRAPAMOS AL FANTASMA
@@ -87,6 +80,7 @@ async def upload_file_to_s3(file: UploadFile) -> str:
 
 def delete_old_file_from_s3(s3_url: str):
     try:
+        s3_client, bucket_name = get_s3_config()
         # 1. Extraemos la "llave" (Key) exacta de la URL de S3
         # Ejemplo: Si la URL es https://bucket.s3.amazonaws.com/avatars/123.jpg
         # Esto extrae solo: "avatars/123.jpg"
@@ -94,7 +88,7 @@ def delete_old_file_from_s3(s3_url: str):
         s3_key = parsed_url.path.lstrip('/') 
         
         # 2. Le disparamos a S3 para que lo borre
-        s3_client.delete_object(Bucket=BUCKET_NAME, Key=s3_key)
+        s3_client.delete_object(Bucket=bucket_name, Key=s3_key)
         print(f"✅ Basura espacial eliminada de S3: {s3_key}")
         
     except Exception as e:
@@ -106,8 +100,7 @@ async def upload_service_evidence_to_s3(file: UploadFile, service_id: str) -> st
     Ruta en S3: servicios/{service_id}/evidencias/{uuid}.jpg
     """
     try:
-        if not BUCKET_NAME or not AWS_ACCESS_KEY:
-            raise ValueError("Faltan credenciales de AWS.")
+        s3_client, bucket_name = get_s3_config()
 
         # 1. Procesamiento de imagen (igual que antes)
         image_data = await file.read()
@@ -131,7 +124,7 @@ async def upload_service_evidence_to_s3(file: UploadFile, service_id: str) -> st
         # 3. Subimos a AWS
         s3_client.upload_fileobj(
             compressed_image_io, 
-            BUCKET_NAME,
+            bucket_name,
             s3_key,
             ExtraArgs={
                 "ContentType": "image/jpeg",
@@ -140,7 +133,7 @@ async def upload_service_evidence_to_s3(file: UploadFile, service_id: str) -> st
         print("✅ ¡Evidencia subida exitosamente!")
 
         # 4. Devolvemos la URL pública
-        return f"https://{BUCKET_NAME}.s3.amazonaws.com/{s3_key}"
+        return f"https://{bucket_name}.s3.amazonaws.com/{s3_key}"
 
     except Exception as e:
         print("💥 ERROR AL SUBIR EVIDENCIA A S3 💥")

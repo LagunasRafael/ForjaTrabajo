@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja_trabajo/features/services/presentation/providers/category_provider.dart';
-import 'package:forja_trabajo/features/services/presentation/providers/service_list_provider.dart';
 import 'package:forja_trabajo/features/services/presentation/widgets/categories/category_chip.dart';
 import 'package:forja_trabajo/features/services/presentation/widgets/categories/all_categories_modal.dart';
-
 
 class CategorySelectorWidget extends ConsumerWidget {
   const CategorySelectorWidget({super.key});
@@ -36,15 +34,15 @@ class CategorySelectorWidget extends ConsumerWidget {
                 label: "Ver más",
                 isSelected: false,
                 icon: Icons.grid_view_rounded, 
-                onTap: () => showCategoryModal(context, allCats), // Llamamos al helper global
+                onTap: () => showCategoryModal(context, allCats), 
               ),
               orElse: () => const SizedBox(),
             ),
           ],
         ),
       ),
-      loading: () => const LinearProgressIndicator(),
-      error: (e, s) => const Text("Error al cargar categorías"),
+      loading: () => const LinearProgressIndicator(color: Color(0xFF4F46E5)),
+      error: (e, s) => const Text("Error al cargar categorías", style: TextStyle(color: Colors.red)),
     );
   }
 }

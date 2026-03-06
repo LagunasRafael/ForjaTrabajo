@@ -22,6 +22,8 @@ class ServiceDetailBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final mainColor = categoryName.toCategoryColor;
 
     return SingleChildScrollView(
@@ -38,18 +40,57 @@ class ServiceDetailBody extends StatelessWidget {
               children: [
                 _buildCategoryHeader(mainColor),
                 const SizedBox(height: 12),
-                Text(service.title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 6),
-                Text("\$${service.basePrice.toStringAsFixed(0)} MXN", style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: const Color(0xFF10B981))),
+                
+                // 🎨 Título adaptable
+                Text(
+                  service.title, 
+                  style: TextStyle(
+                    fontSize: 24, 
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.white : Colors.black87
+                  )
+                ),
+                
+                const SizedBox(height: 8),
+                
+                // 💰 El precio se queda verde porque es "dinero", pero brilla más en oscuro
+                Text(
+                  "\$${service.basePrice.toStringAsFixed(0)} MXN", 
+                  style: TextStyle(
+                    fontSize: 22, 
+                    fontWeight: FontWeight.w900, 
+                    color: isDark ? const Color(0xFF34D399) : const Color(0xFF10B981)
+                  )
+                ),
 
+                // 🎨 Divisores adaptables
+                Divider(height: 40, color: isDark ? Colors.white10 : const Color(0xFFF3F4F6)),
                 
-                const Divider(height: 40, color: Color(0xFFF3F4F6)),
-                _buildAuthorTile(mainColor),
-                const Divider(height: 40, color: Color(0xFFF3F4F6)),
+                _buildAuthorTile(mainColor, isDark),
                 
-                const Text("DESCRIPCIÓN", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 1.2)),
+                Divider(height: 40, color: isDark ? Colors.white10 : const Color(0xFFF3F4F6)),
+                
+                Text(
+                  "DESCRIPCIÓN", 
+                  style: TextStyle(
+                    fontWeight: FontWeight.w900, 
+                    fontSize: 13, 
+                    letterSpacing: 1.2,
+                    color: isDark ? Colors.white70 : Colors.black54
+                  )
+                ),
+                
                 const SizedBox(height: 14),
-                Text(service.description ?? "Sin descripción.", style: const TextStyle(fontSize: 15, height: 1.5, color: const Color(0xFF4B5563))),
+                
+                // 🎨 Texto de descripción adaptable
+                Text(
+                  service.description ?? "Sin descripción.", 
+                  style: TextStyle(
+                    fontSize: 15, 
+                    height: 1.6, 
+                    color: isDark ? Colors.white60 : const Color(0xFF4B5563)
+                  )
+                ),
                 
                 const SizedBox(height: 30),
                 
@@ -68,24 +109,34 @@ class ServiceDetailBody extends StatelessWidget {
     );
   }
 
-  // --- Funciones chiquitas que se quedaron aquí ---
   Widget _buildCategoryHeader(Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), 
-      decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(8)), 
-      child: Text(categoryName.toUpperCase(), style: TextStyle(color: color, fontWeight: FontWeight.w800, fontSize: 11))
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.15), // Un poco más de opacidad para que resalte
+        borderRadius: BorderRadius.circular(8)
+      ), 
+      child: Text(
+        categoryName.toUpperCase(), 
+        style: TextStyle(color: color, fontWeight: FontWeight.w900, fontSize: 11)
+      )
     );
   }
 
-  Widget _buildAuthorTile(Color color) {
+  Widget _buildAuthorTile(Color color, bool isDark) {
     return Row(
       children: [
         CircleAvatar(
           radius: 22,
           backgroundColor: color.withOpacity(0.2), 
-          backgroundImage: (authorImageUrl != null && authorImageUrl!.isNotEmpty) ? NetworkImage(authorImageUrl!) : null,
+          backgroundImage: (authorImageUrl != null && authorImageUrl!.isNotEmpty) 
+              ? NetworkImage(authorImageUrl!) 
+              : null,
           child: (authorImageUrl == null || authorImageUrl!.isEmpty)
-              ? Text(authorName.isNotEmpty ? authorName[0].toUpperCase() : 'U', style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 18))
+              ? Text(
+                  authorName.isNotEmpty ? authorName[0].toUpperCase() : 'U', 
+                  style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 18)
+                )
               : null,
         ),
         const SizedBox(width: 12),
@@ -94,7 +145,14 @@ class ServiceDetailBody extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text("Publicado por:", style: TextStyle(fontSize: 11, color: Colors.grey)),
-              Text(authorName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+              Text(
+                authorName, 
+                style: TextStyle(
+                  fontWeight: FontWeight.bold, 
+                  fontSize: 15,
+                  color: isDark ? Colors.white : Colors.black87
+                )
+              ),
             ],
           ),
         ),

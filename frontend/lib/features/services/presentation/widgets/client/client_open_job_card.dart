@@ -17,12 +17,24 @@ class ClientOpenJobCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) { 
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardColor, // 🎨 Adaptable
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))],
+        border: Border.all(
+          color: isDark ? const Color(0xFF334155) : Colors.grey.shade100
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(isDark ? 0.2 : 0.05), 
+            blurRadius: 10, 
+            offset: const Offset(0, 4)
+          )
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -37,6 +49,7 @@ class ClientOpenJobCard extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // 🧱 TU LEGO: Mantiene el código limpio
                 SharedJobInfo(
                   title: service.title, 
                   price: service.basePrice, 
@@ -44,6 +57,7 @@ class ClientOpenJobCard extends ConsumerWidget {
                 ),
                 const SizedBox(height: 20),
                 
+                // 🚧 ACCIONES: Con toda tu lógica de cancelación
                 _buildActions(context, ref), 
               ],
             ),
@@ -59,7 +73,10 @@ class ClientOpenJobCard extends ConsumerWidget {
         Expanded(
           child: ElevatedButton.icon(
             onPressed: () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => OffersReceivedScreen(service: service)));
+              Navigator.push(
+                context, 
+                MaterialPageRoute(builder: (_) => OffersReceivedScreen(service: service))
+              );
             },
             icon: const Icon(Icons.people_alt_rounded, size: 20),
             label: const Text("Ver Postulados"), 
@@ -76,6 +93,7 @@ class ClientOpenJobCard extends ConsumerWidget {
         
         const SizedBox(width: 12),
         
+        // 🗑️ Botón de Cancelar con tu diseño de X roja
         Container(
           decoration: BoxDecoration(
             color: const Color(0xFFFEF2F2), 
@@ -84,16 +102,14 @@ class ClientOpenJobCard extends ConsumerWidget {
           ),
           child: IconButton(
             icon: const Icon(Icons.close, color: Color(0xFFEF4444)),
-            onPressed: () {
-              // 3. LLAMAMOS AL DIÁLOGO AL PICAR LA X
-              _showCancelDialog(context, ref);
-            },
+            onPressed: () => _showCancelDialog(context, ref),
           ),
         ),
       ],
     );
   }
 
+  // 🧠 TU LÓGICA DE NEGOCIO: Rescatada de HEAD
   void _showCancelDialog(BuildContext context, WidgetRef ref) {
     showDialog(
       context: context,
@@ -103,14 +119,14 @@ class ClientOpenJobCard extends ConsumerWidget {
           children: [
             Icon(Icons.warning_amber_rounded, color: Colors.red),
             SizedBox(width: 10),
-            Text("¿Cancelar publicación?", style: TextStyle(fontSize: 18)),
+            Text("¿Cancelar?", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           ],
         ),
-        content: const Text("Los trabajadores ya no podrán ver ni postularse a este servicio. Esta acción no se puede deshacer."),
+        content: const Text("Los trabajadores ya no podrán postularse. Esta acción no se puede deshacer."),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx), 
-            child: const Text("Volver", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+            child: const Text("Volver", style: TextStyle(color: Colors.grey)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
@@ -120,27 +136,24 @@ class ClientOpenJobCard extends ConsumerWidget {
             onPressed: () async {
               Navigator.pop(ctx); 
               
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("Cancelando publicación..."), duration: Duration(seconds: 1))
-              );
-
-              // 🚀 1. SACAMOS EL TOKEN REAL DEL USUARIO
+              // 🚀 Lógica de Token de Juan
               final prefs = await SharedPreferences.getInstance();
               final token = prefs.getString('token') ?? '';
               
               if (token.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Error: Sesión expirada", style: TextStyle(color: Colors.white)), backgroundColor: Colors.red)
-                );
-                return; // Cortamos la función aquí si no hay token
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Error: Sesión expirada"), backgroundColor: Colors.red)
+                  );
+                }
+                return;
               }
               
-              // 🚀 2. MANDAMOS LA PETICIÓN CON EL TOKEN REAL
               await ref.read(serviceControllerProvider.notifier).cancelService(service.id, token);
               
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("✅ Publicación cancelada", style: TextStyle(color: Colors.white)), backgroundColor: Colors.green)
+                  const SnackBar(content: Text("✅ Publicación cancelada"), backgroundColor: Colors.green)
                 );
               }
             },

@@ -6,35 +6,36 @@ import 'package:forja_trabajo/features/services/presentation/providers/category_
 import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart';
 import 'package:forja_trabajo/features/services/presentation/screens/shared/service_detail_screen.dart';
 
-IconData _getCategoryIcon(String categoryName) {
-  final name = categoryName.toLowerCase();
-  if (name.contains('font') || name.contains('plom') || name.contains('fuga')) return Icons.plumbing;
-  if (name.contains('electr') || name.contains('luz')) return Icons.electric_bolt;
-  if (name.contains('mueb') || name.contains('carp')) return Icons.chair_alt;
-  if (name.contains('pint')) return Icons.format_paint;
-  return Icons.home_repair_service;
-}
-
-Color _getIconBackgroundColor(String title) {
-  final t = title.toLowerCase();
-  if (t.contains('fuga')) return const Color(0xFFF3F4F6);
-  if (t.contains('eléctr')) return const Color(0xFFFEF3C7);
-  if (t.contains('pint')) return const Color(0xFFECFDF5);
-  return const Color(0xFFEEF2FF);
-}
-
-Color _getIconColor(String title) {
-  final t = title.toLowerCase();
-  if (t.contains('fuga')) return const Color(0xFF2563EB);
-  if (t.contains('eléctr')) return const Color(0xFFD97706);
-  if (t.contains('pint')) return const Color(0xFF10B981);
-  return const Color(0xFF4F46E5);
-}
-
 class ServiceCard extends ConsumerWidget {
   final ServiceEntity service;
   
   const ServiceCard({super.key, required this.service});
+
+  // --- Helpers Visuales (Mantenemos tu lógica de colores) ---
+  IconData _getCategoryIcon(String categoryName) {
+    final name = categoryName.toLowerCase();
+    if (name.contains('font') || name.contains('plom') || name.contains('fuga')) return Icons.plumbing;
+    if (name.contains('electr') || name.contains('luz')) return Icons.electric_bolt;
+    if (name.contains('mueb') || name.contains('carp')) return Icons.chair_alt;
+    if (name.contains('pint')) return Icons.format_paint;
+    return Icons.home_repair_service;
+  }
+
+  Color _getIconBackgroundColor(String title) {
+    final t = title.toLowerCase();
+    if (t.contains('fuga')) return const Color(0xFFF3F4F6);
+    if (t.contains('eléctr')) return const Color(0xFFFEF3C7);
+    if (t.contains('pint')) return const Color(0xFFECFDF5);
+    return const Color(0xFFEEF2FF);
+  }
+
+  Color _getIconColor(String title) {
+    final t = title.toLowerCase();
+    if (t.contains('fuga')) return const Color(0xFF2563EB);
+    if (t.contains('eléctr')) return const Color(0xFFD97706);
+    if (t.contains('pint')) return const Color(0xFF10B981);
+    return const Color(0xFF4F46E5);
+  }
 
   void _onCardTap(BuildContext context, WidgetRef ref, String categoryName) {
     final currentUser = ref.read(authProvider).user;
@@ -52,7 +53,7 @@ class ServiceCard extends ConsumerWidget {
         builder: (_) => ServiceDetailScreen(
           service: service,
           currentUser: currentUser,
-          categoryName: categoryName, // ¡Ya lo tenemos resuelto!
+          categoryName: categoryName,
         ),
       ),
     );
@@ -60,28 +61,34 @@ class ServiceCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
     final isUrgent = service.title.toLowerCase().contains('urgente');
     final themeColor = _getIconColor(service.title);
     final bgColor = _getIconBackgroundColor(service.title);
 
+    // 🧠 Resolución reactiva de categoría
     final categoriesAsync = ref.watch(categoryListProvider);
-    String catName = "Cargando..."; // Valor por defecto visual
-    
+    String catName = "Servicio"; 
+
     if (categoriesAsync is AsyncData) {
       final cats = categoriesAsync.value!;
       final found = cats.where((c) => c.id.toString() == service.categoryId.toString());
-      catName = found.isNotEmpty ? found.first.name : "Servicio General";
+      catName = found.isNotEmpty ? found.first.name : "General";
     }
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade100),
+        // 🎨 Borde adaptable para Dark Mode
+        border: Border.all(
+            color: isDark ? const Color(0xFF334155) : Colors.grey.shade100),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withOpacity(isDark ? 0.2 : 0.04),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -92,7 +99,6 @@ class ServiceCard extends ConsumerWidget {
         borderRadius: BorderRadius.circular(16),
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
-          // Pasamos el catName resuelto directamente
           onTap: () => _onCardTap(context, ref, catName),
           child: Stack(
             children: [
@@ -101,23 +107,25 @@ class ServiceCard extends ConsumerWidget {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // --- ICONO DINÁMICO ---
+                    // --- ICONO DINÁMICO (Con tu estado de carga) ---
                     Container(
                       width: 65, height: 65,
                       decoration: BoxDecoration(
-                        color: categoriesAsync.isLoading ? Colors.grey[100] : bgColor,
+                        color: categoriesAsync.isLoading 
+                            ? (isDark ? Colors.white10 : Colors.grey[100]) 
+                            : (isDark ? themeColor.withOpacity(0.2) : bgColor),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: categoriesAsync.isLoading
                         ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
                         : Icon(
-                            _getCategoryIcon(catName == "Servicio General" ? service.title : catName), 
-                            color: themeColor, 
+                            _getCategoryIcon(catName), 
+                            color: isDark ? themeColor.withAlpha(200) : themeColor, 
                             size: 32,
                           ),
                     ),
                     const SizedBox(width: 16),
-                    
+
                     // --- CONTENIDO ---
                     Expanded(
                       child: Column(
@@ -125,12 +133,22 @@ class ServiceCard extends ConsumerWidget {
                         children: [
                           Text(
                             catName.toUpperCase(),
-                            style: TextStyle(color: themeColor, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 0.8),
+                            style: TextStyle(
+                              color: themeColor, 
+                              fontSize: 10, 
+                              fontWeight: FontWeight.w800, 
+                              letterSpacing: 0.8
+                            ),
                           ),
                           const SizedBox(height: 4),
                           Text(
                             service.title, 
-                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF111827), height: 1.2), 
+                            style: TextStyle(
+                              fontSize: 16, 
+                              fontWeight: FontWeight.bold, 
+                              color: isDark ? Colors.white : const Color(0xFF111827), 
+                              height: 1.2
+                            ), 
                             maxLines: 2, 
                             overflow: TextOverflow.ellipsis
                           ),
@@ -155,17 +173,25 @@ class ServiceCard extends ConsumerWidget {
                             children: [
                               Text(
                                 "\$${service.basePrice.toStringAsFixed(0)}", 
-                                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF10B981))
+                                style: const TextStyle(
+                                  fontSize: 18, 
+                                  fontWeight: FontWeight.w900, 
+                                  color: Color(0xFF10B981)
+                                )
                               ),
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                                 decoration: BoxDecoration(
-                                  color: isUrgent ? const Color(0xFF1D04F8) : const Color(0xFFF3F4F6), 
+                                  color: isUrgent ? const Color(0xFF1D04F8) : (isDark ? Colors.white10 : const Color(0xFFF3F4F6)), 
                                   borderRadius: BorderRadius.circular(8)
                                 ),
                                 child: Text(
                                   "Ver Detalles", 
-                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: isUrgent ? Colors.white : Colors.black87)
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold, 
+                                    fontSize: 12, 
+                                    color: isUrgent ? Colors.white : (isDark ? Colors.white70 : Colors.black87)
+                                  )
                                 ),
                               ),
                             ],
@@ -177,6 +203,7 @@ class ServiceCard extends ConsumerWidget {
                 ),
               ),
 
+              // --- BADGE DE URGENTE ---
               if (isUrgent)
                 Positioned(
                   right: 0, top: 0,
@@ -184,9 +211,15 @@ class ServiceCard extends ConsumerWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: const BoxDecoration(
                       color: Color(0xFFFFE4E6),
-                      borderRadius: BorderRadius.only(topRight: Radius.circular(16), bottomLeft: Radius.circular(16)),
+                      borderRadius: BorderRadius.only(
+                          topRight: Radius.circular(16),
+                          bottomLeft: Radius.circular(16)),
                     ),
-                    child: const Text("URGENTE", style: TextStyle(color: Color(0xFFE11D48), fontSize: 10, fontWeight: FontWeight.bold)),
+                    child: const Text("URGENTE",
+                        style: TextStyle(
+                            color: Color(0xFFE11D48),
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold)),
                   ),
                 ),
             ],

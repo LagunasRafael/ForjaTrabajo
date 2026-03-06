@@ -16,25 +16,30 @@ class AuthRemoteDataSource {
     try {
       // 1. Enviamos un JSON normal (Diccionario) en lugar de FormData
       final response = await apiClient.dio.post(
-        '/auth/login', 
+        '/auth/login',
         data: {
-          'email': email,       // 👈 OJO: Verifica si tu backend espera "email" o "username"
+          'email':
+              email, // 👈 OJO: Verifica si tu backend espera "email" o "username"
           'password': password,
         },
       );
 
-      // 2. Extraemos el token de la respuesta
+      // 2. Extraemos el token y el refresh token de la respuesta
       final token = response.data['access_token'];
-      
-      // 3. Lo guardamos de forma segura
-      await apiClient.storage.write(key: 'jwt_token', value: token);
-      
-      return token;
+      final refreshToken = response.data['refresh_token'];
 
+      // 3. Los guardamos de forma segura
+      await apiClient.storage.write(key: 'jwt_token', value: token);
+      if (refreshToken != null) {
+        await apiClient.storage
+            .write(key: 'refresh_token', value: refreshToken);
+      }
+
+      return token;
     } on DioException catch (e) {
       // Manejo de error mejorado para leer el JSON que nos manda FastAPI
       String errorMessage = 'Error desconocido al iniciar sesión';
-      
+
       if (e.response != null && e.response?.data != null) {
         // A veces FastAPI manda el error en "detail"
         if (e.response?.data['detail'] is String) {
@@ -45,15 +50,17 @@ class AuthRemoteDataSource {
       }
       throw Exception(errorMessage);
     } catch (e) {
-      throw Exception('Error de conexión: Verifica que el servidor esté encendido.');
+      throw Exception(
+          'Error de conexión: Verifica que el servidor esté encendido.');
     }
   }
 
-  /// Cierra sesión borrando el token
+  /// Cierra sesión borrando los tokens
   Future<void> logout() async {
     await apiClient.storage.delete(key: 'jwt_token');
+    await apiClient.storage.delete(key: 'refresh_token');
   }
-  
+
   /// Verifica si el usuario ya tiene una sesión activa al abrir la app
   Future<bool> hasValidToken() async {
     final token = await apiClient.storage.read(key: 'jwt_token');
@@ -85,14 +92,14 @@ class AuthRemoteDataSource {
       print('🚨 ERROR 422 DE FASTAPI: ${e.response?.data}');
 
       String errorMessage = 'Error al crear la cuenta';
-      
+
       if (e.response != null && e.response?.data != null) {
         final detail = e.response?.data['detail'];
-        
+
         // 2. Si FastAPI manda un String normal (ej. "El correo ya existe")
         if (detail is String) {
           errorMessage = detail;
-        } 
+        }
         // 3. Si FastAPI manda una Lista de errores (Típico del error 422)
         else if (detail is List && detail.isNotEmpty) {
           // Extraemos qué campo falló y por qué
@@ -103,24 +110,27 @@ class AuthRemoteDataSource {
       }
       throw Exception(errorMessage);
     } catch (e) {
-      throw Exception('Error de conexión: Verifica que el servidor esté encendido.');
+      throw Exception(
+          'Error de conexión: Verifica que el servidor esté encendido.');
     }
   }
 
   Future<User> getUserProfile() async {
     try {
       // ⚠️ Asegúrate de que esta ruta tenga el prefijo correcto (ej. /auth/me o /users/me)
-      final response = await apiClient.dio.get('/auth/me'); 
-      
-      debugPrint('✅ RESPUESTA CRUDA DE FASTAPI: ${response.data}'); // 👈 Agregamos esto
-      
+      final response = await apiClient.dio.get('/auth/me');
+
+      debugPrint(
+          '✅ RESPUESTA CRUDA DE FASTAPI: ${response.data}'); // 👈 Agregamos esto
+
       return User.fromJson(response.data);
     } on DioException catch (e) {
       // 1. Si el servidor respondió con un error (400, 422, 500)
       if (e.response != null) {
-        debugPrint('🛑 EL SERVIDOR RESPONDIÓ CON ERROR: ${e.response?.statusCode}');
+        debugPrint(
+            '🛑 EL SERVIDOR RESPONDIÓ CON ERROR: ${e.response?.statusCode}');
         debugPrint('🛑 DETALLE DEL ERROR: ${e.response?.data}');
-      } 
+      }
       // 2. Si el servidor NUNCA respondió (Apagado, sin internet, error de ruta)
       else {
         debugPrint('🚨 EL SERVIDOR NO RESPONDIÓ (¿Está apagado uvicorn?)');
@@ -149,19 +159,18 @@ class AuthRemoteDataSource {
         data: formData,
       );
 
-      final nuevaUrl = response.data['profile_picture_url']; 
+      final nuevaUrl = response.data['profile_picture_url'];
 
-    if (nuevaUrl == null) {
-      // Esto te ayudará a debuggear si vuelve a fallar
-      debugPrint("JSON recibido: ${response.data}");
-      throw Exception("No se encontró 'profile_picture_url' en la respuesta");
+      if (nuevaUrl == null) {
+        // Esto te ayudará a debuggear si vuelve a fallar
+        debugPrint("JSON recibido: ${response.data}");
+        throw Exception("No se encontró 'profile_picture_url' en la respuesta");
+      }
+
+      return nuevaUrl.toString();
+    } catch (e) {
+      throw Exception('Error subiendo foto: $e');
     }
-
-    return nuevaUrl.toString();
-
-  } catch (e) {
-    throw Exception('Error subiendo foto: $e');
-  }
   }
 
   Future<void> updateLocation({
@@ -182,16 +191,18 @@ class AuthRemoteDataSource {
       );
       debugPrint('🛰️ Ubicación enviada al servidor con éxito');
     } on DioException catch (e) {
-      debugPrint('🚨 Error en DataSource al actualizar ubicación: ${e.response?.data}');
+      debugPrint(
+          '🚨 Error en DataSource al actualizar ubicación: ${e.response?.data}');
       throw Exception('No se pudo guardar la ubicación en el servidor');
     }
   }
 
-  Future<void> updateProfileData(String userId, String fullName, String phone) async {
+  Future<void> updateProfileData(
+      String userId, String fullName, String phone) async {
     try {
       // 👇 Cambiamos la URL para que coincida con tu @router.put("/users/{user_id}")
       await apiClient.dio.put(
-        '/auth/users/$userId', 
+        '/auth/users/$userId',
         data: {
           'full_name': fullName,
           'phone': phone,
@@ -202,5 +213,60 @@ class AuthRemoteDataSource {
     }
   }
 
-}
+  Future<void> updateFcmToken(String fcmToken) async {
+    try {
+      await apiClient.dio.put(
+        '/auth/fcm-token',
+        data: {'fcm_token': fcmToken},
+      );
+      debugPrint('📱 FCM Token actualizado en el servidor');
+    } catch (e) {
+      debugPrint('🚨 Error actualizando FCM Token: $e');
+    }
+  }
 
+  /// Verifica el código de 6 dígitos enviado al correo
+  Future<void> verifyEmailCode(String email, String code) async {
+    try {
+      await apiClient.dio.post(
+        '/auth/verify-code',
+        data: {
+          'email': email,
+          'code': code,
+        },
+      );
+    } on DioException catch (e) {
+      String errorMessage = 'Error al verificar el código';
+      if (e.response != null && e.response?.data != null) {
+        if (e.response?.data['detail'] is String) {
+          errorMessage = e.response?.data['detail'];
+        }
+      }
+      throw Exception(errorMessage);
+    } catch (e) {
+      throw Exception('Error de conexión');
+    }
+  }
+
+  /// Reenvía el código de verificación por correo
+  Future<void> resendVerificationCode(String email) async {
+    try {
+      await apiClient.dio.post(
+        '/auth/resend-code',
+        data: {
+          'email': email,
+        },
+      );
+    } on DioException catch (e) {
+      String errorMessage = 'Error al reenviar el código';
+      if (e.response != null && e.response?.data != null) {
+        if (e.response?.data['detail'] is String) {
+          errorMessage = e.response?.data['detail'];
+        }
+      }
+      throw Exception(errorMessage);
+    } catch (e) {
+      throw Exception('Error de conexión');
+    }
+  }
+}

@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:forja_trabajo/features/services/presentation/screens/client/edit_profile_screen.dart';
 import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart';
 import 'package:forja_trabajo/features/auth/presentation/screens/login_screen.dart';
+import 'package:forja_trabajo/core/theme/theme_provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -12,27 +15,63 @@ class SettingsScreen extends ConsumerStatefulWidget {
 }
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
-  // Estados temporales para los interruptores
   bool _notificationsEnabled = true;
-  bool _locationEnabled = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPreferences();
+  }
+
+  Future<void> _loadPreferences() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _notificationsEnabled = prefs.getBool('notifications_enabled') ?? true;
+    });
+  }
+
+  Future<void> _saveNotificationPreference(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('notifications_enabled', value);
+    setState(() {
+      _notificationsEnabled = value;
+    });
+  }
+
+  Future<void> _launchURL(String urlString) async {
+    final url = Uri.parse(urlString);
+    if (!await launchUrl(url)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No se pudo abrir el enlace')),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final themeMode = ref.watch(themeProvider);
+    final isDarkMode = themeMode == ThemeMode.dark;
+
+    final theme = Theme.of(context);
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA), // Fondo gris muy clarito
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: theme.appBarTheme.backgroundColor,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black),
-        title: const Text(
+        iconTheme: theme.iconTheme,
+        title: Text(
           "Configuración",
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+          style:
+              theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
         ),
       ),
       body: ListView(
         children: [
           const SizedBox(height: 20),
-          
+
           // --- SECCIÓN: CUENTA ---
           _buildSectionHeader("Cuenta"),
           _buildListTile(
@@ -41,76 +80,74 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const EditProfileScreen()),
+                MaterialPageRoute(
+                    builder: (context) => const EditProfileScreen()),
               );
-              print("Ir a editar perfil");
             },
           ),
-          _buildListTile(
-            icon: Icons.lock_outline,
-            title: "Cambiar Contraseña",
-            onTap: () {},
-          ),
-          
+
           const SizedBox(height: 24),
-          
+
           // --- SECCIÓN: PREFERENCIAS ---
           _buildSectionHeader("Preferencias"),
+          _buildSwitchTile(
+            icon: Icons.dark_mode_outlined,
+            title: "Modo Oscuro",
+            value: isDarkMode,
+            onChanged: (val) {
+              ref.read(themeProvider.notifier).toggleTheme(val);
+            },
+          ),
           _buildSwitchTile(
             icon: Icons.notifications_none,
             title: "Notificaciones Push",
             value: _notificationsEnabled,
-            onChanged: (val) => setState(() => _notificationsEnabled = val),
+            onChanged: _saveNotificationPreference,
           ),
-          _buildSwitchTile(
-            icon: Icons.location_on_outlined,
-            title: "Servicios cerca de mí",
-            value: _locationEnabled,
-            onChanged: (val) => setState(() => _locationEnabled = val),
-          ),
-          
+
           const SizedBox(height: 24),
-          
+
           // --- SECCIÓN: SOPORTE ---
           _buildSectionHeader("Soporte y Legal"),
           _buildListTile(
             icon: Icons.help_outline,
-            title: "Centro de Ayuda",
-            onTap: () {},
+            title: "Contactar Soporte",
+            onTap: () {
+              // Ejemplo: abrir whatsapp o correo
+              _launchURL("mailto:forjatrabajo@gmail.com?subject=Soporte%20App");
+            },
           ),
           _buildListTile(
             icon: Icons.description_outlined,
             title: "Términos y Condiciones",
-            onTap: () {},
+            onTap: () {
+              // Puedes poner el link a tu web de privacidad
+              _launchURL("https://forja-trabajo.com/terminos");
+            },
           ),
-          
+
           const SizedBox(height: 40),
-          
+
           // --- ZONA DE PELIGRO ---
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24.0),
             child: ElevatedButton.icon(
               onPressed: () {
-               _showLogoutConfirmation(context, ref);
+                _showLogoutConfirmation(context, ref);
               },
               icon: const Icon(Icons.logout, color: Colors.red),
-              label: const Text(
-                "Cerrar Sesión", 
-                style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 16)
-              ),
+              label: const Text("Cerrar Sesión",
+                  style: TextStyle(
+                      color: Colors.red,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16)),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red.shade50, // Rojito claro de fondo
                 elevation: 0,
                 padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
               ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Center(
-            child: TextButton(
-              onPressed: () {},
-              child: const Text("Eliminar cuenta", style: TextStyle(color: Colors.grey)),
             ),
           ),
           const SizedBox(height: 40),
@@ -136,51 +173,76 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  Widget _buildListTile({required IconData icon, required String title, required VoidCallback onTap}) {
+  Widget _buildListTile(
+      {required IconData icon,
+      required String title,
+      required VoidCallback onTap}) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Container(
-      color: Colors.white,
+      color: theme.cardColor,
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 24.0),
         leading: Container(
           padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(color: const Color(0xFFEEF2FF), borderRadius: BorderRadius.circular(8)),
+          decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF334155) : const Color(0xFFEEF2FF),
+              borderRadius: BorderRadius.circular(8)),
           child: Icon(icon, color: const Color(0xFF4F46E5), size: 20),
         ),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
-        trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+        title: Text(title,
+            style: theme.textTheme.bodyLarge
+                ?.copyWith(fontWeight: FontWeight.w500)),
+        trailing:
+            const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
         onTap: onTap,
       ),
     );
   }
 
-  Widget _buildSwitchTile({required IconData icon, required String title, required bool value, required ValueChanged<bool> onChanged}) {
+  Widget _buildSwitchTile(
+      {required IconData icon,
+      required String title,
+      required bool value,
+      required ValueChanged<bool> onChanged}) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Container(
-      color: Colors.white,
+      color: theme.cardColor,
       child: SwitchListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 24.0),
         secondary: Container(
           padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(color: const Color(0xFFEEF2FF), borderRadius: BorderRadius.circular(8)),
+          decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF334155) : const Color(0xFFEEF2FF),
+              borderRadius: BorderRadius.circular(8)),
           child: Icon(icon, color: const Color(0xFF4F46E5), size: 20),
         ),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
+        title: Text(title,
+            style: theme.textTheme.bodyLarge
+                ?.copyWith(fontWeight: FontWeight.w500)),
         activeColor: const Color(0xFF4F46E5),
         value: value,
         onChanged: onChanged,
       ),
     );
   }
+
   void _showLogoutConfirmation(BuildContext context, WidgetRef ref) {
     showDialog(
       context: context,
       builder: (BuildContext dialogContext) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: const Row(
             children: [
               Icon(Icons.warning_amber_rounded, color: Colors.orange),
               SizedBox(width: 10),
-              Text("¿Cerrar sesión?", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+              Text("¿Cerrar sesión?",
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
             ],
           ),
           content: const Text(
@@ -193,13 +255,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               onPressed: () {
                 Navigator.of(dialogContext).pop(); // Solo cierra el diálogo
               },
-              child: const Text("Cancelar", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+              child: const Text("Cancelar",
+                  style: TextStyle(
+                      color: Colors.grey, fontWeight: FontWeight.bold)),
             ),
             // Botón de Confirmar Salida
             ElevatedButton(
               onPressed: () {
-                Navigator.of(dialogContext).pop(); // 1. Cerramos el diálogo primero
-                ref.read(authProvider.notifier).logoutUser(); // 2. Ejecutamos el cierre de sesión
+                Navigator.of(dialogContext)
+                    .pop(); // 1. Cerramos el diálogo primero
+                ref
+                    .read(authProvider.notifier)
+                    .logoutUser(); // 2. Ejecutamos el cierre de sesión
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(builder: (context) => const LoginScreen()),
@@ -208,9 +275,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red,
                 elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
               ),
-              child: const Text("Sí, salir", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              child: const Text("Sí, salir",
+                  style: TextStyle(
+                      color: Colors.white, fontWeight: FontWeight.bold)),
             ),
           ],
         );

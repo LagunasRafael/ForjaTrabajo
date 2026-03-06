@@ -1,6 +1,7 @@
 import enum
 import uuid
-from sqlalchemy import Column, Integer, String, Boolean, Enum, Float
+from datetime import datetime
+from sqlalchemy import Column, Integer, String, Boolean, Enum, Float, DateTime
 from app.db.database import Base
 from sqlalchemy.orm import relationship
 
@@ -18,8 +19,12 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
     full_name = Column(String, nullable=True)
     profile_picture_url = Column(String, nullable=True)
-    phone = Column(String, nullable=True)
-    city = Column(String, nullable=True)
+    phone = Column(String, unique=True, nullable=True) # Hacemos el teléfono único
+    city = Column(String, nullable=True)     # "Zitácuaro, Mich."
+    fcm_token = Column(String, nullable=True) # Token para notificaciones Push
+    is_email_verified = Column(Boolean, default=False)
+    verification_code = Column(String(6), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
     latitude = Column(Float, nullable=True)
     longitude = Column(Float, nullable=True)
     

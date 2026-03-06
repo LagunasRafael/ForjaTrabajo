@@ -1,20 +1,21 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
+import '../../../../core/network/api_client.dart';
 import '../../domain/repositories/service_repository.dart';
 import '../../domain/entities/category_entity.dart';
 import '../../domain/entities/service_entity.dart';
 import '../../domain/entities/service_request_entity.dart';
 import '../../domain/entities/job_entity.dart';
-
 import '../datasources/category_remote_data_source.dart';
 import '../datasources/service_remote_data_source.dart';
 import '../datasources/service_request_remote_data_source.dart';
 import '../datasources/job_remote_data_source.dart';
 import '../models/service_model.dart';
 import '../models/service_request_model.dart';
+import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart';
 
 class ServiceRepositoryImpl implements ServiceRepository {
   final CategoryRemoteDataSource categoryDS;
@@ -34,31 +35,36 @@ class ServiceRepositoryImpl implements ServiceRepository {
   // --- CATEGORÍAS ---
   @override
   Future<List<CategoryEntity>> getCategories() => categoryDS.getCategories();
-  
+
   @override
   Future<List<CategoryEntity>> getTopCategories() => categoryDS.getTopCategories();
 
   @override
-  Future<void> createCategory(String name, String desc, String token) => categoryDS.createCategory(name, desc, token);
+  Future<void> createCategory(String name, String desc, String token) =>
+      categoryDS.createCategory(name, desc, token);
 
   @override
-  Future<void> deleteCategory(String id, String token) => categoryDS.deleteCategory(id, token);
+  Future<void> deleteCategory(String id, String token) =>
+      categoryDS.deleteCategory(id, token);
 
   // --- SERVICIOS ---
   @override
   Future<List<ServiceEntity>> getServices() => serviceDS.getServices();
 
   @override
-  Future<List<ServiceEntity>> getServicesByCategory(String id) => serviceDS.getServicesByCategory(id);
+  Future<List<ServiceEntity>> getServicesByCategory(String id) =>
+      serviceDS.getServicesByCategory(id);
 
   @override
-  Future<List<ServiceEntity>> searchServices(String query) => serviceDS.searchServices(query);
+  Future<List<ServiceEntity>> searchServices(String query) =>
+      serviceDS.searchServices(query);
 
   @override
   Future<ServiceEntity> getServiceById(String id) => serviceDS.getServiceById(id);
 
   @override
-  Future<ServiceEntity> createService(ServiceEntity service, String token, {List<File>? images}) async {
+  Future<ServiceEntity> createService(ServiceEntity service, String token,
+      {List<File>? images}) async {
     final model = ServiceModel.fromEntity(service);
     return await serviceDS.createService(model, token, images: images);
   }
@@ -76,33 +82,33 @@ class ServiceRepositoryImpl implements ServiceRepository {
     final token = prefs.getString('token') ?? '';
     if (token.isEmpty) return [];
 
-    final models = await serviceDS.getMyServices(token); 
+    final models = await serviceDS.getMyServices(token);
     return models.map((m) => m.toEntity()).toList();
   }
 
   @override
   Future<bool> cancelService(String serviceId, String token) async {
     try {
-      // Llamamos al DataSource que acabamos de crear arriba
       return await serviceDS.cancelService(serviceId, token);
     } catch (e) {
-      print("🚨 Error en Repository al cancelar: $e");
-      rethrow; // Pasamos el error para que la UI (Riverpod) lo atrape
+      debugPrint("🚨 Error en Repository al cancelar: $e");
+      rethrow;
     }
   }
 
-    // --- SOLICITUDES Y OFERTAS ---
-    @override
-    Future<ServiceRequestEntity> createRequest(ServiceRequestEntity request, String token) async {
-      final result = await requestDS.createRequest(ServiceRequestModel.fromEntity(request).toJson(), token);
-      return ServiceRequestModel.fromJson(result);
-    }
+  // --- SOLICITUDES Y OFERTAS ---
+  @override
+  Future<ServiceRequestEntity> createRequest(ServiceRequestEntity request, String token) async {
+    final result = await requestDS.createRequest(
+        ServiceRequestModel.fromEntity(request).toJson(), token);
+    return ServiceRequestModel.fromJson(result);
+  }
 
-    @override
-    Future<List<ServiceRequestEntity>> getOffers(String serviceId, String token) async {
-      final result = await requestDS.getOffers(serviceId, token);
-      return result.map((json) => ServiceRequestModel.fromJson(json)).toList();
-    }
+  @override
+  Future<List<ServiceRequestEntity>> getOffers(String serviceId, String token) async {
+    final result = await requestDS.getOffers(serviceId, token);
+    return result.map((json) => ServiceRequestModel.fromJson(json)).toList();
+  }
 
   @override
   Future<void> acceptPostulation(String requestId, String token) async {
@@ -111,13 +117,12 @@ class ServiceRepositoryImpl implements ServiceRepository {
         '/services/accept-postulation/$requestId',
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
-      
       if (response.statusCode != 200 && response.statusCode != 201) {
-        throw Exception('Error al aceptar postulación: ${response.statusCode}');
+        throw Exception('Error al aceptar postulación');
       }
     } on DioException catch (e) {
-      print("🚨 Error Dio en acceptPostulation: ${e.response?.data}");
-      throw Exception('Fallo al conectar con el servidor para aceptar la postulación.');
+      debugPrint("🚨 Error Dio en acceptPostulation: ${e.response?.data}");
+      throw Exception('Fallo al aceptar la postulación en el servidor.');
     }
   }
 
@@ -125,21 +130,18 @@ class ServiceRepositoryImpl implements ServiceRepository {
   Future<List<ServiceEntity>> getMyApplications(String token) async {
     try {
       final List<dynamic> data = await requestDS.getMyApplications(token);
-      
       return data.map<ServiceEntity>((json) {
         final serviceMap = json as Map<String, dynamic>;
         final service = ServiceModel.fromJson(serviceMap).toEntity();
-        
         final precioReal = (serviceMap['base_price'] as num?)?.toDouble() ?? 0.0;
         
         return service.copyWith(
-          requestId: serviceMap['request_id']?.toString(), 
-          basePrice: precioReal, 
+          requestId: serviceMap['request_id']?.toString(),
+          basePrice: precioReal,
         );
       }).toList();
-
     } catch (e) {
-      print("🚨 Error FATAL en getMyApplications: $e");
+      debugPrint("🚨 Error en getMyApplications: $e");
       rethrow;
     }
   }
@@ -152,41 +154,37 @@ class ServiceRepositoryImpl implements ServiceRepository {
   @override
   Future<bool> deletePostulation(String requestId, String token) async {
     try {
-      await _dio.delete( 
+      await _dio.delete(
         '/services/service-requests/$requestId',
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
-      return true; 
-    } on DioException catch (e) {
-      print("🚨 Error de red al retirar postulación: ${e.message}");
-      return false; 
+      return true;
     } catch (e) {
-      print("🚨 Error inesperado al retirar: $e");
+      debugPrint("🚨 Error al retirar postulación: $e");
       return false;
     }
   }
 
   // --- TRABAJOS (JOBS) ---
   @override
-  Future<JobEntity> completeJob(String jobId, String token) => jobDS.completeJob(jobId, token);
+  Future<JobEntity> completeJob(String jobId, String token) =>
+      jobDS.completeJob(jobId, token);
 
   @override
-  Future<JobEntity> cancelJob(String jobId, String token) async {
-    return await jobDS.cancelJob(jobId, token);
-  }
-  
+  Future<JobEntity> cancelJob(String jobId, String token) =>
+      jobDS.cancelJob(jobId, token);
+
   @override
   Future<bool> completeService(String serviceId) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token') ?? '';
-      
       if (token.isEmpty) return false;
 
       final result = await jobDS.completeJob(serviceId, token);
       return result.id.isNotEmpty;
     } catch (e) {
-      print("🚨 Error en Repository.completeService: $e");
+      debugPrint("🚨 Error en completeService: $e");
       return false;
     }
   }
@@ -194,17 +192,13 @@ class ServiceRepositoryImpl implements ServiceRepository {
 
 // --- PROVIDER ---
 final serviceRepositoryProvider = Provider<ServiceRepository>((ref) {
+  final apiClient = ref.watch(apiClientProvider); 
+  
   return ServiceRepositoryImpl(
     categoryDS: ref.watch(categoryRemoteDataSourceProvider),
     serviceDS: ref.watch(serviceRemoteDataSourceProvider),
     requestDS: ref.watch(serviceRequestRemoteDataSourceProvider),
     jobDS: ref.watch(jobRemoteDataSourceProvider),
-    dio: Dio(
-      BaseOptions(
-        baseUrl: 'http://10.0.2.2:8000', 
-        connectTimeout: const Duration(seconds: 10),
-        receiveTimeout: const Duration(seconds: 10),
-      ),
-    ), 
+    dio: apiClient.dio,
   );
 });

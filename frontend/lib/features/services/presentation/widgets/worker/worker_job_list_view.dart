@@ -15,42 +15,101 @@ class WorkerJobListView extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final jobsAsync = ref.watch(workerJobsProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return jobsAsync.when(
       data: (jobs) {
         final filtered = jobs.where((j) {
           if (status == JobStatus.matched) {
+            // 💡 Regla de negocio: "En curso" incluye los que esperan confirmación
             return j.status == JobStatus.matched || j.status == JobStatus.waiting_confirmation;
           }
           return j.status == status;
         }).toList();
 
-        if (filtered.isEmpty) {
-          return Center(child: _EmptyStateHelper(status: status));
-        }
-
         return RefreshIndicator(
           onRefresh: () => ref.refresh(workerJobsProvider.future),
           color: const Color(0xFF10B981),
-          child: ListView.builder(
-            physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-            padding: const EdgeInsets.all(16),
-            itemCount: filtered.length,
-            itemBuilder: (context, index) {
-              final job = filtered[index];
-              
-              return switch (status) {
-                JobStatus.open      => WorkerPendingJobCard(job: job),
-                JobStatus.matched   => WorkerActiveJobCard(job: job),
-                JobStatus.completed => WorkerCompletedJobCard(job: job),
-                _                   => const SizedBox.shrink(),
-              };
-            },
-          ),
+          // 🚀 Agregamos el RefreshIndicator AQUÍ para que cubra tanto la lista como el estado vacío
+          child: filtered.isEmpty 
+            ? _buildEmptyState(context)
+            : ListView.builder(
+                physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                padding: const EdgeInsets.all(16),
+                itemCount: filtered.length,
+                itemBuilder: (context, index) {
+                  final job = filtered[index];
+                  
+                  return switch (status) {
+                    JobStatus.open      => WorkerPendingJobCard(job: job),
+                    JobStatus.matched   => WorkerActiveJobCard(job: job),
+                    JobStatus.completed => WorkerCompletedJobCard(job: job),
+                    _                   => const SizedBox.shrink(),
+                  };
+                },
+              ),
         );
       },
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, s) => Center(child: Text("Ocurrió un error: $e")),
+      loading: () => const Center(child: CircularProgressIndicator(color: Color(0xFF10B981))),
+      error: (e, s) => _buildErrorState(e, isDark, ref),
+    );
+  }
+
+  // 🧱 Widget para cuando no hay chamba
+  Widget _buildEmptyState(BuildContext context) {
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      children: [
+        SizedBox(
+          height: MediaQuery.of(context).size.height * 0.6,
+          child: _EmptyStateHelper(status: status),
+        ),
+      ],
+    );
+  }
+
+  // 🧱 Widget para cuando algo explota (Error)
+    Widget _buildErrorState(Object e, bool isDark, WidgetRef ref) {
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      children: [
+        Padding(
+          // En lugar de SizedBox con altura fija, usamos Padding
+          // para que el contenido respire pero pueda crecer
+          padding: const EdgeInsets.symmetric(vertical: 60, horizontal: 20),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error_outline, size: 60, color: Colors.red.shade300),
+              const SizedBox(height: 20),
+              Text(
+                "¡Ups! Algo salió mal",
+                style: TextStyle(
+                  fontSize: 18, 
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? Colors.white : Colors.black87
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                "$e", // Aquí se muestra el error 404 largo
+                textAlign: TextAlign.center,
+                style: TextStyle(color: isDark ? Colors.white70 : Colors.black54),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton.icon(
+                onPressed: () => ref.invalidate(workerJobsProvider),
+                icon: const Icon(Icons.refresh),
+                label: const Text("Reintentar"),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF10B981),
+                  foregroundColor: Colors.white,
+                ),
+              )
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

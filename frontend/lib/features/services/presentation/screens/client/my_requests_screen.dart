@@ -5,7 +5,8 @@ import 'package:forja_trabajo/features/services/presentation/providers/service_l
 
 // Providers
 import 'package:forja_trabajo/features/services/presentation/providers/nav_providers.dart';
-// 👇 IMPORTS CORREGIDOS: Copia y pega estas 3 líneas
+
+// IMPORTS DE LAS TARJETAS
 import 'package:forja_trabajo/features/services/presentation/widgets/client/client_open_job_card.dart';
 import 'package:forja_trabajo/features/services/presentation/widgets/client/client_matched_job_card.dart';
 import 'package:forja_trabajo/features/services/presentation/widgets/client/client_completed_job_card.dart';
@@ -17,7 +18,8 @@ class MyRequestsScreen extends ConsumerStatefulWidget {
   ConsumerState<MyRequestsScreen> createState() => _MyRequestsScreenState();
 }
 
-class _MyRequestsScreenState extends ConsumerState<MyRequestsScreen> with SingleTickerProviderStateMixin {
+class _MyRequestsScreenState extends ConsumerState<MyRequestsScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
   @override
@@ -34,17 +36,22 @@ class _MyRequestsScreenState extends ConsumerState<MyRequestsScreen> with Single
 
   @override
   Widget build(BuildContext context) {
-    // 👂 AQUÍ OCURRE EL MILAGRO:
-    // Escuchamos si alguien (como la pantalla de ofertas) quiere cambiar la pestaña
+    // Escuchamos si alguien quiere cambiar la pestaña
     ref.listen<int>(myRequestsTabProvider, (previous, nextIndex) {
       _tabController.animateTo(nextIndex);
     });
 
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text('Mis Trabajos', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white,
+        title: Text('Mis Trabajos',
+            style: TextStyle(
+                color: theme.textTheme.titleLarge?.color,
+                fontWeight: FontWeight.bold)),
+        backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
         elevation: 0,
         centerTitle: true,
         bottom: TabBar(
@@ -63,14 +70,10 @@ class _MyRequestsScreenState extends ConsumerState<MyRequestsScreen> with Single
       ),
       body: TabBarView(
         controller: _tabController,
-        // 🚀 LA MAGIA: Esto desactiva el deslizamiento lateral (swipe)
         physics: const NeverScrollableScrollPhysics(), 
         children: [
-          // 0. Abiertos
           _buildRequestList(ref, JobStatus.open),
-          // 1. En Proceso (Matched)
           _buildRequestList(ref, JobStatus.matched),
-          // 2. Finalizados
           _buildRequestList(ref, JobStatus.completed),
         ],
       ),
@@ -80,11 +83,9 @@ class _MyRequestsScreenState extends ConsumerState<MyRequestsScreen> with Single
   Widget _buildRequestList(WidgetRef ref, JobStatus status) {
     final servicesAsync = ref.watch(myRequestsProvider);
 
-    // 🚀 ENVOLVEMOS TODO EN EL REFRESH INDICATOR
     return RefreshIndicator(
       color: const Color(0xFF4F46E5),
       onRefresh: () async {
-        // Esto obliga a Riverpod a ir al backend de nuevo
         await ref.refresh(myRequestsProvider.future);
       },
       child: servicesAsync.when(
@@ -97,8 +98,6 @@ class _MyRequestsScreenState extends ConsumerState<MyRequestsScreen> with Single
           }).toList();
 
           if (filtered.isEmpty) {
-            // 💡 IMPORTANTE: Si está vacío, usamos un ListView o SingleChildScrollView 
-            // con AlwaysScrollableScrollPhysics para que el gesto de jalar funcione.
             return ListView(
               physics: const AlwaysScrollableScrollPhysics(),
               children: [
@@ -120,7 +119,6 @@ class _MyRequestsScreenState extends ConsumerState<MyRequestsScreen> with Single
           }
 
           return ListView.builder(
-            // 💡 AlwaysScrollableScrollPhysics permite jalar incluso si hay pocos elementos
             physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()), 
             padding: const EdgeInsets.all(20),
             itemCount: filtered.length,
@@ -141,7 +139,7 @@ class _MyRequestsScreenState extends ConsumerState<MyRequestsScreen> with Single
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, s) => ListView( // También scrollable en error para re-intentar
+        error: (e, s) => ListView(
           physics: const AlwaysScrollableScrollPhysics(),
           children: [
             SizedBox(
@@ -156,10 +154,14 @@ class _MyRequestsScreenState extends ConsumerState<MyRequestsScreen> with Single
 
   String _getEmptyMessage(JobStatus status) {
     switch (status) {
-      case JobStatus.open: return "No hay trabajos publicados";
-      case JobStatus.matched: return "No tienes trabajos en curso";
-      case JobStatus.completed: return "Historial vacío";
-      default: return "No hay datos";
+      case JobStatus.open:
+        return "No hay trabajos publicados";
+      case JobStatus.matched:
+        return "No tienes trabajos en curso";
+      case JobStatus.completed:
+        return "Historial vacío";
+      default:
+        return "No hay datos";
     }
   }
 }

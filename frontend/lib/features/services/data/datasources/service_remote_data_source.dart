@@ -1,61 +1,81 @@
-import 'dart:convert';
 import 'dart:io';
-import 'package:http/http.dart' as http;
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/service_model.dart';
+import '../../../../core/network/api_client.dart';
+import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart';
 
-// 1. PROVIDER: Configurado para inyectar Dio
+// 1. PROVIDER: Inyectamos el ApiClient centralizado
 final serviceRemoteDataSourceProvider = Provider((ref) {
-  return ServiceRemoteDataSource(Dio()); 
+  final apiClient = ref.watch(apiClientProvider);
+  return ServiceRemoteDataSource(apiClient.dio);
 });
 
 class ServiceRemoteDataSource {
   final Dio _dio;
- // final String baseUrl = "http://127.0.0.1:8000/services"; 
-  final String baseUrl = "http://10.0.2.2:8000/services"; 
 
-  ServiceRemoteDataSource(this._dio); 
+  ServiceRemoteDataSource(this._dio);
+
+  // 🌍 Base URL para este módulo
+  String get _path => '/services';
 
   // --- MÉTODOS DE CONSULTA (GET) ---
 
   Future<List<ServiceModel>> getServices() async {
-    final response = await http.get(Uri.parse('$baseUrl/')); 
-    if (response.statusCode == 200) {
-      final List<dynamic> jsonList = json.decode(response.body);
-      return jsonList.map((e) => ServiceModel.fromJson(e)).toList();
-    } else {
-      throw Exception('Error cargando servicios');
+    try {
+      final response = await _dio.get('$_path/');
+      return (response.data as List).map((e) => ServiceModel.fromJson(e)).toList();
+    } catch (e) {
+      throw Exception('Error al cargar servicios: $e');
     }
   }
 
   Future<List<ServiceModel>> getServicesByCategory(String categoryId) async {
-    final response = await http.get(Uri.parse('$baseUrl/category/$categoryId'));
-    if (response.statusCode == 200) {
-      final List<dynamic> jsonList = json.decode(response.body);
-      return jsonList.map((e) => ServiceModel.fromJson(e)).toList();
-    } else {
-      throw Exception('Error filtrando por categoría');
+    try {
+      final response = await _dio.get('$_path/category/$categoryId');
+      return (response.data as List).map((e) => ServiceModel.fromJson(e)).toList();
+    } catch (e) {
+      throw Exception('Error al filtrar por categoría: $e');
     }
   }
 
   Future<ServiceModel> getServiceById(String id) async {
-    final response = await http.get(Uri.parse('$baseUrl/$id'));
-    if (response.statusCode == 200) {
-      return ServiceModel.fromJson(json.decode(response.body));
-    } else {
-      throw Exception('Error al obtener el detalle del servicio');
+    try {
+      final response = await _dio.get('$_path/$id');
+      return ServiceModel.fromJson(response.data);
+    } catch (e) {
+      throw Exception('Error al obtener detalle del servicio: $e');
     }
   }
 
-  // --- CREACIÓN CON IMÁGENES (Usa Dio + FormData) ---
+  Future<List<ServiceModel>> searchServices(String query) async {
+    try {
+      final response = await _dio.get('$_path/search', queryParameters: {'query': query});
+      return (response.data as List).map((e) => ServiceModel.fromJson(e)).toList();
+    } catch (e) {
+      debugPrint("🚨 Error en búsqueda: $e");
+      return [];
+    }
+  }
 
-  Future<ServiceModel> createService(
-    ServiceModel service,
-    String token,
-    {List<File>? images}
-  ) async {
-    // Preparamos los datos incluyendo archivos si existen
+  // --- OPERACIONES DE USUARIO (LOGUEADO) ---
+
+  Future<List<ServiceModel>> getMyServices(String token) async {
+    try {
+      final response = await _dio.get(
+        '$_path/my-requests',
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      return (response.data as List).map((e) => ServiceModel.fromJson(e)).toList();
+    } catch (e) {
+      throw Exception('Error al cargar tus servicios: $e');
+    }
+  }
+
+  // --- CREACIÓN CON IMÁGENES (Usa FormData) ---
+
+  Future<ServiceModel> createService(ServiceModel service, String token, {List<File>? images}) async {
     final formData = FormData.fromMap({
       'title': service.title,
       'description': service.description,
@@ -67,122 +87,64 @@ class ServiceRemoteDataSource {
       if (images != null && images.isNotEmpty)
         'files': [
           for (var image in images)
-            await MultipartFile.fromFile(
-              image.path, 
-              filename: image.path.split('/').last
-            ),
+            await MultipartFile.fromFile(image.path, filename: image.path.split('/').last),
         ],
     });
 
     try {
       final response = await _dio.post(
-        '$baseUrl/', 
+        '$_path/',
         data: formData,
         options: Options(
           headers: {'Authorization': 'Bearer $token'},
           contentType: 'multipart/form-data',
         ),
       );
-
-      print("📦 RESPUESTA CRUDA DE FASTAPI: ${response.data}");
-      return ServiceModel.fromJson(response.data); 
-      
+      return ServiceModel.fromJson(response.data);
     } on DioException catch (e) {
-      print("🚨 Error de Dio al crear servicio: ${e.response?.data}");
-      throw Exception("Error de red: ${e.message}");
-    } catch (e) {
-      print("💥 ERROR DE PARSEO: $e");
-      throw Exception("Error al leer la respuesta del servidor: $e");
-    }
-  }
-
-  // --- OTROS MÉTODOS ---
-
-  Future<List<ServiceModel>> searchServices(String searchText) async {
-    final url = Uri.parse("$baseUrl/search").replace(
-      queryParameters: {'query': searchText} 
-    );
-
-    final response = await http.get(url); 
-    if (response.statusCode == 200) {
-      final List<dynamic> jsonList = json.decode(response.body);
-      return jsonList.map((e) => ServiceModel.fromJson(e)).toList();
-    } else {
-      print("🚨 Error en búsqueda: ${response.body}");
-      return []; 
+      debugPrint("🚨 Error al crear servicio: ${e.response?.data}");
+      throw Exception("Fallo en el servidor: ${e.message}");
     }
   }
 
   Future<ServiceModel> updateService(ServiceModel service, String token) async {
     try {
-      final response = await http.put(
-        Uri.parse('$baseUrl/${service.id}'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: json.encode(service.toJson()),
+      final response = await _dio.put(
+        '$_path/${service.id}',
+        data: service.toJson(),
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
-      
-      if (response.statusCode == 200) {
-        return ServiceModel.fromJson(json.decode(response.body));
-      } else {
-        throw Exception("Error al actualizar (${response.statusCode})");
-      }
+      return ServiceModel.fromJson(response.data);
     } catch (e) {
-      throw Exception("Error de conexión al actualizar: $e");
+      throw Exception("Error al actualizar servicio: $e");
     }
   }
 
-  Future<List<ServiceModel>> getMyServices(String token) async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/my-requests'),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
-    );
+  // --- GESTIÓN DE ESTADOS (CANCELAR / COMPLETAR) ---
 
-    if (response.statusCode == 200) {
-      final List<dynamic> jsonList = json.decode(response.body);
-      return jsonList.map((e) => ServiceModel.fromJson(e)).toList();
-    } else {
-      throw Exception('Error al cargar mis trabajos: ${response.body}');
+  Future<bool> cancelService(String serviceId, String token) async {
+    try {
+      final response = await _dio.put(
+        '$_path/$serviceId/cancel',
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint("🚨 Error al cancelar servicio: $e");
+      return false;
     }
   }
 
   Future<bool> completeService(String serviceId, String token) async {
     try {
-      final response = await http.put(
-        Uri.parse('$baseUrl/jobs/$serviceId/complete'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
+      final response = await _dio.put(
+        '$_path/jobs/$serviceId/complete', // 💡 Nota: Asegúrate de que esta ruta coincida con el backend
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
       return response.statusCode == 200;
     } catch (e) {
+      debugPrint("🚨 Error al completar servicio: $e");
       return false;
     }
   }
-
-  @override
-  Future<bool> cancelService(String serviceId, String token) async {
-    try {
-      final response = await _dio.put(
-        '$baseUrl/$serviceId/cancel',
-        options: Options(
-          headers: {'Authorization': 'Bearer $token'},
-        ),
-      );
-      
-      if (response.statusCode == 200) {
-        return true; // Se canceló con éxito
-      }
-      return false;
-    } catch (e) {
-      print("🚨 Error al cancelar servicio: $e");
-      throw Exception('Error al cancelar la publicación');
-    }
-  }
-} 
+}

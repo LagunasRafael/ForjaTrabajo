@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+import os
 from jose import jwt, JWTError
 from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, status
@@ -9,10 +10,11 @@ from app.db.database import get_db
 from app.auth import models
 from app.core.roles import Role # Importante para validaciones
 
-# ⚠️ En producción, esto debe venir de una variable de entorno (.env)
-SECRET_KEY = "TU_LLAVE_SUPER_SECRETA_DE_SISTEMAS" 
+# Leemos desde el .env, si no hay, usamos una temporal para desarrollo
+SECRET_KEY = os.getenv("SECRET_KEY", "TU_LLAVE_SUPER_SECRETA_DE_SISTEMAS") 
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
+REFRESH_TOKEN_EXPIRE_DAYS = 7
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
@@ -29,7 +31,13 @@ def create_access_token(data: dict):
     to_encode = data.copy()
     # datetime.utcnow() está deprecado en Python 3.12+, usamos timezone.utc
     expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    to_encode.update({"exp": expire})
+    to_encode.update({"exp": expire, "type": "access"})
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+def create_refresh_token(data: dict):
+    to_encode = data.copy()
+    expire = datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+    to_encode.update({"exp": expire, "type": "refresh"})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 # --- USUARIO ACTUAL ---

@@ -38,6 +38,16 @@ class UserResponse(UserBase):
     # Usamos str para el rol para evitar errores de validación con el Enum de la BD
     role: str 
     is_active: bool
+    is_email_verified: bool
+    verification_code: Optional[str] = None
+
+# Nuevos esquemas para la verificación
+class VerifyCodeRequest(BaseModel):
+    email: EmailStr
+    code: str = Field(..., min_length=6, max_length=6)
+
+class ResendCodeRequest(BaseModel):
+    email: EmailStr
 
 # 4. Esquema para Login
 class UserLogin(BaseModel):
@@ -47,8 +57,12 @@ class UserLogin(BaseModel):
 # 5. Esquema para el Token JWT
 class Token(BaseModel):
     access_token: str
+    refresh_token: str
     token_type: str = "bearer"
     user: UserResponse
+
+class TokenRefresh(BaseModel):
+    refresh_token: str
 
 class UserUpdate(BaseModel):
     full_name: Optional[str] = None
@@ -60,3 +74,6 @@ class LocationUpdate(BaseModel):
     latitude: float
     longitude: float
     city: str
+
+class FcmTokenUpdate(BaseModel):
+    fcm_token: str

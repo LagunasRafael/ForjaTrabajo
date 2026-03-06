@@ -4,7 +4,7 @@ import 'package:forja_trabajo/features/services/domain/entities/service_entity.d
 import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart';
 import 'package:forja_trabajo/features/services/presentation/screens/shared/service_detail_screen.dart';
 
-// 🚀 Importamos los Legos universales
+// 🚀 Legos universales
 import 'package:forja_trabajo/features/services/presentation/screens/shared/widgets/shared_job_widgets.dart';
 
 class ClientCompletedJobCard extends ConsumerWidget {
@@ -30,14 +30,25 @@ class ClientCompletedJobCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // 🎨 LÓGICA DE TUS COMPAÑEROS: Soporte para Modo Oscuro
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade200), 
+        // 🎨 FUSIÓN: Borde adaptable según el tema
+        border: Border.all(
+          color: isDark ? const Color(0xFF334155) : Colors.grey.shade200
+        ), 
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4))
+          BoxShadow(
+            color: Colors.black.withOpacity(isDark ? 0.1 : 0.03), 
+            blurRadius: 10, 
+            offset: const Offset(0, 4)
+          )
         ],
       ),
       child: Material(
@@ -49,11 +60,11 @@ class ClientCompletedJobCard extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 🧱 1. REUTILIZAMOS EL LEGO DE LA IMAGEN
+              // 🧱 TU LEGO: Imagen con Badge de Completado
               SharedJobImage(
                 imageUrls: service.imageUrls,
                 badgeText: "COMPLETADO",
-                badgeColor: const Color(0xFF10B981), // Verde
+                badgeColor: const Color(0xFF10B981), // Verde éxito
               ),
               
               Padding(
@@ -61,15 +72,14 @@ class ClientCompletedJobCard extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // 2. Info específica de un trabajo terminado
-                    _buildTitleAndStars(),
+                    _buildTitleAndStars(isDark),
                     const SizedBox(height: 6),
                     _buildWorkerInfo(),
                     const SizedBox(height: 12),
-                    _buildDescription(),
+                    _buildDescription(isDark),
                     const SizedBox(height: 16),
                     
-                    // 🚧 3. BOTONES AISLADOS (Listos para UseCases)
+                    // 🚧 ACCIONES: Lógica aislada en su propia clase
                     _ClientCompletedActions(service: service),
                   ],
                 ),
@@ -81,15 +91,18 @@ class ClientCompletedJobCard extends ConsumerWidget {
     );
   }
 
-  // --- Info Estática (Se queda aquí porque es solo vista) ---
-  Widget _buildTitleAndStars() {
+  Widget _buildTitleAndStars(bool isDark) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Expanded(
           child: Text(
             service.title,
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87),
+            style: TextStyle(
+              fontWeight: FontWeight.bold, 
+              fontSize: 16, 
+              color: isDark ? Colors.white : Colors.black87 // 🎨 Color adaptable
+            ),
             maxLines: 1, overflow: TextOverflow.ellipsis,
           ),
         ),
@@ -115,17 +128,21 @@ class ClientCompletedJobCard extends ConsumerWidget {
     );
   }
 
-  Widget _buildDescription() {
+  Widget _buildDescription(bool isDark) {
     return Text(
       service.summary ?? service.description,
-      style: TextStyle(color: Colors.grey.shade700, fontSize: 13, height: 1.4),
+      style: TextStyle(
+        color: isDark ? Colors.white70 : Colors.grey.shade700, // 🎨 Color adaptable
+        fontSize: 13, 
+        height: 1.4
+      ),
       maxLines: 2, overflow: TextOverflow.ellipsis,
     );
   }
 }
 
 // =======================================================
-// LÓGICA DE BOTONES AISLADA
+// LÓGICA DE BOTONES AISLADA (Mantenemos tu Clean Architecture)
 // =======================================================
 class _ClientCompletedActions extends ConsumerWidget {
   final ServiceEntity service;
@@ -136,14 +153,13 @@ class _ClientCompletedActions extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return Row(
       children: [
-        // Botón Principal: Pedir Factura
         Expanded(
           child: ElevatedButton.icon(
             onPressed: () => _handleRequestInvoice(context, ref),
             icon: const Icon(Icons.receipt_long, size: 18),
             label: const Text("Pedir Factura", style: TextStyle(fontWeight: FontWeight.bold)),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF2563EB), // Azul fuerte
+              backgroundColor: const Color(0xFF2563EB), 
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(vertical: 14),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -153,7 +169,6 @@ class _ClientCompletedActions extends ConsumerWidget {
         ),
         const SizedBox(width: 12),
         
-        // Botón Secundario: Calificar / Repetir
         Container(
           height: 48, width: 48,
           decoration: BoxDecoration(
@@ -169,16 +184,13 @@ class _ClientCompletedActions extends ConsumerWidget {
     );
   }
 
-  // 🚀 MÉTODOS LISTOS PARA TUS USECASES
   Future<void> _handleRequestInvoice(BuildContext context, WidgetRef ref) async {
-    // TODO: Final success = await ref.read(requestInvoiceUseCaseProvider).execute(service.id);
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text("Funcionalidad de factura en desarrollo..."))
     );
   }
 
   Future<void> _handleRateWorker(BuildContext context, WidgetRef ref) async {
-    // TODO: Abrir un modal o pantalla para calificar, luego usar un UseCase
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text("Pantalla de calificación próximamente..."))
     );

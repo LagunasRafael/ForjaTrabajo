@@ -12,6 +12,12 @@ dist/
 build/
 
 # =========================
+# FIREBASE
+# =========================
+google-services.json
+GoogleService-Info.plist
+
+# =========================
 # VS CODE
 # =========================
 .vscode/
