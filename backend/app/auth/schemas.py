@@ -77,3 +77,18 @@ class LocationUpdate(BaseModel):
 
 class FcmTokenUpdate(BaseModel):
     fcm_token: str
+
+# Schema para que un Admin cree usuarios desde el panel web
+class AdminCreateUser(BaseModel):
+    full_name: str = Field(..., min_length=2, max_length=100)
+    email: EmailStr
+    phone: Optional[str] = Field(None, max_length=20)
+    password: str = Field(..., min_length=8)
+    role: Role = Role.CLIENT
+
+    @field_validator("password")
+    @classmethod
+    def password_length(cls, v: str):
+        if len(v.encode("utf-8")) > 72:
+            raise ValueError("La contraseña no puede exceder los 72 bytes")
+        return v

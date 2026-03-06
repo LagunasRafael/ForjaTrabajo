@@ -270,3 +270,59 @@ def update_fcm_token(
     current_user.fcm_token = data.fcm_token
     db.commit()
     return {"status": "success", "message": "FCM token actualizado"}
+
+# ============================================================
+# 🛡️ ENDPOINT PROTEGIDO: Solo un admin puede crear usuarios
+# ============================================================
+@router.post("/admin/create-user", response_model=schemas.UserResponse, status_code=status.HTTP_201_CREATED)
+def admin_create_user(
+    user_data: schemas.AdminCreateUser,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    # 1. Verificar que el que llama sea admin
+    if current_user.role.value != "admin" and current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Solo los administradores pueden crear usuarios desde el panel."
+        )
+
+    # 2. Verificar que el email no exista
+    existing = service.get_user_by_email(db, email=user_data.email)
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"El correo '{user_data.email}' ya está registrado."
+        )
+
+    # 3. Verificar que el teléfono no exista (si se proporcionó)
+    if user_data.phone:
+        existing_phone = service.get_user_by_phone(db, phone=user_data.phone)
+        if existing_phone:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El número de teléfono ya está en uso."
+            )
+
+    # 4. Hashear la contraseña de forma segura
+    from app.auth.security import hash_password
+    hashed_pw = hash_password(user_data.password)
+
+    # 5. Crear el usuario (verificado automáticamente — no necesita código de email)
+    import uuid
+    new_user = models.User(
+        id=str(uuid.uuid4()),
+        full_name=user_data.full_name,
+        email=user_data.email,
+        phone=user_data.phone,
+        hashed_password=hashed_pw,
+        role=user_data.role,
+        is_email_verified=True,
+        is_active=True,
+    )
+
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+
+    return new_user
