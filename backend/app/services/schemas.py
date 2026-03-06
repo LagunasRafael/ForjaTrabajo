@@ -130,7 +130,7 @@ class Job(BaseModel):
     completed_at: Optional[datetime] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class ServiceActiveUpdate(BaseModel):
     is_active: bool

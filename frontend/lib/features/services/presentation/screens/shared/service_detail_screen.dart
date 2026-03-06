@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja_trabajo/features/services/domain/entities/service_entity.dart';
 import 'package:forja_trabajo/features/auth/domain/models/user_model.dart';
-import 'package:forja_trabajo/features/services/presentation/widgets/service_detail_body.dart';
+import 'package:forja_trabajo/features/services/presentation/screens/shared/detail/service_detail_body.dart';
 import 'package:forja_trabajo/features/services/presentation/screens/client/create_services_screen.dart';
 import 'package:forja_trabajo/features/services/presentation/providers/service_offers_provider.dart';
 import 'package:forja_trabajo/features/services/presentation/providers/service_list_provider.dart';
@@ -105,7 +105,7 @@ class _ServiceDetailScreenState extends ConsumerState<ServiceDetailScreen> {
           ? ElevatedButton.icon(onPressed: null, icon: const Icon(Icons.check_circle, color: Colors.white), 
               label: const Text("Ya te has postulado", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
               style: _btnStyle(Colors.grey))
-          : ElevatedButton(onPressed: () => showWorkerApplyModal(context, ref, _currentService), 
+          : ElevatedButton(onPressed: () => showWorkerApplyModal(context, _currentService), 
               style: _btnStyle(const Color(0xFF6200EE)), 
               child: const Text("Postularme al Trabajo", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold))),
       );

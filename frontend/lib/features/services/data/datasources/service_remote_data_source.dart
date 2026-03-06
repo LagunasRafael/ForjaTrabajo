@@ -165,4 +165,24 @@ class ServiceRemoteDataSource {
       return false;
     }
   }
-}
+
+  @override
+  Future<bool> cancelService(String serviceId, String token) async {
+    try {
+      final response = await _dio.put(
+        '$baseUrl/$serviceId/cancel',
+        options: Options(
+          headers: {'Authorization': 'Bearer $token'},
+        ),
+      );
+      
+      if (response.statusCode == 200) {
+        return true; // Se canceló con éxito
+      }
+      return false;
+    } catch (e) {
+      print("🚨 Error al cancelar servicio: $e");
+      throw Exception('Error al cancelar la publicación');
+    }
+  }
+} 

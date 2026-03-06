@@ -275,6 +275,7 @@ def get_worker_applications(db: Session, worker_id: str):
     try:
         unique_results = {}
 
+        # 1. BUSCAMOS LOS JOBS ACTIVOS (Los que ya te aceptaron)
         jobs = db.query(models.Job).filter(models.Job.provider_id == worker_id).all()
 
         for job in jobs:
@@ -283,14 +284,14 @@ def get_worker_applications(db: Session, worker_id: str):
             
             if not srv: continue
             
-            # Usamos 'started_at' porque tu modelo Job no tiene 'created_at'
             fecha_buscada = job.started_at.isoformat() if job.started_at else None
-            
-            # Usamos 'proposed_price' de la solicitud porque 'final_price' podría estar vacío
             precio_mosca = req.proposed_price if req else srv.base_price
 
-            unique_results[str(srv.id)] = {
-                "id": str(job.id), 
+            service_id_str = str(srv.id) # 🚀 CREAMOS LA VARIABLE
+            
+            unique_results[service_id_str] = {
+                "id": service_id_str, # MANDAMOS EL ID DEL SERVICIO
+                "request_id": str(req.id) if req else None, # MANDAMOS EL ID DE LA SOLICITUD
                 "title": srv.title,
                 "description": srv.description, 
                 "base_price": float(precio_mosca) if precio_mosca else 0.0,
@@ -299,14 +300,13 @@ def get_worker_applications(db: Session, worker_id: str):
                 "latitude": srv.latitude,
                 "longitude": srv.longitude,
                 "exact_address": srv.exact_address,
-                # Usamos el enum JobStatus que ya tienes definido
                 "status": job.status.value if hasattr(job.status, 'value') else str(job.status),
                 "is_active": srv.is_active,
                 "created_at": fecha_buscada, 
                 "image_urls": srv.image_urls if srv.image_urls else [], 
             }
 
-        # 2. BUSCAMOS EN LA TABLA DE SERVICE_REQUESTS (Postulaciones pendientes)
+        # 2. BUSCAMOS LAS POSTULACIONES PENDIENTES
         postulations = db.query(models.ServiceRequest, models.Service).join(
             models.Service, models.ServiceRequest.service_id == models.Service.id
         ).filter(
@@ -316,12 +316,12 @@ def get_worker_applications(db: Session, worker_id: str):
         ).all()
 
         for req, srv in postulations:
-            service_id_str = str(srv.id)
+            service_id_str = str(srv.id) # 🚀 AQUÍ FALTABA ESTA LÍNEA
             
-            # Si el servicio ya está procesado como Job, no lo duplicamos
             if service_id_str not in unique_results:
                 unique_results[service_id_str] = {
-                    "id": str(req.id), 
+                    "id": service_id_str, # MANDAMOS EL ID DEL SERVICIO
+                    "request_id": str(req.id), # MANDAMOS EL ID DE LA SOLICITUD
                     "title": srv.title,
                     "description": req.description, 
                     "base_price": float(req.proposed_price) if req.proposed_price else 0.0,
@@ -330,7 +330,7 @@ def get_worker_applications(db: Session, worker_id: str):
                     "latitude": srv.latitude,
                     "longitude": srv.longitude,
                     "exact_address": srv.exact_address,
-                    "status": "open", # Pestaña 1 en Flutter
+                    "status": "open", 
                     "is_active": srv.is_active,
                     "created_at": req.created_at.isoformat() if req.created_at else None,
                     "image_urls": srv.image_urls if srv.image_urls else [], 
@@ -341,6 +341,20 @@ def get_worker_applications(db: Session, worker_id: str):
     except Exception as e:
         print(f"🚨 Error real en get_worker_applications: {e}")
         raise e
+
+def withdraw_postulation(db: Session, request_id: str, user_id: str):
+    postulation = db.query(models.ServiceRequest).filter(
+        models.ServiceRequest.id == request_id,
+        models.ServiceRequest.worker_id == user_id 
+    ).first()
+
+    if not postulation:
+        raise HTTPException(status_code=404, detail="Postulación no encontrada o no tienes permiso")
+
+    db.delete(postulation)
+    db.commit()
+
+    return {"message": "Postulación retirada con éxito"}
 
 # -------------------------------------------------------------------------
 # JOBS & MATCH
@@ -431,25 +445,35 @@ def complete_job(db: Session, job_id: str, user_id: str):
         return job
 
 def cancel_job(db: Session, job_id: str, user_id: str, user_role: str):
-    job = db.query(models.Job).filter(models.Job.id == job_id).first()
+    job = db.query(models.Job).join(models.ServiceRequest).filter(
+        or_(
+            models.Job.id == job_id,
+            models.ServiceRequest.service_id == job_id
+        )
+    ).first()
+
     if not job:
-        raise HTTPException(status_code=404, detail="Job no encontrado")
+        raise HTTPException(status_code=404, detail="Trabajo no encontrado")
 
-    is_admin = user_role == Role.ADMIN
-    is_client = str(job.client_id) == str(user_id)
     is_worker = str(job.provider_id) == str(user_id)
+    is_client = str(job.client_id) == str(user_id)
+    is_admin = user_role == Role.ADMIN
 
-    if not (is_admin or is_client or is_worker):
-        raise HTTPException(status_code=403, detail="No tienes permiso")
+    if not (is_worker or is_client or is_admin):
+        raise HTTPException(status_code=403, detail="No tienes permiso para cancelar")
 
     job.status = models.JobStatus.CANCELLED
-    if job.request and job.request.service:
-        job.request.service.status = models.JobStatus.CANCELLED
     
+    if job.request and job.request.service:
+        if is_worker:
+            job.request.service.status = models.JobStatus.OPEN
+            print(f"♻️ Servicio {job.request.service.id} re-abierto porque el trabajador canceló.")
+        else:
+            job.request.service.status = models.JobStatus.CANCELLED
+
     db.commit()
     db.refresh(job)
     return job
-
 # -------------------------------------------------------------------------
 # Busquedas y Stats
 # -------------------------------------------------------------------------
@@ -471,7 +495,9 @@ def get_top_categories(db: Session, limit: int = 5):
     )
 
 def search_services(db: Session, search_query: str):
-    search_term = f"%{search_query}%" 
+    query_clean = search_query.strip().lower()
+    search_term = f"%{query_clean}%" 
+
     return (
         db.query(models.Service)
         .filter(
@@ -481,7 +507,6 @@ def search_services(db: Session, search_query: str):
         .filter(models.Service.status == models.JobStatus.OPEN) 
         .all()
     )
-    return services
 
 def update_service_images(db: Session, service_id: str, image_urls: list[str]):
     """

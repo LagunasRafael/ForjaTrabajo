@@ -196,6 +196,14 @@ def complete_job_status(
         print(f"🚨 Error inesperado en el router: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.delete("/service-requests/{request_id}")
+def withdraw_postulation(
+    request_id: str,
+    db: Session = Depends(get_db),
+    current_user: auth_models.User = Depends(get_current_user)
+):
+    return service.withdraw_postulation(db, request_id, current_user.id)
+
 @router.put("/jobs/{job_id}/cancel", response_model=schemas.Job)
 def cancel_job_status(
     job_id: str,

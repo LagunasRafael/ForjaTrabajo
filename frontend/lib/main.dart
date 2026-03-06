@@ -8,7 +8,6 @@ import 'features/auth/presentation/screens/login_screen.dart'; // 👈 Asegúrat
 // 👇 TUS LAYOUTS
 import 'features/services/presentation/screens/layout/client_main_layout.dart';
 import 'features/services/presentation/screens/layout/worker_main_layout.dart';
-import 'features/services/presentation/screens/layout/admin_main_layout.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -39,7 +38,6 @@ class ForjaTrabajoApp extends StatelessWidget {
         '/roles':       (context) => const RoleSelectionScreen(),
         '/client_home': (context) => const ClientMainLayout(),
         '/worker_home': (context) => const WorkerMainLayout(),
-        '/admin_home': (context) => AdminMainLayout(), // ✅ ASÍ ESTÁ BIEN
       },
     );
   }

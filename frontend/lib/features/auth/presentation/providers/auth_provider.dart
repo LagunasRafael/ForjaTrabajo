@@ -10,7 +10,10 @@ import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:dio/dio.dart';
 import 'dart:io';
+import 'package:forja_trabajo/features/services/presentation/providers/job_management_provider.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:forja_trabajo/features/services/presentation/providers/nav_providers.dart';
+import 'package:forja_trabajo/features/services/presentation/providers/service_list_provider.dart';
 
 
 // 1. INSTANCIAS GLOBALES
@@ -82,6 +85,10 @@ class AuthNotifier extends Notifier<AuthState> {
   try {
     // 1. Obtenemos las preferencias
     final prefs = await SharedPreferences.getInstance();
+    
+    ref.invalidate(workerJobsProvider);
+    ref.invalidate(myRequestsProvider);
+    ref.invalidate(serviceListProvider);
     
     // 2. Intentamos avisar al servidor (opcional, por eso va en el try)
     final dataSource = ref.read(authDataSourceProvider);

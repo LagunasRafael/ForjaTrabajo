@@ -1,81 +1,94 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:dio/dio.dart';
-import 'package:shared_preferences/shared_preferences.dart'; // 👈 Importante para leer el token
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../domain/entities/service_request_entity.dart';
+import '../../domain/usecases/service_requests/create_postulation_usecase.dart';
+import '../../domain/usecases/service_requests/update_postulation_usecase.dart';
+import '../../domain/usecases/service_requests/withdraw_postulation_usecase.dart';
 
-// Asegúrate de que estas rutas sean correctas en tu proyecto
-import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart';
-import '../../../../core/network/api_client.dart'; 
+import '../../domain/usecases/service_requests/accept_postulation_usecase.dart'; 
+
+import '../../data/repositories/service_repository_impl.dart';
 import 'service_offers_provider.dart'; 
-import '../../data/repositories/service_repository_impl.dart'; // 👈 Importante para serviceRepositoryProvider
+
+final createPostulationProvider = Provider((ref) => CreatePostulationUseCase(ref.watch(serviceRepositoryProvider)));
+final updatePostulationProvider = Provider((ref) => UpdatePostulationUseCase(ref.watch(serviceRepositoryProvider)));
+final withdrawPostulationProvider = Provider((ref) => WithdrawPostulationUseCase(ref.watch(serviceRepositoryProvider)));
+final acceptPostulationProvider = Provider((ref) => AcceptPostulationUseCase(ref.watch(serviceRepositoryProvider)));
+
+final isAcceptingProvider = StateProvider.family<bool, String>((ref, id) => false);
 
 final serviceRequestProvider = StateNotifierProvider<ServiceRequestController, AsyncValue<void>>((ref) {
-  // Obtenemos el cliente de red global
-  final apiClient = ref.watch(apiClientProvider); 
-  return ServiceRequestController(ref, apiClient);
+  return ServiceRequestController(ref);
 });
 
 class ServiceRequestController extends StateNotifier<AsyncValue<void>> {
   final Ref ref;
-  final ApiClient apiClient;
+  ServiceRequestController(this.ref) : super(const AsyncValue.data(null));
 
-  ServiceRequestController(this.ref, this.apiClient) : super(const AsyncValue.data(null));
-
-  // ==========================================
-  // 1. FUNCIÓN PARA POSTULARSE (POST)
-  // ==========================================
   Future<bool> applyToService(String serviceId, String description, double price) async {
     state = const AsyncValue.loading();
     try {
-      // 🚀 USAMOS DIO PARA QUE SEA COMPATIBLE CON TU BACKEND
-      await apiClient.dio.post(
-        '/services/service-requests', 
-        data: {
-          "service_id": serviceId,
-          "description": description,
-          "proposed_price": price 
-        },
+      final token = await _getToken();
+      final newRequest = ServiceRequestEntity(
+        id: '', serviceId: serviceId, workerId: '', description: description, proposedPrice: price, status: 'pending', createdAt: DateTime.now(),
       );
 
-      // 🔥 Refrescamos la lista para que el cliente vea que ya te postulaste
-      ref.invalidate(offersListProvider(serviceId));
+      await ref.read(createPostulationProvider).call(newRequest, token);
+      ref.invalidate(offersListProvider(serviceId)); 
       
       state = const AsyncValue.data(null);
       return true;
-      
-    } on DioException catch (e) {
-      final errorMsg = e.response?.data['detail'] ?? "Error al enviar postulación";
-      state = AsyncValue.error(errorMsg, StackTrace.current);
-      return false;
     } catch (e, st) {
       state = AsyncValue.error(e, st);
       return false;
     }
   }  
 
-  // ==========================================
-  // 2. FUNCIÓN PARA EDITAR LA POSTULACIÓN (PUT)
-  // ==========================================
   Future<bool> updateApplication(String requestId, String description, double price) async {
     state = const AsyncValue.loading(); 
-    
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('token') ?? '';
-
-      if (token.isEmpty) throw Exception("Token de sesión no encontrado");
-
-      // Llamamos al repositorio
-      final repo = ref.read(serviceRepositoryProvider);
-      final success = await repo.updatePostulation(requestId, description, price, token);
-      
+      final token = await _getToken();
+      final success = await ref.read(updatePostulationProvider).call(requestId, description, price, token);
       state = const AsyncValue.data(null); 
       return success;
-      
     } catch (e, st) {
-      print("🚨 ERROR EN UPDATE_APPLICATION: $e");
       state = AsyncValue.error(e, st); 
       return false;
     }
   }
 
-} // 👈 Fin de la clase ServiceRequestController
+  Future<bool> withdrawApplication(String requestId) async {
+    state = const AsyncValue.loading();
+    try {
+      final token = await _getToken(); 
+      await ref.read(withdrawPostulationProvider).call(requestId, token);
+      state = const AsyncValue.data(null);
+      return true;
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+      return false;
+    }
+  }
+
+  Future<bool> acceptWorker(String requestId) async {
+    state = const AsyncValue.loading();
+    try {
+      final token = await _getToken(); 
+      
+      await ref.read(acceptPostulationProvider).call(requestId, token);
+      
+      state = const AsyncValue.data(null);
+      return true;
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+      return false;
+    }
+  }
+
+  Future<String> _getToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token') ?? '';
+    if (token.isEmpty) throw Exception("Token no encontrado");
+    return token;
+  }
+}

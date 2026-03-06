@@ -2,16 +2,31 @@ import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja_trabajo/features/services/domain/entities/service_entity.dart';
 import 'package:forja_trabajo/features/services/data/repositories/service_repository_impl.dart';
+import 'package:forja_trabajo/features/services/domain/usecases/services/create_services_usecase.dart';
+import 'package:forja_trabajo/features/services/domain/usecases/services/delete_services_usecase.dart';
+import 'package:forja_trabajo/features/services/domain/usecases/services/update_service_usecase.dart';
+import 'package:forja_trabajo/features/services/domain/usecases/services/cancel_service_usecase.dart'; 
 import 'category_provider.dart';
 
-// 1. ESTADO DEL BUSCADOR
 final searchQueryProvider = StateProvider<String>((ref) => "");
 
+final createServiceUseCaseProvider = Provider((ref) {
+  final repository = ref.watch(serviceRepositoryProvider);
+  return CreateServiceUseCase(repository);
+});
+
+final cancelServiceUseCaseProvider = Provider((ref) {
+  final repository = ref.watch(serviceRepositoryProvider);
+  return CancelServiceUseCase(repository);
+});
+
+// Podrías crear uno para Update también si quieres ser 100% estricto
+// final updateServiceUseCaseProvider = Provider((ref) => UpdateServiceUseCase(ref.watch(serviceRepositoryProvider)));
+
 // =======================================================
-// 2. PROVIDERS DE LECTURA (UI REACTIVA)
+// 3. PROVIDERS DE LECTURA (UI REACTIVA)
 // =======================================================
 
-// A) LISTA PÚBLICA (Home): Filtra por búsqueda > categoría > todo
 final serviceListProvider = FutureProvider<List<ServiceEntity>>((ref) async {
   final repository = ref.watch(serviceRepositoryProvider);
   final categoryId = ref.watch(selectedCategoryProvider);
@@ -23,39 +38,44 @@ final serviceListProvider = FutureProvider<List<ServiceEntity>>((ref) async {
   return await repository.getServices();
 });
 
-// B) DETALLE DE UN SERVICIO (Por ID)
 final serviceDetailProvider = FutureProvider.family<ServiceEntity, String>((ref, id) async {
   return await ref.watch(serviceRepositoryProvider).getServiceById(id);
 });
 
-// C) MIS TRABAJOS: Lista privada del usuario logueado
 final myRequestsProvider = FutureProvider<List<ServiceEntity>>((ref) async {
   return await ref.watch(serviceRepositoryProvider).getMyServices(); 
 });
 
 // =======================================================
-// 3. CONTROLADOR DE ACCIONES (CREAR / ACTUALIZAR)
+// 4. CONTROLADOR DE ACCIONES
 // =======================================================
 
 final serviceControllerProvider = StateNotifierProvider<ServiceController, AsyncValue<void>>((ref) {
-  return ServiceController(ref);
+  final createUseCase = ref.watch(createServiceUseCaseProvider);
+  // 🚀 3. INYECTAMOS EL CANCEL USECASE AL CONTROLADOR
+  final cancelUseCase = ref.watch(cancelServiceUseCaseProvider);
+  return ServiceController(ref, createUseCase, cancelUseCase);
 });
 
 class ServiceController extends StateNotifier<AsyncValue<void>> {
   final Ref ref;
-  ServiceController(this.ref) : super(const AsyncValue.data(null));
+  final CreateServiceUseCase _createUseCase;
+  // 🚀 4. LO RECIBIMOS EN LA CLASE
+  final CancelServiceUseCase _cancelUseCase;
 
-  // --- CREAR SERVICIO (Soporta imágenes) ---
+  ServiceController(this.ref, this._createUseCase, this._cancelUseCase) : super(const AsyncValue.data(null));
+
+  // --- CREAR SERVICIO ---
   Future<void> createService(ServiceEntity service, String token, {List<File>? images}) async {
     state = const AsyncValue.loading();
     try {
-      final repository = ref.read(serviceRepositoryProvider);
+      await _createUseCase.execute(
+        service: service, 
+        token: token, 
+        images: images ?? []
+      );
       
-      await repository.createService(service, token, images: images);
-      
-      // 🧹 LIMPIEZA DE CACHÉ: Forzamos a la app a pedir las listas nuevas
       _invalidateAll();
-      
       state = const AsyncValue.data(null);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
@@ -68,7 +88,6 @@ class ServiceController extends StateNotifier<AsyncValue<void>> {
     try {
       await ref.read(serviceRepositoryProvider).updateService(service, token);
       
-      // Invalidamos el detalle específico y las listas
       ref.invalidate(serviceDetailProvider(service.id));
       _invalidateAll();
       
@@ -78,11 +97,24 @@ class ServiceController extends StateNotifier<AsyncValue<void>> {
     }
   }
 
-  // Helper privado para no repetir código de invalidación
+  // 🚀 5. LA FUNCIÓN QUE LLAMA LA "X" ROJA
+  Future<void> cancelService(String serviceId, String token) async {
+    state = const AsyncValue.loading();
+    try {
+      await _cancelUseCase.call(serviceId, token);
+      
+      // Esto actualizará la lista de "Mis solicitudes" automáticamente
+      _invalidateAll();
+      
+      state = const AsyncValue.data(null);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+    }
+  }
+
   void _invalidateAll() {
     ref.invalidate(serviceListProvider); 
     ref.invalidate(myRequestsProvider);
-    // Invalidamos categorías por si el conteo de servicios cambió
     ref.invalidate(categoryListProvider);
     ref.invalidate(topCategoryListProvider);
   }

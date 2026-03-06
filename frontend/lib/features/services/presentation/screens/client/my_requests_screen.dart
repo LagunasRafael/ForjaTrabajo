@@ -80,51 +80,77 @@ class _MyRequestsScreenState extends ConsumerState<MyRequestsScreen> with Single
   Widget _buildRequestList(WidgetRef ref, JobStatus status) {
     final servicesAsync = ref.watch(myRequestsProvider);
 
-    return servicesAsync.when(
-      data: (services) {
-        final filtered = services.where((s) {
-          if (status == JobStatus.matched) {
-            return s.status == JobStatus.matched || s.status == JobStatus.waiting_confirmation;
-          }
-          return s.status == status;
-        }).toList();
-
-        if (filtered.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.folder_open, size: 60, color: Colors.grey[300]),
-                const SizedBox(height: 10),
-                Text(_getEmptyMessage(status), style: TextStyle(color: Colors.grey[500])),
-              ],
-            ),
-          );
-        }
-
-        return ListView.builder(
-          physics: const BouncingScrollPhysics(), // 👈 Hace que el scroll se sienta premium
-          padding: const EdgeInsets.all(20),
-          itemCount: filtered.length,
-          itemBuilder: (context, index) {
-            final service = filtered[index];
-            
-            // 👇 AHORA SÍ, USAMOS UN SWITCH PARA REPARTIR LAS TARJETAS CORRECTAS
-            switch (status) {
-              case JobStatus.open:
-                return ClientOpenJobCard(service: service);
-              case JobStatus.matched:
-                return ClientMatchedJobCard(service: service);
-              case JobStatus.completed:
-                return ClientCompletedJobCard(service: service);
-              default:
-                return const SizedBox();
-            }
-          },
-        );
+    // 🚀 ENVOLVEMOS TODO EN EL REFRESH INDICATOR
+    return RefreshIndicator(
+      color: const Color(0xFF4F46E5),
+      onRefresh: () async {
+        // Esto obliga a Riverpod a ir al backend de nuevo
+        await ref.refresh(myRequestsProvider.future);
       },
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, s) => Center(child: Text("Error: $e")),
+      child: servicesAsync.when(
+        data: (services) {
+          final filtered = services.where((s) {
+            if (status == JobStatus.matched) {
+              return s.status == JobStatus.matched || s.status == JobStatus.waiting_confirmation;
+            }
+            return s.status == status;
+          }).toList();
+
+          if (filtered.isEmpty) {
+            // 💡 IMPORTANTE: Si está vacío, usamos un ListView o SingleChildScrollView 
+            // con AlwaysScrollableScrollPhysics para que el gesto de jalar funcione.
+            return ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              children: [
+                SizedBox(
+                  height: MediaQuery.of(context).size.height * 0.6,
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.folder_open, size: 60, color: Colors.grey[300]),
+                        const SizedBox(height: 10),
+                        Text(_getEmptyMessage(status), style: TextStyle(color: Colors.grey[500])),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            );
+          }
+
+          return ListView.builder(
+            // 💡 AlwaysScrollableScrollPhysics permite jalar incluso si hay pocos elementos
+            physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()), 
+            padding: const EdgeInsets.all(20),
+            itemCount: filtered.length,
+            itemBuilder: (context, index) {
+              final service = filtered[index];
+              
+              switch (status) {
+                case JobStatus.open:
+                  return ClientOpenJobCard(service: service);
+                case JobStatus.matched:
+                  return ClientMatchedJobCard(service: service);
+                case JobStatus.completed:
+                  return ClientCompletedJobCard(service: service);
+                default:
+                  return const SizedBox();
+              }
+            },
+          );
+        },
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, s) => ListView( // También scrollable en error para re-intentar
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: [
+            SizedBox(
+              height: MediaQuery.of(context).size.height * 0.6,
+              child: Center(child: Text("Error: $e")),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
