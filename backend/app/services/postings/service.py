@@ -30,9 +30,13 @@ def create_service(db: Session, service_data: schemas.ServiceCreate, client_id: 
 
 def get_services(db: Session, skip: int = 0, limit: int = 100, include_inactive: bool = False):
     query = db.query(models.Service).options(joinedload(models.Service.owner))
+    
     if not include_inactive:
-        query = query.filter(models.Service.is_active == True)
-    query = query.filter(models.Service.status == models.JobStatus.OPEN)
+        query = query.filter(
+            models.Service.is_active == True,
+            models.Service.status == models.JobStatus.OPEN
+        )
+        
     return query.order_by(models.Service.created_at.desc()).offset(skip).limit(limit).all()
     
 def get_service_by_id(db: Session, service_id: str):

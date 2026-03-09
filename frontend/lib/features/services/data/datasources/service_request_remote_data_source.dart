@@ -1,29 +1,21 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-// Importamos el ApiClient y tu AuthProvider para que encuentre el apiClientProvider
 import '../../../../core/network/api_client.dart';
 import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart';
 
-// 1. PROVIDER: Inyectamos el ApiClient centralizado con Dio
 final serviceRequestRemoteDataSourceProvider = Provider<ServiceRequestRemoteDataSource>((ref) {
   final apiClient = ref.watch(apiClientProvider);
   return ServiceRequestRemoteDataSource(apiClient.dio);
 });
 
-// 2. Definimos la clase que conecta con Internet
 class ServiceRequestRemoteDataSource {
   final Dio _dio;
 
   ServiceRequestRemoteDataSource(this._dio);
 
-  // 🌍 Base URL para este módulo (asumiendo que en Python el router tiene prefix="/services")
   String get _path => '/services';
 
-  // ---------------------------------------------------------------------------
-  // CREAR UNA OFERTA (Worker)
-  // ---------------------------------------------------------------------------
   Future<Map<String, dynamic>> createRequest(Map<String, dynamic> requestData, String token) async {
     try {
       final response = await _dio.post(
@@ -38,9 +30,6 @@ class ServiceRequestRemoteDataSource {
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // OBTENER OFERTAS DE UN SERVICIO (Cliente)
-  // ---------------------------------------------------------------------------
   Future<List<Map<String, dynamic>>> getOffers(String serviceId, String token) async {
     try {
       final response = await _dio.get(
@@ -54,9 +43,6 @@ class ServiceRequestRemoteDataSource {
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // ACEPTAR UNA OFERTA (Cliente)
-  // ---------------------------------------------------------------------------
   Future<Map<String, dynamic>> acceptPostulation(String requestId, String token) async {
     try {
       final response = await _dio.post(
@@ -70,16 +56,10 @@ class ServiceRequestRemoteDataSource {
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // OBTENER MIS POSTULACIONES (Worker)
-  // ---------------------------------------------------------------------------
   Future<List<Map<String, dynamic>>> getMyApplications(String token) async {
     try {
       // 💡 RUTA OPCIÓN 1: Con prefijo
       String rutaAProbar = '/services/worker/my-applications';
-      
-      // Si te sigue dando 404, comenta la línea de arriba y descomenta esta:
-      // String rutaAProbar = '/worker/my-applications';
 
       debugPrint("🔍 Intentando conectar a: ${_dio.options.baseUrl}$rutaAProbar");
 
@@ -96,9 +76,6 @@ class ServiceRequestRemoteDataSource {
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // ACTUALIZAR UNA POSTULACIÓN (Worker)
-  // ---------------------------------------------------------------------------
   Future<bool> updatePostulation(String requestId, String description, double proposedPrice, String token) async {
     try {
       final response = await _dio.put(

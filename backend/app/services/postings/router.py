@@ -95,3 +95,5 @@ def toggle_service_visibility(
     db.commit()
     db.refresh(db_service)
     return db_service
+
+    
