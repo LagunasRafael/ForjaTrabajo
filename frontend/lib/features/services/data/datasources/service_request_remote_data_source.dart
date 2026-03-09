@@ -1,101 +1,95 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/network/api_client.dart';
+import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart';
 
-// 1. Definimos la clase que conecta con Internet
+final serviceRequestRemoteDataSourceProvider = Provider<ServiceRequestRemoteDataSource>((ref) {
+  final apiClient = ref.watch(apiClientProvider);
+  return ServiceRequestRemoteDataSource(apiClient.dio);
+});
+
 class ServiceRequestRemoteDataSource {
-  final ApiClient _apiClient;
+  final Dio _dio;
 
-  ServiceRequestRemoteDataSource(this._apiClient);
+  ServiceRequestRemoteDataSource(this._dio);
 
-  String get baseUrl => '${_apiClient.dio.options.baseUrl}/services';
+  String get _path => '/services';
 
-  // ---------------------------------------------------------------------------
-  // CREAR UNA OFERTA (Worker)
-  // ---------------------------------------------------------------------------
-  Future<Map<String, dynamic>> createRequest(
-      Map<String, dynamic> requestData, String token) async {
-    final url = Uri.parse('$baseUrl/service-requests');
-
-    final response = await http.post(
-      url,
-      headers: {
-        'Content-Type':
-            'application/json; charset=UTF-8', // Importante para enviar tildes bien
-        'Authorization': 'Bearer $token',
-      },
-      body: json.encode(requestData),
-    );
-
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      // ✅ Usamos utf8.decode para leer la respuesta completa sin errores de caracteres
-      return json.decode(utf8.decode(response.bodyBytes));
-    } else {
-      throw Exception(
-          'Error al crear postulación (${response.statusCode}): ${utf8.decode(response.bodyBytes)}');
+  Future<Map<String, dynamic>> createRequest(Map<String, dynamic> requestData, String token) async {
+    try {
+      final response = await _dio.post(
+        '$_path/service-requests',
+        data: requestData,
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      return response.data; // Dio ya lo convierte a Map automáticamente
+    } on DioException catch (e) {
+      debugPrint("🚨 Error al crear postulación: ${e.response?.data}");
+      throw Exception('Error al crear postulación: ${e.message}');
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // OBTENER OFERTAS DE UN SERVICIO (Cliente)
-  // ---------------------------------------------------------------------------
-  Future<List<Map<String, dynamic>>> getOffers(
-      String serviceId, String token) async {
-    final url = Uri.parse('$baseUrl/$serviceId/offers');
-
-    final response = await http.get(
-      url,
-      headers: {
-        'Content-Type': 'application/json; charset=UTF-8',
-        'Authorization': 'Bearer $token',
-      },
-    );
-
-    if (response.statusCode == 200) {
-      // ✅ 1. Decodificamos los bytes para asegurar acentos y caracteres especiales
-      String body = utf8.decode(response.bodyBytes);
-
-      // ✅ 2. Convertimos a Lista dinámica
-      final List<dynamic> decodedList = json.decode(body);
-
-      // ✅ 3. Creamos una lista TIPIFICADA segura.
-      // Esto asegura que cada elemento se trate como un Mapa real y no se pierda nada.
-      return List<Map<String, dynamic>>.from(decodedList);
-    } else {
-      throw Exception(
-          'Error al cargar ofertas (${response.statusCode}): ${utf8.decode(response.bodyBytes)}');
+  Future<List<Map<String, dynamic>>> getOffers(String serviceId, String token) async {
+    try {
+      final response = await _dio.get(
+        '$_path/$serviceId/offers',
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      return List<Map<String, dynamic>>.from(response.data);
+    } on DioException catch (e) {
+      debugPrint("🚨 Error al cargar ofertas: ${e.response?.data}");
+      throw Exception('Error al cargar ofertas: ${e.message}');
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // ACEPTAR UNA OFERTA (Cliente)
-  // ---------------------------------------------------------------------------
-  Future<Map<String, dynamic>> acceptPostulation(
-      String requestId, String token) async {
-    final url = Uri.parse('$baseUrl/accept-postulation/$requestId');
+  Future<Map<String, dynamic>> acceptPostulation(String requestId, String token) async {
+    try {
+      final response = await _dio.post(
+        '$_path/accept-postulation/$requestId',
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      return response.data;
+    } on DioException catch (e) {
+      debugPrint("🚨 Error al aceptar postulación: ${e.response?.data}");
+      throw Exception('Error al aceptar postulación: ${e.message}');
+    }
+  }
 
-    final response = await http.post(
-      url,
-      headers: {
-        'Content-Type': 'application/json; charset=UTF-8',
-        'Authorization': 'Bearer $token',
-      },
-    );
+  Future<List<Map<String, dynamic>>> getMyApplications(String token) async {
+    try {
+      // 💡 RUTA OPCIÓN 1: Con prefijo
+      String rutaAProbar = '/services/worker/my-applications';
 
-    if (response.statusCode == 200) {
-      // ✅ Decodificación segura
-      return json.decode(utf8.decode(response.bodyBytes));
-    } else {
-      throw Exception(
-          'Error al aceptar postulación (${response.statusCode}): ${utf8.decode(response.bodyBytes)}');
+      debugPrint("🔍 Intentando conectar a: ${_dio.options.baseUrl}$rutaAProbar");
+
+      final response = await _dio.get(
+        rutaAProbar,
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      
+      return List<Map<String, dynamic>>.from(response.data);
+    } on DioException catch (e) {
+      debugPrint("🚨 Error Dio en getMyApplications: Código ${e.response?.statusCode}");
+      debugPrint("🚨 Detalles del error: ${e.response?.data}");
+      throw Exception('Error al cargar mis postulaciones (${e.response?.statusCode})');
+    }
+  }
+
+  Future<bool> updatePostulation(String requestId, String description, double proposedPrice, String token) async {
+    try {
+      final response = await _dio.put(
+        '$_path/service-requests/$requestId',
+        data: {
+          "description": description,
+          "proposed_price": proposedPrice,
+        },
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      return response.statusCode == 200 || response.statusCode == 201;
+    } on DioException catch (e) {
+      debugPrint("🚨 Error al actualizar postulación: ${e.response?.data}");
+      throw Exception('Error al actualizar: ${e.message}');
     }
   }
 }
-
-// 2. Definimos el Provider para que el Repositorio lo encuentre
-final serviceRequestRemoteDataSourceProvider =
-    Provider<ServiceRequestRemoteDataSource>((ref) {
-  final apiClient = ApiClient();
-  return ServiceRequestRemoteDataSource(apiClient);
-});

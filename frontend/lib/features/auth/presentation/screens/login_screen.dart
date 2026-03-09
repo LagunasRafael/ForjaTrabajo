@@ -6,13 +6,11 @@ import 'package:forja_trabajo/features/services/presentation/providers/nav_provi
 
 import '../../../services/presentation/screens/layout/client_main_layout.dart';
 import '../../../services/presentation/screens/layout/worker_main_layout.dart';
-import '../../../services/presentation/screens/layout/admin_main_layout.dart';
 import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart';
 import 'package:forja_trabajo/core/theme/app_theme.dart';
 import 'register_screen.dart';
 import 'verification_screen.dart';
 
-// Imports para limpieza de memoria
 import 'package:forja_trabajo/features/services/presentation/providers/service_list_provider.dart';
 import 'package:forja_trabajo/features/services/presentation/providers/category_provider.dart';
 

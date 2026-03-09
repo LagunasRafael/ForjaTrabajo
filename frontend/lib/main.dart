@@ -12,7 +12,6 @@ import 'features/auth/presentation/screens/splash_screen.dart'; // 👈 Importam
 // 👇 TUS LAYOUTS
 import 'features/services/presentation/screens/layout/client_main_layout.dart';
 import 'features/services/presentation/screens/layout/worker_main_layout.dart';
-import 'features/services/presentation/screens/layout/admin_main_layout.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -49,7 +48,6 @@ class ForjaTrabajoApp extends ConsumerWidget {
         '/roles': (context) => const RoleSelectionScreen(),
         '/client_home': (context) => const ClientMainLayout(),
         '/worker_home': (context) => const WorkerMainLayout(),
-        '/admin_home': (context) => AdminMainLayout(), // ✅ ASÍ ESTÁ BIEN
       },
     );
   }

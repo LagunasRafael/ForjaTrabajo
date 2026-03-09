@@ -23,7 +23,8 @@ from app.db.database import Base
 
 class JobStatus(str, enum.Enum):
     OPEN = "open"            # Cliente publica, esperando workers
-    MATCHED = "matched"      # Confirmación mutua (inicio de trabajo/chat)
+    MATCHED = "matched"  
+    WAITING_CONFIRMATION = "waiting_confirmation"  # Confirmación mutua (inicio de trabajo/chat)
     COMPLETED = "completed"  # Trabajo finalizado
     CANCELLED = "cancelled"  # Cancelación por alguna parte
 

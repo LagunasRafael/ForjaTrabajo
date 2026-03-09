@@ -11,6 +11,7 @@ from enum import Enum
 class JobStatus(str, Enum):
     open = "open"
     matched = "matched"
+    WAITING_CONFIRMATION = "waiting_confirmation"
     completed = "completed"
     cancelled = "cancelled"
 
@@ -108,7 +109,12 @@ class ServiceRequest(BaseModel):
     class Config:
         orm_mode = True
 
+class UpdatePostulationRequest(BaseModel):
+    description: str
+    proposed_price: float
 
+    class Config:
+        from_attributes = True
 # -----------------------------
 # JOBS
 # -----------------------------
@@ -124,7 +130,7 @@ class Job(BaseModel):
     completed_at: Optional[datetime] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class ServiceActiveUpdate(BaseModel):
     is_active: bool
