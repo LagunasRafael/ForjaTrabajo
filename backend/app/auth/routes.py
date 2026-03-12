@@ -135,6 +135,19 @@ def forgot_password(request: Request, data: schemas.ForgotPasswordRequest, backg
     
     return {"status": "success", "message": "Si el correo está registrado, recibirás un código de recuperación."}
 
+@router.post("/verify-reset-code")
+@limiter.limit("5/minute")
+def verify_reset_code(request: Request, data: schemas.VerifyCodeRequest, db: Session = Depends(get_db)):
+    user = service.get_user_by_email(db, email=data.email)
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    
+    if user.verification_code != data.code:
+        raise HTTPException(status_code=400, detail="Código incorrecto")
+    
+    return {"status": "success", "message": "Código verificado correctamente"}
+
 @router.post("/reset-password")
 @limiter.limit("5/minute")
 def reset_password(request: Request, data: schemas.ResetPasswordRequest, db: Session = Depends(get_db)):
