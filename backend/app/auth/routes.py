@@ -9,7 +9,7 @@ from app.db.database import get_db
 from app.auth.security import create_access_token, create_refresh_token, get_current_user, SECRET_KEY, ALGORITHM
 from app.core.roles import Role # Para forzar el rol en el registro
 from app.utils.s3 import upload_file_to_s3, delete_old_file_from_s3
-from app.utils.email import generate_verification_code, send_verification_email
+from app.utils.email import generate_verification_code, send_verification_email, send_password_reset_email
 from jose import jwt, JWTError
 from fastapi import APIRouter, Request, BackgroundTasks
 
@@ -112,6 +112,47 @@ def resend_verification_code(request: Request, data: schemas.ResendCodeRequest, 
     background_tasks.add_task(send_verification_email, user.email, new_code)
     
     return {"status": "success", "message": "Nuevo código enviado"}
+
+# =================================================================
+# 🔑 RECUPERACIÓN DE CONTRASEÑA
+# =================================================================
+@router.post("/forgot-password")
+@limiter.limit("3/minute")
+def forgot_password(request: Request, data: schemas.ForgotPasswordRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+    user = service.get_user_by_email(db, email=data.email)
+    
+    if not user:
+        # Por seguridad, NO revelamos si el correo existe o no
+        return {"status": "success", "message": "Si el correo está registrado, recibirás un código de recuperación."}
+    
+    # Generamos un código de 6 dígitos y lo guardamos en verification_code
+    code = generate_verification_code()
+    user.verification_code = code
+    db.commit()
+    
+    # Enviamos el correo en background
+    background_tasks.add_task(send_password_reset_email, user.email, code)
+    
+    return {"status": "success", "message": "Si el correo está registrado, recibirás un código de recuperación."}
+
+@router.post("/reset-password")
+@limiter.limit("5/minute")
+def reset_password(request: Request, data: schemas.ResetPasswordRequest, db: Session = Depends(get_db)):
+    user = service.get_user_by_email(db, email=data.email)
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    
+    if user.verification_code != data.code:
+        raise HTTPException(status_code=400, detail="Código de recuperación incorrecto")
+    
+    # Hashear la nueva contraseña y limpiar el código
+    from app.auth.security import hash_password
+    user.hashed_password = hash_password(data.new_password)
+    user.verification_code = None
+    db.commit()
+    
+    return {"status": "success", "message": "Contraseña actualizada exitosamente"}
 
 @router.post("/login", response_model=schemas.Token)
 @limiter.limit("5/minute")

@@ -92,3 +92,19 @@ class AdminCreateUser(BaseModel):
         if len(v.encode("utf-8")) > 72:
             raise ValueError("La contraseña no puede exceder los 72 bytes")
         return v
+
+# Schemas para Recuperación de Contraseña
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+class ResetPasswordRequest(BaseModel):
+    email: EmailStr
+    code: str = Field(..., min_length=6, max_length=6)
+    new_password: str = Field(..., min_length=8)
+
+    @field_validator("new_password")
+    @classmethod
+    def password_length(cls, v: str):
+        if len(v.encode("utf-8")) > 72:
+            raise ValueError("La contraseña no puede exceder los 72 bytes")
+        return v
