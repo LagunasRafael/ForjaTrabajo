@@ -293,4 +293,69 @@ class AuthRemoteDataSource {
       throw Exception('Error de conexión');
     }
   }
+
+  /// Solicita un código de recuperación de contraseña
+  Future<void> forgotPassword(String email) async {
+    try {
+      await apiClient.dio.post(
+        '/auth/forgot-password',
+        data: {'email': email},
+      );
+    } on DioException catch (e) {
+      String errorMessage = 'Error al solicitar recuperación';
+      if (e.response != null && e.response?.data != null) {
+        if (e.response?.data['detail'] is String) {
+          errorMessage = e.response?.data['detail'];
+        }
+      }
+      throw Exception(errorMessage);
+    } catch (e) {
+      throw Exception('Error de conexión');
+    }
+  }
+
+  /// Verifica que el código de recuperación sea correcto (sin cambiar la contraseña)
+  Future<void> verifyResetCode(String email, String code) async {
+    try {
+      await apiClient.dio.post(
+        '/auth/verify-reset-code',
+        data: {'email': email, 'code': code},
+      );
+    } on DioException catch (e) {
+      String errorMessage = 'Código incorrecto';
+      if (e.response != null && e.response?.data != null) {
+        if (e.response?.data['detail'] is String) {
+          errorMessage = e.response?.data['detail'];
+        }
+      }
+      throw Exception(errorMessage);
+    } catch (e) {
+      throw Exception('Error de conexión');
+    }
+  }
+
+  /// Restablece la contraseña usando el código de recuperación
+  Future<void> resetPassword(
+      String email, String code, String newPassword) async {
+    try {
+      await apiClient.dio.post(
+        '/auth/reset-password',
+        data: {
+          'email': email,
+          'code': code,
+          'new_password': newPassword,
+        },
+      );
+    } on DioException catch (e) {
+      String errorMessage = 'Error al restablecer la contraseña';
+      if (e.response != null && e.response?.data != null) {
+        if (e.response?.data['detail'] is String) {
+          errorMessage = e.response?.data['detail'];
+        }
+      }
+      throw Exception(errorMessage);
+    } catch (e) {
+      throw Exception('Error de conexión');
+    }
+  }
 }

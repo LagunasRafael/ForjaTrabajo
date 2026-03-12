@@ -237,6 +237,46 @@ class AuthNotifier extends Notifier<AuthState> {
     }
   }
 
+  Future<void> forgotPassword(String email) async {
+    state = state.copyWith(status: 'loading', errorMessage: '');
+    try {
+      final dataSource = ref.read(authDataSourceProvider);
+      await dataSource.forgotPassword(email);
+      state = state.copyWith(status: 'reset_code_sent');
+    } catch (e) {
+      state = state.copyWith(
+          status: 'error',
+          errorMessage: e.toString().replaceAll('Exception: ', ''));
+    }
+  }
+
+  Future<void> verifyResetCode(String email, String code) async {
+    state = state.copyWith(status: 'loading', errorMessage: '');
+    try {
+      final dataSource = ref.read(authDataSourceProvider);
+      await dataSource.verifyResetCode(email, code);
+      state = state.copyWith(status: 'reset_code_verified');
+    } catch (e) {
+      state = state.copyWith(
+          status: 'error',
+          errorMessage: e.toString().replaceAll('Exception: ', ''));
+    }
+  }
+
+  Future<void> resetPassword(
+      String email, String code, String newPassword) async {
+    state = state.copyWith(status: 'loading', errorMessage: '');
+    try {
+      final dataSource = ref.read(authDataSourceProvider);
+      await dataSource.resetPassword(email, code, newPassword);
+      state = state.copyWith(status: 'password_reset_success');
+    } catch (e) {
+      state = state.copyWith(
+          status: 'error',
+          errorMessage: e.toString().replaceAll('Exception: ', ''));
+    }
+  }
+
   Future<void> _syncFcmToken() async {
     final notificationService = NotificationService();
     await notificationService.initNotifications();
