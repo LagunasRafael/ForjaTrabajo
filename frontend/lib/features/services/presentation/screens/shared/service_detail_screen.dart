@@ -64,7 +64,10 @@ class _ServiceDetailScreenState extends ConsumerState<ServiceDetailScreen> {
 
         // 🏷️ Obtenemos el nombre de la categoría de forma reactiva
         final displayCat = categoriesAsync.maybeWhen(
-          data: (cats) => cats.firstWhere((c) => c.id == freshService.categoryId, orElse: () => cats.first).name,
+          data: (cats) {
+            final foundCat = cats.where((c) => c.id == freshService.categoryId).firstOrNull;
+            return foundCat?.name ?? widget.categoryName;
+          },
           orElse: () => widget.categoryName,
         );
 

@@ -1,4 +1,4 @@
-import '../../domain/repositories/service_repository.dart';
+import '../../repositories/service_repository.dart';
 
 class CreateCategoryUseCase {
   final ServiceRepository repository;
@@ -8,7 +8,7 @@ class CreateCategoryUseCase {
     // Si mañana quieres agregar una regla de negocio (ej. que el nombre no tenga groserías),
     // la pones aquí, sin tocar la interfaz gráfica.
     if (name.isEmpty) throw Exception("El nombre no puede estar vacío");
-    
+
     await repository.createCategory(name, description, token);
   }
 }

@@ -75,7 +75,7 @@ class AuthNotifier extends Notifier<AuthState> {
       await prefs.setString('token', token);
 
       state = state.copyWith(status: 'authenticated');
-      await fetchProfile(); 
+      await fetchProfile();
       _syncFcmToken();
     } catch (e) {
       state = state.copyWith(
@@ -106,15 +106,16 @@ class AuthNotifier extends Notifier<AuthState> {
 
       final prefs = await SharedPreferences.getInstance();
       final dataSource = ref.read(authDataSourceProvider);
-      
-      await dataSource.logout(); 
-      await prefs.remove('token'); 
+
+      await dataSource.logout();
+      await prefs.remove('token');
     } catch (e) {
       debugPrint("Error en logout: $e");
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('token');
     } finally {
-      state = AuthState(status: 'unauthenticated', user: null, errorMessage: '');
+      state =
+          AuthState(status: 'unauthenticated', user: null, errorMessage: '');
     }
   }
 
@@ -149,12 +150,11 @@ class AuthNotifier extends Notifier<AuthState> {
       final dataSource = ref.read(authDataSourceProvider);
       await dataSource.verifyEmailCode(email, code);
 
-      if (state.user != null) {
-        final updatedUser = state.user!.copyWith(isEmailVerified: true);
-        state = state.copyWith(status: 'email_verified', user: updatedUser);
-      } else {
-        state = state.copyWith(status: 'email_verified');
-      }
+      // Ahora tenemos tokens guardados → podemos cargar el perfil completo
+      await fetchProfile();
+      _syncFcmToken();
+
+      state = state.copyWith(status: 'email_verified');
     } catch (e) {
       state = state.copyWith(status: 'error', errorMessage: e.toString());
     }
@@ -188,27 +188,40 @@ class AuthNotifier extends Notifier<AuthState> {
         desiredAccuracy: LocationAccuracy.high,
       ).timeout(const Duration(seconds: 10));
 
-      List<Placemark> placemarks = await placemarkFromCoordinates(position.latitude, position.longitude);
+      List<Placemark> placemarks =
+          await placemarkFromCoordinates(position.latitude, position.longitude);
       String cityName = "Desconocido";
       if (placemarks.isNotEmpty) {
         Placemark place = placemarks.first;
         cityName = "${place.locality ?? ''}, ${place.administrativeArea ?? ''}";
       }
       final dataSource = ref.read(authDataSourceProvider);
-      await dataSource.updateLocation(userId: state.user!.id, lat: position.latitude, lng: position.longitude, city: cityName);
-      final updatedUser = state.user!.copyWith(latitude: position.latitude, longitude: position.longitude, city: cityName);
+      await dataSource.updateLocation(
+          userId: state.user!.id,
+          lat: position.latitude,
+          lng: position.longitude,
+          city: cityName);
+      final updatedUser = state.user!.copyWith(
+          latitude: position.latitude,
+          longitude: position.longitude,
+          city: cityName);
       state = state.copyWith(user: updatedUser);
-    } catch (e) { debugPrint('🚨 Error GPS: $e'); }
+    } catch (e) {
+      debugPrint('🚨 Error GPS: $e');
+    }
   }
 
   Future<void> updateProfilePicture(XFile imageFile) async {
     if (state.user == null) return;
     final dataSource = ref.read(authDataSourceProvider);
     try {
-      final newPhotoUrl = await dataSource.uploadProfilePicture(state.user!.id, imageFile);
+      final newPhotoUrl =
+          await dataSource.uploadProfilePicture(state.user!.id, imageFile);
       final updatedUser = state.user!.copyWith(profilePictureUrl: newPhotoUrl);
       state = state.copyWith(user: updatedUser);
-    } catch (e) { debugPrint("Error subiendo foto: $e"); }
+    } catch (e) {
+      debugPrint("Error subiendo foto: $e");
+    }
   }
 
   Future<void> updateUserInfo(String newName, String newPhone) async {
@@ -216,9 +229,12 @@ class AuthNotifier extends Notifier<AuthState> {
     final dataSource = ref.read(authDataSourceProvider);
     try {
       await dataSource.updateProfileData(state.user!.id, newName, newPhone);
-      final updatedUser = state.user!.copyWith(fullName: newName, phone: newPhone);
+      final updatedUser =
+          state.user!.copyWith(fullName: newName, phone: newPhone);
       state = state.copyWith(user: updatedUser);
-    } catch (e) { debugPrint("🚨 Error updateUserInfo: $e"); }
+    } catch (e) {
+      debugPrint("🚨 Error updateUserInfo: $e");
+    }
   }
 
   Future<void> _syncFcmToken() async {
@@ -235,4 +251,5 @@ class AuthNotifier extends Notifier<AuthState> {
   }
 }
 
-final authProvider = NotifierProvider<AuthNotifier, AuthState>(() => AuthNotifier());
+final authProvider =
+    NotifierProvider<AuthNotifier, AuthState>(() => AuthNotifier());

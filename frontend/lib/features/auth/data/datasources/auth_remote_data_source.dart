@@ -63,8 +63,16 @@ class AuthRemoteDataSource {
 
   /// Verifica si el usuario ya tiene una sesión activa al abrir la app
   Future<bool> hasValidToken() async {
-    final token = await apiClient.storage.read(key: 'jwt_token');
-    return token != null && token.isNotEmpty;
+    try {
+      final token = await apiClient.storage.read(key: 'jwt_token');
+      return token != null && token.isNotEmpty;
+    } catch (e) {
+      // Si el keystore está corrupto (dispositivo nuevo o reinstalación),
+      // limpiamos todo el storage y tratamos como no autenticado
+      debugPrint('⚠️ Error leyendo token (keystore corrupto): $e');
+      await apiClient.storage.deleteAll();
+      return false;
+    }
   }
 
   /// Crea una nueva cuenta de usuario en el backend
@@ -89,7 +97,10 @@ class AuthRemoteDataSource {
       // Si la petición sale bien (200 o 201), no retornamos nada, solo terminamos.
     } on DioException catch (e) {
       // 1. IMPRIMIMOS EL ERROR CRUDO EN LA CONSOLA PARA QUE LO VEAS TÚ
-      print('🚨 ERROR 422 DE FASTAPI: ${e.response?.data}');
+      print('🚨 ERROR ${e.response?.statusCode} DE FASTAPI:');
+      print('📦 Body completo: ${e.response?.data}');
+      print(
+          '📤 Datos enviados: fullName=$fullName, email=$email, phone=$phone, role=$role');
 
       String errorMessage = 'Error al crear la cuenta';
 
@@ -226,15 +237,28 @@ class AuthRemoteDataSource {
   }
 
   /// Verifica el código de 6 dígitos enviado al correo
+  /// Ahora también guarda los JWT tokens que el backend devuelve tras la verificación
   Future<void> verifyEmailCode(String email, String code) async {
     try {
-      await apiClient.dio.post(
+      final response = await apiClient.dio.post(
         '/auth/verify-code',
         data: {
           'email': email,
           'code': code,
         },
       );
+
+      // El backend ahora devuelve tokens JWT tras verificar exitosamente
+      final token = response.data['access_token'];
+      final refreshToken = response.data['refresh_token'];
+
+      if (token != null) {
+        await apiClient.storage.write(key: 'jwt_token', value: token);
+      }
+      if (refreshToken != null) {
+        await apiClient.storage
+            .write(key: 'refresh_token', value: refreshToken);
+      }
     } on DioException catch (e) {
       String errorMessage = 'Error al verificar el código';
       if (e.response != null && e.response?.data != null) {

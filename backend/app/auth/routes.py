@@ -61,7 +61,16 @@ def verify_email_code(data: schemas.VerifyCodeRequest, db: Session = Depends(get
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
         
     if user.is_email_verified:
-        return {"status": "success", "message": "El correo ya estaba verificado"}
+        # Aún así generamos tokens para que pueda entrar
+        token = create_access_token({"sub": str(user.id)})
+        refresh_token = create_refresh_token({"sub": str(user.id)})
+        return {
+            "status": "success",
+            "message": "El correo ya estaba verificado",
+            "access_token": token,
+            "refresh_token": refresh_token,
+            "user": schemas.UserResponse.model_validate(user).model_dump()
+        }
         
     if user.verification_code != data.code:
         raise HTTPException(status_code=400, detail="Código de verificación incorrecto")
@@ -71,7 +80,17 @@ def verify_email_code(data: schemas.VerifyCodeRequest, db: Session = Depends(get
     user.verification_code = None
     db.commit()
     
-    return {"status": "success", "message": "Correo verificado exitosamente"}
+    # Generamos tokens JWT para que el usuario quede autenticado inmediatamente
+    token = create_access_token({"sub": str(user.id)})
+    refresh_token = create_refresh_token({"sub": str(user.id)})
+    
+    return {
+        "status": "success",
+        "message": "Correo verificado exitosamente",
+        "access_token": token,
+        "refresh_token": refresh_token,
+        "user": schemas.UserResponse.model_validate(user).model_dump()
+    }
 
 @router.post("/resend-code")
 @limiter.limit("3/minute")

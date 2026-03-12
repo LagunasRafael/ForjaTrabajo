@@ -10,7 +10,7 @@ import 'package:forja_trabajo/features/auth/presentation/screens/role_selection_
 
 import 'package:forja_trabajo/features/services/presentation/screens/layout/client_main_layout.dart';
 import 'package:forja_trabajo/features/services/presentation/screens/layout/worker_main_layout.dart';
-import 'package:forja_trabajo/features/services/presentation/screens/layout/admin_main_layout.dart';
+// admin_main_layout.dart fue eliminado — los admins solo usan el panel web
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -87,12 +87,13 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       final role = authState.user!.role.toLowerCase();
       Widget nextScreen;
 
-      if (role.contains('admin')) {
-        nextScreen = AdminMainLayout();
-      } else if (role.contains('worker') || role.contains('trabajador')) {
+      if (role.contains('worker') || role.contains('trabajador')) {
         nextScreen = const WorkerMainLayout();
-      } else {
+      } else if (role.contains('client') || role.contains('cliente')) {
         nextScreen = const ClientMainLayout();
+      } else {
+        // Admins y otros roles van al flujo normal (panel web)
+        nextScreen = const RoleSelectionScreen();
       }
 
       Navigator.of(context).pushReplacement(
