@@ -49,10 +49,13 @@ export const NotificationPanel = () => {
     try {
       const [usersRes, servicesRes] = await Promise.all([
         api.get('/auth/users'),
-        api.get('/services/postings'),
+        api.get('/services?include_inactive=true'),
       ]);
 
-      const userItems: ActivityItem[] = (usersRes.data || [])
+      const usersData = Array.isArray(usersRes.data) ? usersRes.data : [];
+      const servicesData = Array.isArray(servicesRes.data) ? servicesRes.data : [];
+
+      const userItems: ActivityItem[] = usersData
         .filter((u: any) => u.created_at)
         .map((u: any) => ({
           id: `user-${u.id}`,
@@ -63,7 +66,7 @@ export const NotificationPanel = () => {
           rawDate: new Date(u.created_at),
         }));
 
-      const serviceItems: ActivityItem[] = (servicesRes.data || [])
+      const serviceItems: ActivityItem[] = servicesData
         .filter((s: any) => s.created_at)
         .map((s: any) => ({
           id: `service-${s.id}`,
