@@ -1,6 +1,7 @@
 from pydantic import BaseModel, EmailStr, Field, field_validator, ConfigDict
 from app.core.roles import Role
 from typing import Optional
+from datetime import datetime
 
 # 1. Esquema Base: Solo datos que COMPARTEN todos (Registro y Respuesta)
 class UserBase(BaseModel):
@@ -40,6 +41,7 @@ class UserResponse(UserBase):
     is_active: bool
     is_email_verified: bool
     verification_code: Optional[str] = None
+    created_at: Optional[datetime] = None
 
 # Nuevos esquemas para la verificación
 class VerifyCodeRequest(BaseModel):
