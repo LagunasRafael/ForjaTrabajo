@@ -1,5 +1,5 @@
-import '../../domain/repositories/service_repository.dart';
-import '../../domain/entities/category_entity.dart';
+import '../../repositories/service_repository.dart';
+import '../../entities/category_entity.dart';
 
 class GetCategoriesUseCase {
   final ServiceRepository repository;

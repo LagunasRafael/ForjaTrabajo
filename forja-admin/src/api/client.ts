@@ -2,9 +2,9 @@ import axios from 'axios';
 import { toast } from 'sonner';
 
 // 1. Configuración Base
-// Usamos una variable de entorno para que sea fácil cambiar entre Local y Producción
+// Se usa una variable de entorno para que sea fácil cambiar entre Local y Producción
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000', // Fallback a localhost si no hay .env
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000',
   headers: {
     'Content-Type': 'application/json',
   },

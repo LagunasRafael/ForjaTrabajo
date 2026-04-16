@@ -21,7 +21,7 @@ export const LoginPage = () => {
         password: password
       });
 
-      // 2. Guardar Token, Refresh Token y USUARIO (¡ESTA ES LA PARTE QUE FALTABA!)
+      // 2. Guardar Token, Refresh Token y USUARIO
       localStorage.setItem('token', data.access_token);
       if (data.refresh_token) {
         localStorage.setItem('refresh_token', data.refresh_token);

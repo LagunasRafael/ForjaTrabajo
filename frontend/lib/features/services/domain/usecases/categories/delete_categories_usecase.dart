@@ -1,4 +1,4 @@
-import '../../domain/repositories/service_repository.dart';
+import '../../repositories/service_repository.dart';
 
 class DeleteCategoryUseCase {
   final ServiceRepository repository;

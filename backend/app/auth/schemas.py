@@ -1,6 +1,7 @@
 from pydantic import BaseModel, EmailStr, Field, field_validator, ConfigDict
 from app.core.roles import Role
 from typing import Optional
+from datetime import datetime
 
 # 1. Esquema Base: Solo datos que COMPARTEN todos (Registro y Respuesta)
 class UserBase(BaseModel):
@@ -40,6 +41,7 @@ class UserResponse(UserBase):
     is_active: bool
     is_email_verified: bool
     verification_code: Optional[str] = None
+    created_at: Optional[datetime] = None
 
 # Nuevos esquemas para la verificación
 class VerifyCodeRequest(BaseModel):
@@ -77,3 +79,34 @@ class LocationUpdate(BaseModel):
 
 class FcmTokenUpdate(BaseModel):
     fcm_token: str
+
+# Schema para que un Admin cree usuarios desde el panel web
+class AdminCreateUser(BaseModel):
+    full_name: str = Field(..., min_length=2, max_length=100)
+    email: EmailStr
+    phone: Optional[str] = Field(None, max_length=20)
+    password: str = Field(..., min_length=8)
+    role: Role = Role.CLIENT
+
+    @field_validator("password")
+    @classmethod
+    def password_length(cls, v: str):
+        if len(v.encode("utf-8")) > 72:
+            raise ValueError("La contraseña no puede exceder los 72 bytes")
+        return v
+
+# Schemas para Recuperación de Contraseña
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+class ResetPasswordRequest(BaseModel):
+    email: EmailStr
+    code: str = Field(..., min_length=6, max_length=6)
+    new_password: str = Field(..., min_length=8)
+
+    @field_validator("new_password")
+    @classmethod
+    def password_length(cls, v: str):
+        if len(v.encode("utf-8")) > 72:
+            raise ValueError("La contraseña no puede exceder los 72 bytes")
+        return v
