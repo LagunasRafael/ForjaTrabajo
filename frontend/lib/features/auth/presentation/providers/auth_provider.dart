@@ -1,19 +1,23 @@
+import 'dart:io';
+import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../data/datasources/auth_remote_data_source.dart';
-import '../../../../core/network/api_client.dart';
-import '../../domain/models/user_model.dart';
-import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
-import 'package:dio/dio.dart';
-import 'dart:io';
-import 'package:dio/dio.dart';
-import 'dart:io';
-import 'package:image_picker/image_picker.dart';
+
+// 🛠️ Core e Infraestructura
+import '../../../../core/network/api_client.dart';
 import '../../../../core/network/notification_service.dart';
+import '../../data/datasources/auth_remote_data_source.dart';
+import '../../domain/models/user_model.dart';
+
+// 🚀 Providers de Servicios (Para limpieza de caché en Logout)
+import 'package:forja_trabajo/features/services/presentation/providers/job_management_provider.dart';
+import 'package:forja_trabajo/features/services/presentation/providers/nav_providers.dart';
+import 'package:forja_trabajo/features/services/presentation/providers/service_list_provider.dart';
 
 // 1. INSTANCIAS GLOBALES
 final apiClientProvider = Provider((ref) => ApiClient());
@@ -40,7 +44,7 @@ class AuthState {
   }
 }
 
-// 3. EL NUEVO CONTROLADOR
+// 3. EL CONTROLADOR (NOTIFIER)
 class AuthNotifier extends Notifier<AuthState> {
   @override
   AuthState build() {
@@ -53,30 +57,11 @@ class AuthNotifier extends Notifier<AuthState> {
     final hasToken = await dataSource.hasValidToken();
 
     if (hasToken) {
-      await fetchProfile(); // Descarga el perfil al abrir la app
+      await fetchProfile();
       state = state.copyWith(status: 'authenticated');
       _syncFcmToken();
     } else {
       state = state.copyWith(status: 'unauthenticated');
-    }
-  }
-
-  Future<void> _syncFcmToken() async {
-    final notificationService = NotificationService();
-    // 1. Inicializamos las notificaciones locales/permisos
-    await notificationService.initNotifications();
-    // 2. Obtenemos el token de Firebase
-    final String? fcmToken = await notificationService.getToken();
-
-    // 3. Lo mandamos al servidor
-    if (fcmToken != null) {
-      final dataSource = ref.read(authDataSourceProvider);
-      await dataSource.updateFcmToken(fcmToken);
-
-      // 4. Si el token cambia en el futuro (reinstalación), lo reenviamos
-      notificationService.listenToTokenChanges((newToken) {
-        dataSource.updateFcmToken(newToken);
-      });
     }
   }
 
@@ -90,8 +75,22 @@ class AuthNotifier extends Notifier<AuthState> {
       await prefs.setString('token', token);
 
       state = state.copyWith(status: 'authenticated');
-      await fetchProfile(); // 👇 Descarga el perfil al iniciar sesión (AQUÍ OBTIENES EL NOMBRE REAL)
-      _syncFcmToken(); // Sincroniza token FCM después de login exitoso
+      await fetchProfile();
+      _syncFcmToken();
+    } catch (e) {
+      state = state.copyWith(
+          status: 'error',
+          errorMessage: e.toString().replaceAll('Exception: ', ''));
+    }
+  }
+
+  // 🚀 MÉTODO AÑADIDO: Para reenviar el código de verificación
+  Future<void> resendEmail(String email) async {
+    state = state.copyWith(status: 'loading', errorMessage: '');
+    try {
+      final dataSource = ref.read(authDataSourceProvider);
+      await dataSource.resendVerificationCode(email);
+      state = state.copyWith(status: 'email_resent', errorMessage: '');
     } catch (e) {
       state = state.copyWith(
           status: 'error',
@@ -101,23 +100,20 @@ class AuthNotifier extends Notifier<AuthState> {
 
   Future<void> logoutUser() async {
     try {
-      // 1. Obtenemos las preferencias
+      ref.invalidate(workerJobsProvider);
+      ref.invalidate(myRequestsProvider);
+      ref.invalidate(serviceListProvider);
+
       final prefs = await SharedPreferences.getInstance();
-
-      // 2. Intentamos avisar al servidor (opcional, por eso va en el try)
       final dataSource = ref.read(authDataSourceProvider);
-      await dataSource.logout();
 
-      // 3. Borramos el token pase lo que pase con el servidor
+      await dataSource.logout();
       await prefs.remove('token');
-      // await prefs.clear(); // 👈 Usa esto si quieres borrar TODA la config local
     } catch (e) {
-      // Si el servidor falla, igual queremos que el usuario pueda salir de la app
-      debugPrint("Error al avisar al servidor del logout: $e");
+      debugPrint("Error en logout: $e");
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('token');
     } finally {
-      // 4. Reset del estado de Riverpod (Siempre ocurre al final)
       state =
           AuthState(status: 'unauthenticated', user: null, errorMessage: '');
     }
@@ -154,135 +150,74 @@ class AuthNotifier extends Notifier<AuthState> {
       final dataSource = ref.read(authDataSourceProvider);
       await dataSource.verifyEmailCode(email, code);
 
-      // Actualizamos el usuario localmente para que sepa que ya está verificado
-      if (state.user != null) {
-        final updatedUser = state.user!.copyWith(isEmailVerified: true);
-        state = state.copyWith(status: 'email_verified', user: updatedUser);
-      } else {
-        state = state.copyWith(status: 'email_verified');
-      }
+      // Ahora tenemos tokens guardados → podemos cargar el perfil completo
+      await fetchProfile();
+      _syncFcmToken();
+
+      state = state.copyWith(status: 'email_verified');
     } catch (e) {
-      state = state.copyWith(
-          status: 'error',
-          errorMessage: e.toString().replaceAll('Exception: ', ''));
+      state = state.copyWith(status: 'error', errorMessage: e.toString());
     }
   }
 
-  Future<void> resendEmail(String email) async {
-    state = state.copyWith(status: 'loading', errorMessage: '');
-    try {
-      final dataSource = ref.read(authDataSourceProvider);
-      await dataSource.resendVerificationCode(email);
-      state = state.copyWith(status: 'email_resent', errorMessage: '');
-    } catch (e) {
-      state = state.copyWith(
-          status: 'error',
-          errorMessage: e.toString().replaceAll('Exception: ', ''));
-    }
-  }
-
-  // 👇 FUNCIÓN ARREGLADA: Descarga el perfil real del usuario
   Future<void> fetchProfile() async {
     try {
       final dataSource = ref.read(authDataSourceProvider);
       final userData = await dataSource.getUserProfile();
-
-      // Actualizamos el estado con el usuario real de FastAPI
       state = state.copyWith(user: userData);
 
-      // Si no tiene ciudad guardada, intentamos buscarla
       if (userData.city == null || userData.city!.isEmpty) {
         autoUpdateLocation();
       }
     } catch (e) {
-      debugPrint('Error descargando perfil: $e');
+      debugPrint('Error fetchProfile: $e');
     }
   }
 
-  // 👇 FUNCIÓN ARREGLADA: Ya no crashea si el GPS devuelve nulo
   Future<void> autoUpdateLocation() async {
     if (state.user == null) return;
-
     try {
-      // 1. Verificamos si el GPS está prendido
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        debugPrint('🚨 GPS apagado');
-        return;
-      }
-
-      // 2. Verificamos permisos
+      if (!serviceEnabled) return;
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) return;
       }
-
-      if (permission == LocationPermission.deniedForever) {
-        await Geolocator.openAppSettings();
-        return;
-      }
-
-      // 3. Obtenemos la POSICIÓN (Aquí es donde se define 'position')
       Position position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
       ).timeout(const Duration(seconds: 10));
 
-      // 4. Obtenemos la CIUDAD (Geocoding)
       List<Placemark> placemarks =
           await placemarkFromCoordinates(position.latitude, position.longitude);
-
       String cityName = "Desconocido";
       if (placemarks.isNotEmpty) {
         Placemark place = placemarks.first;
-        final locality = place.locality ?? '';
-        final area = place.administrativeArea ?? '';
-        cityName = locality.isNotEmpty ? "$locality, $area" : area;
+        cityName = "${place.locality ?? ''}, ${place.administrativeArea ?? ''}";
       }
-
-      debugPrint('📍 Ubicación detectada: $cityName');
-
-      // 5. LLAMADA AL BACKEND (Usando 'position' que ya definimos arriba)
       final dataSource = ref.read(authDataSourceProvider);
       await dataSource.updateLocation(
-        userId: state.user!.id,
-        lat: position.latitude, // 👈 Ahora sí reconoce 'position'
-        lng: position.longitude,
-        city: cityName,
-      );
-
-      // 6. ACTUALIZACIÓN DEL ESTADO LOCAL
+          userId: state.user!.id,
+          lat: position.latitude,
+          lng: position.longitude,
+          city: cityName);
       final updatedUser = state.user!.copyWith(
-        latitude: position.latitude,
-        longitude: position.longitude,
-        city: cityName,
-      );
-
+          latitude: position.latitude,
+          longitude: position.longitude,
+          city: cityName);
       state = state.copyWith(user: updatedUser);
-      debugPrint('✅ Ubicación sincronizada con FastAPI');
     } catch (e) {
-      debugPrint('🚨 Error en autoUpdateLocation: $e');
+      debugPrint('🚨 Error GPS: $e');
     }
   }
 
   Future<void> updateProfilePicture(XFile imageFile) async {
-    // Si no hay usuario logueado, no hacemos nada
     if (state.user == null) return;
-
     final dataSource = ref.read(authDataSourceProvider);
-
     try {
-      // 1. Mostramos algún indicador de carga (opcional, por ahora lo dejamos simple)
-
-      // 2. Llamamos a tu datasource para subir la foto a S3
       final newPhotoUrl =
           await dataSource.uploadProfilePicture(state.user!.id, imageFile);
-
-      // 3. Actualizamos el estado actual del usuario con la nueva foto
-      // (Asegúrate de que tu modelo User tenga la propiedad copyWith)
       final updatedUser = state.user!.copyWith(profilePictureUrl: newPhotoUrl);
-
-      // 4. Notificamos a toda la app (Riverpod) que hay una nueva foto
       state = state.copyWith(user: updatedUser);
     } catch (e) {
       debugPrint("Error subiendo foto: $e");
@@ -290,30 +225,71 @@ class AuthNotifier extends Notifier<AuthState> {
   }
 
   Future<void> updateUserInfo(String newName, String newPhone) async {
-    // Si no hay usuario, no hacemos nada
     if (state.user == null) return;
-
     final dataSource = ref.read(authDataSourceProvider);
-
     try {
-      // 1. Disparamos el "dardo" hacia FastAPI usando la función que me acabas de mostrar
       await dataSource.updateProfileData(state.user!.id, newName, newPhone);
-
-      // 2. Actualizamos la memoria de la app para que la pantalla cambie al instante
-      final updatedUser = state.user!.copyWith(
-        fullName: newName,
-        phone: newPhone,
-      );
-
-      // 3. Notificamos a toda la app
+      final updatedUser =
+          state.user!.copyWith(fullName: newName, phone: newPhone);
       state = state.copyWith(user: updatedUser);
     } catch (e) {
-      debugPrint("🚨 Error al guardar perfil en Provider: $e");
+      debugPrint("🚨 Error updateUserInfo: $e");
+    }
+  }
+
+  Future<void> forgotPassword(String email) async {
+    state = state.copyWith(status: 'loading', errorMessage: '');
+    try {
+      final dataSource = ref.read(authDataSourceProvider);
+      await dataSource.forgotPassword(email);
+      state = state.copyWith(status: 'reset_code_sent');
+    } catch (e) {
+      state = state.copyWith(
+          status: 'error',
+          errorMessage: e.toString().replaceAll('Exception: ', ''));
+    }
+  }
+
+  Future<void> verifyResetCode(String email, String code) async {
+    state = state.copyWith(status: 'loading', errorMessage: '');
+    try {
+      final dataSource = ref.read(authDataSourceProvider);
+      await dataSource.verifyResetCode(email, code);
+      state = state.copyWith(status: 'reset_code_verified');
+    } catch (e) {
+      state = state.copyWith(
+          status: 'error',
+          errorMessage: e.toString().replaceAll('Exception: ', ''));
+    }
+  }
+
+  Future<void> resetPassword(
+      String email, String code, String newPassword) async {
+    state = state.copyWith(status: 'loading', errorMessage: '');
+    try {
+      final dataSource = ref.read(authDataSourceProvider);
+      await dataSource.resetPassword(email, code, newPassword);
+      state = state.copyWith(status: 'password_reset_success');
+    } catch (e) {
+      state = state.copyWith(
+          status: 'error',
+          errorMessage: e.toString().replaceAll('Exception: ', ''));
+    }
+  }
+
+  Future<void> _syncFcmToken() async {
+    final notificationService = NotificationService();
+    await notificationService.initNotifications();
+    final String? fcmToken = await notificationService.getToken();
+    if (fcmToken != null) {
+      final dataSource = ref.read(authDataSourceProvider);
+      await dataSource.updateFcmToken(fcmToken);
+      notificationService.listenToTokenChanges((newToken) {
+        dataSource.updateFcmToken(newToken);
+      });
     }
   }
 }
 
-// 4. EL PROVIDER FINAL
-final authProvider = NotifierProvider<AuthNotifier, AuthState>(() {
-  return AuthNotifier();
-});
+final authProvider =
+    NotifierProvider<AuthNotifier, AuthState>(() => AuthNotifier());

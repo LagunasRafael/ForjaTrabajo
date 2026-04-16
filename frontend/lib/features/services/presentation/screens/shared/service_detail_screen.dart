@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja_trabajo/features/services/domain/entities/service_entity.dart';
 import 'package:forja_trabajo/features/auth/domain/models/user_model.dart';
-import 'package:forja_trabajo/features/services/presentation/widgets/service_detail_body.dart';
+import 'package:forja_trabajo/features/services/presentation/screens/shared/detail/service_detail_body.dart';
 import 'package:forja_trabajo/features/services/presentation/screens/client/create_services_screen.dart';
 import 'package:forja_trabajo/features/services/presentation/providers/service_offers_provider.dart';
 import 'package:forja_trabajo/features/services/presentation/providers/service_list_provider.dart';
@@ -14,15 +14,15 @@ class ServiceDetailScreen extends ConsumerStatefulWidget {
   final User currentUser;
   final String categoryName;
 
-  const ServiceDetailScreen(
-      {super.key,
-      required this.service,
-      required this.currentUser,
-      required this.categoryName});
+  const ServiceDetailScreen({
+    super.key,
+    required this.service,
+    required this.currentUser,
+    required this.categoryName,
+  });
 
   @override
-  ConsumerState<ServiceDetailScreen> createState() =>
-      _ServiceDetailScreenState();
+  ConsumerState<ServiceDetailScreen> createState() => _ServiceDetailScreenState();
 }
 
 class _ServiceDetailScreenState extends ConsumerState<ServiceDetailScreen> {
@@ -34,77 +34,66 @@ class _ServiceDetailScreenState extends ConsumerState<ServiceDetailScreen> {
     _currentService = widget.service;
   }
 
-  bool get _isOwner =>
-      widget.currentUser.id.toString() == _currentService.clientId.toString();
-  bool get _isWorker =>
-      widget.currentUser.role.toString().toLowerCase().contains('worker') ||
-      widget.currentUser.role.toString().toLowerCase().contains('trabajador');
+  // 🧠 Lógica de permisos simplificada
+  bool get _isOwner => widget.currentUser.id == _currentService.clientId;
+  bool get _isWorker => widget.currentUser.role.toLowerCase().contains('worker');
 
   Future<void> _navigateToEdit() async {
     final updated = await Navigator.push(
-        context,
-        MaterialPageRoute(
-            builder: (_) =>
-                CreateServiceScreen(serviceToEdit: _currentService)));
-    if (updated != null && updated is ServiceEntity)
+      context,
+      MaterialPageRoute(builder: (_) => CreateServiceScreen(serviceToEdit: _currentService)),
+    );
+    if (updated != null && updated is ServiceEntity) {
       setState(() => _currentService = updated);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    // 🔍 Observamos los datos frescos del servidor
     final serviceAsync = ref.watch(serviceDetailProvider(widget.service.id));
     final offersAsync = ref.watch(offersListProvider(_currentService.id));
     final categoriesAsync = ref.watch(categoryListProvider);
+    final theme = Theme.of(context);
 
     return serviceAsync.when(
-      loading: () =>
-          const Scaffold(body: Center(child: CircularProgressIndicator())),
+      loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
       error: (err, _) => Scaffold(body: Center(child: Text("Error: $err"))),
       data: (freshService) {
         _currentService = freshService;
-        String displayCat = widget.categoryName;
-        categoriesAsync.whenData((cats) {
-          final found = cats.where(
-              (c) => c.id.toString() == freshService.categoryId.toString());
-          if (found.isNotEmpty) displayCat = found.first.name;
-        });
 
+        // 🏷️ Obtenemos el nombre de la categoría de forma reactiva
+        final displayCat = categoriesAsync.maybeWhen(
+          data: (cats) {
+            final foundCat = cats.where((c) => c.id == freshService.categoryId).firstOrNull;
+            return foundCat?.name ?? widget.categoryName;
+          },
+          orElse: () => widget.categoryName,
+        );
+
+        // ✅ Verificamos si el trabajador ya se postuló
         final hasApplied = offersAsync.maybeWhen(
-          data: (offers) => offers.any((o) =>
-              o.workerId.toString().trim() ==
-              widget.currentUser.id.toString().trim()),
+          data: (offers) => offers.any((o) => o.workerId == widget.currentUser.id),
           orElse: () => false,
         );
 
         return Scaffold(
-          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
           appBar: AppBar(
-            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+            backgroundColor: Colors.transparent, // 🎨 Limpio: dejamos que el fondo mande
             elevation: 0,
             leading: IconButton(
-              icon: Icon(Icons.arrow_back_ios_new_rounded,
-                  color: Theme.of(context).textTheme.bodyLarge?.color),
+              icon: const Icon(Icons.arrow_back_ios_new_rounded),
               onPressed: () => Navigator.pop(context),
             ),
-            title: Text("Detalles del Servicio",
-                style: TextStyle(
-                    color: Theme.of(context).textTheme.titleLarge?.color,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18)),
+            title: const Text("Detalles del Servicio", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
             centerTitle: true,
           ),
           body: ServiceDetailBody(
             service: _currentService,
             categoryName: displayCat,
-            authorName: _isOwner
-                ? "${widget.currentUser.fullName} (Tú)"
-                : (_currentService.authorName ?? "Cliente"),
+            authorName: _isOwner ? "${widget.currentUser.fullName} (Tú)" : (_currentService.authorName ?? "Cliente"),
             isOwner: _isOwner,
-
-            // 👇 AQUÍ ENVIAMOS LA IMAGEN. Si es el dueño usa su propia foto, si no, usa la que viene en el servicio
-            authorImageUrl: _isOwner
-                ? widget.currentUser.profilePictureUrl
-                : _currentService.profilePictureUrl,
+            authorImageUrl: _isOwner ? widget.currentUser.profilePictureUrl : _currentService.profilePictureUrl,
           ),
           bottomNavigationBar: _buildBottomAction(hasApplied),
         );
@@ -112,32 +101,32 @@ class _ServiceDetailScreenState extends ConsumerState<ServiceDetailScreen> {
     );
   }
 
+  // 🛠️ Generador de botones de acción
   Widget? _buildBottomAction(bool hasApplied) {
-    if (_isOwner || widget.currentUser.role.contains('admin')) {
+    if (_isOwner || widget.currentUser.role == 'admin') {
       return _BottomBarContainer(
         child: ElevatedButton(
-            onPressed: _navigateToEdit,
-            style: _btnStyle(const Color(0xFF2563EB)),
-            child: const Text("Editar Servicio",
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold))),
+          onPressed: _navigateToEdit,
+          style: _btnStyle(const Color(0xFF2563EB)),
+          child: const Text("Editar Servicio", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        ),
       );
-    } else if (_isWorker) {
+    } 
+    
+    if (_isWorker) {
       return _BottomBarContainer(
         child: hasApplied
             ? ElevatedButton.icon(
                 onPressed: null,
                 icon: const Icon(Icons.check_circle, color: Colors.white),
-                label: const Text("Ya te has postulado",
-                    style: TextStyle(
-                        color: Colors.white, fontWeight: FontWeight.bold)),
-                style: _btnStyle(Colors.grey))
+                label: const Text("Ya te has postulado", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                style: _btnStyle(Colors.grey),
+              )
             : ElevatedButton(
-                onPressed: () =>
-                    showWorkerApplyModal(context, ref, _currentService),
+                onPressed: () => showWorkerApplyModal(context, _currentService),
                 style: _btnStyle(const Color(0xFF6200EE)),
-                child: const Text("Postularme al Trabajo",
-                    style:
-                        TextStyle(fontSize: 16, fontWeight: FontWeight.bold))),
+                child: const Text("Postularme al Trabajo", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              ),
       );
     }
     return null;
@@ -148,22 +137,23 @@ class _ServiceDetailScreenState extends ConsumerState<ServiceDetailScreen> {
         foregroundColor: Colors.white,
         padding: const EdgeInsets.symmetric(vertical: 16),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        elevation: 0,
       );
 }
 
+// 📦 Contenedor optimizado para la barra inferior
 class _BottomBarContainer extends StatelessWidget {
   final Widget child;
   const _BottomBarContainer({required this.child});
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(20, 10, 20, 30), // 📏 Mejoramos los espacios
       decoration: BoxDecoration(
-        color: theme.scaffoldBackgroundColor,
-        boxShadow: const [
-          BoxShadow(
-              color: Colors.black12, blurRadius: 10, offset: Offset(0, -5))
+        color: Theme.of(context).scaffoldBackgroundColor,
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -5))
         ],
       ),
       child: child,

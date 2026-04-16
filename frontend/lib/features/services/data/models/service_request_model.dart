@@ -54,6 +54,7 @@ class ServiceRequestModel extends ServiceRequestEntity {
       'worker_id': workerId,
       'description': description,
       'status': status,
+      'proposed_price': proposedPrice,
     };
   }
 }

@@ -50,7 +50,7 @@ def send_verification_email(to_email: str, code: str):
         # 1. El remitente ("from") siempre DEBE ser "onboarding@resend.dev"
         # 2. El destinatario ("to") temporalmente DEBE ser el mismo correo con el que abriste tu cuenta en Resend.
         params = {
-            "from": "Forja Trabajo <onboarding@resend.dev>",
+            "from": "Forja Trabajo <hola@forjatrabajo.com.mx>",
             "to": [to_email],
             "subject": "Verifica tu cuenta - Forja Trabajo",
             "html": html_body,
@@ -62,3 +62,43 @@ def send_verification_email(to_email: str, code: str):
     except Exception as e:
         logger.error(f"❌ Error al enviar el correo a {to_email} con Resend", exc_info=True)
         # No lanzamos excepción para no bloquear la app de Flutter
+
+
+def send_password_reset_email(to_email: str, code: str):
+    """Envía un correo electrónico con el código para restablecer la contraseña."""
+    
+    resend_api_key = os.getenv("RESEND_API_KEY", "").replace('"', '').replace("'", '').strip()
+    
+    if not resend_api_key:
+        logger.warning(f"⚠️ [MOCK EMAIL] Reset para {to_email}. Código: {code}. (Falta RESEND_API_KEY)")
+        return
+        
+    try:
+        resend.api_key = resend_api_key
+
+        html_body = f"""
+        <html>
+            <body style="font-family: Arial, sans-serif; text-align: center; padding: 20px;">
+                <h2 style="color: #2e6c80;">Recuperar Contraseña</h2>
+                <p>Recibimos una solicitud para restablecer la contraseña de tu cuenta en <b>Forja Trabajo</b>.</p>
+                <p>Ingresa el siguiente código en la aplicación:</p>
+                <div style="font-size: 32px; font-weight: bold; background-color: #f4f4f4; padding: 15px; margin: 20px auto; width: fit-content; border-radius: 8px; letter-spacing: 5px;">
+                    {code}
+                </div>
+                <p style="color: #777;">Si no solicitaste este cambio, ignora este correo. Tu contraseña seguirá igual.</p>
+            </body>
+        </html>
+        """
+        
+        params = {
+            "from": "Forja Trabajo <hola@forjatrabajo.com.mx>",
+            "to": [to_email],
+            "subject": "Recuperar contraseña - Forja Trabajo",
+            "html": html_body,
+        }
+        
+        email_response = resend.Emails.send(params)
+        logger.info(f"✅ Correo de reset enviado vía Resend a {to_email}. ID: {email_response}")
+        
+    except Exception as e:
+        logger.error(f"❌ Error al enviar correo de reset a {to_email}", exc_info=True)

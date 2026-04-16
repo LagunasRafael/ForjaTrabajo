@@ -1,2 +1,11 @@
 @import "tailwindcss";
 
+/* Fix: El autocompletado del navegador pone fondo blanco en inputs del tema oscuro */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px #020617 inset !important; /* slate-950 */
+  -webkit-text-fill-color: #e2e8f0 !important; /* slate-200 */
+  caret-color: #e2e8f0 !important;
+  transition: background-color 5000s ease-in-out 0s;
+}

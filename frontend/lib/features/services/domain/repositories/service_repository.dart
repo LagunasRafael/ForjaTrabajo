@@ -10,11 +10,9 @@ abstract class ServiceRepository {
   Future<List<ServiceEntity>> getServicesByCategory(String categoryId);
   Future<ServiceEntity> getServiceById(String id);
   Future<List<ServiceEntity>> searchServices(String query);
-  
-  // ✅ Versión corregida con soporte para imágenes y edición
   Future<ServiceEntity> createService(ServiceEntity service, String token, {List<File>? images});
   Future<ServiceEntity> updateService(ServiceEntity service, String token);
-  
+  Future<bool> cancelService(String serviceId, String token);
   Future<List<ServiceEntity>> getMyServices();
   Future<bool> completeService(String serviceId);
 
@@ -28,6 +26,9 @@ abstract class ServiceRepository {
   Future<ServiceRequestEntity> createRequest(ServiceRequestEntity request, String token);
   Future<List<ServiceRequestEntity>> getOffers(String serviceId, String token);
   Future<void> acceptPostulation(String requestId, String token);
+  Future<List<ServiceEntity>> getMyApplications(String token);
+  Future<bool> updatePostulation(String requestId, String description, double proposedPrice, String token);
+  Future<bool> deletePostulation(String requestId, String token);
 
   // --- TRABAJOS (JOBS) ---
   Future<JobEntity> completeJob(String jobId, String token);

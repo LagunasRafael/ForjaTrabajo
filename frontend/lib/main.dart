@@ -7,10 +7,11 @@ import 'core/theme/theme_provider.dart';
 import 'features/auth/presentation/screens/role_selection_screen.dart';
 import 'features/auth/presentation/screens/login_screen.dart'; // 👈 Asegúrate de importar tu Login
 
+import 'features/auth/presentation/screens/splash_screen.dart'; // 👈 Importamos el SplashScreen
+
 // 👇 TUS LAYOUTS
 import 'features/services/presentation/screens/layout/client_main_layout.dart';
 import 'features/services/presentation/screens/layout/worker_main_layout.dart';
-import 'features/services/presentation/screens/layout/admin_main_layout.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -38,7 +39,7 @@ class ForjaTrabajoApp extends ConsumerWidget {
       themeMode: themeMode,
 
       // Pantalla inicial
-      home: const RoleSelectionScreen(),
+      home: const SplashScreen(),
 
       // 👇 RUTAS REGISTRADAS
       routes: {
@@ -47,7 +48,6 @@ class ForjaTrabajoApp extends ConsumerWidget {
         '/roles': (context) => const RoleSelectionScreen(),
         '/client_home': (context) => const ClientMainLayout(),
         '/worker_home': (context) => const WorkerMainLayout(),
-        '/admin_home': (context) => AdminMainLayout(), // ✅ ASÍ ESTÁ BIEN
       },
     );
   }

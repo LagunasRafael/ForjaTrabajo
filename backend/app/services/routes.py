@@ -130,13 +130,45 @@ def create_service_request(
 ):
     return service.create_service_request(db, request_data, worker_id=current_user.id)
 
+@router.put("/service-requests/{request_id}")
+def update_postulation(
+    request_id: str, 
+    payload: schemas.UpdatePostulationRequest, 
+    db: Session = Depends(get_db), 
+    current_user_id: str = Depends(get_current_user)
+):
+    db_request = db.query(models.ServiceRequest).filter(models.ServiceRequest.id == request_id).first()
+
+    if not db_request:
+        raise HTTPException(status_code=404, detail="Postulación no encontrada")
+
+    if str(db_request.worker_id) != str(current_user_id):
+        raise HTTPException(status_code=403, detail="No tienes permiso para editar esto")
+
+    db_request.description = payload.description
+    db_request.proposed_price = payload.proposed_price
+
+    db.commit()
+    db.refresh(db_request)
+    
+    return {"status": "success", "message": "Propuesta actualizada"}
+
+@router.get("/worker/my-applications")
+def get_my_applications(
+    db: Session = Depends(get_db),
+    current_user: auth_models.User = Depends(get_current_user) # Usamos get_current_user para evitar fallos de roles
+):
+    try:
+        return service.get_worker_applications(db, str(current_user.id))
+    except Exception as e:
+        # Esto imprimirá el error real en tu terminal de Python
+        print(f"🚨 ERROR 500 EN /worker/my-applications: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 # =================================================================
 # 4. GESTIÓN DE JOBS Y MATCHES (Acciones Específicas)
 # =================================================================
 
-
-# 👇 Fíjate que le quité el response_model=schemas.Job. Esto evita el crash.
 @router.post("/accept-postulation/{request_id}")
 def accept_worker_postulation(
     request_id: str,
@@ -153,10 +185,24 @@ def accept_worker_postulation(
 def complete_job_status(
     job_id: str,
     db: Session = Depends(get_db),
-    current_user: auth_models.User = Depends(check_role([Role.CLIENT, Role.ADMIN]))
+    current_user: auth_models.User = Depends(check_role([Role.CLIENT, Role.WORKER, Role.ADMIN]))
 ):
-    """El trabajador marca como terminado"""
-    return service.complete_job(db, job_id, current_user.id)
+    try:
+        updated_job = service.complete_job(db, job_id, current_user.id)
+        return updated_job
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        print(f"🚨 Error inesperado en el router: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.delete("/service-requests/{request_id}")
+def withdraw_postulation(
+    request_id: str,
+    db: Session = Depends(get_db),
+    current_user: auth_models.User = Depends(get_current_user)
+):
+    return service.withdraw_postulation(db, request_id, current_user.id)
 
 @router.put("/jobs/{job_id}/cancel", response_model=schemas.Job)
 def cancel_job_status(
@@ -171,8 +217,6 @@ def cancel_job_status(
 # =================================================================
 # 5. SERVICIOS - RUTAS DINÁMICAS POR ID (Prioridad Baja ⬇️)
 # =================================================================
-# ¡CUIDADO! Estas rutas capturan todo lo que venga después de /services/
-# Por eso deben ir AL FINAL del archivo.
 
 @router.get("/{service_id}/offers", response_model=List[schemas.ServiceRequest])
 def get_service_offers(

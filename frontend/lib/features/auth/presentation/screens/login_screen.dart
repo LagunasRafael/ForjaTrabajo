@@ -6,13 +6,12 @@ import 'package:forja_trabajo/features/services/presentation/providers/nav_provi
 
 import '../../../services/presentation/screens/layout/client_main_layout.dart';
 import '../../../services/presentation/screens/layout/worker_main_layout.dart';
-import '../../../services/presentation/screens/layout/admin_main_layout.dart';
 import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart';
 import 'package:forja_trabajo/core/theme/app_theme.dart';
 import 'register_screen.dart';
 import 'verification_screen.dart';
+import 'forgot_password_screen.dart';
 
-// Imports para limpieza de memoria
 import 'package:forja_trabajo/features/services/presentation/providers/service_list_provider.dart';
 import 'package:forja_trabajo/features/services/presentation/providers/category_provider.dart';
 
@@ -159,7 +158,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         validator: (value) =>
                             value!.isEmpty ? 'Ingresa tu contraseña' : null,
                       ),
-                      const SizedBox(height: 32),
+                      const SizedBox(height: 12),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: GestureDetector(
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) =>
+                                    const ForgotPasswordScreen()),
+                          ),
+                          child: Text(
+                            '¿Olvidaste tu contraseña?',
+                            style: GoogleFonts.inter(
+                              fontSize: 14,
+                              color: AppTheme.primaryColor,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
                       SizedBox(
                         width: double.infinity,
                         height: 56,

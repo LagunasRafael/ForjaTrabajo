@@ -9,7 +9,7 @@ from app.db.database import get_db
 from app.auth.security import create_access_token, create_refresh_token, get_current_user, SECRET_KEY, ALGORITHM
 from app.core.roles import Role # Para forzar el rol en el registro
 from app.utils.s3 import upload_file_to_s3, delete_old_file_from_s3
-from app.utils.email import generate_verification_code, send_verification_email
+from app.utils.email import generate_verification_code, send_verification_email, send_password_reset_email
 from jose import jwt, JWTError
 from fastapi import APIRouter, Request, BackgroundTasks
 
@@ -61,7 +61,16 @@ def verify_email_code(data: schemas.VerifyCodeRequest, db: Session = Depends(get
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
         
     if user.is_email_verified:
-        return {"status": "success", "message": "El correo ya estaba verificado"}
+        # Aún así generamos tokens para que pueda entrar
+        token = create_access_token({"sub": str(user.id)})
+        refresh_token = create_refresh_token({"sub": str(user.id)})
+        return {
+            "status": "success",
+            "message": "El correo ya estaba verificado",
+            "access_token": token,
+            "refresh_token": refresh_token,
+            "user": schemas.UserResponse.model_validate(user).model_dump()
+        }
         
     if user.verification_code != data.code:
         raise HTTPException(status_code=400, detail="Código de verificación incorrecto")
@@ -71,7 +80,17 @@ def verify_email_code(data: schemas.VerifyCodeRequest, db: Session = Depends(get
     user.verification_code = None
     db.commit()
     
-    return {"status": "success", "message": "Correo verificado exitosamente"}
+    # Generamos tokens JWT para que el usuario quede autenticado inmediatamente
+    token = create_access_token({"sub": str(user.id)})
+    refresh_token = create_refresh_token({"sub": str(user.id)})
+    
+    return {
+        "status": "success",
+        "message": "Correo verificado exitosamente",
+        "access_token": token,
+        "refresh_token": refresh_token,
+        "user": schemas.UserResponse.model_validate(user).model_dump()
+    }
 
 @router.post("/resend-code")
 @limiter.limit("3/minute")
@@ -93,6 +112,60 @@ def resend_verification_code(request: Request, data: schemas.ResendCodeRequest, 
     background_tasks.add_task(send_verification_email, user.email, new_code)
     
     return {"status": "success", "message": "Nuevo código enviado"}
+
+# =================================================================
+# 🔑 RECUPERACIÓN DE CONTRASEÑA
+# =================================================================
+@router.post("/forgot-password")
+@limiter.limit("3/minute")
+def forgot_password(request: Request, data: schemas.ForgotPasswordRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+    user = service.get_user_by_email(db, email=data.email)
+    
+    if not user:
+        # Por seguridad, NO revelamos si el correo existe o no
+        return {"status": "success", "message": "Si el correo está registrado, recibirás un código de recuperación."}
+    
+    # Generamos un código de 6 dígitos y lo guardamos en verification_code
+    code = generate_verification_code()
+    user.verification_code = code
+    db.commit()
+    
+    # Enviamos el correo en background
+    background_tasks.add_task(send_password_reset_email, user.email, code)
+    
+    return {"status": "success", "message": "Si el correo está registrado, recibirás un código de recuperación."}
+
+@router.post("/verify-reset-code")
+@limiter.limit("5/minute")
+def verify_reset_code(request: Request, data: schemas.VerifyCodeRequest, db: Session = Depends(get_db)):
+    user = service.get_user_by_email(db, email=data.email)
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    
+    if user.verification_code != data.code:
+        raise HTTPException(status_code=400, detail="Código incorrecto")
+    
+    return {"status": "success", "message": "Código verificado correctamente"}
+
+@router.post("/reset-password")
+@limiter.limit("5/minute")
+def reset_password(request: Request, data: schemas.ResetPasswordRequest, db: Session = Depends(get_db)):
+    user = service.get_user_by_email(db, email=data.email)
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    
+    if user.verification_code != data.code:
+        raise HTTPException(status_code=400, detail="Código de recuperación incorrecto")
+    
+    # Hashear la nueva contraseña y limpiar el código
+    from app.auth.security import hash_password
+    user.hashed_password = hash_password(data.new_password)
+    user.verification_code = None
+    db.commit()
+    
+    return {"status": "success", "message": "Contraseña actualizada exitosamente"}
 
 @router.post("/login", response_model=schemas.Token)
 @limiter.limit("5/minute")
@@ -270,3 +343,59 @@ def update_fcm_token(
     current_user.fcm_token = data.fcm_token
     db.commit()
     return {"status": "success", "message": "FCM token actualizado"}
+
+# ============================================================
+# 🛡️ ENDPOINT PROTEGIDO: Solo un admin puede crear usuarios
+# ============================================================
+@router.post("/admin/create-user", response_model=schemas.UserResponse, status_code=status.HTTP_201_CREATED)
+def admin_create_user(
+    user_data: schemas.AdminCreateUser,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    # 1. Verificar que el que llama sea admin
+    if current_user.role.value != "admin" and current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Solo los administradores pueden crear usuarios desde el panel."
+        )
+
+    # 2. Verificar que el email no exista
+    existing = service.get_user_by_email(db, email=user_data.email)
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"El correo '{user_data.email}' ya está registrado."
+        )
+
+    # 3. Verificar que el teléfono no exista (si se proporcionó)
+    if user_data.phone:
+        existing_phone = service.get_user_by_phone(db, phone=user_data.phone)
+        if existing_phone:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El número de teléfono ya está en uso."
+            )
+
+    # 4. Hashear la contraseña de forma segura
+    from app.auth.security import hash_password
+    hashed_pw = hash_password(user_data.password)
+
+    # 5. Crear el usuario (verificado automáticamente — no necesita código de email)
+    import uuid
+    new_user = models.User(
+        id=str(uuid.uuid4()),
+        full_name=user_data.full_name,
+        email=user_data.email,
+        phone=user_data.phone,
+        hashed_password=hashed_pw,
+        role=user_data.role,
+        is_email_verified=True,
+        is_active=True,
+    )
+
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+
+    return new_user

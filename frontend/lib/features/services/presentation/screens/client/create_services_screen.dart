@@ -8,10 +8,12 @@ import '../../../domain/entities/service_entity.dart';
 import '../../providers/category_provider.dart';
 import '../../providers/service_list_provider.dart';
 import '../../../../auth/presentation/providers/auth_provider.dart'; 
+import '../../providers/create_service_form_provider.dart'; // 👈 El cerebro importado
 
-import 'create_service_steps/step1_details.dart';
-import 'create_service_steps/step2_location.dart';
-import 'create_service_steps/step3_summary.dart';
+import 'create_service_steps/step1_details.dart'; // 👈 Tu widget separado
+import 'create_service_steps/step2_location.dart'; // 👈 Tu widget separado
+import 'create_service_steps/step3_summary.dart'; // 👈 Tu widget separado
+import 'package:forja_trabajo/features/services/presentation/widgets/createservices/create_services_header.dart';
 
 class CreateServiceScreen extends ConsumerStatefulWidget {
   final ServiceEntity? serviceToEdit;
@@ -23,13 +25,9 @@ class CreateServiceScreen extends ConsumerStatefulWidget {
 
 class _CreateServiceScreenState extends ConsumerState<CreateServiceScreen> {
   final PageController _pageController = PageController();
-  int _currentStep = 0;
+  final _formKey = GlobalKey<FormState>();
 
   late TextEditingController _titleCtrl, _descCtrl, _addressCtrl, _priceCtrl;
-  String? _selectedCategoryId;
-  double? _latitude, _longitude;
-  List<File> _evidenceImages = [];
-
   bool get _isEditing => widget.serviceToEdit != null;
 
   @override
@@ -40,9 +38,12 @@ class _CreateServiceScreenState extends ConsumerState<CreateServiceScreen> {
     _descCtrl = TextEditingController(text: s?.description ?? '');
     _addressCtrl = TextEditingController(text: s?.exactAddress ?? '');
     _priceCtrl = TextEditingController(text: s?.basePrice != null ? s!.basePrice.toStringAsFixed(0) : '');
-    _selectedCategoryId = s?.categoryId;
-    _latitude = s?.latitude;
-    _longitude = s?.longitude;
+
+    Future.microtask(() {
+      ref.read(createServiceFormProvider.notifier).loadInitialData(
+        categoryId: s?.categoryId, lat: s?.latitude, lng: s?.longitude,
+      );
+    });
   }
 
   @override
@@ -51,158 +52,141 @@ class _CreateServiceScreenState extends ConsumerState<CreateServiceScreen> {
     super.dispose();
   }
 
-  // --- LÓGICA DE PASOS Y VALIDACIONES ---
+  Future<void> _pickImage() async {
+    final image = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 70);
+    if (image != null) ref.read(createServiceFormProvider.notifier).addImage(File(image.path));
+  }
+
+  void _showError(String msg) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.red));
 
   void _nextStep() {
     FocusScope.of(context).unfocus();
-    if (_currentStep == 0 && (_titleCtrl.text.isEmpty || _descCtrl.text.isEmpty || _selectedCategoryId == null)) {
-      _showError('Llena los datos y selecciona una categoría'); return;
+    if (!_formKey.currentState!.validate()) return;
+    
+    final formState = ref.read(createServiceFormProvider);
+
+    if (formState.step == 0 && formState.categoryId == null) {
+      _showError('Selecciona una categoría'); return;
     } 
-    if (_currentStep == 1 && (_addressCtrl.text.isEmpty || _priceCtrl.text.isEmpty || _latitude == null)) {
-      _showError('Por favor captura tu ubicación en el mapa'); return;
+    if (formState.step == 1 && formState.latitude == null) {
+      _showError('Captura tu ubicación en el mapa'); return;
     }
-    if (_currentStep < 2) {
+    
+    if (formState.step < 2) {
+      final next = formState.step + 1;
       _pageController.nextPage(duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
-      setState(() => _currentStep++);
+      ref.read(createServiceFormProvider.notifier).setStep(next);
     }
   }
 
-  void _showError(String msg) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-
-  // --- MANEJO DE IMÁGENES ---
-
-  Future<void> _pickImage() async {
-    final image = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 70);
-    if (image != null) setState(() => _evidenceImages.add(File(image.path)));
-  }
-
-  void _removeImage(int index) => setState(() => _evidenceImages.removeAt(index));
-
-  // --- ENVÍO FINAL ---
-
-  void _submitFinal() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
-
-    if (token == null) {
-      _showError("Sesión expirada. Por favor, inicia sesión de nuevo.");
-      return;
-    }
-
-    final serviceData = ServiceEntity(
+  ServiceEntity _buildServiceFromInputs() {
+    final user = ref.read(authProvider).user;
+    final formState = ref.read(createServiceFormProvider); 
+    
+    return ServiceEntity(
       id: widget.serviceToEdit?.id ?? '',
       title: _titleCtrl.text.trim(),
-      summary: _descCtrl.text.length > 50 
-          ? "${_descCtrl.text.substring(0, 50)}..." 
-          : _descCtrl.text,
+      summary: _descCtrl.text.length > 50 ? "${_descCtrl.text.substring(0, 50)}..." : _descCtrl.text.trim(),
       description: _descCtrl.text.trim(),
       basePrice: double.tryParse(_priceCtrl.text.replaceAll(',', '')) ?? 0.0,
-      categoryId: _selectedCategoryId!,
-      clientId: ref.read(authProvider).user?.id ?? '',
+      categoryId: formState.categoryId!,
+      clientId: user?.id ?? '',
       exactAddress: _addressCtrl.text.trim(),
-      latitude: _latitude, 
-      longitude: _longitude,
+      latitude: formState.latitude, 
+      longitude: formState.longitude,
       status: widget.serviceToEdit?.status ?? JobStatus.open,
       isActive: true, 
       createdAt: DateTime.now(),
+      imageUrls: widget.serviceToEdit?.imageUrls ?? [],
     );
-
-    final notifier = ref.read(serviceControllerProvider.notifier);
-    
-    if (_isEditing) {
-      await notifier.updateService(serviceData, token);
-    } else {
-      await notifier.createService(serviceData, token, images: _evidenceImages);
-    }
-
-    final state = ref.read(serviceControllerProvider);
-    if (state.hasError) {
-      _showError("Error al procesar la solicitud: ${state.error}");
-      return;
-    }
-
-    if (mounted) {
-      Navigator.pop(context, _isEditing ? serviceData : null);
-      
-      Future.microtask(() {
-        ScaffoldMessenger.of(ref.context).showSnackBar(
-          SnackBar(
-            content: Text(_isEditing ? '✅ Cambios guardados' : '✅ ¡Servicio publicado!'),
-            backgroundColor: const Color(0xFF10B981),
-          )
-        );
-        ref.invalidate(serviceListProvider);
-      });
-    }
   }
 
-  void _showSuccessSnackBar() {
-    Future.microtask(() => ScaffoldMessenger.of(ref.context).showSnackBar(
-      SnackBar(content: Text(_isEditing ? '✅ Cambios guardados' : '✅ ¡Servicio publicado!'), backgroundColor: const Color(0xFF10B981))
-    ));
+  void _submitFinal() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token') ?? '';
+    if (token.isEmpty) return _showError("Sesión expirada.");
+
+    final serviceData = _buildServiceFromInputs(); 
+    final notifier = ref.read(serviceControllerProvider.notifier);
+    final formState = ref.read(createServiceFormProvider);
+
+    if (_isEditing) {
+      await notifier.updateService(serviceData, token); 
+    } else {
+      await notifier.createService(serviceData, token, images: formState.images);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(serviceControllerProvider, (previous, next) {
+      if (next.hasError && !next.isLoading) _showError("Error: ${next.error}");
+      if (previous?.isLoading == true && !next.isLoading && !next.hasError) {
+        ref.invalidate(serviceListProvider);
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ ¡Proceso completado!'), backgroundColor: Color(0xFF10B981)));
+      }
+    });
+
+    final formState = ref.watch(createServiceFormProvider);
     final creationState = ref.watch(serviceControllerProvider);
     final categoriesAsync = ref.watch(categoryListProvider);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
-      appBar: AppBar(
-        backgroundColor: Colors.white, elevation: 0, centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black),
-          onPressed: () => _currentStep > 0 
-            ? { _pageController.previousPage(duration: const Duration(milliseconds: 300), curve: Curves.easeInOut), setState(() => _currentStep--) } 
-            : Navigator.pop(context),
-        ),
-        title: Text(_isEditing ? "Editar Servicio" : "Publicar Servicio", style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 18)),
-      ),
-      body: Column(
-        children: [
-          _buildStepHeader(),
-          Expanded(
-            child: PageView(
-              controller: _pageController, physics: const NeverScrollableScrollPhysics(),
-              children: [
-                Step1Details(
-                  titleCtrl: _titleCtrl, descCtrl: _descCtrl, 
-                  selectedCategoryId: _selectedCategoryId, categoriesAsync: categoriesAsync, 
-                  onCategoryChanged: (id) => setState(() => _selectedCategoryId = id), onNext: _nextStep
-                ),
-                Step2Location(
-                  addressCtrl: _addressCtrl, priceCtrl: _priceCtrl, lat: _latitude, lng: _longitude,
-                  onLocationCaptured: (lat, lng) => setState(() { _latitude = lat; _longitude = lng; }), onNext: _nextStep
-                ),
-                Step3Summary(
-                  title: _titleCtrl.text, desc: _descCtrl.text, address: _addressCtrl.text, price: _priceCtrl.text, 
-                  categoryId: _selectedCategoryId, categoriesAsync: categoriesAsync, 
-                  isLoading: creationState.isLoading, images: _evidenceImages,
-                  onAddImage: _pickImage, onRemoveImage: _removeImage, onSubmit: _submitFinal, 
-                  onEdit: () { _pageController.jumpToPage(0); setState(() => _currentStep = 0); }
-                ),
-              ],
+      appBar: _buildAppBar(formState.step),
+      body: Form(
+        key: _formKey,
+        child: Column(
+          children: [
+            CreateServiceHeader(currentStep: formState.step),
+            Expanded(
+              child: PageView(
+                controller: _pageController, 
+                physics: const NeverScrollableScrollPhysics(),
+                children: [
+                  Step1Details(
+                    titleCtrl: _titleCtrl, descCtrl: _descCtrl, 
+                    selectedCategoryId: formState.categoryId, categoriesAsync: categoriesAsync, 
+                    onCategoryChanged: (id) => ref.read(createServiceFormProvider.notifier).setCategory(id), 
+                    onNext: _nextStep
+                  ),
+                  Step2Location(
+                    addressCtrl: _addressCtrl, priceCtrl: _priceCtrl, lat: formState.latitude, lng: formState.longitude,
+                    onLocationCaptured: (lat, lng) => ref.read(createServiceFormProvider.notifier).setLocation(lat, lng), 
+                    onNext: _nextStep
+                  ),
+                  Step3Summary(
+                    title: _titleCtrl.text, desc: _descCtrl.text, address: _addressCtrl.text, price: _priceCtrl.text, 
+                    categoryId: formState.categoryId, categoriesAsync: categoriesAsync, 
+                    isLoading: creationState.isLoading, images: formState.images,
+                    onAddImage: _pickImage,
+                    onRemoveImage: (i) => ref.read(createServiceFormProvider.notifier).removeImage(i), 
+                    onSubmit: _submitFinal, 
+                    onEdit: () { _pageController.jumpToPage(0); ref.read(createServiceFormProvider.notifier).setStep(0); }
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildStepHeader() {
-    return Container(
-      color: Colors.white, padding: const EdgeInsets.fromLTRB(24, 10, 24, 20),
-      child: Column(children: [
-        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          Text("PASO ${_currentStep + 1} DE 3", style: const TextStyle(color: Color(0xFF4F46E5), fontWeight: FontWeight.w900, fontSize: 12)), 
-          Text(_currentStep == 0 ? "Detalles Básicos" : _currentStep == 1 ? "Ubicación" : "Resumen", style: TextStyle(color: Colors.grey[500], fontSize: 13, fontWeight: FontWeight.w500))
-        ]),
-        const SizedBox(height: 14),
-        Row(children: [for (int i = 0; i < 3; i++) Expanded(child: Padding(padding: EdgeInsets.only(right: i < 2 ? 8 : 0), child: _buildProgressLine(_currentStep >= i)))]),
-      ]),
+  PreferredSizeWidget _buildAppBar(int currentStep) {
+    return AppBar(
+      backgroundColor: Colors.white, elevation: 0, centerTitle: true,
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black, size: 20),
+        onPressed: () {
+          if (currentStep > 0) {
+            _pageController.previousPage(duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
+            ref.read(createServiceFormProvider.notifier).setStep(currentStep - 1);
+          } else { Navigator.pop(context); }
+        },
+      ),
+      title: Text(_isEditing ? "Editar Servicio" : "Publicar Servicio", style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 18)),
     );
   }
-
-  Widget _buildProgressLine(bool isActive) => AnimatedContainer(duration: const Duration(milliseconds: 300), height: 6, decoration: BoxDecoration(color: isActive ? const Color(0xFF4F46E5) : const Color(0xFFE5E7EB), borderRadius: BorderRadius.circular(3)));
 }
