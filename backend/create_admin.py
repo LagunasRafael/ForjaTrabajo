@@ -13,9 +13,13 @@ from app.core.roles import Role
 
 # Usamos bcrypt directamente para evitar bugs de passlib
 import bcrypt as _bcrypt
+from dotenv import load_dotenv
 
-# URL de Producción en Render
-DB_URL = "postgresql://forjadb_user:lx5paY7hoBAQ5dV3I5w4m62Oe0rPV3GU@dpg-d6k8tjfkijhs73cpq01g-a.oregon-postgres.render.com/forjadb"
+# Cargar variables desde .env
+load_dotenv()
+
+# Lee la URL de la base de datos desde .env (la misma que usa el backend)
+DB_URL = os.getenv("DATABASE_URL", "sqlite:///./forja.db")
 
 engine = create_engine(DB_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
