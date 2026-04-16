@@ -158,7 +158,7 @@ export const DashboardPage = () => {
           </div>
         </div>
 
-        {/* 📊 SECCIÓN DE DEMANDA POR CATEGORÍA */}
+        {/*SECCIÓN DE DEMANDA POR CATEGORÍA */}
         <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-6 backdrop-blur-sm">
           <div className="flex items-center justify-between mb-8">
             <div>
