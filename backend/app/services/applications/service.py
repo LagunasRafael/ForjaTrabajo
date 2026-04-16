@@ -1,8 +1,8 @@
 from sqlalchemy.orm import Session
 from uuid import UUID
 from fastapi import HTTPException
-
 from app.services import models, schemas
+from datetime import datetime
 
 def create_service_request(db: Session, request_data: schemas.ServiceRequestCreate, worker_id: UUID):
     existing_request = db.query(models.ServiceRequest).filter(
@@ -85,6 +85,8 @@ def get_worker_applications(db: Session, worker_id: str):
                 "is_active": srv.is_active,
                 "created_at": fecha_buscada, 
                 "image_urls": srv.image_urls if srv.image_urls else [], 
+                "author_name": srv.author_name if srv else "Usuario Cliente",
+                "author_image_url": srv.author_image_url if srv else None,
             }
 
         # 2. BUSCAMOS LAS POSTULACIONES PENDIENTES
@@ -114,6 +116,8 @@ def get_worker_applications(db: Session, worker_id: str):
                     "is_active": srv.is_active,
                     "created_at": req.created_at.isoformat() if req.created_at else None,
                     "image_urls": srv.image_urls if srv.image_urls else [], 
+                    "author_name": srv.author_name if srv else "Usuario Cliente",
+                    "author_image_url": srv.author_image_url if srv else None,
                 }
                 
         return list(unique_results.values())
@@ -134,3 +138,20 @@ def withdraw_postulation(db: Session, request_id: str, user_id: str):
     db.delete(postulation)
     db.commit()
     return {"message": "Postulación retirada con éxito"}
+
+def send_offer(db: Session, conversation_id: str, sender_id: str, amount: float):
+    new_offer = models.Message(
+        conversation_id=conversation_id,
+        sender_id=sender_id,
+        content=str(amount), # Guardamos el precio
+        message_type=models.MessageType.OFFER.value
+    )
+    
+    # 2. Actualizamos la conversación para que sepa que hay una negociación activa
+    convo = db.query(models.Conversation).filter(models.Conversation.id == conversation_id).first()
+    convo.updated_at = datetime.utcnow()
+    
+    db.add(new_offer)
+    db.commit()
+    db.refresh(new_offer)
+    return new_offer

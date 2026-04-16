@@ -16,7 +16,7 @@ class _ServiceImageCarouselState extends State<ServiceImageCarousel> {
   Widget build(BuildContext context) {
     final displayImages = widget.imageUrls.isNotEmpty 
         ? widget.imageUrls 
-        : ['https://placehold.co/600x400/e2e8f0/64748b?text=Sin+Evidencia+Visual'];
+        : ['https://via.placeholder.com/600x400/e2e8f0/64748b?text=Sin+Evidencia+Visual.png'];
 
     return Stack(
       alignment: Alignment.bottomRight,

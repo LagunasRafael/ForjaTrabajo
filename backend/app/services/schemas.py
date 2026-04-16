@@ -78,6 +78,9 @@ class Service(ServiceBase):
 
     author_name: Optional[str] = "Usuario Cliente"
     author_image_url: Optional[str] = None
+    request_id: Optional[str] = None
+    worker_name: Optional[str] = None
+    worker_image_url: Optional[str] = None
 
     class Config:
         orm_mode = True
