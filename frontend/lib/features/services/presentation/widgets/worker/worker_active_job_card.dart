@@ -8,6 +8,8 @@ import 'package:forja_trabajo/features/services/presentation/providers/service_l
 
 import 'package:forja_trabajo/features/services/domain/usecases/jobs/complete_job_usecase.dart';
 import 'package:forja_trabajo/features/services/domain/usecases/jobs/cancel_job_usecase.dart'; 
+import 'package:forja_trabajo/features/chat/presentation/providers/chat_provider.dart';
+import 'package:forja_trabajo/features/chat/presentation/screens/shared_chat_screen.dart';
 
 import 'package:forja_trabajo/features/services/presentation/screens/shared/widgets/shared_job_widgets.dart';
 
@@ -68,7 +70,7 @@ class WorkerActiveJobCard extends ConsumerWidget {
 // ==========================================
 // WIDGET PRIVADO PARA LOS BOTONES
 // ==========================================
-class _WorkerActiveActions extends ConsumerWidget {
+class _WorkerActiveActions extends ConsumerStatefulWidget {
   final ServiceEntity job;
 
   const _WorkerActiveActions({
@@ -76,11 +78,55 @@ class _WorkerActiveActions extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final isCompleting = ref.watch(completingJobProvider(job.id));
+  ConsumerState<_WorkerActiveActions> createState() => _WorkerActiveActionsState();
+}
+
+class _WorkerActiveActionsState extends ConsumerState<_WorkerActiveActions> {
+  bool _isOpeningChat = false;
+
+  Future<void> _openChat(BuildContext context) async {
+    final requestId = widget.job.requestId;
+    if (requestId == null || requestId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("No se puede abrir el chat: sin postulación asociada"), backgroundColor: Colors.red),
+      );
+      return;
+    }
+
+    setState(() => _isOpeningChat = true);
+
+    try {
+      final repository = ref.read(chatRepositoryProvider);
+      final conversationId = await repository.getOrCreateConversation(requestId);
+
+      if (context.mounted) {
+        Navigator.push(context, MaterialPageRoute(
+          builder: (_) => SharedChatScreen(
+            conversationId: conversationId,
+            myRole: 'worker',
+            service: {'title': widget.job.title},
+            otherUserName: widget.job.authorName,
+            otherUserAvatarUrl: widget.job.profilePictureUrl,
+          ),
+        ));
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error abriendo el chat: $e"), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isOpeningChat = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isCompleting = ref.watch(completingJobProvider(widget.job.id));
     
     // 1. Solo evaluamos el estado real que viene de la base de datos
-    final isWaiting = job.status == JobStatus.waiting_confirmation;
+    final isWaiting = widget.job.status == JobStatus.waiting_confirmation;
 
     return Column(
       children: [
@@ -89,18 +135,10 @@ class _WorkerActiveActions extends ConsumerWidget {
           children: [
             Expanded(
               child: OutlinedButton.icon(
-                onPressed: isCompleting
-                    ? null
-                    : () => ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text("Chat en desarrollo..."),
-                          ),
-                        ),
-                icon: const Icon(
-                  Icons.chat_bubble_outline,
-                  size: 18,
-                  color: Color(0xFF10B981),
-                ),
+                onPressed: (isCompleting || _isOpeningChat) ? null : () => _openChat(context),
+                icon: _isOpeningChat
+                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF10B981)))
+                    : const Icon(Icons.chat_bubble_outline, size: 18, color: Color(0xFF10B981)),
                 label: const Text(
                   "Contactar",
                   style: TextStyle(color: Color(0xFF10B981)),
@@ -185,12 +223,12 @@ class _WorkerActiveActions extends ConsumerWidget {
     );
 
     if (confirm == true) {
-      ref.read(completingJobProvider(job.id).notifier).state = true;
+      ref.read(completingJobProvider(widget.job.id).notifier).state = true;
 
       // 4. Ejecutamos tu UseCase (Igual que en el cliente)
-      final success = await ref.read(completeJobUseCaseProvider).execute(job.id);
+      final success = await ref.read(completeJobUseCaseProvider).execute(widget.job.id);
 
-      ref.read(completingJobProvider(job.id).notifier).state = false;
+      ref.read(completingJobProvider(widget.job.id).notifier).state = false;
 
       if (success && context.mounted) {
         ref.invalidate(workerJobsProvider);

@@ -18,6 +18,8 @@ class ServiceEntity {
   final String? authorName;
   final String? profilePictureUrl;
   final String? requestId;
+  final String? workerName;
+  final String? workerImageUrl;
 
   ServiceEntity({
     required this.id,
@@ -37,6 +39,8 @@ class ServiceEntity {
     this.authorName,
     this.profilePictureUrl,
     this.requestId,
+    this.workerName,
+    this.workerImageUrl,
   });
 
   ServiceEntity copyWith({
@@ -57,6 +61,8 @@ class ServiceEntity {
     String? authorName,
     String? profilePictureUrl,
     String? requestId,
+    String? workerName,
+    String? workerImageUrl,
   }) {
     return ServiceEntity(
       id: id ?? this.id,
@@ -76,6 +82,8 @@ class ServiceEntity {
       authorName: authorName ?? this.authorName,
       profilePictureUrl: profilePictureUrl ?? this.profilePictureUrl,
       requestId: requestId ?? this.requestId,
+      workerName: workerName ?? this.workerName,
+      workerImageUrl: workerImageUrl ?? this.workerImageUrl,
     );
   }
 }

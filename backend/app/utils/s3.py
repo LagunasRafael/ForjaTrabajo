@@ -2,6 +2,7 @@ import boto3
 import uuid
 from botocore.exceptions import NoCredentialsError
 from fastapi import UploadFile
+from typing import Optional
 import os
 import io
 from dotenv import load_dotenv, find_dotenv
@@ -94,7 +95,7 @@ def delete_old_file_from_s3(s3_url: str):
     except Exception as e:
         print(f"❌ Error al intentar borrar de S3: {e}")
 
-async def upload_service_evidence_to_s3(file: UploadFile, service_id: str) -> str:
+async def upload_service_evidence_to_s3(file: UploadFile, service_id: str) -> Optional[str]:
     """
     Sube una foto de evidencia a S3 en su propia carpeta por servicio.
     Ruta en S3: servicios/{service_id}/evidencias/{uuid}.jpg
@@ -139,3 +140,57 @@ async def upload_service_evidence_to_s3(file: UploadFile, service_id: str) -> st
         print("💥 ERROR AL SUBIR EVIDENCIA A S3 💥")
         print(traceback.format_exc())
         return None # Retornamos None si falla, para que no truene todo el endpoint
+
+async def upload_chat_media_to_s3(file: UploadFile, conversation_id: str) -> Optional[str]:
+    """
+    Sube un archivo de chat (imagen, video o audio) a S3.
+    """
+    try:
+        s3_client, bucket_name = get_s3_config()
+        
+        filename = file.filename or "file"
+        ext = os.path.splitext(filename)[1].lower()
+        if not ext:
+            # Fallback based on content type
+            if "image" in file.content_type: ext = ".jpg"
+            elif "video" in file.content_type: ext = ".mp4"
+            elif "audio" in file.content_type: ext = ".m4a"
+            else: ext = ".bin"
+
+        s3_key = f"chats/{conversation_id}/media_{uuid.uuid4()}{ext}"
+        
+        # 🟢 TRATAMIENTO PARA IMÁGENES (Compresión)
+        if ext in [".jpg", ".jpeg", ".png", ".webp"]:
+            image_data = await file.read()
+            image = Image.open(io.BytesIO(image_data))
+            
+            if image.mode in ("RGBA", "P"):
+                image = image.convert("RGB")
+                
+            compressed_image_io = io.BytesIO()
+            image.save(compressed_image_io, format='JPEG', optimize=True, quality=65) 
+            compressed_image_io.seek(0)
+            
+            s3_client.upload_fileobj(
+                compressed_image_io, 
+                bucket_name,
+                s3_key,
+                ExtraArgs={"ContentType": "image/jpeg"}
+            )
+        else:
+            # 🔵 TRATAMIENTO PARA AUDIO/VIDEO (Subida directa)
+            # Asegurarse de volver al inicio si se leyó algo (aunque UploadFile suele estar al inicio)
+            await file.seek(0)
+            s3_client.upload_fileobj(
+                file.file, 
+                bucket_name,
+                s3_key,
+                ExtraArgs={"ContentType": file.content_type}
+            )
+
+        return f"https://{bucket_name}.s3.amazonaws.com/{s3_key}"
+
+    except Exception as e:
+        print("💥 ERROR AL SUBIR MEDIA DE CHAT A S3 💥")
+        print(traceback.format_exc())
+        return None

@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-// 👇 Importamos el provider que acabamos de crear
+import 'package:forja_trabajo/features/services/presentation/screens/worker/marketplace_screen.dart';
 import 'package:forja_trabajo/features/services/presentation/providers/nav_providers.dart';
-
-// Pantallas del Trabajador
-import '../worker/marketplace_screen.dart'; // O HomeClientScreen si reúsas
-import '../worker/my_jobs_screen.dart'; // Tus postulaciones
-import '../shared/chat_list_screen.dart';
+import '../worker/my_jobs_screen.dart';
+import 'package:forja_trabajo/features/chat/presentation/screens/chat_list_screen.dart';
+import 'package:forja_trabajo/features/services/presentation/screens/layout/client_main_layout.dart';
 import '../shared/notifications_screen.dart';
 import '../worker/worker_profile_screen.dart'; // O ClientProfileScreen si reúsas
 
@@ -22,7 +20,7 @@ class WorkerMainLayout extends ConsumerWidget {
     final List<Widget> screens = [
       const MarketplaceScreen(), // 0
       const MyJobsScreen(), // 1
-      const ChatListScreen(), // 2
+      ChatListScreen(), // 2
       const NotificationsScreen(), // 3
       const WorkerProfileScreen(), // 4
     ];

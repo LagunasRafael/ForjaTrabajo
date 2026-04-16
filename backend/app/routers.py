@@ -5,9 +5,9 @@ from app.services.categories.router import router as categories_router
 from app.services.postings.router import router as postings_router
 from app.services.applications.router import router as applications_router
 from app.services.contracts.router import router as contracts_router
+from app.services.chats.router import router as chats_router
 from app.payments.routes import router as payments_router
 from app.settings.routes import router as settings_router
-
 
 router = APIRouter()
 
@@ -17,6 +17,7 @@ router.include_router(categories_router, prefix="/services", tags=["Services - C
 router.include_router(postings_router, prefix="/services", tags=["Services - Publicaciones"])
 router.include_router(applications_router, prefix="/services", tags=["Services - Postulaciones"])
 router.include_router(contracts_router, prefix="/services", tags=["Services - Contratos y Jobs"])
+router.include_router(chats_router, prefix="/services", tags=["Services - chats"])
 
 router.include_router(payments_router, prefix="/payments", tags=["Payments"])
 

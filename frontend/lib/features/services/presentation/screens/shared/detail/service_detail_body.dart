@@ -124,20 +124,39 @@ class ServiceDetailBody extends StatelessWidget {
   }
 
   Widget _buildAuthorTile(Color color, bool isDark) {
+    final initial = authorName.isNotEmpty ? authorName[0].toUpperCase() : 'U';
+
     return Row(
       children: [
-        CircleAvatar(
-          radius: 22,
-          backgroundColor: color.withOpacity(0.2), 
-          backgroundImage: (authorImageUrl != null && authorImageUrl!.isNotEmpty) 
-              ? NetworkImage(authorImageUrl!) 
-              : null,
-          child: (authorImageUrl == null || authorImageUrl!.isEmpty)
-              ? Text(
-                  authorName.isNotEmpty ? authorName[0].toUpperCase() : 'U', 
-                  style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 18)
-                )
-              : null,
+        Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: color.withOpacity(0.2), // Fondo de color por si no hay foto
+          ),
+          child: ClipOval(
+            child: (authorImageUrl != null && authorImageUrl!.isNotEmpty)
+                ? Image.network(
+                    authorImageUrl!,
+                    fit: BoxFit.cover,
+                    // Si el servidor falla o la imagen está corrupta, mostramos la letra
+                    errorBuilder: (context, error, stackTrace) {
+                      return Center(
+                        child: Text(
+                          initial, 
+                          style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 18)
+                        ),
+                      );
+                    },
+                  )
+                : Center(
+                    child: Text(
+                      initial, 
+                      style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 18)
+                    ),
+                  ),
+          ),
         ),
         const SizedBox(width: 12),
         Expanded(
