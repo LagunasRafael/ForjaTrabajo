@@ -1,13 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-// 👇 Importamos el provider que acabamos de crear
 import 'package:forja_trabajo/features/services/presentation/providers/nav_providers.dart';
-
-// Pantallas del Cliente
 import '../client/home_client_screen.dart';
 import '../client/my_requests_screen.dart';
-import '../shared/chat_list_screen.dart';
-import '../shared/notifications_screen.dart'; // (Opcional si la usas)
+import '../shared/notifications_screen.dart';
+import 'package:forja_trabajo/features/chat/presentation/screens/chat_list_screen.dart';
 import '../client/client_profile_screen.dart';
 import '../client/create_services_screen.dart';
 
@@ -22,7 +19,7 @@ class ClientMainLayout extends ConsumerWidget {
 
     final List<Widget> screens = [
       const HomeClientScreen(), // 0
-      const ChatListScreen(), // 1
+      ChatListScreen(), // 1
       const SizedBox(), // 2 (Espacio vacío para el botón flotante)
       const MyRequestsScreen(), // 3
       const ClientProfileScreen(), // 4

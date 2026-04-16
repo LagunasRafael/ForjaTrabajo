@@ -113,3 +113,26 @@ def cancel_job(db: Session, job_id: str, user_id: str, user_role: str):
     db.commit()
     db.refresh(job)
     return job
+
+def handle_offer_action(db: Session, message_id: str, action: str):
+    offer_msg = db.query(models.Message).filter(models.Message.id == message_id).first()
+    convo = offer_msg.conversation
+    
+    if action == "accept":
+        request = convo.request
+        request.status = "accepted"
+        request.proposed_price = float(offer_msg.content)
+        
+        new_job = models.Job(
+            request_id=request.id,
+            provider_id=convo.worker_id,
+            client_id=convo.client_id,
+            status=models.JobStatus.MATCHED,
+            final_price=request.proposed_price
+        )
+        db.add(new_job)
+        
+    elif action == "reject":
+        pass 
+
+    db.commit()

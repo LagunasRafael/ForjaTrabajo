@@ -21,7 +21,6 @@ class WorkerJobListView extends ConsumerWidget {
       data: (jobs) {
         final filtered = jobs.where((j) {
           if (status == JobStatus.matched) {
-            // 💡 Regla de negocio: "En curso" incluye los que esperan confirmación
             return j.status == JobStatus.matched || j.status == JobStatus.waiting_confirmation;
           }
           return j.status == status;
@@ -30,7 +29,6 @@ class WorkerJobListView extends ConsumerWidget {
         return RefreshIndicator(
           onRefresh: () => ref.refresh(workerJobsProvider.future),
           color: const Color(0xFF10B981),
-          // 🚀 Agregamos el RefreshIndicator AQUÍ para que cubra tanto la lista como el estado vacío
           child: filtered.isEmpty 
             ? _buildEmptyState(context)
             : ListView.builder(

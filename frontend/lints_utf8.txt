@@ -1,0 +1,177 @@
+﻿Analyzing frontend...                                           
+
+   info - Don't invoke 'print' in production code - lib\core\network\api_client.dart:101:17 - avoid_print
+   info - Don't invoke 'print' in production code - lib\core\network\api_client.dart:110:13 - avoid_print
+warning - Unused import: 'dart:io' - lib\features\auth\data\datasources\auth_remote_data_source.dart:5:8 - unused_import
+   info - Don't invoke 'print' in production code - lib\features\auth\data\datasources\auth_remote_data_source.dart:92:7 - avoid_print
+warning - Unused import: 'dart:io' - lib\features\auth\presentation\providers\auth_provider.dart:1:8 - unused_import
+warning - Unused import: 'package:dio/dio.dart' - lib\features\auth\presentation\providers\auth_provider.dart:2:8 - unused_import
+warning - Unused import: 'package:forja_trabajo/features/services/presentation/providers/nav_providers.dart' - lib\features\auth\presentation\providers\auth_provider.dart:19:8 - unused_import
+   info - 'desiredAccuracy' is deprecated and shouldn't be used. use settings parameter with AndroidSettings, AppleSettings, WebSettings, or LocationSettings - lib\features\auth\presentation\providers\auth_provider.dart:188:9 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\auth\presentation\screens\login_screen.dart:111:56 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\auth\presentation\screens\login_screen.dart:228:40 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\auth\presentation\screens\profile_screen.dart:52:52 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\auth\presentation\screens\profile_screen.dart:54:56 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\auth\presentation\screens\profile_screen.dart:116:48 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\auth\presentation\screens\profile_screen.dart:138:43 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\auth\presentation\screens\profile_screen.dart:232:42 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\auth\presentation\screens\register_screen.dart:304:51 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\auth\presentation\screens\register_screen.dart:334:51 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\auth\presentation\screens\role_selection_screen.dart:43:43 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\auth\presentation\screens\role_selection_screen.dart:70:58 - deprecated_member_use
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - lib\features\auth\presentation\screens\role_selection_screen.dart:94:33 - prefer_const_literals_to_create_immutables
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\auth\presentation\screens\role_selection_screen.dart:145:46 - deprecated_member_use
+   info - Use 'const' with the constructor to improve performance - lib\features\auth\presentation\screens\role_selection_screen.dart:148:19 - prefer_const_constructors
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\auth\presentation\screens\verification_screen.dart:167:56 - deprecated_member_use
+   info - Statements in an if should be enclosed in a block - lib\features\auth\presentation\screens\verification_screen.dart:244:33 - curly_braces_in_flow_control_structures
+   info - Statements in an if should be enclosed in a block - lib\features\auth\presentation\screens\verification_screen.dart:246:33 - curly_braces_in_flow_control_structures
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\auth\presentation\screens\verification_screen.dart:313:38 - deprecated_member_use
+warning - Unused import: 'package:forja_trabajo/features/auth/presentation/screens/login_screen.dart' - lib\features\auth\presentation\widgets\profile_shared_widgets.dart:8:8 - unused_import
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\auth\presentation\widgets\profile_shared_widgets.dart:33:33 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\auth\presentation\widgets\profile_shared_widgets.dart:235:38 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\auth\presentation\widgets\profile_shared_widgets.dart:251:52 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\auth\presentation\widgets\role_card.dart:38:35 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\auth\presentation\widgets\role_card.dart:57:62 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\auth\presentation\widgets\role_card.dart:75:97 - deprecated_member_use
+   info - Don't invoke 'print' in production code - lib\features\chat\data\datasources\chat_remote_datasource.dart:14:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\chat\data\datasources\chat_remote_datasource.dart:25:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\chat\data\datasources\chat_remote_datasource.dart:41:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\chat\data\datasources\chat_remote_datasource.dart:44:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\chat\data\datasources\chat_remote_datasource.dart:54:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\chat\data\datasources\chat_remote_datasource.dart:68:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\chat\data\datasources\chat_remote_datasource.dart:70:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\chat\data\datasources\chat_remote_datasource.dart:81:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\chat\data\datasources\chat_remote_datasource.dart:83:7 - avoid_print
+  error - Undefined class 'ChatRepository' - lib\features\chat\domain\usecases\get_messages_usecase.dart:2:9 - undefined_class
+  error - The name 'MessageEntity' isn't a type, so it can't be used as a type argument - lib\features\chat\domain\usecases\get_messages_usecase.dart:5:15 - non_type_as_type_argument
+  error - Undefined class 'ChatRepository' - lib\features\chat\domain\usecases\start_messages_usecase.dart:2:9 - undefined_class
+   info - An uninitialized field should have an explicit type annotation - lib\features\chat\presentation\providers\chat_list_provider.dart:11:9 - prefer_typing_uninitialized_variables
+   info - Don't invoke 'print' in production code - lib\features\chat\presentation\providers\chat_provider.dart:96:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\chat\presentation\providers\chat_provider.dart:121:7 - avoid_print
+   info - Use interpolation to compose strings and values - lib\features\chat\presentation\providers\chat_provider.dart:129:19 - prefer_interpolation_to_compose_strings
+   info - Don't invoke 'print' in production code - lib\features\chat\presentation\providers\chat_provider.dart:141:9 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\chat\presentation\providers\chat_provider.dart:170:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\chat\presentation\providers\chat_provider.dart:193:7 - avoid_print
+  error - The getter 'id' isn't defined for the type 'Map<String, dynamic>' - lib\features\chat\presentation\screens\shared_chat_screen.dart:127:75 - undefined_getter
+  error - The getter 'content' isn't defined for the type 'Map<String, dynamic>' - lib\features\chat\presentation\screens\shared_chat_screen.dart:152:47 - undefined_getter
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\chat\presentation\widgets\chat_bubble.dart:50:45 - deprecated_member_use
+  error - Classes can only extend other classes - lib\features\chat\presentation\widgets\client_negotiation_banner.dart:1:39 - extends_non_class
+  error - Undefined class 'VoidCallback' - lib\features\chat\presentation\widgets\client_negotiation_banner.dart:3:9 - undefined_class
+  error - No associated named super constructor parameter - lib\features\chat\presentation\widgets\client_negotiation_banner.dart:6:11 - super_formal_parameter_without_associated_named
+  error - Undefined class 'Widget' - lib\features\chat\presentation\widgets\client_negotiation_banner.dart:12:3 - undefined_class
+warning - The method doesn't override an inherited method - lib\features\chat\presentation\widgets\client_negotiation_banner.dart:12:10 - override_on_non_overriding_member
+  error - Undefined class 'BuildContext' - lib\features\chat\presentation\widgets\client_negotiation_banner.dart:12:16 - undefined_class
+  error - The method 'Container' isn't defined for the type 'ClientNegotiationBanner' - lib\features\chat\presentation\widgets\client_negotiation_banner.dart:13:12 - undefined_method
+  error - Undefined name 'EdgeInsets' - lib\features\chat\presentation\widgets\client_negotiation_banner.dart:14:21 - undefined_identifier
+  error - Undefined name 'EdgeInsets' - lib\features\chat\presentation\widgets\client_negotiation_banner.dart:15:22 - undefined_identifier
+  error - The method 'BoxDecoration' isn't defined for the type 'ClientNegotiationBanner' - lib\features\chat\presentation\widgets\client_negotiation_banner.dart:16:19 - undefined_method
+  error - The name 'Color' isn't a class - lib\features\chat\presentation\widgets\client_negotiation_banner.dart:17:22 - creation_with_non_type
+  error - Undefined name 'Border' - lib\features\chat\presentation\widgets\client_negotiation_banner.dart:18:17 - undefined_identifier
+  error - The name 'Color' isn't a class - lib\features\chat\presentation\widgets\client_negotiation_banner.dart:18:41 - creation_with_non_type
+  error - Undefined name 'BorderRadius' - lib\features\chat\presentation\widgets\client_negotiation_banner.dart:19:23 - undefined_identifier
+  error - The method 'Row' isn't defined for the type 'ClientNegotiationBanner' - lib\features\chat\presentation\widgets\client_negotiation_banner.dart:21:14 - undefined_method
+  error - The method 'Expanded' isn't defined for the type 'ClientNegotiationBanner' - lib\features\chat\presentation\widgets\client_negotiation_banner.dart:24:11 - undefined_method
+  error - The method 'Column' isn't defined for the type 'ClientNegotiationBanner' - lib\features\chat\presentation\widgets\client_negotiation_banner.dart:25:20 - undefined_method
+  error - Undefined name 'CrossAxisAlignment' - lib\features\chat\presentation\widgets\client_negotiation_banner.dart:26:35 - undefined_identifier
+  error - The name 'Text' isn't a class - lib\features\chat\presentation\widgets\client_negotiation_banner.dart:28:23 - creation_with_non_type
+  error - The method 'TextStyle' isn't defined for the type 'ClientNegotiationBanner' - lib\features\chat\presentation\widgets\client_negotiation_banner.dart:30:26 - undefined_method
+  error - The method 'Color' isn't defined for the type 'ClientNegotiationBanner' - lib\features\chat\presentation\widgets\client_negotiation_banner.dart:31:28 - undefined_method
+  error - Undefined name 'FontWeight' - lib\features\chat\presentation\widgets\client_negotiation_banner.dart:33:33 - undefined_identifier
+  error - The name 'SizedBox' isn't a class - lib\features\chat\presentation\widgets\client_negotiation_banner.dart:37:23 - creation_with_non_type
+  error - The method 'Text' isn't defined for the type 'ClientNegotiationBanner' - lib\features\chat\presentation\widgets\client_negotiation_banner.dart:38:17 - undefined_method
+  error - The name 'TextStyle' isn't a class - lib\features\chat\presentation\widgets\client_negotiation_banner.dart:40:32 - creation_with_non_type
+  error - Undefined name 'Colors' - lib\features\chat\presentation\widgets\client_negotiation_banner.dart:41:28 - undefined_identifier
+  error - Undefined name 'FontWeight' - lib\features\chat\presentation\widgets\client_negotiation_banner.dart:43:33 - undefined_identifier
+  error - Undefined name 'ElevatedButton' - lib\features\chat\presentation\widgets\client_negotiation_banner.dart:51:11 - undefined_identifier
+  error - The name 'Icon' isn't a class - lib\features\chat\presentation\widgets\client_negotiation_banner.dart:53:25 - creation_with_non_type
+  error - Undefined name 'Icons' - lib\features\chat\presentation\widgets\client_negotiation_banner.dart:53:30 - undefined_identifier
+  error - The name 'Text' isn't a class - lib\features\chat\presentation\widgets\client_negotiation_banner.dart:54:26 - creation_with_non_type
+  error - Undefined name 'TextAlign' - lib\features\chat\presentation\widgets\client_negotiation_banner.dart:54:69 - undefined_identifier
+  error - The method 'TextStyle' isn't defined for the type 'ClientNegotiationBanner' - lib\features\chat\presentation\widgets\client_negotiation_banner.dart:54:94 - undefined_method
+  error - Undefined name 'ElevatedButton' - lib\features\chat\presentation\widgets\client_negotiation_banner.dart:55:20 - undefined_identifier
+  error - The name 'Color' isn't a class - lib\features\chat\presentation\widgets\client_negotiation_banner.dart:56:38 - creation_with_non_type
+  error - Undefined name 'Colors' - lib\features\chat\presentation\widgets\client_negotiation_banner.dart:57:32 - undefined_identifier
+  error - Undefined name 'EdgeInsets' - lib\features\chat\presentation\widgets\client_negotiation_banner.dart:59:30 - undefined_identifier
+  error - The method 'RoundedRectangleBorder' isn't defined for the type 'ClientNegotiationBanner' - lib\features\chat\presentation\widgets\client_negotiation_banner.dart:60:22 - undefined_method
+  error - Undefined name 'BorderRadius' - lib\features\chat\presentation\widgets\client_negotiation_banner.dart:60:59 - undefined_identifier
+warning - The value of the field '_isResponded' isn't used - lib\features\chat\presentation\widgets\negotiation_card.dart:33:8 - unused_field
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\chat\presentation\widgets\negotiation_card.dart:111:47 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\chat\presentation\widgets\negotiation_card.dart:181:33 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\chat\presentation\widgets\negotiation_card.dart:210:32 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\chat\presentation\widgets\negotiation_card.dart:211:32 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\chat\presentation\widgets\negotiation_card.dart:227:52 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\chat\presentation\widgets\negotiation_card.dart:346:48 - deprecated_member_use
+   info - 'activeColor' is deprecated and shouldn't be used. Use activeThumbColor instead. This feature was deprecated after v3.31.0-2.0.pre - lib\features\profile\presentation\settings_screen.dart:226:9 - deprecated_member_use
+warning - Unused import: '../../domain/entities/category_entity.dart' - lib\features\services\data\datasources\category_remote_data_source.dart:4:8 - unused_import
+   info - Don't invoke 'print' in production code - lib\features\services\data\datasources\job_remote_data_source.dart:22:5 - avoid_print
+warning - Unused import: '../../../../core/network/api_client.dart' - lib\features\services\data\datasources\service_remote_data_source.dart:6:8 - unused_import
+warning - Unused import: '../../../../core/network/api_client.dart' - lib\features\services\data\datasources\service_request_remote_data_source.dart:4:8 - unused_import
+   info - Constructors in '@immutable' classes should be declared as 'const' - lib\features\services\data\models\service_request_model.dart:4:3 - prefer_const_constructors_in_immutables
+warning - Unused import: '../../../../core/network/api_client.dart' - lib\features\services\data\repositories\service_repository_impl.dart:6:8 - unused_import
+   info - The constant name 'waiting_confirmation' isn't a lowerCamelCase identifier - lib\features\services\domain\entities\service_entity.dart:1:33 - constant_identifier_names
+  error - Target of URI doesn't exist: '../../domain/repositories/service_repository.dart' - lib\features\services\domain\usecases\categories\create_categories_usecase.dart:1:8 - uri_does_not_exist
+  error - Undefined class 'ServiceRepository' - lib\features\services\domain\usecases\categories\create_categories_usecase.dart:4:9 - undefined_class
+  error - Target of URI doesn't exist: '../../domain/repositories/service_repository.dart' - lib\features\services\domain\usecases\categories\delete_categories_usecase.dart:1:8 - uri_does_not_exist
+  error - Undefined class 'ServiceRepository' - lib\features\services\domain\usecases\categories\delete_categories_usecase.dart:4:9 - undefined_class
+  error - Target of URI doesn't exist: '../../domain/repositories/service_repository.dart' - lib\features\services\domain\usecases\categories\get_categories_usecase.dart:1:8 - uri_does_not_exist
+  error - Target of URI doesn't exist: '../../domain/entities/category_entity.dart' - lib\features\services\domain\usecases\categories\get_categories_usecase.dart:2:8 - uri_does_not_exist
+  error - Undefined class 'ServiceRepository' - lib\features\services\domain\usecases\categories\get_categories_usecase.dart:5:9 - undefined_class
+  error - The name 'CategoryEntity' isn't a type, so it can't be used as a type argument - lib\features\services\domain\usecases\categories\get_categories_usecase.dart:8:15 - non_type_as_type_argument
+  error - Target of URI doesn't exist: '../../domain/repositories/service_repository.dart' - lib\features\services\domain\usecases\categories\gettop_categories_usecase.dart:1:8 - uri_does_not_exist
+  error - Target of URI doesn't exist: '../../domain/entities/category_entity.dart' - lib\features\services\domain\usecases\categories\gettop_categories_usecase.dart:2:8 - uri_does_not_exist
+  error - Undefined class 'ServiceRepository' - lib\features\services\domain\usecases\categories\gettop_categories_usecase.dart:5:9 - undefined_class
+  error - The name 'CategoryEntity' isn't a type, so it can't be used as a type argument - lib\features\services\domain\usecases\categories\gettop_categories_usecase.dart:8:15 - non_type_as_type_argument
+   info - Don't invoke 'print' in production code - lib\features\services\domain\usecases\jobs\cancel_job_usecase.dart:24:7 - avoid_print
+   info - 'desiredAccuracy' is deprecated and shouldn't be used. use settings parameter with AndroidSettings, AppleSettings, WebSettings, or LocationSettings - lib\features\services\domain\usecases\location\get_device_location_usecase.dart:28:9 - deprecated_member_use
+   info - 'forceAndroidLocationManager' is deprecated and shouldn't be used. use settings parameter with AndroidSettings, AppleSettings, WebSettings, or LocationSettings - lib\features\services\domain\usecases\location\get_device_location_usecase.dart:31:9 - deprecated_member_use
+   info - 'timeLimit' is deprecated and shouldn't be used. use settings parameter with AndroidSettings, AppleSettings, WebSettings, or LocationSettings - lib\features\services\domain\usecases\location\get_device_location_usecase.dart:33:9 - deprecated_member_use
+   info - Don't invoke 'print' in production code - lib\features\services\domain\usecases\service_requests\accept_postulation_usecase.dart:16:7 - avoid_print
+   info - The file name 'Toggle_service_visibility_usecase.dart' isn't a lower_case_with_underscores identifier - lib\features\services\domain\usecases\services\Toggle_service_visibility_usecase.dart:1:1 - file_names
+warning - Unused import: 'package:forja_trabajo/features/services/domain/usecases/services/delete_services_usecase.dart' - lib\features\services\presentation\providers\service_list_provider.dart:6:8 - unused_import
+warning - Unused import: 'package:forja_trabajo/features/services/domain/usecases/services/update_service_usecase.dart' - lib\features\services\presentation\providers\service_list_provider.dart:7:8 - unused_import
+   info - Don't invoke 'print' in production code - lib\features\services\presentation\providers\service_offers_provider.dart:41:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\services\presentation\providers\service_offers_provider.dart:42:7 - avoid_print
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\services\presentation\screens\client\create_service_steps\step2_location.dart:117:73 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\services\presentation\screens\client\create_service_steps\step2_location.dart:181:35 - deprecated_member_use
+   info - Use 'const' with the constructor to improve performance - lib\features\services\presentation\screens\client\home_client_screen.dart:25:22 - prefer_const_constructors
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - lib\features\services\presentation\screens\client\home_client_screen.dart:27:27 - prefer_const_literals_to_create_immutables
+   info - Use 'const' with the constructor to improve performance - lib\features\services\presentation\screens\client\home_client_screen.dart:28:19 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\services\presentation\screens\client\home_client_screen.dart:29:19 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\services\presentation\screens\client\home_client_screen.dart:30:19 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\services\presentation\screens\client\home_client_screen.dart:31:19 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\services\presentation\screens\client\home_client_screen.dart:32:19 - prefer_const_constructors
+warning - The value of 'refresh' should be used - lib\features\services\presentation\screens\client\my_requests_screen.dart:89:19 - unused_result
+warning - The operand can't be 'null', so the condition is always 'false' - lib\features\services\presentation\screens\client\offers_received_screen.dart:33:22 - unnecessary_null_comparison
+warning - Unused import: '../shared/notifications_screen.dart' - lib\features\services\presentation\screens\layout\client_main_layout.dart:6:8 - unused_import
+   info - Use 'const' with the constructor to improve performance - lib\features\services\presentation\screens\layout\client_main_layout.dart:22:7 - prefer_const_constructors
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\services\presentation\screens\layout\client_main_layout.dart:56:35 - deprecated_member_use
+warning - Unused import: 'package:forja_trabajo/features/services/presentation/screens/layout/client_main_layout.dart' - lib\features\services\presentation\screens\layout\worker_main_layout.dart:7:8 - unused_import
+   info - Use 'const' with the constructor to improve performance - lib\features\services\presentation\screens\layout\worker_main_layout.dart:23:7 - prefer_const_constructors
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\services\presentation\screens\layout\worker_main_layout.dart:46:39 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\services\presentation\screens\layout\worker_main_layout.dart:47:39 - deprecated_member_use
+warning - The left operand can't be null, so the right operand is never executed - lib\features\services\presentation\screens\shared\detail\service_detail_body.dart:87:42 - dead_null_aware_expression
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\services\presentation\screens\shared\detail\service_detail_body.dart:116:22 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\services\presentation\screens\shared\detail\service_detail_body.dart:136:26 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\services\presentation\screens\shared\detail\service_image_carousel.dart:57:57 - deprecated_member_use
+warning - The value of the local variable 'theme' isn't used - lib\features\services\presentation\screens\shared\service_detail_screen.dart:56:11 - unused_local_variable
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\services\presentation\screens\shared\service_detail_screen.dart:163:41 - deprecated_member_use
+warning - Duplicate import - lib\features\services\presentation\screens\worker\worker_profile_screen.dart:12:8 - duplicate_import
+   info - Unnecessary 'const' keyword - lib\features\services\presentation\widgets\categories\category_grid_selector.dart:134:13 - unnecessary_const
+warning - Unused import: 'package:forja_trabajo/features/services/presentation/providers/nav_providers.dart' - lib\features\services\presentation\widgets\client\candidate_card.dart:8:8 - unused_import
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\services\presentation\widgets\client\candidate_card.dart:34:33 - deprecated_member_use
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - lib\features\services\presentation\widgets\client\candidate_card.dart:154:24 - prefer_const_literals_to_create_immutables
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\services\presentation\widgets\client\client_completed_job_card.dart:48:33 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\services\presentation\widgets\client\client_matched_job_card.dart:43:33 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\services\presentation\widgets\client\client_open_job_card.dart:33:33 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\services\presentation\widgets\client\step3_widgets.dart:18:61 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\services\presentation\widgets\service_card.dart:91:33 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\services\presentation\widgets\service_card.dart:116:52 - deprecated_member_use
+warning - Unused import: 'package:forja_trabajo/features/services/presentation/providers/category_provider.dart' - lib\features\services\presentation\widgets\service_list_widget.dart:4:8 - unused_import
+warning - The value of the local variable 'isDark' isn't used - lib\features\services\presentation\widgets\service_list_widget.dart:14:11 - unused_local_variable
+warning - Unused import: 'package:forja_trabajo/features/services/domain/entities/service_entity.dart' - lib\features\services\presentation\widgets\service_status_chip.dart:3:8 - unused_import
+warning - The declaration '_translateStatus' isn't referenced - lib\features\services\presentation\widgets\service_status_chip.dart:60:10 - unused_element
+warning - Unused import: 'package:forja_trabajo/features/services/domain/usecases/jobs/cancel_job_usecase.dart' - lib\features\services\presentation\widgets\worker\worker_active_job_card.dart:10:8 - unused_import
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\services\presentation\widgets\worker\worker_active_job_card.dart:32:53 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\services\presentation\widgets\worker\worker_pending_job_card.dart:54:43 - deprecated_member_use
+   info - Use 'const' with the constructor to improve performance - lib\shared\widgets\empty_state_widget.dart:30:27 - prefer_const_constructors
+

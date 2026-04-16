@@ -50,7 +50,6 @@ class _ServiceDetailScreenState extends ConsumerState<ServiceDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // 🔍 Observamos los datos frescos del servidor
     final serviceAsync = ref.watch(serviceDetailProvider(widget.service.id));
     final offersAsync = ref.watch(offersListProvider(_currentService.id));
     final categoriesAsync = ref.watch(categoryListProvider);
@@ -62,15 +61,26 @@ class _ServiceDetailScreenState extends ConsumerState<ServiceDetailScreen> {
       data: (freshService) {
         _currentService = freshService;
 
-        // 🏷️ Obtenemos el nombre de la categoría de forma reactiva
         final displayCat = categoriesAsync.maybeWhen(
-          data: (cats) => cats.firstWhere((c) => c.id == freshService.categoryId, orElse: () => cats.first).name,
+          data: (cats) {
+            final foundCat = cats.where((c) => c.id == freshService.categoryId).firstOrNull;
+            return foundCat?.name ?? widget.categoryName;
+          },
           orElse: () => widget.categoryName,
         );
 
-        // ✅ Verificamos si el trabajador ya se postuló
         final hasApplied = offersAsync.maybeWhen(
-          data: (offers) => offers.any((o) => o.workerId == widget.currentUser.id),
+          data: (offers) {
+            return offers.any((o) {
+              final isMyOffer = o.workerId == widget.currentUser.id;
+              
+              final currentStatus = o.status.toString().toLowerCase().trim();
+              final isCanceled = currentStatus == 'canceled'; 
+              final isRejected = currentStatus == 'rejected'; 
+
+              return isMyOffer && !isCanceled && !isRejected;
+            });
+          },
           orElse: () => false,
         );
 

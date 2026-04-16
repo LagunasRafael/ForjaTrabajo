@@ -6,6 +6,8 @@ import 'package:forja_trabajo/features/services/presentation/screens/shared/serv
 import 'package:forja_trabajo/features/services/presentation/screens/shared/widgets/shared_job_widgets.dart';
 import 'package:forja_trabajo/features/services/domain/usecases/jobs/complete_job_usecase.dart';
 import 'package:forja_trabajo/features/services/presentation/providers/service_list_provider.dart';
+import 'package:forja_trabajo/features/chat/presentation/providers/chat_provider.dart';
+import 'package:forja_trabajo/features/chat/presentation/screens/shared_chat_screen.dart';
 
 class ClientMatchedJobCard extends ConsumerWidget {
   final ServiceEntity service;
@@ -76,15 +78,59 @@ class ClientMatchedJobCard extends ConsumerWidget {
   }
 }
 
-class _ClientMatchedActions extends ConsumerWidget {
+class _ClientMatchedActions extends ConsumerStatefulWidget {
   final ServiceEntity service;
   final bool isWaiting;
   
   const _ClientMatchedActions({required this.service, required this.isWaiting});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final isCompleting = ref.watch(completingJobProvider(service.id));
+  ConsumerState<_ClientMatchedActions> createState() => _ClientMatchedActionsState();
+}
+
+class _ClientMatchedActionsState extends ConsumerState<_ClientMatchedActions> {
+  bool _isOpeningChat = false;
+
+  Future<void> _openChat(BuildContext context) async {
+    final requestId = widget.service.requestId;
+    if (requestId == null || requestId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("No se puede abrir el chat: sin postulación asociada"), backgroundColor: Colors.red),
+      );
+      return;
+    }
+
+    setState(() => _isOpeningChat = true);
+
+    try {
+      final repository = ref.read(chatRepositoryProvider);
+      final conversationId = await repository.getOrCreateConversation(requestId);
+
+      if (context.mounted) {
+        Navigator.push(context, MaterialPageRoute(
+          builder: (_) => SharedChatScreen(
+            conversationId: conversationId,
+            myRole: 'client',
+            service: {'title': widget.service.title},
+            otherUserName: widget.service.workerName,
+            otherUserAvatarUrl: widget.service.workerImageUrl,
+          ),
+        ));
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error abriendo el chat: $e"), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isOpeningChat = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isCompleting = ref.watch(completingJobProvider(widget.service.id));
 
     return Column(
       children: [
@@ -96,18 +142,18 @@ class _ClientMatchedActions extends ConsumerWidget {
               label: "Chat", 
               icon: Icons.chat_bubble_outline, 
               isOutlined: true, 
-              onPressed: isCompleting ? null : () {
-              }
+              isLoading: _isOpeningChat,
+              onPressed: (isCompleting || _isOpeningChat) ? null : () => _openChat(context),
             ),
             const SizedBox(width: 12),
             _btn(
               context: context,
-              label: isWaiting ? "Confirmar Fin" : "En curso...",
-              icon: isWaiting ? Icons.check_circle_outline : Icons.hourglass_empty,
-              color: isWaiting ? const Color(0xFF10B981) : Colors.orange,
+              label: widget.isWaiting ? "Confirmar Fin" : "En curso...",
+              icon: widget.isWaiting ? Icons.check_circle_outline : Icons.hourglass_empty,
+              color: widget.isWaiting ? const Color(0xFF10B981) : Colors.orange,
               isLoading: isCompleting,
-              onPressed: (isWaiting && !isCompleting) 
-                ? () => _handleComplete(context, ref) 
+              onPressed: (widget.isWaiting && !isCompleting) 
+                ? () => _handleComplete(context) 
                 : null,
             ),
           ],
@@ -116,14 +162,14 @@ class _ClientMatchedActions extends ConsumerWidget {
     );
   }
 
-  Future<void> _handleComplete(BuildContext context, WidgetRef ref) async {
+  Future<void> _handleComplete(BuildContext context) async {
     final confirm = await _showConfirmDialog(context);
     if (confirm != true) return;
 
-    ref.read(completingJobProvider(service.id).notifier).state = true;
+    ref.read(completingJobProvider(widget.service.id).notifier).state = true;
     
     try {
-      final success = await ref.read(completeJobUseCaseProvider).execute(service.id);
+      final success = await ref.read(completeJobUseCaseProvider).execute(widget.service.id);
       
       if (success && context.mounted) {
         ref.invalidate(myRequestsProvider); 
@@ -136,7 +182,7 @@ class _ClientMatchedActions extends ConsumerWidget {
         );
       }
     } finally {
-      ref.read(completingJobProvider(service.id).notifier).state = false;
+      ref.read(completingJobProvider(widget.service.id).notifier).state = false;
     }
   }
 
@@ -175,7 +221,9 @@ class _ClientMatchedActions extends ConsumerWidget {
       child: isOutlined 
         ? OutlinedButton.icon(
             onPressed: onPressed, 
-            icon: Icon(icon, size: 18, color: onPressed == null ? Colors.grey : color),
+            icon: isLoading
+              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+              : Icon(icon, size: 18, color: onPressed == null ? Colors.grey : color),
             label: Text(label, style: TextStyle(color: onPressed == null ? Colors.grey : color, fontSize: 12)),
             style: OutlinedButton.styleFrom(
               side: BorderSide(color: onPressed == null ? Colors.grey.shade300 : color), 

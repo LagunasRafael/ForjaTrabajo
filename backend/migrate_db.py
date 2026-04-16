@@ -33,6 +33,28 @@ def migrate():
         else:
             print(f"Error al añadir created_at: {e}")
 
+    try:
+        # Añadir is_deleted_by_client
+        print("Intentando añadir la columna is_deleted_by_client a conversations...")
+        cursor.execute("ALTER TABLE conversations ADD COLUMN is_deleted_by_client BOOLEAN DEFAULT FALSE;")
+        print("✅ Columna is_deleted_by_client añadida correctamente.")
+    except sqlite3.OperationalError as e:
+        if "duplicate column name" in str(e):
+            print("⚠️ La columna is_deleted_by_client ya existía.")
+        else:
+            print(f"Error al añadir is_deleted_by_client: {e}")
+
+    try:
+        # Añadir is_deleted_by_worker
+        print("Intentando añadir la columna is_deleted_by_worker a conversations...")
+        cursor.execute("ALTER TABLE conversations ADD COLUMN is_deleted_by_worker BOOLEAN DEFAULT FALSE;")
+        print("✅ Columna is_deleted_by_worker añadida correctamente.")
+    except sqlite3.OperationalError as e:
+        if "duplicate column name" in str(e):
+            print("⚠️ La columna is_deleted_by_worker ya existía.")
+        else:
+            print(f"Error al añadir is_deleted_by_worker: {e}")
+
     conn.commit()
     conn.close()
     print("Migración finalizada.")

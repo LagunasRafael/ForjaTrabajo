@@ -1,0 +1,29 @@
+﻿Analyzing chat...
+
+  error - domain\usecases\start_messages_usecase.dart:8:29 - The method 'getOrCreateConversation' isn't defined for the type 'ChatRepository'. Try correcting the name to the name of an existing method, or defining a method named 'getOrCreateConversation'. - undefined_method
+warning - presentation\widgets\negotiation_card.dart:33:8 - The value of the field '_isResponded' isn't used. Try removing the field, or using it. - unused_field
+   info - data\datasources\chat_remote_datasource.dart:14:7 - Don't invoke 'print' in production code. Try using a logging framework. - avoid_print
+   info - data\datasources\chat_remote_datasource.dart:25:7 - Don't invoke 'print' in production code. Try using a logging framework. - avoid_print
+   info - data\datasources\chat_remote_datasource.dart:41:7 - Don't invoke 'print' in production code. Try using a logging framework. - avoid_print
+   info - data\datasources\chat_remote_datasource.dart:44:7 - Don't invoke 'print' in production code. Try using a logging framework. - avoid_print
+   info - data\datasources\chat_remote_datasource.dart:54:7 - Don't invoke 'print' in production code. Try using a logging framework. - avoid_print
+   info - data\datasources\chat_remote_datasource.dart:68:7 - Don't invoke 'print' in production code. Try using a logging framework. - avoid_print
+   info - data\datasources\chat_remote_datasource.dart:70:7 - Don't invoke 'print' in production code. Try using a logging framework. - avoid_print
+   info - data\datasources\chat_remote_datasource.dart:81:7 - Don't invoke 'print' in production code. Try using a logging framework. - avoid_print
+   info - data\datasources\chat_remote_datasource.dart:83:7 - Don't invoke 'print' in production code. Try using a logging framework. - avoid_print
+   info - presentation\providers\chat_list_provider.dart:11:9 - An uninitialized field should have an explicit type annotation. Try adding a type annotation. - prefer_typing_uninitialized_variables
+   info - presentation\providers\chat_provider.dart:96:7 - Don't invoke 'print' in production code. Try using a logging framework. - avoid_print
+   info - presentation\providers\chat_provider.dart:121:7 - Don't invoke 'print' in production code. Try using a logging framework. - avoid_print
+   info - presentation\providers\chat_provider.dart:129:19 - Use interpolation to compose strings and values. Try using string interpolation to build the composite string. - prefer_interpolation_to_compose_strings
+   info - presentation\providers\chat_provider.dart:141:9 - Don't invoke 'print' in production code. Try using a logging framework. - avoid_print
+   info - presentation\providers\chat_provider.dart:170:7 - Don't invoke 'print' in production code. Try using a logging framework. - avoid_print
+   info - presentation\providers\chat_provider.dart:193:7 - Don't invoke 'print' in production code. Try using a logging framework. - avoid_print
+   info - presentation\widgets\chat_bubble.dart:50:45 - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement. - deprecated_member_use
+   info - presentation\widgets\negotiation_card.dart:111:47 - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement. - deprecated_member_use
+   info - presentation\widgets\negotiation_card.dart:181:33 - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement. - deprecated_member_use
+   info - presentation\widgets\negotiation_card.dart:210:32 - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement. - deprecated_member_use
+   info - presentation\widgets\negotiation_card.dart:211:32 - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement. - deprecated_member_use
+   info - presentation\widgets\negotiation_card.dart:227:52 - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement. - deprecated_member_use
+   info - presentation\widgets\negotiation_card.dart:346:48 - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement. - deprecated_member_use
+
+25 issues found.
