@@ -7,7 +7,7 @@ class ApiClient {
   late Dio dio;
   final FlutterSecureStorage storage;
 
-  static final String _baseUrl = 'https://forja-api-rw0r.onrender.com'; // ✨ URL DE PRODUCCIÓN
+  static final String _baseUrl = 'https://forja-api-rw0r.onrender.com'; // URL DE PRODUCCIÓN
 
   static String get baseUrl => _baseUrl;
 
