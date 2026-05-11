@@ -5,7 +5,8 @@ import json
 from pydantic import BaseModel
 
 from app.db.database import get_db
-from app.auth.security import get_current_user
+from app.auth.security import get_current_user, check_role
+from app.core.roles import Role
 from app.auth import models as auth_models
 from app.services.chats import schemas
 from app.services.chats import service 
@@ -247,3 +248,55 @@ def delete_chat(
         conversation_id=conversation_id,
         user_id=str(current_user.id)
     )
+
+# =================================================================
+# ADMIN DISPUTES
+# =================================================================
+
+@router.get("/admin/conversations/all")
+def get_all_conversations_admin(
+    db: Session = Depends(get_db),
+    current_user: auth_models.User = Depends(check_role([Role.ADMIN]))
+):
+    """Devuelve todas las conversaciones para el visor de disputas del admin."""
+    conversations = db.query(service_models.Conversation).order_by(service_models.Conversation.updated_at.desc()).all()
+    
+    result = []
+    for conv in conversations:
+        client = db.query(auth_models.User).filter(auth_models.User.id == conv.client_id).first()
+        worker = db.query(auth_models.User).filter(auth_models.User.id == conv.worker_id).first()
+        
+        result.append({
+            "id": conv.id,
+            "request_id": conv.request_id,
+            "status": conv.status,
+            "created_at": conv.created_at,
+            "updated_at": conv.updated_at,
+            "client_name": client.full_name if client else "Cliente",
+            "worker_name": worker.full_name if worker else "Trabajador",
+        })
+    return result
+
+@router.get("/admin/conversations/{conversation_id}/messages")
+def get_conversation_messages_admin(
+    conversation_id: str,
+    db: Session = Depends(get_db),
+    current_user: auth_models.User = Depends(check_role([Role.ADMIN]))
+):
+    """Devuelve los mensajes de un chat específico para el visor de disputas del admin."""
+    messages = db.query(service_models.Message).filter(
+        service_models.Message.conversation_id == conversation_id
+    ).order_by(service_models.Message.created_at.asc()).all()
+    
+    result = []
+    for msg in messages:
+        sender = db.query(auth_models.User).filter(auth_models.User.id == msg.sender_id).first()
+        result.append({
+            "id": msg.id,
+            "sender_id": msg.sender_id,
+            "sender_name": sender.full_name if sender else "Usuario",
+            "content": msg.content,
+            "message_type": msg.message_type,
+            "created_at": msg.created_at
+        })
+    return result
