@@ -1,13 +1,12 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.routers import router
+
 from app.db.database import Base, engine
 from app.auth.models import User
 from app.services.models import Service
 from app.payments.models import Payment
-
-from app.routers import router
-from app.payments.routes import router as payments_router
 
 
 # Crear tablas
@@ -33,7 +32,6 @@ app.add_middleware(
 
 # Routers
 app.include_router(router)
-app.include_router(payments_router)
 
 
 @app.get("/")

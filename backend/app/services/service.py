@@ -335,6 +335,14 @@ def complete_job(db: Session, job_id: str, user_id: str):
     if job.request and job.request.service:
         job.request.service.status = models.JobStatus.COMPLETED
 
+    # Capturar fondos retenidos en Stripe (si hay pago en escrow)
+    from app.payments.services import capture_payment
+    try:
+        capture_payment(db, job.id)
+    except Exception as e:
+        # Si falla la captura de Stripe, logueamos pero no bloqueamos el complete
+        print(f"⚠️ Error al capturar pago Stripe para job {job.id}: {e}")
+
     db.commit()
     db.refresh(job)
     return job
@@ -390,7 +398,6 @@ def search_services(db: Session, search_query: str):
         .filter(models.Service.status == models.JobStatus.OPEN) 
         .all()
     )
-    return services
 
 def update_service_images(db: Session, service_id: str, image_urls: list[str]):
     """
