@@ -22,9 +22,9 @@ def get_or_create_conversation(db: Session, request_id: str, user_id: str):
     
     if not convo:
         convo = models.Conversation(
-            request_id=request_id,
-            client_id=service_entry.client_id,
-            worker_id=request_entry.worker_id,
+            request_id=str(request_id),
+            client_id=str(service_entry.client_id), # type: ignore
+            worker_id=str(request_entry.worker_id), # type: ignore
             status=models.ConversationStatus.OPEN.value
         )
         db.add(convo)
@@ -40,16 +40,16 @@ def save_message(db: Session, conversation_id: str, sender_id: str, content: str
         raise ValueError("Chat inexistente")
 
     new_msg = models.Message(
-        conversation_id=conversation_id,
-        sender_id=sender_id,
-        content=content,
-        message_type=msg_type
+        conversation_id=str(conversation_id),
+        sender_id=str(sender_id),
+        content=str(content),
+        message_type=str(msg_type)
     )
-    convo.updated_at = datetime.utcnow()
+    convo.updated_at = datetime.utcnow() # type: ignore
     
     # 🌟 REVIVIR EL CHAT PARA AMBOS USUARIOS SI HAY NUEVO MENSAJE
-    convo.is_deleted_by_client = False
-    convo.is_deleted_by_worker = False
+    convo.is_deleted_by_client = False # type: ignore
+    convo.is_deleted_by_worker = False # type: ignore
     
     db.add(new_msg)
     db.commit()
@@ -90,7 +90,7 @@ def get_user_chats(db: Session, user_id: str):
         # Para el otro usuario, aún necesitamos el nombre/foto. Podríamos hacer joinedload pero sqlalchemy 
         # no sabe dinámicamente si cargar client_id o worker_id fácilmente sin duplicar joins.
         # Por ahora, mantendremos este query pero con el user_id ya conocido es rápido (especialmente con el índice nuevo).
-        other_user = db.query(auth_models.User).filter(auth_models.User.id == other_user_id).first()
+        other_user = db.query(auth_models.User).filter(auth_models.User.id == str(other_user_id)).first()
         
         # 3. Obtener el último mensaje (Sigue siendo un query extra por chat, pero mejoramos el resto)
         last_msg = db.query(models.Message).filter(
@@ -147,10 +147,10 @@ def get_user_chats(db: Session, user_id: str):
         chat_list.append({
             "id": str(convo.id),
             "name": other_name,
-            "serviceName": service_name,
-            "status": "ACTIVO" if convo.status == "OPEN" else "CERRADO",
+            "serviceName": str(service_name),
+            "status": "ACTIVO" if str(convo.status) == "OPEN" else "CERRADO",
             "lastMessage": last_message_text,
-            "time": last_msg.created_at.strftime("%I:%M %p") if last_msg else "",
+            "time": last_msg.created_at.strftime("%I:%M %p") if last_msg and hasattr(last_msg.created_at, "strftime") else "", # type: ignore
             "avatarUrl": avatar,
             "myRole": "client" if str(convo.client_id) == str(user_id) else "worker",
             "isOnline": False,
@@ -165,7 +165,7 @@ def send_offer(db: Session, conversation_id: str, sender_id: str, amount: float)
     if not convo:
         raise HTTPException(status_code=404, detail="Chat no encontrado")
 
-    if convo.status == models.ConversationStatus.CLOSED.value:
+    if str(convo.status) == models.ConversationStatus.CLOSED.value:
         raise HTTPException(status_code=400, detail="Esta conversación ya está cerrada.")
 
     # 1. 🧹 LIMPIEZA AUTOMÁTICA: Buscamos ofertas viejas pendientes y las "retiramos"
@@ -177,15 +177,15 @@ def send_offer(db: Session, conversation_id: str, sender_id: str, amount: float)
 
     # 2. ✨ CREAMOS LA NUEVA OFERTA (La única que nace 'pending')
     new_offer = models.Message(
-        conversation_id=conversation_id,
-        sender_id=sender_id,
+        conversation_id=str(conversation_id),
+        sender_id=str(sender_id),
         content=str(amount), 
         message_type=models.MessageType.OFFER.value,
         status="pending" 
     )
     
-    convo.updated_at = datetime.utcnow()
-    convo.status = "NEGOCIATING" 
+    convo.updated_at = datetime.utcnow() # type: ignore
+    convo.status = "NEGOCIATING" # type: ignore
     
     db.add(new_offer)
     db.commit()
@@ -205,7 +205,7 @@ def handle_offer_action(db: Session, message_id: str, action: str, user_id: str)
         raise HTTPException(status_code=404, detail="Conversación no encontrada")
 
     if action == "accept":
-        offer_msg.status = "accepted"
+        offer_msg.status = "accepted" # type: ignore
 
         # 1. Obtener la postulación y el servicio asociados
         request = convo.request
@@ -222,26 +222,26 @@ def handle_offer_action(db: Session, message_id: str, action: str, user_id: str)
             raise HTTPException(status_code=400, detail="Ya existe un trabajo para esta postulación")
 
         # 3. Actualizar status del servicio y la postulación
-        service_entry.status = models.JobStatus.MATCHED
-        request.status = "accepted"
-        request.proposed_price = float(offer_msg.content)  # Precio negociado en el chat
+        service_entry.status = models.JobStatus.MATCHED # type: ignore
+        request.status = "accepted" # type: ignore
+        request.proposed_price = float(str(offer_msg.content))  # type: ignore
 
         # 4. Crear el Job (mismo flujo que accept_postulation en contracts)
         new_job = models.Job(
-            request_id=request.id,
-            provider_id=convo.worker_id,
-            client_id=convo.client_id,
+            request_id=str(request.id),
+            provider_id=str(convo.worker_id),
+            client_id=str(convo.client_id),
             status=models.JobStatus.MATCHED,
-            final_price=float(offer_msg.content),
+            final_price=float(str(offer_msg.content)),
             started_at=datetime.utcnow()
         )
         db.add(new_job)
 
         # 5. Cerrar la conversación (el trato se cerró)
-        convo.status = models.ConversationStatus.CLOSED.value
+        convo.status = models.ConversationStatus.CLOSED.value # type: ignore
 
     elif action == "reject":
-        offer_msg.status = "rejected"
+        offer_msg.status = "rejected" # type: ignore
 
     db.commit()
     db.refresh(offer_msg)
@@ -259,7 +259,7 @@ def toggle_chat_archive(db: Session, conversation_id: str, is_archived: bool, us
         raise HTTPException(status_code=403, detail="No tienes permiso para modificar este chat")
 
     # Guardamos el estado de archivo
-    convo.is_archived = is_archived
+    convo.is_archived = is_archived # type: ignore
     db.commit()
     return {"message": "Estado del chat actualizado correctamente"}
 
@@ -271,9 +271,9 @@ def delete_conversation(db: Session, conversation_id: str, user_id: str):
         raise HTTPException(status_code=404, detail="Conversación no encontrada")
     
     if str(convo.client_id) == str(user_id):
-        convo.is_deleted_by_client = True
+        convo.is_deleted_by_client = True # type: ignore
     elif str(convo.worker_id) == str(user_id):
-        convo.is_deleted_by_worker = True
+        convo.is_deleted_by_worker = True # type: ignore
     else:
         raise HTTPException(status_code=403, detail="No tienes permiso para eliminar este chat")
 
@@ -283,3 +283,35 @@ def delete_conversation(db: Session, conversation_id: str, user_id: str):
         
     db.commit()
     return {"message": "Conversación eliminada correctamente"}
+
+def open_dispute(db: Session, conversation_id: str, user_id: str, reason: str):
+    """Permite a un usuario escalar el chat a una disputa administrativa."""
+    convo = db.query(models.Conversation).filter(models.Conversation.id == conversation_id).first()
+    if not convo:
+        raise HTTPException(status_code=404, detail="Conversación no encontrada")
+
+    if str(convo.client_id) != str(user_id) and str(convo.worker_id) != str(user_id):
+        raise HTTPException(status_code=403, detail="No tienes permiso para abrir una disputa en este chat")
+
+    if str(convo.status) == models.ConversationStatus.DISPUTE.value:
+        raise HTTPException(status_code=400, detail="Esta conversación ya está en disputa")
+
+    user = db.query(auth_models.User).filter(auth_models.User.id == user_id).first()
+    user_name = user.full_name if user and user.full_name else "Un usuario"
+
+    convo.status = models.ConversationStatus.DISPUTE.value # type: ignore
+    convo.updated_at = datetime.utcnow() # type: ignore
+
+    system_msg_content = f"🚨 {user_name} ha abierto una DISPUTA.\nMotivo: {reason}\nUn administrador revisará este caso pronto."
+    new_msg = models.Message(
+        conversation_id=str(conversation_id),
+        sender_id=str(user_id),
+        content=str(system_msg_content),
+        message_type=models.MessageType.SYSTEM.value,
+        status="pending"
+    )
+    db.add(new_msg)
+    db.commit()
+    db.refresh(new_msg)
+    
+    return {"message": "Disputa abierta correctamente", "system_message": new_msg}

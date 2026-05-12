@@ -213,6 +213,102 @@ def cancel_job_status(
     """Cancela un Job que ya estaba en 'matched'."""
     return service.cancel_job(db, job_id, current_user.id, current_user.role)
 
+# =================================================================
+# 4.5. ADMIN ONLY ENDPOINTS (Jobs & Disputes)
+# =================================================================
+
+@router.get("/admin/jobs/all")
+def get_all_jobs_admin(
+    db: Session = Depends(get_db),
+    current_user: auth_models.User = Depends(check_role([Role.ADMIN]))
+):
+    """Devuelve TODOS los jobs (MATCHED, COMPLETED, CANCELLED) con datos extra para el panel admin."""
+    from sqlalchemy.orm import joinedload
+    jobs = db.query(models.Job).options(
+        joinedload(models.Job.request).joinedload(models.ServiceRequest.service).joinedload(models.Service.category)
+    ).order_by(models.Job.started_at.desc()).all()
+    
+    result = []
+    for job in jobs:
+        # Obtenemos info del cliente y trabajador
+        client = db.query(auth_models.User).filter(auth_models.User.id == job.client_id).first()
+        worker = db.query(auth_models.User).filter(auth_models.User.id == job.provider_id).first()
+        service_obj = job.request.service if job.request else None
+        
+        # Calculate applicants count
+        applicants = 0
+        if service_obj:
+            applicants = db.query(models.ServiceRequest).filter(models.ServiceRequest.service_id == service_obj.id).count()
+
+        result.append({
+            "id": job.id,
+            "status": job.status.value,
+            "final_price": float(job.final_price) if job.final_price else 0,
+            "started_at": job.started_at,
+            "completed_at": job.completed_at,
+            "client_name": client.full_name if client else "Cliente Desconocido",
+            "worker_name": worker.full_name if worker else "Trabajador Desconocido",
+            "service_title": service_obj.title if service_obj else "Servicio Borrado",
+            "title": service_obj.title if service_obj else "Servicio Borrado",
+            "description": service_obj.description if service_obj else "",
+            "category": service_obj.category.name if service_obj and service_obj.category else "Sin categoría",
+            "location_city": service_obj.exact_address if service_obj and service_obj.exact_address else "Ubicación oculta",
+            "image_urls": service_obj.image_urls if service_obj and service_obj.image_urls else [],
+            "budget": float(service_obj.base_price) if service_obj and service_obj.base_price else 0,
+            "applicants_count": applicants,
+            "createdAt": service_obj.created_at.isoformat() if service_obj and service_obj.created_at else job.started_at.isoformat(),
+        })
+    return result
+
+@router.get("/admin/conversations/all")
+def get_all_conversations_admin(
+    db: Session = Depends(get_db),
+    current_user: auth_models.User = Depends(check_role([Role.ADMIN]))
+):
+    """Devuelve todas las conversaciones para el visor de disputas del admin."""
+    from sqlalchemy.orm import joinedload
+    conversations = db.query(models.Conversation).order_by(models.Conversation.updated_at.desc()).all()
+    
+    result = []
+    for conv in conversations:
+        client = db.query(auth_models.User).filter(auth_models.User.id == conv.client_id).first()
+        worker = db.query(auth_models.User).filter(auth_models.User.id == conv.worker_id).first()
+        
+        result.append({
+            "id": conv.id,
+            "request_id": conv.request_id,
+            "status": conv.status,
+            "created_at": conv.created_at,
+            "updated_at": conv.updated_at,
+            "client_name": client.full_name if client else "Cliente",
+            "worker_name": worker.full_name if worker else "Trabajador",
+        })
+    return result
+
+@router.get("/admin/conversations/{conversation_id}/messages")
+def get_conversation_messages_admin(
+    conversation_id: str,
+    db: Session = Depends(get_db),
+    current_user: auth_models.User = Depends(check_role([Role.ADMIN]))
+):
+    """Devuelve los mensajes de un chat específico para el visor de disputas del admin."""
+    messages = db.query(models.Message).filter(
+        models.Message.conversation_id == conversation_id
+    ).order_by(models.Message.created_at.asc()).all()
+    
+    result = []
+    for msg in messages:
+        sender = db.query(auth_models.User).filter(auth_models.User.id == msg.sender_id).first()
+        result.append({
+            "id": msg.id,
+            "sender_id": msg.sender_id,
+            "sender_name": sender.full_name if sender else "Usuario",
+            "content": msg.content,
+            "message_type": msg.message_type,
+            "created_at": msg.created_at
+        })
+    return result
+
 
 # =================================================================
 # 5. SERVICIOS - RUTAS DINÁMICAS POR ID (Prioridad Baja ⬇️)

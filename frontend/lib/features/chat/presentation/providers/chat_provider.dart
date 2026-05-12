@@ -10,6 +10,7 @@ import 'package:forja_trabajo/features/chat/domain/usecases/get_chat_history_use
 import 'package:forja_trabajo/features/chat/domain/repositories/chat_repository.dart';
 import 'package:forja_trabajo/features/chat/domain/usecases/send_offer_usecase.dart';
 import 'package:forja_trabajo/features/chat/domain/usecases/respond_offer_usecase.dart';
+import 'package:forja_trabajo/features/chat/domain/usecases/open_dispute_usecase.dart';
 import 'package:forja_trabajo/features/chat/domain/entities/message_entity.dart';
 import 'package:forja_trabajo/features/chat/data/models/message_model.dart';
 
@@ -39,6 +40,11 @@ final respondOfferUseCaseProvider = Provider((ref) {
   return RespondOfferUseCase(repository);
 });
 
+final openDisputeUseCaseProvider = Provider((ref) {
+  final repository = ref.watch(chatRepositoryProvider);
+  return OpenDisputeUseCase(repository);
+});
+
 // --- 3. PROVIDER DE TYPING ---
 final chatTypingProvider = StateProvider.family<bool, String>((ref, conversationId) => false);
 
@@ -49,6 +55,7 @@ final chatProvider = StateNotifierProvider.family<ChatNotifier, List<MessageEnti
   final getHistory = ref.watch(getChatHistoryUseCaseProvider);
   final sendOffer = ref.watch(sendOfferUseCaseProvider); 
   final respondOffer = ref.watch(respondOfferUseCaseProvider); 
+  final openDispute = ref.watch(openDisputeUseCaseProvider);
   
   return ChatNotifier(
     ref: ref,
@@ -57,6 +64,7 @@ final chatProvider = StateNotifierProvider.family<ChatNotifier, List<MessageEnti
     getHistoryUseCase: getHistory,
     sendOfferUseCase: sendOffer, 
     respondOfferUseCase: respondOffer, 
+    openDisputeUseCase: openDispute,
   );
 });
 
@@ -68,6 +76,7 @@ class ChatNotifier extends StateNotifier<List<MessageEntity>> {
   final GetChatHistoryUseCase getHistoryUseCase;
   final SendOfferUseCase sendOfferUseCase;
   final RespondOfferUseCase respondOfferUseCase;
+  final OpenDisputeUseCase openDisputeUseCase;
   
   WebSocketChannel? _channel;
 
@@ -85,6 +94,7 @@ class ChatNotifier extends StateNotifier<List<MessageEntity>> {
     required this.getHistoryUseCase,
     required this.sendOfferUseCase,
     required this.respondOfferUseCase,
+    required this.openDisputeUseCase,
   }) : super([]) {
     _initChat();
   }
@@ -445,6 +455,18 @@ class ChatNotifier extends StateNotifier<List<MessageEntity>> {
 
     } catch (e) {
       print("🚨 Error al responder la oferta: $e");
+    }
+  }
+
+  Future<void> openDispute(String reason) async {
+    try {
+      await openDisputeUseCase(conversationId, reason);
+      // El servidor enviará un WS message al otro usuario o al mismo,
+      // pero por ahora solo confiamos en la API. Si la API inyecta el mensaje "SYSTEM" y lo manda por WS,
+      // llegará a este mismo cliente si se reenvía a todos. De lo contrario, se verá al refrescar.
+    } catch (e) {
+      print("🚨 Error al abrir la disputa: $e");
+      rethrow;
     }
   }
 

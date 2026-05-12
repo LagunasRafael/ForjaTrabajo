@@ -181,6 +181,7 @@ class Job(Base):
 class ConversationStatus(str, enum.Enum):
     OPEN = "open"
     CLOSED = "closed" 
+    DISPUTE = "dispute"
 
 class MessageType(str, enum.Enum):
     TEXT = "text" 

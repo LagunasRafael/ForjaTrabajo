@@ -54,8 +54,8 @@ def get_current_user(
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         # Asegúrate de que en routes.py guardes el ID como string en el "sub"
-        user_id: str = payload.get("sub")
-        if user_id is None:
+        user_id = str(payload.get("sub"))
+        if user_id is None or user_id == "None":
             raise credentials_exception
     except JWTError:
         raise credentials_exception

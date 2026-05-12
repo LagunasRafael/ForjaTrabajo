@@ -11,6 +11,8 @@ import { ServiceDetail } from '../modules/services/pages/ServiceDetail';
 import { FinancePage } from '../modules/services/pages/FinancePage';
 // 🟢 1. IMPORTA TU NUEVA PÁGINA AQUÍ
 import { SettingsPage } from '../modules/admin/pages/SettingsPage'; // Ajusta la ruta según tu carpeta
+import { DisputesPage } from '../modules/disputes/pages/DisputesPage';
+import { ChatViewer } from '../modules/disputes/pages/ChatViewer';
 
 export const router = createBrowserRouter([
   // 1. Ruta Pública (Login)
@@ -59,6 +61,14 @@ export const router = createBrowserRouter([
       { 
         path: 'finance', 
         element: <FinancePage /> 
+      },
+      {
+        path: 'disputes',
+        element: <DisputesPage />
+      },
+      {
+        path: 'disputes/:id',
+        element: <ChatViewer />
       },
 
       // 🟡 3. EL COMODÍN SIEMPRE AL FINAL DE LOS CHILDREN
