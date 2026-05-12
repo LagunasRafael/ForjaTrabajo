@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { getConversationMessagesApi } from '../services/disputes.service';
+import { getConversationMessagesApi, sendAdminMessageApi, resolveDisputeApi } from '../services/disputes.service';
 import type { Message } from '../types/dispute.types';
 
 export const ChatViewer = () => {
@@ -9,6 +9,10 @@ export const ChatViewer = () => {
   const navigate = useNavigate();
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [adminMessage, setAdminMessage] = useState('');
+  const [isSending, setIsSending] = useState(false);
+  const [isResolving, setIsResolving] = useState(false);
+  const [showResolveModal, setShowResolveModal] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -27,6 +31,38 @@ export const ChatViewer = () => {
     }
   };
 
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!adminMessage.trim() || !id) return;
+
+    try {
+      setIsSending(true);
+      await sendAdminMessageApi(id, adminMessage.trim());
+      setAdminMessage('');
+      toast.success('Mensaje enviado');
+      await loadMessages(id); // recargar para ver el nuevo mensaje
+    } catch (error) {
+      toast.error('Error al enviar mensaje');
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const handleResolve = async (winner: 'client' | 'worker') => {
+    if (!id) return;
+    try {
+      setIsResolving(true);
+      await resolveDisputeApi(id, winner);
+      toast.success('Disputa resuelta exitosamente');
+      setShowResolveModal(false);
+      await loadMessages(id); // Recargar
+    } catch (error) {
+      toast.error('Error al resolver la disputa');
+    } finally {
+      setIsResolving(false);
+    }
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500 h-[calc(100vh-8rem)] flex flex-col">
       
@@ -39,9 +75,19 @@ export const ChatViewer = () => {
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
         </button>
         <div>
-          <h2 className="text-xl font-bold text-white tracking-tight">Visor de Chat</h2>
-          <p className="text-xs text-slate-400 mt-1">Modo lectura para administradores (Disputas)</p>
+          <h2 className="text-xl font-bold text-white tracking-tight">Visor de Chat y Mediación</h2>
+          <p className="text-xs text-slate-400 mt-1">Modo administrador (Disputas)</p>
         </div>
+      </div>
+
+      <div className="flex gap-4 shrink-0">
+        <button 
+          onClick={() => setShowResolveModal(true)}
+          className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg text-sm font-semibold transition-colors flex items-center gap-2"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+          Resolver Disputa
+        </button>
       </div>
 
       {/* CHAT BOX */}
@@ -67,16 +113,18 @@ export const ChatViewer = () => {
               const isNewSender = idx === 0 || messages[idx - 1].sender_id !== msg.sender_id;
               
               // Determinar color de burbuja de manera determinista (pseudo-hash del ID)
+              const isSystem = msg.message_type === 'system';
               const isClient = msg.sender_name.toLowerCase().includes('cliente') || msg.sender_id.charCodeAt(0) % 2 === 0;
 
               return (
-                <div key={msg.id} className={`flex flex-col ${isClient ? 'items-end' : 'items-start'}`}>
-                  {isNewSender && (
+                <div key={msg.id} className={`flex flex-col ${isSystem ? 'items-center w-full' : isClient ? 'items-end' : 'items-start'}`}>
+                  {isNewSender && !isSystem && (
                     <span className="text-xs text-slate-500 mb-1 ml-1 mr-1">
                       {msg.sender_name}
                     </span>
                   )}
-                  <div className={`max-w-[80%] sm:max-w-[70%] rounded-2xl px-4 py-2.5 text-sm ${
+                  <div className={`${isSystem ? 'max-w-[90%] text-center border border-red-500/30' : 'max-w-[80%] sm:max-w-[70%]'} rounded-2xl px-4 py-2.5 text-sm ${
+                    isSystem ? 'bg-red-900/20 text-red-200' :
                     isClient 
                       ? 'bg-indigo-600 text-white rounded-tr-sm' 
                       : 'bg-slate-800 text-slate-200 rounded-tl-sm'
@@ -98,7 +146,69 @@ export const ChatViewer = () => {
             })
           )}
         </div>
+
+        {/* ADMIN INPUT AREA */}
+        <form onSubmit={handleSendMessage} className="p-4 bg-slate-900 border-t border-slate-800 flex gap-3 shrink-0">
+          <input
+            type="text"
+            value={adminMessage}
+            onChange={(e) => setAdminMessage(e.target.value)}
+            placeholder="Escribe un mensaje como Administrador para pedir evidencia..."
+            className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors"
+            disabled={isSending}
+          />
+          <button
+            type="submit"
+            disabled={isSending || !adminMessage.trim()}
+            className="bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-700 disabled:text-slate-500 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
+          >
+            {isSending ? 'Enviando...' : 'Enviar'}
+          </button>
+        </form>
       </div>
+
+      {/* RESOLVE MODAL */}
+      {showResolveModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl">
+            <div className="p-6">
+              <h3 className="text-xl font-bold text-white mb-2">Resolver Disputa</h3>
+              <p className="text-sm text-slate-400 mb-6">
+                Selecciona quién es el ganador de la disputa en base a la evidencia proporcionada. Esta acción es <b>irreversible</b> y notificará a ambas partes.
+              </p>
+              
+              <div className="space-y-3">
+                <button 
+                  onClick={() => handleResolve('client')}
+                  disabled={isResolving}
+                  className="w-full text-left p-4 rounded-xl border border-slate-700 bg-slate-800 hover:border-indigo-500 hover:bg-slate-800/80 transition-colors group"
+                >
+                  <div className="font-semibold text-white group-hover:text-indigo-400">A favor del Cliente (Reembolso)</div>
+                  <div className="text-xs text-slate-400 mt-1">El dinero congelado será devuelto a la tarjeta del cliente y el trabajo se cancelará.</div>
+                </button>
+
+                <button 
+                  onClick={() => handleResolve('worker')}
+                  disabled={isResolving}
+                  className="w-full text-left p-4 rounded-xl border border-slate-700 bg-slate-800 hover:border-emerald-500 hover:bg-slate-800/80 transition-colors group"
+                >
+                  <div className="font-semibold text-white group-hover:text-emerald-400">A favor del Trabajador (Pago)</div>
+                  <div className="text-xs text-slate-400 mt-1">El dinero congelado será liberado al trabajador como pago por sus servicios.</div>
+                </button>
+              </div>
+            </div>
+            <div className="p-4 border-t border-slate-800 bg-slate-900/50 flex justify-end">
+              <button 
+                onClick={() => setShowResolveModal(false)}
+                disabled={isResolving}
+                className="px-4 py-2 text-sm font-medium text-slate-300 hover:text-white"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       
     </div>
   );

@@ -60,12 +60,12 @@ class _SharedChatScreenState extends ConsumerState<SharedChatScreen> {
     }
   }
 
-  void _showDisputeDialog(BuildContext context) {
+  void _showDisputeDialog(BuildContext parentContext) {
     final reasonController = TextEditingController();
     
     showDialog(
-      context: context,
-      builder: (context) {
+      context: parentContext,
+      builder: (dialogContext) {
         return AlertDialog(
           title: const Row(
             children: [
@@ -92,7 +92,7 @@ class _SharedChatScreenState extends ConsumerState<SharedChatScreen> {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => Navigator.pop(dialogContext),
               child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
             ),
             ElevatedButton(
@@ -101,12 +101,15 @@ class _SharedChatScreenState extends ConsumerState<SharedChatScreen> {
                 final reason = reasonController.text.trim();
                 if (reason.isEmpty) return;
                 
-                Navigator.pop(context); // Cerrar diálogo
+                // Capturamos el ScaffoldMessenger ANTES del await y usando el context de la pantalla principal
+                final scaffoldMessenger = ScaffoldMessenger.of(parentContext);
+                
+                Navigator.pop(dialogContext); // Cerrar diálogo
                 
                 try {
                   await ref.read(chatProvider(widget.conversationId).notifier).openDispute(reason);
                   if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    scaffoldMessenger.showSnackBar(
                       const SnackBar(
                         content: Text('Disputa abierta. Un administrador se pondrá en contacto pronto.'),
                         backgroundColor: Colors.red,
@@ -115,7 +118,7 @@ class _SharedChatScreenState extends ConsumerState<SharedChatScreen> {
                   }
                 } catch (e) {
                   if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    scaffoldMessenger.showSnackBar(
                       const SnackBar(content: Text('Error al abrir la disputa. Intenta de nuevo.')),
                     );
                   }

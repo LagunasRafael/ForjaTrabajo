@@ -12,7 +12,8 @@ from app.services.chats import schemas
 from app.services.chats import service 
 from app.services import models as service_models
 from app.utils.s3 import upload_chat_media_to_s3
-from fastapi import UploadFile, File
+from fastapi import UploadFile, File, BackgroundTasks
+from app.utils.email import send_dispute_opened_email, send_dispute_resolved_email
 
 router = APIRouter()
 
@@ -254,6 +255,7 @@ def delete_chat(
 def open_dispute_endpoint(
     conversation_id: str,
     dispute_data: schemas.DisputeCreate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: auth_models.User = Depends(get_current_user)
 ):
@@ -264,6 +266,16 @@ def open_dispute_endpoint(
         user_id=str(current_user.id),
         reason=dispute_data.reason
     )
+    
+    # Send email notification
+    convo = db.query(service_models.Conversation).filter(service_models.Conversation.id == conversation_id).first()
+    if convo:
+        other_user_id = convo.worker_id if str(convo.client_id) == str(current_user.id) else convo.client_id # type: ignore
+        other_user = db.query(auth_models.User).filter(auth_models.User.id == other_user_id).first()
+        is_other_client = (str(convo.client_id) == str(other_user_id)) # type: ignore
+        
+        if other_user and other_user.email: # type: ignore
+            background_tasks.add_task(send_dispute_opened_email, other_user.email, is_other_client) # type: ignore
     
     # Notificamos por WebSocket a la otra parte para que aparezca el mensaje de inmediato
     message_to_send = {
@@ -336,3 +348,147 @@ def get_conversation_messages_admin(
             "created_at": msg.created_at
         })
     return result
+
+class AdminMessageCreate(BaseModel):
+    content: str
+
+@router.post("/admin/chat/{conversation_id}/message")
+def send_admin_message(
+    conversation_id: str,
+    message_data: AdminMessageCreate,
+    db: Session = Depends(get_db),
+    current_user: auth_models.User = Depends(check_role([Role.ADMIN]))
+):
+    """El administrador inyecta un mensaje en un chat para mediar la disputa."""
+    convo = db.query(service_models.Conversation).filter(service_models.Conversation.id == conversation_id).first()
+    if not convo:
+        raise HTTPException(status_code=404, detail="Conversación no encontrada")
+        
+    # Crear mensaje SYSTEM del Admin
+    import uuid
+    from datetime import datetime
+    new_msg = service_models.Message(
+        id=str(uuid.uuid4()),
+        conversation_id=conversation_id,
+        sender_id=str(current_user.id),
+        content=f"👨‍⚖️ ADMIN: {message_data.content}",
+        message_type=service_models.MessageType.SYSTEM.value,
+        status="pending",
+        created_at=datetime.utcnow()
+    )
+    convo.updated_at = datetime.utcnow() # type: ignore
+    
+    db.add(new_msg)
+    db.commit()
+    db.refresh(new_msg)
+    
+    # Broadcast websocket
+    message_to_send = {
+        "id": new_msg.id,
+        "sender_id": new_msg.sender_id,
+        "content": new_msg.content,
+        "message_type": new_msg.message_type,
+        "created_at": new_msg.created_at.isoformat(),
+        "status": "pending"
+    }
+    
+    import asyncio
+    try:
+        loop = asyncio.get_running_loop()
+        loop.create_task(manager.broadcast(conversation_id, message_to_send))
+    except RuntimeError:
+        pass
+        
+    return {"status": "success", "message": "Mensaje de administrador enviado"}
+
+class DisputeResolveRequest(BaseModel):
+    winner_role: str # "client" o "worker"
+
+@router.post("/admin/chat/{conversation_id}/resolve")
+def resolve_dispute(
+    conversation_id: str,
+    resolve_data: DisputeResolveRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_user: auth_models.User = Depends(check_role([Role.ADMIN]))
+):
+    """El administrador dicta la resolución de la disputa."""
+    convo = db.query(service_models.Conversation).filter(service_models.Conversation.id == conversation_id).first()
+    if not convo:
+        raise HTTPException(status_code=404, detail="Conversación no encontrada")
+        
+    if convo.status != service_models.ConversationStatus.DISPUTE.value: # type: ignore
+        raise HTTPException(status_code=400, detail="Esta conversación no está en estado de disputa")
+        
+    request_entry = convo.request # type: ignore
+    if not request_entry:
+        raise HTTPException(status_code=404, detail="Postulación asociada no encontrada")
+        
+    job = request_entry.job # type: ignore
+    if not job:
+        raise HTTPException(status_code=404, detail="Trabajo no encontrado (No se completó la oferta)")
+        
+    # Obtener usuarios para correos
+    client = db.query(auth_models.User).filter(auth_models.User.id == convo.client_id).first() # type: ignore
+    worker = db.query(auth_models.User).filter(auth_models.User.id == convo.worker_id).first() # type: ignore
+    
+    import datetime
+    if resolve_data.winner_role == "client":
+        job.status = service_models.JobStatus.CANCELLED # type: ignore
+        resolution_msg = "⚖️ RESOLUCIÓN FINAL: La disputa se ha resuelto a favor del CLIENTE. Se procederá al reembolso del dinero congelado."
+        
+        # Enviar emails
+        if client and client.email: # type: ignore
+            background_tasks.add_task(send_dispute_resolved_email, client.email, True, "client") # type: ignore
+        if worker and worker.email: # type: ignore
+            background_tasks.add_task(send_dispute_resolved_email, worker.email, False, "worker") # type: ignore
+            
+    elif resolve_data.winner_role == "worker":
+        job.status = service_models.JobStatus.COMPLETED # type: ignore
+        job.completed_at = datetime.datetime.utcnow() # type: ignore
+        resolution_msg = "⚖️ RESOLUCIÓN FINAL: La disputa se ha resuelto a favor del TRABAJADOR. El pago ha sido autorizado y liberado."
+        
+        # Enviar emails
+        if client and client.email: # type: ignore
+            background_tasks.add_task(send_dispute_resolved_email, client.email, False, "client") # type: ignore
+        if worker and worker.email: # type: ignore
+            background_tasks.add_task(send_dispute_resolved_email, worker.email, True, "worker") # type: ignore
+    else:
+        raise HTTPException(status_code=400, detail="El ganador debe ser 'client' o 'worker'")
+        
+    # Cerrar la conversación
+    convo.status = service_models.ConversationStatus.CLOSED.value # type: ignore
+    convo.updated_at = datetime.datetime.utcnow() # type: ignore
+    
+    # Inyectar el mensaje final
+    import uuid
+    new_msg = service_models.Message(
+        id=str(uuid.uuid4()),
+        conversation_id=conversation_id,
+        sender_id=str(current_user.id),
+        content=resolution_msg,
+        message_type=service_models.MessageType.SYSTEM.value,
+        status="pending",
+        created_at=datetime.datetime.utcnow()
+    )
+    db.add(new_msg)
+    db.commit()
+    
+    # Broadcast websocket
+    message_to_send = {
+        "id": new_msg.id,
+        "sender_id": new_msg.sender_id,
+        "content": new_msg.content,
+        "message_type": new_msg.message_type,
+        "created_at": new_msg.created_at.isoformat(),
+        "status": "pending"
+    }
+    
+    import asyncio
+    try:
+        loop = asyncio.get_running_loop()
+        loop.create_task(manager.broadcast(conversation_id, message_to_send))
+    except RuntimeError:
+        pass
+        
+    return {"status": "success", "message": "Disputa resuelta y dinero manejado"}
