@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:forja_trabajo/features/payments/presentation/screens/home_screen.dart';
+import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:forja_trabajo/features/services/presentation/screens/client/payment_history_screen.dart';
 import 'package:forja_trabajo/features/services/presentation/screens/shared/contracts_screen.dart';
 import 'injection_container.dart' as di;
@@ -12,10 +12,12 @@ import 'features/services/presentation/screens/layout/worker_main_layout.dart';
 import 'features/services/presentation/screens/layout/admin_main_layout.dart';
 
 void main() async {
-  // Aseguramos la comunicación con el motor de Flutter
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Mantenemos tu inicialización para que funcionen tus servicios de pagos
+  // Inicializar Stripe con la clave pública
+  Stripe.publishableKey = 'pk_test_51TJMelEEBDNiDvB2T001jsfxYvutidQ8BQqrJCQutevL29fBc1IDFdo2Yfvdmf8H0UHWKw8y98kl9ABuFYRMLneC00e16IS4Qy';
+  
+  // Inicializar servicios de inyección de dependencias
   await di.init(); 
 
   runApp(
@@ -46,7 +48,6 @@ class ForjaTrabajoApp extends StatelessWidget {
         '/client_home': (context) => const ClientMainLayout(),
         '/worker_home': (context) => const WorkerMainLayout(),
         '/admin_home':  (context) => const AdminMainLayout(),
-        '/payments':    (context) => const HomeScreen(), 
         '/client/contracts': (context) => const ContractsScreen(),
         '/client/payment_history': (context) => const PaymentHistoryScreen(),
       },

@@ -5,6 +5,7 @@ import 'package:forja_trabajo/features/services/domain/entities/service_entity.d
 // Importamos para poder navegar a los detalles
 import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart';
 import 'package:forja_trabajo/features/services/presentation/screens/shared/service_detail_screen.dart';
+import 'package:forja_trabajo/features/services/presentation/screens/shared/contracts_screen.dart';
 
 class ClientCompletedJobCard extends ConsumerWidget {
   final ServiceEntity service;
@@ -175,7 +176,7 @@ class ClientCompletedJobCard extends ConsumerWidget {
             ),
           ),
           const SizedBox(width: 12),
-          // Botón Secundario (Ícono Cuadrado): Calificar / Repetir
+          // Botón Secundario (Ícono Cuadrado): Ver Contrato
           Container(
             height: 48,
             width: 48,
@@ -184,10 +185,17 @@ class ClientCompletedJobCard extends ConsumerWidget {
               borderRadius: BorderRadius.circular(10),
             ),
             child: IconButton(
-              icon: const Icon(Icons.star_rate_rounded, color: Colors.black54),
+              icon: const Icon(Icons.description_outlined, color: Colors.black54),
               onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Pantalla de calificación próximamente..."))
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ContractsScreen(
+                      serviceId: service.id,
+                      workerName: service.authorName,
+                      proposedPrice: service.basePrice,
+                    ),
+                  ),
                 );
               },
             ),

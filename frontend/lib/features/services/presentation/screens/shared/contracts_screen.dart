@@ -1,11 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:forja_trabajo/features/services/domain/entities/service_entity.dart';
+import 'package:forja_trabajo/features/services/presentation/providers/service_list_provider.dart';
+import 'package:forja_trabajo/features/services/presentation/screens/client/checkout_screen.dart';
+
 // --- ENUMERACIÓN (El "molde" de los estados) ---
 enum ContractStatus { active, finished }
 
 class ContractsScreen extends ConsumerStatefulWidget {
-  const ContractsScreen({super.key});
+  final String? serviceId;
+  final String? workerId;
+  final String? workerName;
+  final double? proposedPrice;
+
+  const ContractsScreen({
+    super.key,
+    this.serviceId,
+    this.workerId,
+    this.workerName,
+    this.proposedPrice,
+  });
 
   @override
   ConsumerState<ContractsScreen> createState() => _ContractsScreenState();
@@ -54,9 +69,9 @@ class _ContractsScreenState extends ConsumerState<ContractsScreen> {
           body: TabBarView(
             physics: const BouncingScrollPhysics(),
             children: [
-              _buildDynamicContractList(),
-              const Center(child: Text("Solo Activos")),
-              const Center(child: Text("Solo Finalizados")),
+              _buildDynamicContractList(null),
+              _buildDynamicContractList(ContractStatus.active),
+              _buildDynamicContractList(ContractStatus.finished),
             ],
           ),
           bottomNavigationBar: _buildBottomBar(),
@@ -65,26 +80,70 @@ class _ContractsScreenState extends ConsumerState<ContractsScreen> {
     );
   }
 
-  Widget _buildDynamicContractList() {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        // 🚀 TARJETA REAL: Los $3,000 que inyectamos en Python
-        ContractCard(
-          title: "Reparación de Lavabo",
-          subtitle: "Trabajador: Pendiente de asignar",
-          price: "\$3,000.00",
-          date: "Hoy",
-          status: ContractStatus.active,
-          bottomContent: const AvatarStack(),
-          onTap: () {
-            // Asegúrate de tener esta ruta en main.dart
-            Navigator.pushNamed(context, '/client/payment');
+  Widget _buildDynamicContractList(ContractStatus? statusFilter) {
+    final servicesAsync = ref.watch(myRequestsProvider);
+
+    return servicesAsync.when(
+      data: (services) {
+        // Filtramos para obtener solo En Proceso (matched) o Finalizados (completed)
+        var filteredServices = services.where((s) => s.status == JobStatus.matched || s.status == JobStatus.completed).toList();
+
+        if (statusFilter == ContractStatus.active) {
+          filteredServices = filteredServices.where((s) => s.status == JobStatus.matched).toList();
+        } else if (statusFilter == ContractStatus.finished) {
+          filteredServices = filteredServices.where((s) => s.status == JobStatus.completed).toList();
+        }
+
+        if (filteredServices.isEmpty) {
+          return Center(
+            child: Text(
+              statusFilter == ContractStatus.active ? "No tienes contratos activos" : statusFilter == ContractStatus.finished ? "No tienes contratos finalizados" : "No tienes contratos",
+              style: const TextStyle(color: Colors.grey),
+            ),
+          );
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: filteredServices.length,
+          itemBuilder: (context, index) {
+            final service = filteredServices[index];
+            final isFinished = service.status == JobStatus.completed;
+
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: ContractCard(
+                title: service.title,
+                subtitle: "Trabajador: ${service.authorName ?? 'Asignado'}",
+                price: "\$${service.basePrice.toStringAsFixed(2)}",
+                date: "Fecha: ${service.createdAt.day}/${service.createdAt.month}/${service.createdAt.year}",
+                status: isFinished ? ContractStatus.finished : ContractStatus.active,
+                bottomContent: const AvatarStack(),
+                onTap: () {
+                  if (!isFinished) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => CheckoutScreen(
+                          // Pasamos un objeto anónimo temporal que simula la data del contrato para CheckoutScreen
+                          contract: _TempContract(
+                            id: service.id, // Pasamos el ID COMPLETO para el backend
+                            amount: service.basePrice,
+                          ),
+                        ),
+                      ),
+                    );
+                  } else {
+                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Este contrato ya está pagado/finalizado.')));
+                  }
+                },
+              ),
+            );
           },
-        ),
-        const SizedBox(height: 16),
-        const SkeletonCard(), // Efecto visual de carga
-      ],
+        );
+      },
+      loading: () => ListView(padding: const EdgeInsets.all(16), children: const [SkeletonCard(), SizedBox(height: 16), SkeletonCard()]),
+      error: (e, s) => Center(child: Text("Error: $e")),
     );
   }
 
@@ -248,4 +307,11 @@ class SkeletonCard extends StatelessWidget {
       ),
     );
   }
+}
+
+// Clase temporal para pasar los parámetros justos a CheckoutScreen
+class _TempContract {
+  final String id;
+  final num amount;
+  _TempContract({required this.id, required this.amount});
 }

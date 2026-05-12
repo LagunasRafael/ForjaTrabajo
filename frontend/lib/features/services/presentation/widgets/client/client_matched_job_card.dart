@@ -7,6 +7,7 @@ import 'package:forja_trabajo/features/services/data/repositories/service_reposi
 // 👇 Importamos para poder navegar a los detalles
 import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart';
 import 'package:forja_trabajo/features/services/presentation/screens/shared/service_detail_screen.dart';
+import 'package:forja_trabajo/features/services/presentation/screens/shared/contracts_screen.dart';
 
 class ClientMatchedJobCard extends ConsumerWidget {
   final ServiceEntity service;
@@ -99,10 +100,19 @@ class ClientMatchedJobCard extends ConsumerWidget {
   Widget _buildActions(BuildContext context, WidgetRef ref) => Column(children: [
         const Divider(height: 24),
         Row(children: [
-          _btn("Contactar", Icons.chat_bubble_outline, isOutlined: true, onPressed: () {
-            // Lógica del chat (Pendiente)
+          _btn("Ver Contrato", Icons.description_outlined, isOutlined: true, onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ContractsScreen(
+                  serviceId: service.id,
+                  workerName: service.authorName,
+                  proposedPrice: service.basePrice,
+                ),
+              ),
+            );
           }),
-          const SizedBox(width: 12),
+          const SizedBox(width: 8),
           _btn("Finalizar", Icons.check_circle_outline, color: Colors.green, onPressed: () async {
             final confirm = await showDialog<bool>(
               context: context,

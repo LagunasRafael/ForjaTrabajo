@@ -73,7 +73,7 @@ class CheckoutScreen extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    Text("CONTRACT #${contract.id}", 
+                    Text("CONTRACT #${contract.id.toString().length > 8 ? contract.id.toString().substring(0, 8) : contract.id}", 
                       style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 4),
                     const Text("Website Design\nService", 

@@ -5,6 +5,7 @@ import 'package:forja_trabajo/features/services/domain/entities/service_entity.d
 import 'package:forja_trabajo/features/services/presentation/providers/service_list_provider.dart';
 import 'package:forja_trabajo/features/services/presentation/providers/nav_providers.dart';
 import '../../providers/service_offers_provider.dart';
+import '../shared/contracts_screen.dart';
 
 class OffersReceivedScreen extends ConsumerWidget {
   final ServiceEntity service;

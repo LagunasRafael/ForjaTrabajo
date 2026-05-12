@@ -17,7 +17,9 @@ import 'package:forja_trabajo/features/services/presentation/providers/service_l
 // =====================================================
 class ProfileMenuCard extends StatelessWidget {
   final List<Widget> children;
-  const ProfileMenuCard({super.key, required this.children});
+
+  // Solo necesitamos 'this.children' como primer parámetro
+  const ProfileMenuCard(this.children, {super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -30,10 +32,14 @@ class ProfileMenuCard extends StatelessWidget {
           BoxShadow(
             color: Colors.black.withOpacity(0.03),
             blurRadius: 20,
+            offset: const Offset(0, 10), // Un toque de sombra hacia abajo
           )
         ],
       ),
-      child: Column(children: children),
+      child: Column(
+        mainAxisSize: MainAxisSize.min, // Ajusta el tamaño al contenido
+        children: children,
+      ),
     );
   }
 }
