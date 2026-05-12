@@ -43,3 +43,7 @@ class ConversationResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+# --- SCHEMAS DE DISPUTAS ---
+class DisputeCreate(BaseModel):
+    reason: str = Field(..., description="Motivo por el cual se abre la disputa")

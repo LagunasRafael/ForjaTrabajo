@@ -60,6 +60,75 @@ class _SharedChatScreenState extends ConsumerState<SharedChatScreen> {
     }
   }
 
+  void _showDisputeDialog(BuildContext context) {
+    final reasonController = TextEditingController();
+    
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.gavel, color: Colors.red),
+              SizedBox(width: 8),
+              Text('Abrir Disputa', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Describe el motivo de la disputa. Un administrador revisará el caso.'),
+              const SizedBox(height: 16),
+              TextField(
+                controller: reasonController,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  hintText: 'Ej. El trabajador no completó el servicio...',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              onPressed: () async {
+                final reason = reasonController.text.trim();
+                if (reason.isEmpty) return;
+                
+                Navigator.pop(context); // Cerrar diálogo
+                
+                try {
+                  await ref.read(chatProvider(widget.conversationId).notifier).openDispute(reason);
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Disputa abierta. Un administrador se pondrá en contacto pronto.'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Error al abrir la disputa. Intenta de nuevo.')),
+                    );
+                  }
+                }
+              },
+              child: const Text('Enviar Disputa', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final messages = ref.watch(chatProvider(widget.conversationId));
@@ -84,6 +153,7 @@ class _SharedChatScreenState extends ConsumerState<SharedChatScreen> {
         service: widget.service,
         otherUserName: widget.otherUserName,
         otherUserAvatarUrl: widget.otherUserAvatarUrl,
+        onOpenDispute: () => _showDisputeDialog(context),
       ),
       body: Column(
         children: [

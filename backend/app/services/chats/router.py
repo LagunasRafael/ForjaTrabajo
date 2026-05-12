@@ -139,6 +139,7 @@ async def websocket_endpoint(websocket: WebSocket, conversation_id: str, user_id
                 if convo and convo.status == service_models.ConversationStatus.CLOSED.value:
                     await websocket.send_json({"error": "Esta conversación ya está cerrada."})
                     continue
+                
             
             try:
                 saved_msg = service.save_message(db, conversation_id, user_id, content, msg_type)
@@ -248,6 +249,41 @@ def delete_chat(
         conversation_id=conversation_id,
         user_id=str(current_user.id)
     )
+
+@router.post("/chat/{conversation_id}/dispute")
+def open_dispute_endpoint(
+    conversation_id: str,
+    dispute_data: schemas.DisputeCreate,
+    db: Session = Depends(get_db),
+    current_user: auth_models.User = Depends(get_current_user)
+):
+    """Permite al cliente o al trabajador escalar el chat a DISPUTA."""
+    response = service.open_dispute(
+        db=db,
+        conversation_id=conversation_id,
+        user_id=str(current_user.id),
+        reason=dispute_data.reason
+    )
+    
+    # Notificamos por WebSocket a la otra parte para que aparezca el mensaje de inmediato
+    message_to_send = {
+        "id": response["system_message"].id,
+        "sender_id": response["system_message"].sender_id,
+        "content": response["system_message"].content,
+        "message_type": response["system_message"].message_type,
+        "created_at": response["system_message"].created_at.isoformat(),
+        "status": "pending"
+    }
+    
+    # Hacemos el broadcast de manera asíncrona usando async loop (si manager está importado/disponible)
+    import asyncio
+    try:
+        loop = asyncio.get_running_loop()
+        loop.create_task(manager.broadcast(conversation_id, message_to_send))
+    except RuntimeError:
+        pass # Ignoramos si no hay loop corriendo en el test
+        
+    return {"status": "success", "message": "Disputa iniciada correctamente"}
 
 # =================================================================
 # ADMIN DISPUTES

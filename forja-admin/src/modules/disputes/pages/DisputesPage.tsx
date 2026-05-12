@@ -59,8 +59,12 @@ export const DisputesPage = () => {
                   <td colSpan={5} className="px-6 py-12 text-center text-slate-500">No hay conversaciones activas.</td>
                 </tr>
               ) : (
-                conversations.map((conv) => (
-                  <tr key={conv.id} className="hover:bg-slate-800/30 transition-colors">
+                [...conversations].sort((a, b) => {
+                  if (a.status === 'dispute' && b.status !== 'dispute') return -1;
+                  if (a.status !== 'dispute' && b.status === 'dispute') return 1;
+                  return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
+                }).map((conv) => (
+                  <tr key={conv.id} className={`transition-colors ${conv.status === 'dispute' ? 'bg-red-900/10 hover:bg-red-900/20' : 'hover:bg-slate-800/30'}`}>
                     <td className="px-6 py-4">
                       <div className="font-medium text-slate-200">{conv.client_name}</div>
                     </td>
@@ -71,11 +75,13 @@ export const DisputesPage = () => {
 
                     <td className="px-6 py-4">
                       <span className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset ${
-                        conv.status === 'open' 
-                          ? 'bg-emerald-500/10 text-emerald-400 ring-emerald-500/20' 
-                          : 'bg-slate-500/10 text-slate-400 ring-slate-500/20'
+                        conv.status === 'dispute'
+                          ? 'bg-red-500/10 text-red-400 ring-red-500/20'
+                          : conv.status === 'open' 
+                            ? 'bg-emerald-500/10 text-emerald-400 ring-emerald-500/20' 
+                            : 'bg-slate-500/10 text-slate-400 ring-slate-500/20'
                       }`}>
-                        {conv.status === 'open' ? 'Abierto' : 'Cerrado'}
+                        {conv.status === 'dispute' ? '🚨 En Disputa' : conv.status === 'open' ? 'Abierto' : 'Cerrado'}
                       </span>
                     </td>
 

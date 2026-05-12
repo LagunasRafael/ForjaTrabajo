@@ -51,4 +51,9 @@ class ChatRepositoryImpl implements ChatRepository {
   Future<String?> uploadChatMedia(String conversationId, String filePath) async {
     return await remoteDataSource.uploadMedia(conversationId, filePath);
   }
+
+  @override
+  Future<void> openDispute(String conversationId, String reason) async {
+    await remoteDataSource.openDispute(conversationId, reason);
+  }
 }

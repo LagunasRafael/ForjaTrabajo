@@ -7,8 +7,9 @@ from app.auth.security import check_role, get_current_user
 from app.core.roles import Role
 from app.auth import models as auth_models
 
-from app.services import schemas
+from app.services import schemas, models
 from app.services.contracts import service
+from sqlalchemy.orm import joinedload
 
 router = APIRouter()
 
@@ -30,7 +31,7 @@ def complete_job_status(job_id: str, db: Session = Depends(get_db), current_user
 @router.put("/jobs/{job_id}/cancel", response_model=schemas.Job)
 def cancel_job_status(job_id: str, db: Session = Depends(get_db), current_user: auth_models.User = Depends(get_current_user)):
     """Cancela un Job que ya estaba en 'matched'."""
-    return service.cancel_job(db, job_id, str(current_user.id), current_user.role)
+    return service.cancel_job(db, job_id, str(current_user.id), str(current_user.role))
 
 # =================================================================
 # ADMIN JOBS
@@ -41,9 +42,6 @@ def get_all_jobs_admin(
     current_user: auth_models.User = Depends(check_role([Role.ADMIN]))
 ):
     """Devuelve TODOS los jobs (MATCHED, COMPLETED, CANCELLED) con datos extra para el panel admin."""
-    from sqlalchemy.orm import joinedload
-    from app.services import models
-    
     jobs = db.query(models.Job).options(
         joinedload(models.Job.request).joinedload(models.ServiceRequest.service).joinedload(models.Service.category)
     ).order_by(models.Job.started_at.desc()).all()
@@ -61,7 +59,7 @@ def get_all_jobs_admin(
         result.append({
             "id": job.id,
             "status": job.status.value,
-            "final_price": float(job.final_price) if job.final_price else 0,
+            "final_price": float(str(job.final_price)) if job.final_price else 0.0,
             "started_at": job.started_at,
             "completed_at": job.completed_at,
             "client_name": client.full_name if client else "Cliente Desconocido",

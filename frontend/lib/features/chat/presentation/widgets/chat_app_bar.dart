@@ -4,12 +4,14 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
   final dynamic service;
   final String? otherUserName;
   final String? otherUserAvatarUrl;
+  final VoidCallback? onOpenDispute;
 
   const ChatAppBar({
     super.key,
     this.service,
     this.otherUserName,
     this.otherUserAvatarUrl,
+    this.onOpenDispute,
   });
 
   @override
@@ -79,6 +81,29 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
           ),
         ],
       ),
+      actions: [
+        if (onOpenDispute != null)
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert, color: Colors.black),
+            onSelected: (value) {
+              if (value == 'dispute') {
+                onOpenDispute!();
+              }
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'dispute',
+                child: Row(
+                  children: [
+                    Icon(Icons.gavel, color: Colors.red, size: 20),
+                    SizedBox(width: 8),
+                    Text('Abrir Disputa', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+      ],
     );
   }
 }
