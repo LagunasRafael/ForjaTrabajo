@@ -4,12 +4,19 @@ import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:forja_trabajo/features/services/presentation/screens/client/payment_history_screen.dart';
 import 'package:forja_trabajo/features/services/presentation/screens/shared/contracts_screen.dart';
 import 'injection_container.dart' as di;
+import 'package:firebase_core/firebase_core.dart';
+
 import 'core/theme/app_theme.dart';
+import 'core/theme/theme_provider.dart';
 import 'features/auth/presentation/screens/role_selection_screen.dart';
 import 'features/auth/presentation/screens/login_screen.dart';
+import 'features/auth/presentation/screens/login_screen.dart'; // 👈 Asegúrate de importar tu Login
+
+import 'features/auth/presentation/screens/splash_screen.dart'; // 👈 Importamos el SplashScreen
+
+// 👇 TUS LAYOUTS
 import 'features/services/presentation/screens/layout/client_main_layout.dart';
 import 'features/services/presentation/screens/layout/worker_main_layout.dart';
-import 'features/services/presentation/screens/layout/admin_main_layout.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,6 +26,7 @@ void main() async {
   
   // Inicializar servicios de inyección de dependencias
   await di.init(); 
+  await Firebase.initializeApp();
 
   runApp(
     const ProviderScope(
@@ -27,11 +35,13 @@ void main() async {
   );
 }
 
-class ForjaTrabajoApp extends StatelessWidget {
+class ForjaTrabajoApp extends ConsumerWidget {
   const ForjaTrabajoApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final themeMode = ref.watch(themeProvider);
+
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Forja Trabajo',
@@ -40,6 +50,12 @@ class ForjaTrabajoApp extends StatelessWidget {
 
       // Iniciamos con la selección de roles para obtener el Token y evitar el error 401
       home: const LoginScreen(),
+      theme: AppTheme.theme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: themeMode,
+
+      // Pantalla inicial
+      home: const SplashScreen(),
 
       // Registro de rutas para navegar entre módulos
       routes: {
@@ -50,6 +66,11 @@ class ForjaTrabajoApp extends StatelessWidget {
         '/admin_home':  (context) => const AdminMainLayout(),
         '/client/contracts': (context) => const ContractsScreen(),
         '/client/payment_history': (context) => const PaymentHistoryScreen(),
+        '/login': (context) =>
+            const LoginScreen(), // 👈 RUTA CLAVE PARA CERRAR SESIÓN
+        '/roles': (context) => const RoleSelectionScreen(),
+        '/client_home': (context) => const ClientMainLayout(),
+        '/worker_home': (context) => const WorkerMainLayout(),
       },
     );
   }

@@ -16,12 +16,14 @@ class ProfileScreen extends ConsumerWidget {
     final authState = ref.watch(authProvider);
     final user = authState.user;
 
+    final theme = Theme.of(context);
+
     // 2. Extraemos los datos dinámicos (con valores por defecto si aún está cargando)
     final String userName = user?.fullName ?? "Cargando...";
     final String userEmail = user?.email ?? "Cargando...";
     final String userRole = user?.role ?? "...";
     return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -29,7 +31,7 @@ class ProfileScreen extends ConsumerWidget {
         title: Text(
           'Mi Perfil',
           style: GoogleFonts.inter(
-            color: AppTheme.textColor,
+            color: theme.textTheme.titleLarge?.color ?? AppTheme.textColor,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -48,10 +50,13 @@ class ProfileScreen extends ConsumerWidget {
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: AppTheme.primaryColor.withOpacity(0.1),
-                      border: Border.all(color: AppTheme.primaryColor.withOpacity(0.2), width: 4),
+                      border: Border.all(
+                          color: AppTheme.primaryColor.withOpacity(0.2),
+                          width: 4),
                     ),
                     child: const Center(
-                      child: Icon(LucideIcons.user, size: 60, color: AppTheme.primaryColor),
+                      child: Icon(LucideIcons.user,
+                          size: 60, color: AppTheme.primaryColor),
                     ),
                   ),
                   Positioned(
@@ -63,7 +68,8 @@ class ProfileScreen extends ConsumerWidget {
                         color: AppTheme.primaryColor,
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(LucideIcons.pencil, color: Colors.white, size: 16),
+                      child: const Icon(LucideIcons.pencil,
+                          color: Colors.white, size: 16),
                     ),
                   ),
                 ],
@@ -72,7 +78,11 @@ class ProfileScreen extends ConsumerWidget {
             const SizedBox(height: 16),
             Text(
               userName,
-              style: GoogleFonts.inter(fontSize: 24, fontWeight: FontWeight.bold, color: AppTheme.textColor),
+              style: GoogleFonts.inter(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color:
+                      theme.textTheme.titleLarge?.color ?? AppTheme.textColor),
             ),
             const SizedBox(height: 4),
             // 📍 NUEVO: LA UBICACIÓN MÁGICA
@@ -80,11 +90,15 @@ class ProfileScreen extends ConsumerWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(LucideIcons.mapPin, size: 14, color: AppTheme.primaryColor),
+                  const Icon(LucideIcons.mapPin,
+                      size: 14, color: AppTheme.primaryColor),
                   const SizedBox(width: 4),
                   Text(
                     user!.city!, // Aquí dirá ej. "Ciudad Hidalgo, Michoacán"
-                    style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500, color: AppTheme.primaryColor),
+                    style: GoogleFonts.inter(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: AppTheme.primaryColor),
                   ),
                 ],
               ),
@@ -92,7 +106,8 @@ class ProfileScreen extends ConsumerWidget {
             ],
             Text(
               userEmail,
-              style: GoogleFonts.inter(fontSize: 14, color: AppTheme.subtitleColor),
+              style: GoogleFonts.inter(
+                  fontSize: 14, color: AppTheme.subtitleColor),
             ),
             const SizedBox(height: 8),
             Container(
@@ -116,10 +131,13 @@ class ProfileScreen extends ConsumerWidget {
             Container(
               margin: const EdgeInsets.symmetric(horizontal: 24),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: theme.cardColor,
                 borderRadius: BorderRadius.circular(24),
                 boxShadow: [
-                  BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 20, offset: const Offset(0, 4)),
+                  BoxShadow(
+                      color: Colors.black.withOpacity(0.03),
+                      blurRadius: 20,
+                      offset: const Offset(0, 4)),
                 ],
               ),
               child: Column(
@@ -128,24 +146,28 @@ class ProfileScreen extends ConsumerWidget {
                     icon: LucideIcons.userCog,
                     title: 'Editar Datos Personales',
                     onTap: () {},
+                    theme: theme,
                   ),
-                  _buildDivider(),
+                  _buildDivider(theme),
                   _buildProfileOption(
                     icon: LucideIcons.lock,
                     title: 'Cambiar Contraseña',
                     onTap: () {},
+                    theme: theme,
                   ),
-                  _buildDivider(),
+                  _buildDivider(theme),
                   _buildProfileOption(
                     icon: LucideIcons.creditCard,
                     title: 'Métodos de Pago',
                     onTap: () {},
+                    theme: theme,
                   ),
-                  _buildDivider(),
+                  _buildDivider(theme),
                   _buildProfileOption(
                     icon: LucideIcons.helpCircle,
                     title: 'Soporte y Ayuda',
                     onTap: () {},
+                    theme: theme,
                   ),
                 ],
               ),
@@ -165,11 +187,13 @@ class ProfileScreen extends ConsumerWidget {
                     ref.read(authProvider.notifier).logoutUser();
                     Navigator.pushAndRemoveUntil(
                       context,
-                      MaterialPageRoute(builder: (context) => const RoleSelectionScreen()),
+                      MaterialPageRoute(
+                          builder: (context) => const RoleSelectionScreen()),
                       (route) => false,
                     );
                   },
-                  icon: const Icon(LucideIcons.logOut, color: AppTheme.dangerRose),
+                  icon: const Icon(LucideIcons.logOut,
+                      color: AppTheme.dangerRose),
                   label: Text(
                     'Cerrar Sesión',
                     style: GoogleFonts.inter(
@@ -179,8 +203,10 @@ class ProfileScreen extends ConsumerWidget {
                     ),
                   ),
                   style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: AppTheme.dangerRose, width: 1.5),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    side: const BorderSide(
+                        color: AppTheme.dangerRose, width: 1.5),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16)),
                   ),
                 ),
               ),
@@ -193,21 +219,39 @@ class ProfileScreen extends ConsumerWidget {
   }
 
   // Widgets de ayuda para mantener el código limpio
-  Widget _buildProfileOption({required IconData icon, required String title, required VoidCallback onTap}) {
+  Widget _buildProfileOption(
+      {required IconData icon,
+      required String title,
+      required VoidCallback onTap,
+      required ThemeData theme}) {
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
       leading: Container(
         padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(color: AppTheme.primaryColor.withOpacity(0.1), shape: BoxShape.circle),
+        decoration: BoxDecoration(
+            color: AppTheme.primaryColor.withOpacity(0.1),
+            shape: BoxShape.circle),
         child: Icon(icon, color: AppTheme.primaryColor, size: 20),
       ),
-      title: Text(title, style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: AppTheme.textColor, fontSize: 15)),
-      trailing: const Icon(LucideIcons.chevronRight, color: Colors.grey, size: 20),
+      title: Text(title,
+          style: GoogleFonts.inter(
+              fontWeight: FontWeight.w600,
+              color: theme.textTheme.bodyLarge?.color ?? AppTheme.textColor,
+              fontSize: 15)),
+      trailing:
+          const Icon(LucideIcons.chevronRight, color: Colors.grey, size: 20),
       onTap: onTap,
     );
   }
 
-  Widget _buildDivider() {
-    return Divider(height: 1, thickness: 1, color: Colors.grey.shade100, indent: 70, endIndent: 24);
+  Widget _buildDivider(ThemeData theme) {
+    return Divider(
+        height: 1,
+        thickness: 1,
+        color: theme.brightness == Brightness.dark
+            ? const Color(0xFF334155)
+            : Colors.grey.shade100,
+        indent: 70,
+        endIndent: 24);
   }
 }

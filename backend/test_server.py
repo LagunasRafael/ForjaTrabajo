@@ -13,6 +13,15 @@ payment_models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
+# --- 2. AGREGA ESTO JUSTO DESPUÉS DE CREAR LA APP ---
+origins = [
+    "http://localhost",
+    "http://localhost:8080", # Puerto por defecto de Dart
+    "http://127.0.0.1:8080",
+    "http://10.0.2.2:8080",
+    "*" # ⚠️ TRUCO: El asterisco permite TODO (ideal para desarrollo)
+]
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"], # Simplificado para desarrollo: permite TODO

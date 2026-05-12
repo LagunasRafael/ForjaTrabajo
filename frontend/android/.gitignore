@@ -1,14 +1,50 @@
-gradle-wrapper.jar
+# ======================================================================
+# 🚀 FLUTTER ANDROID .GITIGNORE ROBUSTO (FORJA TRABAJO)
+# ======================================================================
+
+# ----------------------------------------------------------------------
+# 1. ARCHIVOS DE ENTORNO LOCAL Y CACHÉ (Evita conflictos con el equipo)
+# ----------------------------------------------------------------------
+/local.properties
 /.gradle
 /captures/
+.cxx/
+/.idea/
+.DS_Store
+*.iml
+
+# ----------------------------------------------------------------------
+# 2. ARCHIVOS AUTOGENERADOS DE FLUTTER Y GRADLE
+# ----------------------------------------------------------------------
+gradle-wrapper.jar
 /gradlew
 /gradlew.bat
-/local.properties
 GeneratedPluginRegistrant.java
-.cxx/
+/build/
+/app/build/
 
-# Remember to never publicly share your keystore.
-# See https://flutter.dev/to/reference-keystore
+# ----------------------------------------------------------------------
+# 3. 🔐 SEGURIDAD: LLAVES DE FIRMA (¡NUNCA SUBIR A GITHUB!)
+# ----------------------------------------------------------------------
+# Propiedades y certificados para compilar el APK/AAB de producción
 key.properties
 **/*.keystore
 **/*.jks
+**/*.pem
+**/*.p12
+
+# ----------------------------------------------------------------------
+# 4. 🔥 SEGURIDAD: SERVICIOS EN LA NUBE Y FIREBASE
+# ----------------------------------------------------------------------
+# Oculta las credenciales de tu proyecto de Firebase y Google Cloud
+# (Esto previene el error "google-services.json is missing" para otros)
+google-services.json
+app/google-services.json
+src/debug/google-services.json
+src/release/google-services.json
+
+# ----------------------------------------------------------------------
+# 5. SEGURIDAD: VARIABLES DE ENTORNO LOCALES
+# ----------------------------------------------------------------------
+*.env
+.env*

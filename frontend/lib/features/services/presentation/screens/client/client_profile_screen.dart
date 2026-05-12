@@ -16,12 +16,15 @@ class ClientProfileScreen extends ConsumerWidget {
     final authState = ref.watch(authProvider);
     final user = authState.user;
 
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // 1. Header con datos del usuario
+            // Pasamos los datos al header
             _buildHeader(
               user?.fullName ?? "Cliente",
               user?.email ?? "",
@@ -29,54 +32,37 @@ class ClientProfileScreen extends ConsumerWidget {
               user?.profilePictureUrl,
               user?.city,
               ref,
-              context // Añadimos context para que funcione el Navigator
+              isDark,
             ),
-            
             const SizedBox(height: 30),
-            
-            // 2. MENÚ DE OPCIONES (Sin la palabra 'children:')
+
+            // MENÚ DE OPCIONES
             ProfileMenuCard(
-              [ // 👈 Pasamos la lista directamente (Argumento posicional)
+              children: [
                 ProfileMenuOption(
-                  icon: LucideIcons.user, 
-                  title: 'Mi Información', 
-                  onTap: () {}
-                ),
+                    icon: LucideIcons.user,
+                    title: 'Mi Información',
+                    onTap: () {}),
                 ProfileMenuOption(
-                  icon: LucideIcons.shoppingBag, 
-                  title: 'Mis Solicitudes de Servicio', 
-                  onTap: () {}
-                ),
-                
-                // 👇 TUS NUEVAS OPCIONES INTEGRADAS
+                    icon: LucideIcons.shoppingBag,
+                    title: 'Mis Solicitudes de Servicio',
+                    onTap: () {}),
                 ProfileMenuOption(
-                  icon: LucideIcons.fileText, 
-                  title: 'Mis Contratos', 
-                  onTap: () => Navigator.pushNamed(context, '/client/contracts'),
-                ),
+                    icon: LucideIcons.creditCard,
+                    title: 'Métodos de Pago',
+                    onTap: () {}),
                 ProfileMenuOption(
-                  icon: LucideIcons.history, 
-                  title: 'Historial de Pagos', 
-                  onTap: () => Navigator.pushNamed(context, '/client/payment_history'),
-                ),
-                
-                ProfileMenuOption(
-                  icon: LucideIcons.creditCard, 
-                  title: 'Métodos de Pago', 
-                  onTap: () {}
-                ),
-                ProfileMenuOption(
-                  icon: LucideIcons.bell, 
-                  title: 'Notificaciones', 
-                  onTap: () {}
-                ),
+                    icon: LucideIcons.bell,
+                    title: 'Notificaciones',
+                    onTap: () {}),
                 ProfileMenuOption(
                   icon: LucideIcons.pencil,
                   title: 'Editar Perfil',
                   onTap: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => const EditProfileScreen()),
+                      MaterialPageRoute(
+                          builder: (context) => const EditProfileScreen()),
                     );
                   },
                 ),
@@ -86,30 +72,31 @@ class ClientProfileScreen extends ConsumerWidget {
                   onTap: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => const SettingsScreen()),
+                      MaterialPageRoute(
+                          builder: (context) => const SettingsScreen()),
                     );
                   },
                 ),
               ],
             ),
-            
             const SizedBox(height: 32),
             const ProfileLogoutButton(),
-            const SizedBox(height: 40),
+            const SizedBox(height: 40), // Espacio extra al final
           ],
         ),
       ),
     );
   }
 
-  // --- WIDGETS REUTILIZABLES ---
-  Widget _buildHeader(String name, String email, String role, String? imageUrl, String? city, WidgetRef ref, BuildContext context) {
+  // 👇 MOVIDO DENTRO DE LA CLASE PARA QUE FUNCIONE CORRECTAMENTE
+  Widget _buildHeader(String name, String email, String role, String? imageUrl,
+      String? city, WidgetRef ref, bool isDark) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.only(top: 60, bottom: 30),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(32)),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(32)),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -119,10 +106,12 @@ class ClientProfileScreen extends ConsumerWidget {
             radius: 50,
           ),
           const SizedBox(height: 16),
-          Text(name, style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.bold)),
+          Text(name,
+              style:
+                  GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.bold)),
           Text(email, style: GoogleFonts.inter(color: Colors.grey)),
           const SizedBox(height: 12),
-          
+
           // UBICACIÓN INTERACTIVA
           InkWell(
             onTap: () async {
@@ -135,38 +124,39 @@ class ClientProfileScreen extends ConsumerWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(
-                    LucideIcons.mapPin, 
-                    size: 16, 
-                    color: city == null ? AppTheme.primaryColor : Colors.grey
-                  ),
+                  Icon(LucideIcons.mapPin,
+                      size: 16,
+                      color:
+                          city == null ? AppTheme.primaryColor : Colors.grey),
                   const SizedBox(width: 4),
-                  Text(
-                    city ?? "Toca para activar ubicación", 
-                    style: GoogleFonts.inter(
-                      color: city == null ? AppTheme.primaryColor : Colors.grey, 
-                      fontSize: 14, 
-                      fontWeight: city == null ? FontWeight.bold : FontWeight.w500
-                    )
-                  ),
+                  Text(city ?? "Toca para activar ubicación",
+                      style: GoogleFonts.inter(
+                          color: city == null
+                              ? AppTheme.primaryColor
+                              : Colors.grey,
+                          fontSize: 14,
+                          fontWeight: city == null
+                              ? FontWeight.bold
+                              : FontWeight.w500)),
                 ],
               ),
             ),
           ),
-          
-          const SizedBox(height: 12),
+
+          const SizedBox(height: 12), // Espacio entre ubicación y rol
 
           // ETIQUETA DE ROL
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             decoration: BoxDecoration(
-              color: AppTheme.primaryColor.withOpacity(0.1),
+              color: AppTheme.primaryColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(20),
             ),
-            child: Text(
-              role.toUpperCase(), 
-              style: const TextStyle(color: AppTheme.primaryColor, fontSize: 10, fontWeight: FontWeight.bold)
-            ),
+            child: Text(role.toUpperCase(),
+                style: const TextStyle(
+                    color: AppTheme.primaryColor,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold)),
           ),
         ],
       ),

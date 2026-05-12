@@ -1,149 +1,249 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja_trabajo/features/services/domain/entities/service_entity.dart';
-import 'package:forja_trabajo/features/services/presentation/providers/service_list_provider.dart';
-import 'package:forja_trabajo/features/services/data/repositories/service_repository_impl.dart';
-
-// 👇 Importamos para poder navegar a los detalles
 import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart';
 import 'package:forja_trabajo/features/services/presentation/screens/shared/service_detail_screen.dart';
-import 'package:forja_trabajo/features/services/presentation/screens/shared/contracts_screen.dart';
+import 'package:forja_trabajo/features/services/presentation/screens/shared/widgets/shared_job_widgets.dart';
+import 'package:forja_trabajo/features/services/domain/usecases/jobs/complete_job_usecase.dart';
+import 'package:forja_trabajo/features/services/presentation/providers/service_list_provider.dart';
+import 'package:forja_trabajo/features/chat/presentation/providers/chat_provider.dart';
+import 'package:forja_trabajo/features/chat/presentation/screens/shared_chat_screen.dart';
 
 class ClientMatchedJobCard extends ConsumerWidget {
   final ServiceEntity service;
-
   const ClientMatchedJobCard({super.key, required this.service});
 
-  // 🚀 NUEVA LÓGICA: Navegar a los detalles al tocar la tarjeta
   void _goToDetails(BuildContext context, WidgetRef ref) {
     final user = ref.read(authProvider).user;
     if (user == null) return;
-
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => ServiceDetailScreen(
-          service: service,
-          currentUser: user,
-          categoryName: "Servicio", // Puedes ajustarlo si tienes la categoría
-        ),
-      ),
-    );
+    Navigator.push(context, MaterialPageRoute(
+      builder: (_) => ServiceDetailScreen(
+        service: service, 
+        currentUser: user, 
+        categoryName: "Servicio en Curso"
+      )
+    ));
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final imageUrl = (service.imageUrls.isNotEmpty)
-        ? service.imageUrls.first
-        : 'https://picsum.photos/seed/${service.id}/400/200';
+    final isWaiting = service.status == JobStatus.waiting_confirmation;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 15, offset: const Offset(0, 5))],
+        border: Border.all(
+          color: isDark ? const Color(0xFF334155) : Colors.transparent,
+          width: 1
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(isDark ? 0.2 : 0.06),
+            blurRadius: 15,
+            offset: const Offset(0, 5)
+          )
+        ],
       ),
-      child: Material(
-        color: Colors.transparent,
+      child: InkWell(
+        onTap: () => _goToDetails(context, ref),
         borderRadius: BorderRadius.circular(16),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: () => _goToDetails(context, ref), // 👈 Tocar para ver detalles
-          child: Column(
-            children: [
-              _buildImage(imageUrl),
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    _buildTitlePrice(),
-                    const SizedBox(height: 6),
-                    _buildLocation(),
-                    _buildActions(context, ref), // Botones de Chat y Finalizar
-                  ],
-                ),
+        child: Column(
+          children: [
+            SharedJobImage(
+              imageUrls: service.imageUrls,
+              badgeText: isWaiting ? "LISTO PARA REVISIÓN" : "EN PROCESO",
+              badgeColor: isWaiting ? const Color(0xFF10B981) : Colors.orange,
+            ),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  SharedJobInfo(
+                    title: service.title, 
+                    price: service.basePrice, 
+                    location: service.exactAddress ?? 'Ubicación remota'
+                  ),
+                  _ClientMatchedActions(service: service, isWaiting: isWaiting),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
+}
 
-  Widget _buildImage(String url) => ClipRRect(
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-        child: Stack(children: [
-          Image.network(url, height: 140, width: double.infinity, fit: BoxFit.cover),
-          Positioned(
-            top: 10, right: 10,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(color: Colors.orange, borderRadius: BorderRadius.circular(20)),
-              child: const Text("EN PROCESO", style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
-            ),
+class _ClientMatchedActions extends ConsumerStatefulWidget {
+  final ServiceEntity service;
+  final bool isWaiting;
+  
+  const _ClientMatchedActions({required this.service, required this.isWaiting});
+
+  @override
+  ConsumerState<_ClientMatchedActions> createState() => _ClientMatchedActionsState();
+}
+
+class _ClientMatchedActionsState extends ConsumerState<_ClientMatchedActions> {
+  bool _isOpeningChat = false;
+
+  Future<void> _openChat(BuildContext context) async {
+    final requestId = widget.service.requestId;
+    if (requestId == null || requestId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("No se puede abrir el chat: sin postulación asociada"), backgroundColor: Colors.red),
+      );
+      return;
+    }
+
+    setState(() => _isOpeningChat = true);
+
+    try {
+      final repository = ref.read(chatRepositoryProvider);
+      final conversationId = await repository.getOrCreateConversation(requestId);
+
+      if (context.mounted) {
+        Navigator.push(context, MaterialPageRoute(
+          builder: (_) => SharedChatScreen(
+            conversationId: conversationId,
+            myRole: 'client',
+            service: {'title': widget.service.title},
+            otherUserName: widget.service.workerName,
+            otherUserAvatarUrl: widget.service.workerImageUrl,
           ),
-        ]),
-      );
+        ));
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error abriendo el chat: $e"), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isOpeningChat = false);
+    }
+  }
 
-  Widget _buildTitlePrice() => Row(children: [
-        Expanded(child: Text(service.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18))),
-        Text("\$${service.basePrice.toStringAsFixed(0)}", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
-      ]);
+  @override
+  Widget build(BuildContext context) {
+    final isCompleting = ref.watch(completingJobProvider(widget.service.id));
 
-  Widget _buildLocation() => Row(children: [
-        const Icon(Icons.location_on, size: 14, color: Colors.grey),
-        const SizedBox(width: 4),
-        Text(service.exactAddress ?? 'Ubicación remota', style: const TextStyle(color: Colors.grey)),
-      ]);
-
-  Widget _buildActions(BuildContext context, WidgetRef ref) => Column(children: [
+    return Column(
+      children: [
         const Divider(height: 24),
-        Row(children: [
-          _btn("Ver Contrato", Icons.description_outlined, isOutlined: true, onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => ContractsScreen(
-                  serviceId: service.id,
-                  workerName: service.authorName,
-                  proposedPrice: service.basePrice,
-                ),
-              ),
-            );
-          }),
-          const SizedBox(width: 8),
-          _btn("Finalizar", Icons.check_circle_outline, color: Colors.green, onPressed: () async {
-            final confirm = await showDialog<bool>(
+        Row(
+          children: [
+            _btn(
+              context: context, 
+              label: "Chat", 
+              icon: Icons.chat_bubble_outline, 
+              isOutlined: true, 
+              isLoading: _isOpeningChat,
+              onPressed: (isCompleting || _isOpeningChat) ? null : () => _openChat(context),
+            ),
+            const SizedBox(width: 12),
+            _btn(
               context: context,
-              builder: (ctx) => AlertDialog(
-                title: const Text('¿Finalizar trabajo?'),
-                content: const Text('Confirmas que el servicio se ha completado.'),
-                actions: [
-                  TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('No')),
-                  TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Sí, finalizar')),
-                ],
-              ),
-            );
+              label: widget.isWaiting ? "Confirmar Fin" : "En curso...",
+              icon: widget.isWaiting ? Icons.check_circle_outline : Icons.hourglass_empty,
+              color: widget.isWaiting ? const Color(0xFF10B981) : Colors.orange,
+              isLoading: isCompleting,
+              onPressed: (widget.isWaiting && !isCompleting) 
+                ? () => _handleComplete(context) 
+                : null,
+            ),
+          ],
+        ),
+      ],
+    );
+  }
 
-            if (confirm != true) return;
+  Future<void> _handleComplete(BuildContext context) async {
+    final confirm = await _showConfirmDialog(context);
+    if (confirm != true) return;
 
-            final success = await ref.read(serviceRepositoryProvider).completeService(service.id);
-            if (success) {
-              ref.invalidate(myRequestsProvider);
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("✅ Trabajo completado"), backgroundColor: Colors.green));
-              }
-            } else if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("❌ Error al finalizar")));
-            }
-          }),
-        ]),
-      ]);
+    ref.read(completingJobProvider(widget.service.id).notifier).state = true;
+    
+    try {
+      final success = await ref.read(completeJobUseCaseProvider).execute(widget.service.id);
+      
+      if (success && context.mounted) {
+        ref.invalidate(myRequestsProvider); 
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("✅ Trabajo finalizado exitosamente."), 
+            backgroundColor: Color(0xFF10B981)
+          )
+        );
+      }
+    } finally {
+      ref.read(completingJobProvider(widget.service.id).notifier).state = false;
+    }
+  }
 
-  Widget _btn(String label, IconData icon, {required VoidCallback onPressed, bool isOutlined = false, Color color = const Color(0xFF4F46E5)}) => Expanded(
-        child: isOutlined
-            ? OutlinedButton.icon(onPressed: onPressed, icon: Icon(icon, size: 18), label: Text(label))
-            : ElevatedButton.icon(onPressed: onPressed, icon: Icon(icon, size: 18), label: Text(label), style: ElevatedButton.styleFrom(backgroundColor: color, foregroundColor: Colors.white)),
-      );
+  Future<bool?> _showConfirmDialog(BuildContext context) {
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('¿Finalizar trabajo?'),
+        content: const Text('¿Confirmas que el servicio se completó correctamente? Se cerrará el empleo.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('No')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true), 
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF10B981),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))
+            ), 
+            child: const Text('Sí, finalizar', style: TextStyle(color: Colors.white))
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _btn({
+    required BuildContext context, 
+    required String label, 
+    required IconData icon, 
+    VoidCallback? onPressed, 
+    bool isOutlined = false, 
+    Color color = const Color(0xFF4F46E5), 
+    bool isLoading = false
+  }) {
+    return Expanded(
+      child: isOutlined 
+        ? OutlinedButton.icon(
+            onPressed: onPressed, 
+            icon: isLoading
+              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+              : Icon(icon, size: 18, color: onPressed == null ? Colors.grey : color),
+            label: Text(label, style: TextStyle(color: onPressed == null ? Colors.grey : color, fontSize: 12)),
+            style: OutlinedButton.styleFrom(
+              side: BorderSide(color: onPressed == null ? Colors.grey.shade300 : color), 
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))
+            )
+          )
+        : ElevatedButton.icon(
+            onPressed: onPressed, 
+            icon: isLoading 
+              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+              : Icon(icon, size: 18), 
+            label: Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: color, 
+              foregroundColor: Colors.white, 
+              disabledBackgroundColor: Colors.grey.shade300, 
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              elevation: 0
+            )
+          ),
+    );
+  }
 }

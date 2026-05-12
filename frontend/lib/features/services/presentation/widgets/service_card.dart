@@ -8,9 +8,10 @@ import 'package:forja_trabajo/features/services/presentation/screens/shared/serv
 
 class ServiceCard extends ConsumerWidget {
   final ServiceEntity service;
+  
   const ServiceCard({super.key, required this.service});
 
-  // --- Tus Helpers Visuales Originales ---
+  // --- Helpers Visuales (Mantenemos tu lógica de colores) ---
   IconData _getCategoryIcon(String categoryName) {
     final name = categoryName.toLowerCase();
     if (name.contains('font') || name.contains('plom') || name.contains('fuga')) return Icons.plumbing;
@@ -36,26 +37,15 @@ class ServiceCard extends ConsumerWidget {
     return const Color(0xFF4F46E5);
   }
 
-  // --- Lógica de Navegación (CORREGIDA) ---
-  void _onCardTap(BuildContext context, WidgetRef ref) {
-    final authState = ref.read(authProvider);
-    final currentUser = authState.user;
+  void _onCardTap(BuildContext context, WidgetRef ref, String categoryName) {
+    final currentUser = ref.read(authProvider).user;
 
     if (currentUser == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Inicia sesión para ver detalles")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Inicia sesión para ver detalles"))
+      );
       return;
     }
-
-    final categoriesAsync = ref.read(categoryListProvider);
-    String catName = "Servicio";
-    
-    categoriesAsync.whenData((cats) {
-      // ✅ ARREGLO AQUÍ: Comparación segura de IDs para evitar el error de Null
-      final found = cats.where((c) => c.id.toString() == service.categoryId.toString());
-      if (found.isNotEmpty) {
-        catName = found.first.name;
-      }
-    });
 
     Navigator.push(
       context,
@@ -63,7 +53,7 @@ class ServiceCard extends ConsumerWidget {
         builder: (_) => ServiceDetailScreen(
           service: service,
           currentUser: currentUser,
-          categoryName: catName,
+          categoryName: categoryName,
         ),
       ),
     );
@@ -71,19 +61,34 @@ class ServiceCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final categoriesAsync = ref.watch(categoryListProvider);
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
     final isUrgent = service.title.toLowerCase().contains('urgente');
     final themeColor = _getIconColor(service.title);
+    final bgColor = _getIconBackgroundColor(service.title);
+
+    // 🧠 Resolución reactiva de categoría
+    final categoriesAsync = ref.watch(categoryListProvider);
+    String catName = "Servicio"; 
+
+    if (categoriesAsync is AsyncData) {
+      final cats = categoriesAsync.value!;
+      final found = cats.where((c) => c.id.toString() == service.categoryId.toString());
+      catName = found.isNotEmpty ? found.first.name : "General";
+    }
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade100),
+        // 🎨 Borde adaptable para Dark Mode
+        border: Border.all(
+            color: isDark ? const Color(0xFF334155) : Colors.grey.shade100),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withOpacity(isDark ? 0.2 : 0.04),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -94,7 +99,7 @@ class ServiceCard extends ConsumerWidget {
         borderRadius: BorderRadius.circular(16),
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
-          onTap: () => _onCardTap(context, ref),
+          onTap: () => _onCardTap(context, ref, catName),
           child: Stack(
             children: [
               Padding(
@@ -102,70 +107,92 @@ class ServiceCard extends ConsumerWidget {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // --- ICONO DINÁMICO ---
-                    categoriesAsync.when(
-                      data: (categories) {
-                        String catName = "";
-                        final found = categories.where((c) => c.id.toString() == service.categoryId.toString());
-                        if (found.isNotEmpty) catName = found.first.name;
-                        
-                        return Container(
-                          width: 65, height: 65,
-                          decoration: BoxDecoration(
-                            color: _getIconBackgroundColor(service.title),
-                            borderRadius: BorderRadius.circular(12),
+                    // --- ICONO DINÁMICO (Con tu estado de carga) ---
+                    Container(
+                      width: 65, height: 65,
+                      decoration: BoxDecoration(
+                        color: categoriesAsync.isLoading 
+                            ? (isDark ? Colors.white10 : Colors.grey[100]) 
+                            : (isDark ? themeColor.withOpacity(0.2) : bgColor),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: categoriesAsync.isLoading
+                        ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
+                        : Icon(
+                            _getCategoryIcon(catName), 
+                            color: isDark ? themeColor.withAlpha(200) : themeColor, 
+                            size: 32,
                           ),
-                          child: Icon(
-                            _getCategoryIcon(catName.isEmpty ? service.title : catName), 
-                            color: themeColor, 
-                            size: 32
-                          ),
-                        );
-                      },
-                      loading: () => Container(width: 65, height: 65, decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(12))),
-                      error: (_, __) => Container(width: 65, height: 65, child: const Icon(Icons.error, color: Colors.grey)),
                     ),
-                    
                     const SizedBox(width: 16),
-                    
+
                     // --- CONTENIDO ---
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          categoriesAsync.when(
-                            data: (categories) {
-                              String catName = "Servicio General";
-                              final found = categories.where((c) => c.id.toString() == service.categoryId.toString());
-                              if (found.isNotEmpty) catName = found.first.name;
-
-                              return Text(
-                                catName.toUpperCase(),
-                                style: TextStyle(color: themeColor, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 0.8),
-                              );
-                            },
-                            loading: () => const SizedBox(height: 10), 
-                            error: (_, __) => const SizedBox(),
+                          Text(
+                            catName.toUpperCase(),
+                            style: TextStyle(
+                              color: themeColor, 
+                              fontSize: 10, 
+                              fontWeight: FontWeight.w800, 
+                              letterSpacing: 0.8
+                            ),
                           ),
                           const SizedBox(height: 4),
-                          Text(service.title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF111827), height: 1.2), maxLines: 2, overflow: TextOverflow.ellipsis),
+                          Text(
+                            service.title, 
+                            style: TextStyle(
+                              fontSize: 16, 
+                              fontWeight: FontWeight.bold, 
+                              color: isDark ? Colors.white : const Color(0xFF111827), 
+                              height: 1.2
+                            ), 
+                            maxLines: 2, 
+                            overflow: TextOverflow.ellipsis
+                          ),
                           const SizedBox(height: 8),
                           Row(
                             children: [
                               Icon(Icons.location_on, size: 14, color: Colors.grey[400]),
                               const SizedBox(width: 4),
-                              Expanded(child: Text(service.exactAddress ?? "Ubicación remota", style: TextStyle(color: Colors.grey[500], fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                              Expanded(
+                                child: Text(
+                                  service.exactAddress ?? "Ubicación remota", 
+                                  style: TextStyle(color: Colors.grey[500], fontSize: 13), 
+                                  maxLines: 1, 
+                                  overflow: TextOverflow.ellipsis
+                                )
+                              ),
                             ],
                           ),
                           const SizedBox(height: 12),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text("\$${service.basePrice.toStringAsFixed(0)}", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF10B981))),
+                              Text(
+                                "\$${service.basePrice.toStringAsFixed(0)}", 
+                                style: const TextStyle(
+                                  fontSize: 18, 
+                                  fontWeight: FontWeight.w900, 
+                                  color: Color(0xFF10B981)
+                                )
+                              ),
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                decoration: BoxDecoration(color: isUrgent ? const Color(0xFF1D04F8) : const Color(0xFFF3F4F6), borderRadius: BorderRadius.circular(8)),
-                                child: Text("Ver Detalles", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: isUrgent ? Colors.white : Colors.black87)),
+                                decoration: BoxDecoration(
+                                  color: isUrgent ? const Color(0xFF1D04F8) : (isDark ? Colors.white10 : const Color(0xFFF3F4F6)), 
+                                  borderRadius: BorderRadius.circular(8)
+                                ),
+                                child: Text(
+                                  "Ver Detalles", 
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold, 
+                                    fontSize: 12, 
+                                    color: isUrgent ? Colors.white : (isDark ? Colors.white70 : Colors.black87)
+                                  )
+                                ),
                               ),
                             ],
                           ),
@@ -176,7 +203,7 @@ class ServiceCard extends ConsumerWidget {
                 ),
               ),
 
-              // --- ETIQUETA URGENTE ---
+              // --- BADGE DE URGENTE ---
               if (isUrgent)
                 Positioned(
                   right: 0, top: 0,
@@ -184,9 +211,15 @@ class ServiceCard extends ConsumerWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: const BoxDecoration(
                       color: Color(0xFFFFE4E6),
-                      borderRadius: BorderRadius.only(topRight: Radius.circular(16), bottomLeft: Radius.circular(16)),
+                      borderRadius: BorderRadius.only(
+                          topRight: Radius.circular(16),
+                          bottomLeft: Radius.circular(16)),
                     ),
-                    child: const Text("URGENTE", style: TextStyle(color: Color(0xFFE11D48), fontSize: 10, fontWeight: FontWeight.bold)),
+                    child: const Text("URGENTE",
+                        style: TextStyle(
+                            color: Color(0xFFE11D48),
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold)),
                   ),
                 ),
             ],

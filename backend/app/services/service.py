@@ -6,7 +6,7 @@ from fastapi import HTTPException, status
 from datetime import datetime
 from sqlalchemy import func, and_
 from app.core.roles import Role
-
+from sqlalchemy import or_
 # -------------------------------------------------------------------------
 # CATEGORIES 
 # -------------------------------------------------------------------------
@@ -107,10 +107,6 @@ def get_services(
             models.Service.is_active == True,
             models.Service.status == models.JobStatus.OPEN
         )
-    
-    # 🟢 Lógica para el Administrador (include_inactive == True)
-    # Al no entrar en el 'if' anterior, el administrador recibirá 
-    # TODO: OPEN, MATCHED, CANCELLED, etc.
 
     return (
         query
@@ -134,7 +130,6 @@ def get_my_services(db: Session, user_id: str):
         db.query(models.Service)
         .filter(
             models.Service.client_id == user_id,
-            models.Service.is_active == True
         )
         .order_by(models.Service.created_at.desc())
         .all()
@@ -212,16 +207,12 @@ def delete_service(db: Session, service_id: str):
     if not service_entry:
         raise HTTPException(status_code=404, detail="Servicio no encontrado")
 
-    # 1. Borrar las postulaciones (Ofertas) asociadas para que PostgreSQL/MySQL no marque error de llave foránea
     db.query(models.ServiceRequest).filter(models.ServiceRequest.service_id == service_id).delete()
     
-    # 2. Borrar los Jobs (Trabajos) si es que ya se había generado un Match
     db.query(models.Job).filter(
         models.Job.client_id == service_entry.client_id,
-        # Si el Job tiene relación directa con el servicio, idealmente se filtra por request_id o service_id
-    ).delete() # Nota para Juan Luis: Ajustar este filtro según cómo tenga su modelo Job
+    ).delete() 
 
-    # 3. BORRADO FÍSICO DEL SERVICIO
     db.delete(service_entry)
     db.commit()
     
@@ -266,13 +257,112 @@ def get_offers_by_service(db: Session, service_id: str, client_id: str):
     ]
     return my_requests
 
+def update_service_request(db: Session, request_id: str, description: str, proposed_price: float):
+    postulation = db.query(models.ServiceRequest).filter(
+        models.ServiceRequest.id == request_id
+    ).first()
+
+    if not postulation:
+        raise HTTPException(status_code=404, detail="Postulación no encontrada")
+
+    postulation.description = description
+    postulation.proposed_price = proposed_price
+
+    db.commit()
+    db.refresh(postulation)
+    
+    return postulation
+
+def get_worker_applications(db: Session, worker_id: str):
+    try:
+        unique_results = {}
+
+        # 1. BUSCAMOS LOS JOBS ACTIVOS (Los que ya te aceptaron)
+        jobs = db.query(models.Job).filter(models.Job.provider_id == worker_id).all()
+
+        for job in jobs:
+            req = job.request
+            srv = req.service if req else None
+            
+            if not srv: continue
+            
+            fecha_buscada = job.started_at.isoformat() if job.started_at else None
+            precio_mosca = req.proposed_price if req else srv.base_price
+
+            service_id_str = str(srv.id) # 🚀 CREAMOS LA VARIABLE
+            
+            unique_results[service_id_str] = {
+                "id": service_id_str, # MANDAMOS EL ID DEL SERVICIO
+                "request_id": str(req.id) if req else None, # MANDAMOS EL ID DE LA SOLICITUD
+                "title": srv.title,
+                "description": srv.description, 
+                "base_price": float(precio_mosca) if precio_mosca else 0.0,
+                "category_id": str(srv.category_id),
+                "client_id": str(job.client_id),
+                "latitude": srv.latitude,
+                "longitude": srv.longitude,
+                "exact_address": srv.exact_address,
+                "status": job.status.value if hasattr(job.status, 'value') else str(job.status),
+                "is_active": srv.is_active,
+                "created_at": fecha_buscada, 
+                "image_urls": srv.image_urls if srv.image_urls else [], 
+            }
+
+        # 2. BUSCAMOS LAS POSTULACIONES PENDIENTES
+        postulations = db.query(models.ServiceRequest, models.Service).join(
+            models.Service, models.ServiceRequest.service_id == models.Service.id
+        ).filter(
+            models.ServiceRequest.worker_id == worker_id,
+            models.ServiceRequest.status == "pending",
+            models.Service.is_active == True
+        ).all()
+
+        for req, srv in postulations:
+            service_id_str = str(srv.id) # 🚀 AQUÍ FALTABA ESTA LÍNEA
+            
+            if service_id_str not in unique_results:
+                unique_results[service_id_str] = {
+                    "id": service_id_str, # MANDAMOS EL ID DEL SERVICIO
+                    "request_id": str(req.id), # MANDAMOS EL ID DE LA SOLICITUD
+                    "title": srv.title,
+                    "description": req.description, 
+                    "base_price": float(req.proposed_price) if req.proposed_price else 0.0,
+                    "category_id": str(srv.category_id),
+                    "client_id": str(srv.client_id),
+                    "latitude": srv.latitude,
+                    "longitude": srv.longitude,
+                    "exact_address": srv.exact_address,
+                    "status": "open", 
+                    "is_active": srv.is_active,
+                    "created_at": req.created_at.isoformat() if req.created_at else None,
+                    "image_urls": srv.image_urls if srv.image_urls else [], 
+                }
+                
+        return list(unique_results.values())
+        
+    except Exception as e:
+        print(f"🚨 Error real en get_worker_applications: {e}")
+        raise e
+
+def withdraw_postulation(db: Session, request_id: str, user_id: str):
+    postulation = db.query(models.ServiceRequest).filter(
+        models.ServiceRequest.id == request_id,
+        models.ServiceRequest.worker_id == user_id 
+    ).first()
+
+    if not postulation:
+        raise HTTPException(status_code=404, detail="Postulación no encontrada o no tienes permiso")
+
+    db.delete(postulation)
+    db.commit()
+
+    return {"message": "Postulación retirada con éxito"}
 
 # -------------------------------------------------------------------------
 # JOBS & MATCH
 # -------------------------------------------------------------------------
 
 def accept_postulation(db: Session, request_id: str, current_user_id: str):
-    # 1. Buscar la postulación
     postulation = db.query(models.ServiceRequest).filter(models.ServiceRequest.id == request_id).first()
     if not postulation:
         raise HTTPException(status_code=404, detail="La postulación no existe")
@@ -313,60 +403,79 @@ def accept_postulation(db: Session, request_id: str, current_user_id: str):
 
 def complete_job(db: Session, job_id: str, user_id: str):
     job = db.query(models.Job).join(models.ServiceRequest).filter(
-        models.ServiceRequest.service_id == job_id,
-        models.Job.status == models.JobStatus.MATCHED
+        or_(
+            models.Job.id == job_id,
+            models.ServiceRequest.id == job_id,
+            models.ServiceRequest.service_id == job_id
+        ),
+        models.Job.status.in_([models.JobStatus.MATCHED, models.JobStatus.WAITING_CONFIRMATION])
     ).first()
 
     if not job:
-        job = db.query(models.Job).filter(models.Job.id == job_id).first()
+        raise HTTPException(status_code=404, detail="Trabajo no encontrado o ya finalizado")
 
-    if not job:
-        raise HTTPException(status_code=404, detail="No existe el trabajo activo")
-
+    # 2. Verificación de identidad (Seguridad total)
     is_client = str(job.client_id) == str(user_id)
     is_worker = str(job.provider_id) == str(user_id)
 
     if not (is_client or is_worker):
-        raise HTTPException(status_code=403, detail="No tienes permiso")
+        raise HTTPException(status_code=403, detail="No tienes permiso para modificar este trabajo")
 
-    job.status = models.JobStatus.COMPLETED
-    job.completed_at = datetime.utcnow()
-    
-    if job.request and job.request.service:
-        job.request.service.status = models.JobStatus.COMPLETED
+    if is_worker:
+        if job.status == models.JobStatus.WAITING_CONFIRMATION:
+            return job 
+        
+        job.status = models.JobStatus.WAITING_CONFIRMATION
+        
+        if job.request and job.request.service:
+            job.request.service.status = models.JobStatus.WAITING_CONFIRMATION
+            
+        db.commit()
+        db.refresh(job)
+        return job
 
-    # Capturar fondos retenidos en Stripe (si hay pago en escrow)
-    from app.payments.services import capture_payment
-    try:
-        capture_payment(db, job.id)
-    except Exception as e:
-        # Si falla la captura de Stripe, logueamos pero no bloqueamos el complete
-        print(f"⚠️ Error al capturar pago Stripe para job {job.id}: {e}")
+    elif is_client:
+        job.status = models.JobStatus.COMPLETED
+        job.completed_at = datetime.utcnow()
+        
+        if job.request and job.request.service:
+            job.request.service.status = models.JobStatus.COMPLETED
+            job.request.service.is_active = False
 
-    db.commit()
-    db.refresh(job)
-    return job
+        db.commit()
+        db.refresh(job)
+        return job
 
 def cancel_job(db: Session, job_id: str, user_id: str, user_role: str):
-    job = db.query(models.Job).filter(models.Job.id == job_id).first()
+    job = db.query(models.Job).join(models.ServiceRequest).filter(
+        or_(
+            models.Job.id == job_id,
+            models.ServiceRequest.service_id == job_id
+        )
+    ).first()
+
     if not job:
-        raise HTTPException(status_code=404, detail="Job no encontrado")
+        raise HTTPException(status_code=404, detail="Trabajo no encontrado")
 
-    is_admin = user_role == Role.ADMIN
-    is_client = str(job.client_id) == str(user_id)
     is_worker = str(job.provider_id) == str(user_id)
+    is_client = str(job.client_id) == str(user_id)
+    is_admin = user_role == Role.ADMIN
 
-    if not (is_admin or is_client or is_worker):
-        raise HTTPException(status_code=403, detail="No tienes permiso")
+    if not (is_worker or is_client or is_admin):
+        raise HTTPException(status_code=403, detail="No tienes permiso para cancelar")
 
     job.status = models.JobStatus.CANCELLED
-    if job.request and job.request.service:
-        job.request.service.status = models.JobStatus.CANCELLED
     
+    if job.request and job.request.service:
+        if is_worker:
+            job.request.service.status = models.JobStatus.OPEN
+            print(f"♻️ Servicio {job.request.service.id} re-abierto porque el trabajador canceló.")
+        else:
+            job.request.service.status = models.JobStatus.CANCELLED
+
     db.commit()
     db.refresh(job)
     return job
-
 # -------------------------------------------------------------------------
 # Busquedas y Stats
 # -------------------------------------------------------------------------
@@ -388,7 +497,9 @@ def get_top_categories(db: Session, limit: int = 5):
     )
 
 def search_services(db: Session, search_query: str):
-    search_term = f"%{search_query}%" 
+    query_clean = search_query.strip().lower()
+    search_term = f"%{query_clean}%" 
+
     return (
         db.query(models.Service)
         .filter(

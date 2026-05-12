@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Eye, ShieldOff, PlusCircle, Search } from 'lucide-react';
+import { Eye, PlusCircle, Search } from 'lucide-react';
 import { getServices, createService } from '../services/service.service';
 import { getCategories } from '../services/category.service';
 import { getUsersApi } from '../../users/services/user.service';

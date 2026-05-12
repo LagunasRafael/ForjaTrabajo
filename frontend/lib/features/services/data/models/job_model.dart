@@ -1,4 +1,3 @@
-
 import '../../domain/entities/job_entity.dart';
 import '../../domain/entities/service_entity.dart'; // Para JobStatus
 
@@ -28,7 +27,13 @@ class JobModel extends JobEntity {
       providerId: json['provider_id'] ?? '',
       clientId: json['client_id'] ?? '',
       status: statusFromString(json['status'] ?? 'matched'),
-      finalPrice: (json['final_price'] as num?)?.toDouble() ?? 0.0,
+      
+      // 🚀 EL FIX MÁGICO: Si viene como String "100.0" o como número 100, 
+      // lo convierte a texto y de ahí extrae el double seguro.
+      finalPrice: json['final_price'] != null 
+          ? double.tryParse(json['final_price'].toString()) ?? 0.0 
+          : 0.0,
+          
       startedAt: json['started_at'] != null 
           ? DateTime.parse(json['started_at']) 
           : null,

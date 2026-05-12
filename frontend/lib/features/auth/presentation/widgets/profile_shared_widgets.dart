@@ -10,7 +10,7 @@ import 'package:forja_trabajo/features/auth/presentation/screens/login_screen.da
 // 👇 IMPORTS PARA LIMPIEZA DE MEMORIA
 import 'package:forja_trabajo/features/services/presentation/providers/service_list_provider.dart';
 // Asumiendo que aquí gestionas el índice de la navegación
-// import 'package:forja_trabajo/features/home/presentation/providers/navigation_provider.dart'; 
+// import 'package:forja_trabajo/features/home/presentation/providers/navigation_provider.dart';
 
 // =====================================================
 // 1. CONTENEDOR DE MENÚ (CARD)
@@ -23,10 +23,12 @@ class ProfileMenuCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
@@ -84,12 +86,14 @@ class ProfileLogoutButton extends ConsumerWidget {
       context: context,
       builder: (BuildContext dialogContext) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: const Row(
             children: [
               Icon(Icons.warning_amber_rounded, color: Colors.orange),
               SizedBox(width: 10),
-              Text("¿Cerrar sesión?", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+              Text("¿Cerrar sesión?",
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
             ],
           ),
           content: const Text(
@@ -99,7 +103,9 @@ class ProfileLogoutButton extends ConsumerWidget {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text("Cancelar", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+              child: const Text("Cancelar",
+                  style: TextStyle(
+                      color: Colors.grey, fontWeight: FontWeight.bold)),
             ),
             ElevatedButton(
               onPressed: () async {
@@ -113,22 +119,26 @@ class ProfileLogoutButton extends ConsumerWidget {
                 ref.invalidate(serviceListProvider);
                 ref.invalidate(myRequestsProvider);
                 ref.invalidate(authProvider);
-                
+
                 // Reseteo de navegación (ajusta según tu provider de índice)
-                // ref.invalidate(bottomNavIndexProvider); 
+                // ref.invalidate(bottomNavIndexProvider);
 
                 // 3. 🔄 NAVEGACIÓN RADICAL
                 if (context.mounted) {
                   // Borra todo el historial de rutas y manda al login
-                  Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+                  Navigator.of(context)
+                      .pushNamedAndRemoveUntil('/login', (route) => false);
                 }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red,
                 elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
               ),
-              child: const Text("Sí, salir", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              child: const Text("Sí, salir",
+                  style: TextStyle(
+                      color: Colors.white, fontWeight: FontWeight.bold)),
             ),
           ],
         );
@@ -145,12 +155,14 @@ class ProfileLogoutButton extends ConsumerWidget {
         style: OutlinedButton.styleFrom(
           minimumSize: const Size(double.infinity, 56),
           side: const BorderSide(color: AppTheme.dangerRose),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         ),
         icon: const Icon(LucideIcons.logOut, color: AppTheme.dangerRose),
         label: Text(
           "Cerrar Sesión",
-          style: GoogleFonts.inter(color: AppTheme.dangerRose, fontWeight: FontWeight.bold),
+          style: GoogleFonts.inter(
+              color: AppTheme.dangerRose, fontWeight: FontWeight.bold),
         ),
       ),
     );
@@ -166,7 +178,8 @@ class EditableProfileAvatar extends ConsumerWidget {
 
   const EditableProfileAvatar({super.key, this.imageUrl, this.radius = 50});
 
-  Future<void> _pickImage(BuildContext context, WidgetRef ref, ImageSource source) async {
+  Future<void> _pickImage(
+      BuildContext context, WidgetRef ref, ImageSource source) async {
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(source: source, imageQuality: 80);
 
@@ -176,10 +189,13 @@ class EditableProfileAvatar extends ConsumerWidget {
   }
 
   void _showOptionsBottomSheet(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      backgroundColor: theme.scaffoldBackgroundColor,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (context) {
         return SafeArea(
           child: Padding(
@@ -188,11 +204,14 @@ class EditableProfileAvatar extends ConsumerWidget {
               children: [
                 const Padding(
                   padding: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                  child: Text('Foto de perfil', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  child: Text('Foto de perfil',
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 ),
                 ListTile(
                   leading: _buildIconContainer(LucideIcons.camera),
-                  title: Text('Tomar foto', style: GoogleFonts.inter(fontWeight: FontWeight.w500)),
+                  title: Text('Tomar foto',
+                      style: GoogleFonts.inter(fontWeight: FontWeight.w500)),
                   onTap: () {
                     Navigator.pop(context);
                     _pickImage(context, ref, ImageSource.camera);
@@ -200,7 +219,8 @@ class EditableProfileAvatar extends ConsumerWidget {
                 ),
                 ListTile(
                   leading: _buildIconContainer(LucideIcons.image),
-                  title: Text('Elegir de la galería', style: GoogleFonts.inter(fontWeight: FontWeight.w500)),
+                  title: Text('Elegir de la galería',
+                      style: GoogleFonts.inter(fontWeight: FontWeight.w500)),
                   onTap: () {
                     Navigator.pop(context);
                     _pickImage(context, ref, ImageSource.gallery);
@@ -239,7 +259,8 @@ class EditableProfileAvatar extends ConsumerWidget {
                 ? NetworkImage(imageUrl!)
                 : null,
             child: (imageUrl == null || imageUrl!.isEmpty)
-                ? Icon(LucideIcons.user, size: radius, color: AppTheme.primaryColor)
+                ? Icon(LucideIcons.user,
+                    size: radius, color: AppTheme.primaryColor)
                 : null,
           ),
           Container(
@@ -247,9 +268,11 @@ class EditableProfileAvatar extends ConsumerWidget {
             decoration: BoxDecoration(
               color: AppTheme.primaryColor,
               shape: BoxShape.circle,
-              border: Border.all(color: Colors.white, width: 2),
+              border: Border.all(
+                  color: Theme.of(context).scaffoldBackgroundColor, width: 2),
             ),
-            child: const Icon(LucideIcons.camera, size: 16, color: Colors.white),
+            child:
+                const Icon(LucideIcons.camera, size: 16, color: Colors.white),
           ),
         ],
       ),

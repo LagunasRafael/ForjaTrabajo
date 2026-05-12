@@ -1,3 +1,4 @@
+import 'dart:io';
 import '../../entities/service_entity.dart';
 import '../../repositories/service_repository.dart';
 
@@ -6,7 +7,17 @@ class CreateServiceUseCase {
 
   CreateServiceUseCase(this.repository);
 
-  Future<ServiceEntity> execute(ServiceEntity service, String token) {
-    return repository.createService(service, token);
+  // 🚀 Cambiamos a Future<ServiceEntity>
+  Future<ServiceEntity> execute({
+    required ServiceEntity service,
+    required String token,
+    List<File> images = const [],
+  }) async {
+    if (service.basePrice < 0) {
+      throw Exception("El precio no puede ser negativo");
+    }
+
+    // Ahora el retorno coincide con el repositorio
+    return await repository.createService(service, token, images: images);
   }
 }

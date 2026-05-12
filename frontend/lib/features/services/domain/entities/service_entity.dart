@@ -1,4 +1,4 @@
-enum JobStatus { open, matched, completed, cancelled }
+enum JobStatus { open, matched, waiting_confirmation, completed, cancelled }
 
 class ServiceEntity {
   final String id;
@@ -17,6 +17,9 @@ class ServiceEntity {
   final DateTime createdAt;
   final String? authorName;
   final String? profilePictureUrl;
+  final String? requestId;
+  final String? workerName;
+  final String? workerImageUrl;
 
   ServiceEntity({
     required this.id,
@@ -35,5 +38,52 @@ class ServiceEntity {
     required this.createdAt,
     this.authorName,
     this.profilePictureUrl,
+    this.requestId,
+    this.workerName,
+    this.workerImageUrl,
   });
+
+  ServiceEntity copyWith({
+    String? id,
+    String? title,
+    String? summary,
+    String? description,
+    double? basePrice,
+    String? categoryId,
+    String? clientId,
+    double? latitude,
+    double? longitude,
+    String? exactAddress,
+    List<String>? imageUrls,
+    JobStatus? status,
+    bool? isActive,
+    DateTime? createdAt,
+    String? authorName,
+    String? profilePictureUrl,
+    String? requestId,
+    String? workerName,
+    String? workerImageUrl,
+  }) {
+    return ServiceEntity(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      summary: summary ?? this.summary,
+      description: description ?? this.description,
+      basePrice: basePrice ?? this.basePrice,
+      categoryId: categoryId ?? this.categoryId,
+      clientId: clientId ?? this.clientId,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+      exactAddress: exactAddress ?? this.exactAddress,
+      imageUrls: imageUrls ?? this.imageUrls,
+      status: status ?? this.status,
+      isActive: isActive ?? this.isActive,
+      createdAt: createdAt ?? this.createdAt,
+      authorName: authorName ?? this.authorName,
+      profilePictureUrl: profilePictureUrl ?? this.profilePictureUrl,
+      requestId: requestId ?? this.requestId,
+      workerName: workerName ?? this.workerName,
+      workerImageUrl: workerImageUrl ?? this.workerImageUrl,
+    );
+  }
 }

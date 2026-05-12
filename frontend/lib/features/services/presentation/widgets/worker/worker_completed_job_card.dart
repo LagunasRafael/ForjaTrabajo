@@ -1,0 +1,99 @@
+import 'package:flutter/material.dart';
+// 🚀 1. Usamos la Entidad real, no dynamic
+import 'package:forja_trabajo/features/services/domain/entities/service_entity.dart';
+import 'package:forja_trabajo/features/services/presentation/widgets/service_status_chip.dart';
+
+class WorkerCompletedJobCard extends StatelessWidget {
+  final ServiceEntity job;
+
+  const WorkerCompletedJobCard({super.key, required this.job});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF9FAFB), 
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        job.title,
+                        style: const TextStyle(
+                          fontSize: 17, 
+                          fontWeight: FontWeight.bold, 
+                          color: Color(0xFF6B7280) // Gris azulado profesional
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        "Finalizado el ${_formatDate(job.createdAt)}",
+                        style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                      ),
+                    ],
+                  ),
+                ),
+                // 🚀 Usamos el Chip que ya tienes
+                ServiceStatusChip(status: job.status.toString().split('.').last),
+              ],
+            ),
+            
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: Divider(height: 1, thickness: 1),
+            ),
+
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.payments_outlined, size: 18, color: Colors.grey),
+                    const SizedBox(width: 8),
+                    Text(
+                      "Ganancia: \$${job.basePrice.toStringAsFixed(0)}",
+                      style: const TextStyle(
+                        fontSize: 15, 
+                        fontWeight: FontWeight.w600, 
+                        color: Color(0xFF4B5563)
+                      ),
+                    ),
+                  ],
+                ),
+                // Botón discreto
+                TextButton.icon(
+                  onPressed: () {
+                    // TODO: Navegar a pantalla de recibo/resumen
+                  },
+                  icon: const Icon(Icons.receipt_long_outlined, size: 16, color: Color(0xFF6366F1)),
+                  label: const Text(
+                    "Ver resumen", 
+                    style: TextStyle(color: Color(0xFF6366F1), fontWeight: FontWeight.bold)
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _formatDate(DateTime date) {
+    return "${date.day}/${date.month}/${date.year}";
+  }
+}

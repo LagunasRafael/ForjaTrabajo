@@ -1,6 +1,7 @@
 forja-admin/node_modules/
 *.db
 forja.db
+firebase-adminsdk.json
 
 .venv/
 env/
