@@ -1,10 +1,14 @@
 from sqlalchemy.orm import Session
+from app.services import models, schemas
 from fastapi import HTTPException
 from datetime import datetime
 from sqlalchemy import or_
 from app.core.roles import Role
+from app.auth import models as auth_models
+from app.services.notifications import service as notif_service
+import logging
 
-from app.services import models, schemas
+logger = logging.getLogger(__name__)
 
 def accept_postulation(db: Session, request_id: str, current_user_id: str):
     postulation = db.query(models.ServiceRequest).filter(models.ServiceRequest.id == request_id).first()
@@ -34,6 +38,10 @@ def accept_postulation(db: Session, request_id: str, current_user_id: str):
         
         db.add(new_job)
         db.commit()
+
+        # 🔔 Notificar al trabajador que fue aceptado (Migrado)
+        notif_service.notify_job_accepted(db, new_job, service_entry.title)
+        
         return {"status": "success", "message": "Aceptado correctamente"}
 
     except Exception as e:
@@ -81,6 +89,10 @@ def complete_job(db: Session, job_id: str, user_id: str):
 
         db.commit()
         db.refresh(job)
+
+        # 🔔 Notificar al trabajador que el trabajo fue finalizado (Migrado)
+        notif_service.notify_job_completed(db, job)
+
         return job
 
 def cancel_job(db: Session, job_id: str, user_id: str, user_role: str):
@@ -106,33 +118,9 @@ def cancel_job(db: Session, job_id: str, user_id: str, user_role: str):
     if job.request and job.request.service:
         if is_worker:
             job.request.service.status = models.JobStatus.OPEN
-            print(f"♻️ Servicio {job.request.service.id} re-abierto porque el trabajador canceló.")
         else:
             job.request.service.status = models.JobStatus.CANCELLED
 
     db.commit()
     db.refresh(job)
     return job
-
-def handle_offer_action(db: Session, message_id: str, action: str):
-    offer_msg = db.query(models.Message).filter(models.Message.id == message_id).first()
-    convo = offer_msg.conversation
-    
-    if action == "accept":
-        request = convo.request
-        request.status = "accepted"
-        request.proposed_price = float(offer_msg.content)
-        
-        new_job = models.Job(
-            request_id=request.id,
-            provider_id=convo.worker_id,
-            client_id=convo.client_id,
-            status=models.JobStatus.MATCHED,
-            final_price=request.proposed_price
-        )
-        db.add(new_job)
-        
-    elif action == "reject":
-        pass 
-
-    db.commit()

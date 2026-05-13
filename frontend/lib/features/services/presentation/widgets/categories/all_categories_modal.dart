@@ -5,8 +5,9 @@ import 'package:forja_trabajo/features/services/presentation/providers/category_
 
 class AllCategoriesModal extends ConsumerWidget {
   final List<dynamic> categories;
+  final void Function(String)? onSelected;
   
-  const AllCategoriesModal({super.key, required this.categories});
+  const AllCategoriesModal({super.key, required this.categories, this.onSelected});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -34,15 +35,18 @@ class AllCategoriesModal extends ConsumerWidget {
               itemCount: categories.length,
               itemBuilder: (context, i) {
                 final cat = categories[i];
-                final isSelected = selectedCatId == cat.id;
+                final isSelected = selectedCatId == cat.id?.toString();
                 
                 return ListTile(
-                  // Un ícono genérico para que no pida helpers extraños
                   leading: Icon(Icons.category, color: isSelected ? const Color(0xFF4F46E5) : Colors.grey),
-                  title: Text(cat.name, style: TextStyle(fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
+                  title: Text(cat.name ?? "S/N", style: TextStyle(fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
                   onTap: () {
-                    // Actualiza el estado y cierra el modal
-                    ref.read(selectedCategoryProvider.notifier).state = cat.id;
+                    final String idStr = cat.id?.toString() ?? "";
+                    if (onSelected != null) {
+                      onSelected!(idStr);
+                    } else {
+                      ref.read(selectedCategoryProvider.notifier).state = idStr;
+                    }
                     Navigator.pop(context);
                   },
                 );
@@ -55,10 +59,9 @@ class AllCategoriesModal extends ConsumerWidget {
   }
 }
 
-// Función cortita para llamarlo desde tu category_selector_widget
-void showCategoryModal(BuildContext context, List<dynamic> categories) {
+void showCategoryModal(BuildContext context, List<dynamic> categories, {void Function(String)? onSelected}) {
   showDialog(
     context: context,
-    builder: (_) => AllCategoriesModal(categories: categories),
+    builder: (_) => AllCategoriesModal(categories: categories, onSelected: onSelected),
   );
 }

@@ -220,3 +220,20 @@ class Message(Base):
     
     created_at = Column(DateTime, default=datetime.utcnow)
     conversation = relationship("Conversation", back_populates="messages")
+
+# -----------------------------
+# NOTIFICACIONES IN-APP
+# -----------------------------
+class Notification(Base):
+    __tablename__ = "notifications"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
+    title = Column(String(150), nullable=False)
+    body = Column(Text, nullable=True)
+    notification_type = Column(String(50), nullable=False) # e.g., 'new_application', 'job_accepted'
+    reference_id = Column(String(36), nullable=True) # e.g., service_id, job_id, conversation_id
+    is_read = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User")

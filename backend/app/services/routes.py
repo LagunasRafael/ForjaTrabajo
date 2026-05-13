@@ -34,29 +34,27 @@ def update_category(category_id: UUID, category_data: schemas.CategoryUpdate, db
 
 @router.delete("/categories/{category_id}")
 def delete_category(category_id: str, db: Session = Depends(get_db), current_user = Depends(check_role([Role.ADMIN]))):
-    return service.delete_category(db, category_id)
+    return service.delete_category_hard(db, category_id)
 
 
 # =================================================================
 # 2. SERVICIOS - RUTAS ESTÁTICAS Y DE BÚSQUEDA (Prioridad Alta 🚀)
 # =================================================================
-# Estas deben ir ANTES que /{service_id} para evitar errores 404.
 
 @router.post("/", response_model=schemas.Service)
 async def create_service(
     title: str = Form(...),
     description: str = Form(...),
     category_id: str = Form(...),
-    base_price: float = Form(0.0), # Valor por defecto
+    base_price: float = Form(0.0), 
     summary: Optional[str] = Form(None),
     latitude: Optional[float] = Form(None),
     longitude: Optional[float] = Form(None),
     exact_address: Optional[str] = Form(None),
-    files: Optional[List[UploadFile]] = File(None), # ¡Aquí vienen las fotos de Flutter!
+    files: Optional[List[UploadFile]] = File(None), 
     db: Session = Depends(get_db),
     current_user = Depends(check_role([Role.CLIENT, Role.ADMIN]))
 ):
-    # 1. Armamos el esquema MANUALMENTE
     service_data = schemas.ServiceCreate(
         title=title,
         description=description,
@@ -66,23 +64,18 @@ async def create_service(
         latitude=latitude,
         longitude=longitude,
         exact_address=exact_address,
-        image_urls=[] # Inicialmente vacío
+        image_urls=[]
     )
 
-    # 2. Guardamos en la Base de Datos para obtener el ID
     new_service = service.create_service(db, service_data, client_id=current_user.id)
 
-    # 3. Subimos las fotos a AWS S3 (Usando la nueva función que te doy abajo)
     if files and len(files) > 0:
         image_urls = []
         for file in files:
-            # Usamos la nueva función adaptada para servicios
             url = await upload_service_evidence_to_s3(file, new_service.id)
             if url:
                 image_urls.append(url)
         
-        # 4. Actualizamos el servicio en la DB con las URLs
-        # (Asegúrate de que Juan Luis tenga este método en su CRUD)
         new_service = service.update_service_images(db, new_service.id, image_urls)
 
     return new_service
@@ -91,19 +84,17 @@ async def create_service(
 def list_services(
     skip: int = 0, 
     limit: int = 100, 
-    include_inactive: bool = False, # 👈 Nuevo parámetro opcional
+    include_inactive: bool = False, 
     db: Session = Depends(get_db)
 ):
     return service.get_services(db, skip=skip, limit=limit, include_inactive=include_inactive)
 
 @router.get("/top-categories", response_model=List[schemas.Category])
 def get_top_categories_route(db: Session = Depends(get_db)):
-    """Obtiene las 5 categorías con más servicios publicados."""
     return service.get_top_categories(db, limit=5)
 
 @router.get("/search", response_model=List[schemas.Service])
 def search_services_route(query: str, db: Session = Depends(get_db)):
-    """Busca servicios por título o descripción."""
     return service.search_services(db, query)
 
 @router.get("/my-requests", response_model=List[schemas.Service])
@@ -111,7 +102,6 @@ def read_my_requests(
     db: Session = Depends(get_db),
     current_user: auth_models.User = Depends(get_current_user)
 ):
-    """Obtiene SOLO los servicios creados por el usuario logueado."""
     return service.get_my_services(db, user_id=str(current_user.id))
 
 @router.get("/category/{category_id}", response_model=List[schemas.Service])
@@ -156,12 +146,11 @@ def update_postulation(
 @router.get("/worker/my-applications")
 def get_my_applications(
     db: Session = Depends(get_db),
-    current_user: auth_models.User = Depends(get_current_user) # Usamos get_current_user para evitar fallos de roles
+    current_user: auth_models.User = Depends(get_current_user)
 ):
     try:
         return service.get_worker_applications(db, str(current_user.id))
     except Exception as e:
-        # Esto imprimirá el error real en tu terminal de Python
         print(f"🚨 ERROR 500 EN /worker/my-applications: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -175,10 +164,7 @@ def accept_worker_postulation(
     db: Session = Depends(get_db),
     current_user: auth_models.User = Depends(get_current_user)
 ):
-    # Ejecutamos la función que guarda en base de datos
     service.accept_postulation(db, request_id, current_user.id)
-    
-    # 🚀 Forzamos una respuesta 200 OK súper limpia
     return JSONResponse(status_code=200, content={"status": "success", "message": "Trabajo aceptado"})
 
 @router.put("/jobs/{job_id}/complete", response_model=schemas.Job)
@@ -210,7 +196,6 @@ def cancel_job_status(
     db: Session = Depends(get_db),
     current_user: auth_models.User = Depends(get_current_user)
 ):
-    """Cancela un Job que ya estaba en 'matched'."""
     return service.cancel_job(db, job_id, current_user.id, current_user.role)
 
 
@@ -224,12 +209,10 @@ def get_service_offers(
     db: Session = Depends(get_db),
     current_user: auth_models.User = Depends(get_current_user)
 ):
-    """Ver ofertas recibidas (Solo dueño o admin)"""
     return service.get_offers_by_service(db, service_id, current_user.id)
 
 @router.get("/{service_id}", response_model=schemas.Service)
 def read_service(service_id: str, db: Session = Depends(get_db)):
-    """Obtiene el detalle de un servicio específico"""
     db_service = service.get_service_by_id(db, service_id=service_id)
     if db_service is None:
         raise HTTPException(status_code=404, detail="El servicio no existe")
@@ -256,7 +239,6 @@ def cancel_service(
     db: Session = Depends(get_db),
     current_user: auth_models.User = Depends(get_current_user)
 ):
-    """Cancela el servicio original (esté en 'open' o 'matched')."""
     return service.cancel_service(db, service_id, current_user.id, current_user.role)
 
 @router.delete("/{service_id}", status_code=status.HTTP_200_OK)
@@ -265,7 +247,6 @@ def delete_service(
     db: Session = Depends(get_db),
     current_user: auth_models.User = Depends(check_role([Role.ADMIN]))
 ):
-    """Endpoint para que el ADMIN borre un servicio del mapa."""
     return service.delete_service(db, service_id)
 
 
@@ -276,7 +257,6 @@ def toggle_service_visibility(
     db: Session = Depends(get_db),
     current_user: auth_models.User = Depends(check_role([Role.ADMIN]))
 ):
-    """Permite al administrador ocultar o mostrar un servicio sin borrarlo"""
     db_service = service.get_service_by_id(db, service_id)
     if not db_service:
         raise HTTPException(status_code=404, detail="Servicio no encontrado")

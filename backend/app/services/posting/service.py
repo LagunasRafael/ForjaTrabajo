@@ -1,9 +1,8 @@
 from sqlalchemy.orm import Session, joinedload
+from app.services import models, schemas
 from uuid import UUID
 from fastapi import HTTPException
 from app.core.roles import Role
-
-from app.services import models, schemas
 
 def create_service(db: Session, service_data: schemas.ServiceCreate, client_id: UUID):
     category = db.query(models.Category).filter(models.Category.id == str(service_data.category_id)).first()
@@ -28,16 +27,28 @@ def create_service(db: Session, service_data: schemas.ServiceCreate, client_id: 
     db.refresh(db_service)
     return db_service
 
-def get_services(db: Session, skip: int = 0, limit: int = 100, include_inactive: bool = False):
+def get_services(
+    db: Session,
+    skip: int = 0,
+    limit: int = 100,
+    include_inactive: bool = False
+):
+    """Devuelve servicios para el marketplace o el panel de administración."""
     query = db.query(models.Service).options(joinedload(models.Service.owner))
-    
+
     if not include_inactive:
         query = query.filter(
             models.Service.is_active == True,
             models.Service.status == models.JobStatus.OPEN
         )
-        
-    return query.order_by(models.Service.created_at.desc()).offset(skip).limit(limit).all()
+
+    return (
+        query
+        .order_by(models.Service.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
     
 def get_service_by_id(db: Session, service_id: str):
     return (
@@ -48,9 +59,12 @@ def get_service_by_id(db: Session, service_id: str):
     )
 
 def get_my_services(db: Session, user_id: str):
+    """Devuelve todos los servicios creados por el usuario logueado."""
     return (
         db.query(models.Service)
-        .filter(models.Service.client_id == user_id)
+        .filter(
+            models.Service.client_id == user_id,
+        )
         .order_by(models.Service.created_at.desc())
         .all()
     )

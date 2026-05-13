@@ -18,6 +18,10 @@ import '../../domain/models/user_model.dart';
 import 'package:forja_trabajo/features/services/presentation/providers/job_management_provider.dart';
 import 'package:forja_trabajo/features/services/presentation/providers/nav_providers.dart';
 import 'package:forja_trabajo/features/services/presentation/providers/service_list_provider.dart';
+import 'package:forja_trabajo/features/chat/presentation/providers/chat_list_provider.dart';
+import 'package:forja_trabajo/features/chat/presentation/providers/chat_provider.dart';
+import 'package:forja_trabajo/features/chat/presentation/providers/unread_count_provider.dart';
+import 'package:forja_trabajo/features/notifications/presentation/providers/notification_provider.dart';
 
 // 1. INSTANCIAS GLOBALES
 final apiClientProvider = Provider((ref) => ApiClient());
@@ -59,7 +63,10 @@ class AuthNotifier extends Notifier<AuthState> {
     if (hasToken) {
       await fetchProfile();
       state = state.copyWith(status: 'authenticated');
-      _syncFcmToken();
+      // 🚀 LAZY INITIALIZATION
+      Future.delayed(const Duration(seconds: 2), () {
+        _syncFcmToken();
+      });
     } else {
       state = state.copyWith(status: 'unauthenticated');
     }
@@ -75,8 +82,16 @@ class AuthNotifier extends Notifier<AuthState> {
       await prefs.setString('token', token);
 
       state = state.copyWith(status: 'authenticated');
+      // 🚀 FORZAR RECARGA DE CHATS: Al iniciar sesión limpiamos la caché vieja
+      // para que el chatListProvider vuelva a hacer la petición con la nueva cuenta.
+      ref.invalidate(chatListProvider);
+      
       await fetchProfile();
-      _syncFcmToken();
+      
+      // 🚀 LAZY INITIALIZATION
+      Future.delayed(const Duration(seconds: 2), () {
+        _syncFcmToken();
+      });
     } catch (e) {
       state = state.copyWith(
           status: 'error',
@@ -103,6 +118,10 @@ class AuthNotifier extends Notifier<AuthState> {
       ref.invalidate(workerJobsProvider);
       ref.invalidate(myRequestsProvider);
       ref.invalidate(serviceListProvider);
+      ref.invalidate(chatListProvider);
+      ref.invalidate(chatProvider);
+      ref.invalidate(unreadCountProvider);
+      ref.invalidate(notificationListProvider);
 
       final prefs = await SharedPreferences.getInstance();
       final dataSource = ref.read(authDataSourceProvider);
@@ -152,7 +171,11 @@ class AuthNotifier extends Notifier<AuthState> {
 
       // Ahora tenemos tokens guardados → podemos cargar el perfil completo
       await fetchProfile();
-      _syncFcmToken();
+      
+      // 🚀 LAZY INITIALIZATION
+      Future.delayed(const Duration(seconds: 3), () {
+        _syncFcmToken();
+      });
 
       state = state.copyWith(status: 'email_verified');
     } catch (e) {
@@ -167,7 +190,9 @@ class AuthNotifier extends Notifier<AuthState> {
       state = state.copyWith(user: userData);
 
       if (userData.city == null || userData.city!.isEmpty) {
-        autoUpdateLocation();
+        Future.delayed(const Duration(seconds: 5), () {
+          autoUpdateLocation();
+        });
       }
     } catch (e) {
       debugPrint('Error fetchProfile: $e');

@@ -340,6 +340,16 @@ def update_fcm_token(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
+    # Si estamos asignando un token real (no vacío al cerrar sesión)
+    if data.fcm_token:
+        # Remover este token de cualquier otro usuario que lo tenga
+        # Esto evita que si el Usuario A no cerró sesión bien, sus notificaciones 
+        # le lleguen al Usuario B que ahora usa el mismo dispositivo.
+        db.query(models.User).filter(
+            models.User.fcm_token == data.fcm_token,
+            models.User.id != current_user.id
+        ).update({"fcm_token": ""}, synchronize_session=False)
+        
     current_user.fcm_token = data.fcm_token
     db.commit()
     return {"status": "success", "message": "FCM token actualizado"}

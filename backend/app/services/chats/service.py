@@ -5,6 +5,8 @@ from datetime import datetime
 from sqlalchemy import or_, and_
 from sqlalchemy.orm import joinedload
 from app.auth import models as auth_models 
+from app.services.notifications import service as notif_service
+import logging
 
 def get_or_create_conversation(db: Session, request_id: str, user_id: str):
     """Busca si ya existe un chat para esta postulación, o crea uno nuevo."""
@@ -244,6 +246,16 @@ def handle_offer_action(db: Session, message_id: str, action: str, user_id: str)
         offer_msg.status = "rejected"
 
     db.commit()
+
+    # 🔔 Notificar al otro usuario sobre la respuesta a la oferta (Migrado)
+    notif_service.notify_offer_responded(
+        db=db,
+        conversation_id=str(convo.id),
+        receiver_id=offer_msg.sender_id,
+        amount=offer_msg.content,
+        action=action
+    )
+
     db.refresh(offer_msg)
     return offer_msg
 

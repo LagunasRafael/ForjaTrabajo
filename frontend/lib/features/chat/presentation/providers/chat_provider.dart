@@ -319,17 +319,18 @@ class ChatNotifier extends StateNotifier<List<MessageEntity>> {
 
     try {
       final repository = ref.read(chatRepositoryProvider);
-      List<String> uploadedUrls = [];
-      
-      for (final path in filePaths) {
-         final url = await repository.uploadChatMedia(conversationId, path);
-         if (url != null) {
-            uploadedUrls.add(url);
-         } else {
-            throw Exception("Fallo la subida de un elemento");
-         }
+
+      // 🚀 Subida PARALELA: todos los archivos al mismo tiempo
+      final uploadResults = await Future.wait(
+        filePaths.map((path) => repository.uploadChatMedia(conversationId, path)),
+      );
+
+      // Verificar que todos subieron correctamente
+      if (uploadResults.any((url) => url == null)) {
+        throw Exception("Falló la subida de uno o más archivos");
       }
-      
+
+      final uploadedUrls = uploadResults.whereType<String>().toList();
       final finalContent = uploadedUrls.join(',');
       
       if (_channel != null) {
