@@ -13,6 +13,7 @@ class SharedChatScreen extends ConsumerStatefulWidget {
   final String conversationId;
   final String? otherUserName;
   final String? otherUserAvatarUrl;
+  final String? otherUserId;
   final String? myRole; 
   final dynamic service;
 
@@ -21,6 +22,7 @@ class SharedChatScreen extends ConsumerStatefulWidget {
     required this.conversationId,
     this.otherUserName,
     this.otherUserAvatarUrl,
+    this.otherUserId,
     this.myRole, 
     this.service,
   });
@@ -156,6 +158,7 @@ class _SharedChatScreenState extends ConsumerState<SharedChatScreen> {
         service: widget.service,
         otherUserName: widget.otherUserName,
         otherUserAvatarUrl: widget.otherUserAvatarUrl,
+        otherUserId: widget.otherUserId,
         onOpenDispute: () => _showDisputeDialog(context),
       ),
       body: Column(
