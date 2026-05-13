@@ -87,7 +87,15 @@ def leave_review(
     current_user: auth_models.User = Depends(get_current_user)
 ):
     """Permite al cliente o al trabajador dejar una reseña mutua una vez que el trabajo está completado."""
-    job = db.query(models.Job).filter(models.Job.id == job_id).first()
+    from sqlalchemy import or_
+    job = db.query(models.Job).join(models.ServiceRequest).filter(
+        or_(
+            models.Job.id == job_id,
+            models.ServiceRequest.id == job_id,
+            models.ServiceRequest.service_id == job_id
+        )
+    ).first()
+
     if not job:
         raise HTTPException(status_code=404, detail="Trabajo no encontrado")
         
