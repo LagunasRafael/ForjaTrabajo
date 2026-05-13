@@ -111,7 +111,7 @@ def leave_review(
     
     # Verificar si ya dejó reseña
     existing_review = db.query(models.Review).filter(
-        models.Review.job_id == job_id,
+        models.Review.job_id == job.id,
         models.Review.reviewer_id == str(current_user.id)
     ).first()
     if existing_review:
@@ -122,7 +122,7 @@ def leave_review(
     from datetime import datetime
     new_review = models.Review(
         id=str(uuid.uuid4()),
-        job_id=job_id,
+        job_id=job.id,
         reviewer_id=str(current_user.id),
         reviewee_id=reviewee_id,
         rating=review_data.rating,
