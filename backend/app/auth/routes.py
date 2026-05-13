@@ -5,6 +5,8 @@ from typing import List
 from app.auth import schemas
 from app.auth import service
 from app.auth import models
+from app.services import models as service_models
+from app.services import schemas as service_schemas
 from app.db.database import get_db
 from app.auth.security import create_access_token, create_refresh_token, get_current_user, SECRET_KEY, ALGORITHM
 from app.core.roles import Role # Para forzar el rol en el registro
@@ -49,7 +51,7 @@ def register(request: Request, user: schemas.UserCreate, background_tasks: Backg
     new_user = service.create_user(db, user_data, verification_code=verification_code)
     
     # 5. Enviar el correo usando Resend en segundo plano
-    background_tasks.add_task(send_verification_email, new_user.email, verification_code)
+    background_tasks.add_task(send_verification_email, new_user.email, verification_code) # type: ignore
     
     return new_user
 
@@ -76,8 +78,8 @@ def verify_email_code(data: schemas.VerifyCodeRequest, db: Session = Depends(get
         raise HTTPException(status_code=400, detail="Código de verificación incorrecto")
         
     # Verificar, limpiar el código y guardar
-    user.is_email_verified = True
-    user.verification_code = None
+    user.is_email_verified = True # type: ignore
+    user.verification_code = None # type: ignore
     db.commit()
     
     # Generamos tokens JWT para que el usuario quede autenticado inmediatamente
@@ -105,11 +107,11 @@ def resend_verification_code(request: Request, data: schemas.ResendCodeRequest, 
         
     # Generar un nuevo código
     new_code = generate_verification_code()
-    user.verification_code = new_code
+    user.verification_code = new_code # type: ignore
     db.commit()
     
     # Reenviar el correo por Resend
-    background_tasks.add_task(send_verification_email, user.email, new_code)
+    background_tasks.add_task(send_verification_email, user.email, new_code) # type: ignore
     
     return {"status": "success", "message": "Nuevo código enviado"}
 
@@ -127,11 +129,11 @@ def forgot_password(request: Request, data: schemas.ForgotPasswordRequest, backg
     
     # Generamos un código de 6 dígitos y lo guardamos en verification_code
     code = generate_verification_code()
-    user.verification_code = code
+    user.verification_code = code # type: ignore
     db.commit()
     
     # Enviamos el correo en background
-    background_tasks.add_task(send_password_reset_email, user.email, code)
+    background_tasks.add_task(send_password_reset_email, user.email, code) # type: ignore
     
     return {"status": "success", "message": "Si el correo está registrado, recibirás un código de recuperación."}
 
@@ -161,8 +163,8 @@ def reset_password(request: Request, data: schemas.ResetPasswordRequest, db: Ses
     
     # Hashear la nueva contraseña y limpiar el código
     from app.auth.security import hash_password
-    user.hashed_password = hash_password(data.new_password)
-    user.verification_code = None
+    user.hashed_password = hash_password(data.new_password) # type: ignore
+    user.verification_code = None # type: ignore
     db.commit()
     
     return {"status": "success", "message": "Contraseña actualizada exitosamente"}
@@ -200,8 +202,8 @@ def refresh_token(data: schemas.TokenRefresh, db: Session = Depends(get_db)):
     )
     try:
         payload = jwt.decode(data.refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id: str = payload.get("sub")
-        token_type: str = payload.get("type")
+        user_id: str = payload.get("sub") # type: ignore
+        token_type: str = payload.get("type") # type: ignore
         
         if user_id is None or token_type != "refresh":
             raise credentials_exception
@@ -246,11 +248,11 @@ def update_user(
     
     # 2. Actualizamos los campos
     if user_data.full_name is not None:
-        db_user.full_name = user_data.full_name
+        db_user.full_name = user_data.full_name # type: ignore
     if user_data.role is not None:
-        db_user.role = user_data.role
+        db_user.role = user_data.role # type: ignore
     if user_data.phone is not None:
-        db_user.phone = user_data.phone
+        db_user.phone = user_data.phone # type: ignore
     
     # Si estás manejando is_active, descomenta esta línea:
     # db_user.is_active = user_data.is_active 
@@ -293,16 +295,16 @@ async def upload_profile_picture(
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
 
     if user.profile_picture_url:
-        delete_old_file_from_s3(user.profile_picture_url)
+        delete_old_file_from_s3(user.profile_picture_url) # type: ignore
 
     # 2. Comprimimos y subimos a AWS S3
     try:
-        file_url = await upload_file_to_s3(file) 
+        file_url = await upload_file_to_s3(file) # type: ignore
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al subir a S3: {str(e)}")
 
     # 3. Guardamos la URL en la base de datos
-    user.profile_picture_url = file_url
+    user.profile_picture_url = file_url # type: ignore
     db.commit()
     db.refresh(user)
 
@@ -327,9 +329,9 @@ def update_location(
     if not user:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
     
-    user.latitude = location_data.latitude
-    user.longitude = location_data.longitude
-    user.city = location_data.city
+    user.latitude = location_data.latitude # type: ignore
+    user.longitude = location_data.longitude # type: ignore
+    user.city = location_data.city # type: ignore
     
     db.commit()
     return {"status": "success", "city": user.city}
@@ -350,7 +352,7 @@ def update_fcm_token(
             models.User.id != current_user.id
         ).update({"fcm_token": ""}, synchronize_session=False)
         
-    current_user.fcm_token = data.fcm_token
+    current_user.fcm_token = data.fcm_token # type: ignore
     db.commit()
     return {"status": "success", "message": "FCM token actualizado"}
 
@@ -409,3 +411,58 @@ def admin_create_user(
     db.refresh(new_user)
 
     return new_user
+
+# ============================================================
+# 🧑‍💼 PUBLIC PROFILES & REVIEWS
+# ============================================================
+from sqlalchemy import func
+
+@router.get("/users/{user_id}/profile", response_model=service_schemas.UserProfileResponse)
+def get_user_profile(user_id: str, db: Session = Depends(get_db)):
+    """Devuelve el perfil público de un usuario y sus estadísticas de reseñas."""
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+        
+    # Calcular estadísticas de reseñas
+    stats = db.query(
+        func.count(service_models.Review.id).label("total"),
+        func.avg(service_models.Review.rating).label("average")
+    ).filter(service_models.Review.reviewee_id == user_id).first()
+    
+    total_reviews = stats.total if stats and stats.total else 0
+    average_rating = round(stats.average, 1) if stats and stats.average else 0.0
+    
+    return {
+        "id": user.id,
+        "full_name": user.full_name or "Usuario Anónimo",
+        "profile_picture_url": user.profile_picture_url,
+        "role": user.role.value if hasattr(user.role, 'value') else str(user.role),
+        "created_at": user.created_at,
+        "average_rating": average_rating,
+        "total_reviews": total_reviews
+    }
+
+@router.get("/users/{user_id}/reviews", response_model=List[service_schemas.ReviewResponse])
+def get_user_reviews(user_id: str, skip: int = 0, limit: int = 15, db: Session = Depends(get_db)):
+    """Devuelve la lista de reseñas que otros usuarios han dejado sobre este usuario."""
+    reviews = db.query(service_models.Review)\
+                .filter(service_models.Review.reviewee_id == user_id)\
+                .order_by(service_models.Review.created_at.desc())\
+                .offset(skip).limit(limit).all()
+                
+    result = []
+    for r in reviews:
+        reviewer = db.query(models.User).filter(models.User.id == r.reviewer_id).first()
+        result.append({
+            "id": r.id,
+            "job_id": r.job_id,
+            "reviewer_id": r.reviewer_id,
+            "reviewee_id": r.reviewee_id,
+            "rating": r.rating,
+            "comment": r.comment,
+            "created_at": r.created_at,
+            "reviewer_name": reviewer.full_name if reviewer else "Usuario Anónimo",
+            "reviewer_image_url": reviewer.profile_picture_url if reviewer else None
+        })
+    return result

@@ -8,6 +8,7 @@ import 'package:forja_trabajo/features/services/domain/usecases/jobs/complete_jo
 import 'package:forja_trabajo/features/services/presentation/providers/service_list_provider.dart';
 import 'package:forja_trabajo/features/chat/presentation/providers/chat_provider.dart';
 import 'package:forja_trabajo/features/chat/presentation/screens/shared_chat_screen.dart';
+import 'package:forja_trabajo/features/profile/presentation/widgets/review_dialog.dart' as forja_review;
 
 class ClientMatchedJobCard extends ConsumerWidget {
   final ServiceEntity service;
@@ -179,6 +180,19 @@ class _ClientMatchedActionsState extends ConsumerState<_ClientMatchedActions> {
             content: Text("✅ Trabajo finalizado exitosamente."), 
             backgroundColor: Color(0xFF10B981)
           )
+        );
+
+        // 🔥 MOSTRAR DIÁLOGO DE RESEÑA DESPUÉS DE FINALIZAR 🔥
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (dialogContext) => ProviderScope(
+            parent: ProviderScope.containerOf(context),
+            child: forja_review.ReviewDialog(
+              jobId: widget.service.id, // Suponiendo que service.id mapea al jobId en la API de Flutter
+              revieweeName: widget.service.workerName ?? 'el trabajador',
+            ),
+          ),
         );
       }
     } finally {

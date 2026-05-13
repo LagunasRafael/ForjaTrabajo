@@ -4,14 +4,19 @@ export type JobStatus = 'open' | 'matched' | 'completed' | 'cancelled';
 
 export interface JobPost {
   id: string;
-  title: string;           // Ej: "Fuga de agua en lavabo"
+  title: string;           
   description: string;
   client_name: string;
-  category: string;        // Ej: "Plomería"
-  location_city: string;   // <-- NUEVO: Solo la ciudad/municipio
-  image_urls: string[];    // <-- NUEVO: Arreglo de fotos adjuntas
+  worker_name: string;
+  category: string;        
+  location_city: string;   
+  image_urls: string[];    
   status: JobStatus;
-  budget?: number;         // Presupuesto sugerido (opcional)
-  applicants_count: number;// Trabajadores interesados
+  budget?: number;         
+  final_price: number;
+  applicants_count: number;
   createdAt: string;
+  started_at: string;
+  completed_at: string | null;
+  service_title: string;
 }

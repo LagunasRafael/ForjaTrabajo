@@ -1,15 +1,20 @@
 import 'package:flutter/material.dart';
+import '../../../../features/profile/presentation/screens/user_profile_screen.dart';
 
 class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
   final dynamic service;
   final String? otherUserName;
   final String? otherUserAvatarUrl;
+  final String? otherUserId;
+  final VoidCallback? onOpenDispute;
 
   const ChatAppBar({
     super.key,
     this.service,
     this.otherUserName,
     this.otherUserAvatarUrl,
+    this.otherUserId,
+    this.onOpenDispute,
   });
 
   @override
@@ -23,6 +28,17 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
         style: const TextStyle(color: Color(0xFF4F46E5), fontWeight: FontWeight.bold, fontSize: 14),
       ),
     );
+  }
+
+  void _navigateToProfile(BuildContext context) {
+    if (otherUserId != null && otherUserId!.isNotEmpty) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => UserProfileScreen(userId: otherUserId!),
+        ),
+      );
+    }
   }
 
   @override
@@ -39,24 +55,26 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
         icon: const Icon(Icons.arrow_back, color: Colors.black),
         onPressed: () => Navigator.pop(context),
       ),
-      title: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: const BoxDecoration(
-              color: Color(0xFFEEF2FF),
-              shape: BoxShape.circle,
+      title: GestureDetector(
+        onTap: () => _navigateToProfile(context),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: const BoxDecoration(
+                color: Color(0xFFEEF2FF),
+                shape: BoxShape.circle,
+              ),
+              clipBehavior: Clip.hardEdge,
+              child: avatarUrl.isNotEmpty && avatarUrl.startsWith('http')
+                  ? Image.network(
+                      avatarUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => _buildInitial(userName),
+                    )
+                  : _buildInitial(userName),
             ),
-            clipBehavior: Clip.hardEdge,
-            child: avatarUrl.isNotEmpty && avatarUrl.startsWith('http')
-                ? Image.network(
-                    avatarUrl,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => _buildInitial(userName),
-                  )
-                : _buildInitial(userName),
-          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -79,6 +97,30 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
           ),
         ],
       ),
+      ),
+      actions: [
+        if (onOpenDispute != null)
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert, color: Colors.black),
+            onSelected: (value) {
+              if (value == 'dispute') {
+                onOpenDispute!();
+              }
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'dispute',
+                child: Row(
+                  children: [
+                    Icon(Icons.gavel, color: Colors.red, size: 20),
+                    SizedBox(width: 8),
+                    Text('Abrir Disputa', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+      ],
     );
   }
 }

@@ -38,6 +38,7 @@ class ChatTile extends ConsumerWidget {
               conversationId: chat.id,
               otherUserName: chat.name,
               otherUserAvatarUrl: chat.avatarUrl,
+              otherUserId: chat.otherUserId,
               myRole: chat.myRole, 
               service: {'title': chat.serviceName},
             ),

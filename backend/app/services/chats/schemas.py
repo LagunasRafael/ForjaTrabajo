@@ -12,7 +12,7 @@ class MessageResponse(BaseModel):
     conversation_id: str
     sender_id: str
     content: str
-    message_type: str
+    message_type: Optional[str] = "text"
     created_at: datetime
     status: Optional[str] = "pending" # 👈 ¡NUEVO! Salvavidas para la amnesia
 
@@ -43,3 +43,7 @@ class ConversationResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+# --- SCHEMAS DE DISPUTAS ---
+class DisputeCreate(BaseModel):
+    reason: str = Field(..., description="Motivo por el cual se abre la disputa")

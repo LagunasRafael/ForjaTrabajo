@@ -11,6 +11,7 @@ class ChatSummaryModel extends ChatSummaryEntity {
     required super.time,
     required super.status,
     required super.myRole,
+    required super.otherUserId,
     super.hasUnread,
     super.isArchived,
   });
@@ -30,6 +31,7 @@ class ChatSummaryModel extends ChatSummaryEntity {
       time: json['time'] ?? '',
       status: json['status'] ?? 'ACTIVO',
       myRole: json['myRole'] ?? 'client',
+      otherUserId: json['otherUserId']?.toString() ?? '',
       hasUnread: json['hasUnread'] ?? false,
       isArchived: json['isArchived'] ?? false,
     );

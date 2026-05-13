@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja_trabajo/features/services/domain/entities/service_entity.dart';
 import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart';
 import 'package:forja_trabajo/features/services/presentation/screens/shared/service_detail_screen.dart';
+import 'package:forja_trabajo/features/profile/presentation/widgets/review_dialog.dart' as forja_review;
 
 // 🚀 Legos universales
 import 'package:forja_trabajo/features/services/presentation/screens/shared/widgets/shared_job_widgets.dart';
@@ -191,8 +192,15 @@ class _ClientCompletedActions extends ConsumerWidget {
   }
 
   Future<void> _handleRateWorker(BuildContext context, WidgetRef ref) async {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Pantalla de calificación próximamente..."))
+    showDialog(
+      context: context,
+      builder: (dialogContext) => ProviderScope(
+        parent: ProviderScope.containerOf(context),
+        child: forja_review.ReviewDialog(
+          jobId: service.id,
+          revieweeName: service.workerName ?? 'el trabajador',
+        ),
+      ),
     );
   }
 }
