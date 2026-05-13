@@ -9,6 +9,7 @@ class ChatSummaryEntity extends Equatable {
   final String time;
   final String status;
   final String myRole;
+  final String otherUserId;
   final bool hasUnread;
   final bool isArchived;
 
@@ -21,6 +22,7 @@ class ChatSummaryEntity extends Equatable {
     required this.time,
     required this.status,
     required this.myRole,
+    required this.otherUserId,
     this.hasUnread = false,
     this.isArchived = false,
   });
@@ -34,6 +36,7 @@ class ChatSummaryEntity extends Equatable {
     String? time,
     String? status,
     String? myRole,
+    String? otherUserId,
     bool? hasUnread,
     bool? isArchived,
   }) {
@@ -46,11 +49,13 @@ class ChatSummaryEntity extends Equatable {
       time: time ?? this.time,
       status: status ?? this.status,
       myRole: myRole ?? this.myRole,
+      otherUserId: otherUserId ?? this.otherUserId,
       hasUnread: hasUnread ?? this.hasUnread,
       isArchived: isArchived ?? this.isArchived,
     );
   }
 
   @override
-  List<Object?> get props => [id, name, avatarUrl, serviceName, lastMessage, time, status, myRole, hasUnread, isArchived];
+  List<Object?> get props => [id, name, avatarUrl, serviceName, lastMessage, time, status, myRole, otherUserId, hasUnread, isArchived];
 }
+

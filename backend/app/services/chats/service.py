@@ -153,6 +153,7 @@ def get_user_chats(db: Session, user_id: str):
             "time": last_msg.created_at.strftime("%I:%M %p") if last_msg and hasattr(last_msg.created_at, "strftime") else "", # type: ignore
             "avatarUrl": avatar,
             "myRole": "client" if str(convo.client_id) == str(user_id) else "worker",
+            "otherUserId": str(other_user_id),
             "isOnline": False,
             "hasUnread": has_unread,
             "isArchived": convo.is_archived or False

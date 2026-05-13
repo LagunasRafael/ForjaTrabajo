@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 // 🚀 1. Usamos la Entidad real, no dynamic
 import 'package:forja_trabajo/features/services/domain/entities/service_entity.dart';
 import 'package:forja_trabajo/features/services/presentation/widgets/service_status_chip.dart';
+import 'package:forja_trabajo/features/profile/presentation/widgets/review_dialog.dart' as forja_review;
 
 class WorkerCompletedJobCard extends StatelessWidget {
   final ServiceEntity job;
@@ -74,14 +76,23 @@ class WorkerCompletedJobCard extends StatelessWidget {
                     ),
                   ],
                 ),
-                // Botón discreto
+                // Botón para calificar
                 TextButton.icon(
                   onPressed: () {
-                    // TODO: Navegar a pantalla de recibo/resumen
+                    showDialog(
+                      context: context,
+                      builder: (dialogContext) => ProviderScope(
+                        parent: ProviderScope.containerOf(context),
+                        child: forja_review.ReviewDialog(
+                          jobId: job.id,
+                          revieweeName: job.authorName ?? 'el cliente',
+                        ),
+                      ),
+                    );
                   },
-                  icon: const Icon(Icons.receipt_long_outlined, size: 16, color: Color(0xFF6366F1)),
+                  icon: const Icon(Icons.star_outline, size: 16, color: Color(0xFF6366F1)),
                   label: const Text(
-                    "Ver resumen", 
+                    "Calificar", 
                     style: TextStyle(color: Color(0xFF6366F1), fontWeight: FontWeight.bold)
                   ),
                 ),

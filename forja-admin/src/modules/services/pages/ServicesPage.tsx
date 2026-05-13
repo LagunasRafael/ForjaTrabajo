@@ -54,16 +54,16 @@ export const ServicesPage = () => {
         statusMatch = service.isActive === true && currentStatus === 'OPEN';
       } 
       else if (filterMode === 'inactive') {
-        // Pestaña Baneadas: Solo las que tú deshabilitaste
-        statusMatch = service.isActive === false && currentStatus !== 'MATCHED';
+        // Pestaña Baneadas: Todas las que tú deshabilitaste (sin importar si estaban en MATCHED, COMPLETED o OPEN)
+        statusMatch = service.isActive === false;
       } 
       else if (filterMode === 'MATCHED') {
-        // 🟢 Pestaña En Proceso: SOLO los que tienen el estado MATCHED
-        // Aquí ignoramos el isActive, porque un trabajo aceptado ya no está "activo" en el mercado
-        statusMatch = currentStatus === 'MATCHED';
+        // 🟢 Pestaña En Proceso: SOLO los que tienen el estado MATCHED y NO están baneados
+        statusMatch = currentStatus === 'MATCHED' && service.isActive !== false;
       } 
       else if (filterMode === 'COMPLETED') {
-      statusMatch = currentStatus === 'COMPLETED';
+        // Pestaña Terminados: SOLO los que tienen el estado COMPLETED y NO están baneados
+        statusMatch = currentStatus === 'COMPLETED' && service.isActive !== false;
       }
       else {
         statusMatch = true; // 'all'

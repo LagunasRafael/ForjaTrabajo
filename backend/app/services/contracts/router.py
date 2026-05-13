@@ -75,3 +75,64 @@ def get_all_jobs_admin(
             "createdAt": service_obj.created_at.isoformat() if service_obj and service_obj.created_at else job.started_at.isoformat(),
         })
     return result
+
+# =================================================================
+# REVIEWS
+# =================================================================
+@router.post("/jobs/{job_id}/review", response_model=schemas.ReviewResponse)
+def leave_review(
+    job_id: str,
+    review_data: schemas.ReviewCreate,
+    db: Session = Depends(get_db),
+    current_user: auth_models.User = Depends(get_current_user)
+):
+    """Permite al cliente o al trabajador dejar una reseña mutua una vez que el trabajo está completado."""
+    job = db.query(models.Job).filter(models.Job.id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Trabajo no encontrado")
+        
+    if job.status.value != "completed":
+        raise HTTPException(status_code=400, detail="Solo puedes calificar un trabajo que haya sido completado.")
+        
+    # Verificar que el usuario sea parte del trabajo
+    if str(current_user.id) not in [job.client_id, job.provider_id]:
+        raise HTTPException(status_code=403, detail="No tienes permiso para calificar este trabajo.")
+        
+    # Determinar quién es el evaluado
+    reviewee_id = job.provider_id if str(current_user.id) == job.client_id else job.client_id
+    
+    # Verificar si ya dejó reseña
+    existing_review = db.query(models.Review).filter(
+        models.Review.job_id == job_id,
+        models.Review.reviewer_id == str(current_user.id)
+    ).first()
+    if existing_review:
+        raise HTTPException(status_code=400, detail="Ya has calificado este trabajo.")
+        
+    # Crear reseña
+    import uuid
+    from datetime import datetime
+    new_review = models.Review(
+        id=str(uuid.uuid4()),
+        job_id=job_id,
+        reviewer_id=str(current_user.id),
+        reviewee_id=reviewee_id,
+        rating=review_data.rating,
+        comment=review_data.comment,
+        created_at=datetime.utcnow()
+    )
+    db.add(new_review)
+    db.commit()
+    db.refresh(new_review)
+    
+    return {
+        "id": new_review.id,
+        "job_id": new_review.job_id,
+        "reviewer_id": new_review.reviewer_id,
+        "reviewee_id": new_review.reviewee_id,
+        "rating": new_review.rating,
+        "comment": new_review.comment,
+        "created_at": new_review.created_at,
+        "reviewer_name": current_user.full_name,
+        "reviewer_image_url": current_user.profile_picture_url
+    }

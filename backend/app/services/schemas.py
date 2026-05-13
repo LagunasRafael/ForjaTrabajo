@@ -137,3 +137,35 @@ class Job(BaseModel):
 
 class ServiceActiveUpdate(BaseModel):
     is_active: bool
+
+# -----------------------------
+# REVIEWS AND PROFILES
+# -----------------------------
+
+class ReviewCreate(BaseModel):
+    rating: int # 1 to 5
+    comment: Optional[str] = None
+
+class ReviewResponse(BaseModel):
+    id: str
+    job_id: str
+    reviewer_id: str
+    reviewee_id: str
+    rating: int
+    comment: Optional[str] = None
+    created_at: datetime
+    
+    reviewer_name: Optional[str] = None
+    reviewer_image_url: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+class UserProfileResponse(BaseModel):
+    id: str
+    full_name: str
+    profile_picture_url: Optional[str] = None
+    role: str
+    created_at: datetime
+    average_rating: float = 0.0
+    total_reviews: int = 0

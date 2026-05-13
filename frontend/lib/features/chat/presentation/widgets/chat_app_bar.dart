@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import '../../../../features/profile/presentation/screens/user_profile_screen.dart';
 
 class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
   final dynamic service;
   final String? otherUserName;
   final String? otherUserAvatarUrl;
+  final String? otherUserId;
   final VoidCallback? onOpenDispute;
 
   const ChatAppBar({
@@ -11,6 +13,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.service,
     this.otherUserName,
     this.otherUserAvatarUrl,
+    this.otherUserId,
     this.onOpenDispute,
   });
 
@@ -27,6 +30,17 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
     );
   }
 
+  void _navigateToProfile(BuildContext context) {
+    if (otherUserId != null && otherUserId!.isNotEmpty) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => UserProfileScreen(userId: otherUserId!),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final serviceTitle = service is Map ? service['title'] : 'Servicio';
@@ -41,24 +55,26 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
         icon: const Icon(Icons.arrow_back, color: Colors.black),
         onPressed: () => Navigator.pop(context),
       ),
-      title: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: const BoxDecoration(
-              color: Color(0xFFEEF2FF),
-              shape: BoxShape.circle,
+      title: GestureDetector(
+        onTap: () => _navigateToProfile(context),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: const BoxDecoration(
+                color: Color(0xFFEEF2FF),
+                shape: BoxShape.circle,
+              ),
+              clipBehavior: Clip.hardEdge,
+              child: avatarUrl.isNotEmpty && avatarUrl.startsWith('http')
+                  ? Image.network(
+                      avatarUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => _buildInitial(userName),
+                    )
+                  : _buildInitial(userName),
             ),
-            clipBehavior: Clip.hardEdge,
-            child: avatarUrl.isNotEmpty && avatarUrl.startsWith('http')
-                ? Image.network(
-                    avatarUrl,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => _buildInitial(userName),
-                  )
-                : _buildInitial(userName),
-          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -80,6 +96,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
             ),
           ),
         ],
+      ),
       ),
       actions: [
         if (onOpenDispute != null)
