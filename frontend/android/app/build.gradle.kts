@@ -5,10 +5,10 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
     id("com.google.gms.google-services")
 }
-
 android {
     namespace = "com.example.forja_trabajo"
-    compileSdk = flutter.compileSdkVersion
+    
+    compileSdk = 36 
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -17,30 +17,29 @@ android {
     }
 
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_11.toString()
+        jvmTarget = "11"
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.example.forja_trabajo"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
         
-        // 🔴 1. CAMBIA ESTO: Fija el SDK mínimo a 21 (Soporte nativo moderno)
+        // 🔴 2. NO USES flutter.minSdkVersion. 
+        // Forzalo a 21 para que Firebase y Geolocator no den errores de compatibilidad.
         minSdk = flutter.minSdkVersion 
         
-        targetSdk = flutter.targetSdkVersion
+        // 🟡 3. TRUCO DE ESTABILIDAD:
+        // Compilamos con la 36 (para que Gradle no llore), 
+        // pero le decimos al emulador que se comporte como la 35.
+        targetSdk = 35 
+        
         versionCode = flutter.versionCode
         versionName = flutter.versionName
 
-        // 🟢 2. AGREGA ESTA LÍNEA: Previene el crash del límite de métodos
         multiDexEnabled = true
     }
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
         }
     }

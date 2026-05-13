@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja_trabajo/features/services/presentation/providers/nav_providers.dart';
+import 'package:forja_trabajo/features/chat/presentation/providers/unread_count_provider.dart';
 import '../client/home_client_screen.dart';
 import '../client/my_requests_screen.dart';
-import '../shared/notifications_screen.dart';
 import 'package:forja_trabajo/features/chat/presentation/screens/chat_list_screen.dart';
 import '../client/client_profile_screen.dart';
 import '../client/create_services_screen.dart';
@@ -14,12 +14,13 @@ class ClientMainLayout extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final currentIndex = ref.watch(clientNavProvider);
+    final unreadCount = ref.watch(unreadCountProvider);
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
     final List<Widget> screens = [
       const HomeClientScreen(), // 0
-      ChatListScreen(), // 1
+      const ChatListScreen(), // 1
       const SizedBox(), // 2 (Espacio vacío para el botón flotante)
       const MyRequestsScreen(), // 3
       const ClientProfileScreen(), // 4
@@ -53,7 +54,7 @@ class ClientMainLayout extends ConsumerWidget {
         notchMargin: 8.0,
         color: isDark ? const Color(0xFF1E293B) : Colors.white,
         elevation: 10,
-        shadowColor: Colors.black.withOpacity(0.4),
+        shadowColor: Colors.black.withValues(alpha: 0.4),
         child: SizedBox(
           height: 60,
           child: Row(
@@ -61,19 +62,23 @@ class ClientMainLayout extends ConsumerWidget {
             children: <Widget>[
               Expanded(
                   child: _buildNavItem(
-                      Icons.home_filled, 'Inicio', 0, ref, currentIndex)),
+                      Icons.home_filled, 'Inicio', 0, ref, currentIndex,
+                      badgeCount: 0)),
               Expanded(
-                  child: _buildNavItem(Icons.chat_bubble_rounded, 'Mensajes', 1,
-                      ref, currentIndex)),
+                  child: _buildNavItem(
+                      Icons.chat_bubble_rounded, 'Mensajes', 1, ref, currentIndex,
+                      badgeCount: unreadCount)),
 
               const SizedBox(width: 48), // 👈 El hueco para el botón
 
               Expanded(
                   child: _buildNavItem(
-                      Icons.work, 'Mis Trabajos', 3, ref, currentIndex)),
+                      Icons.work, 'Mis Trabajos', 3, ref, currentIndex,
+                      badgeCount: 0)),
               Expanded(
                   child: _buildNavItem(
-                      Icons.person, 'Perfil', 4, ref, currentIndex)),
+                      Icons.person, 'Perfil', 4, ref, currentIndex,
+                      badgeCount: 0)),
             ],
           ),
         ),
@@ -82,16 +87,31 @@ class ClientMainLayout extends ConsumerWidget {
   }
 
   Widget _buildNavItem(
-      IconData icon, String label, int index, WidgetRef ref, int currentIndex) {
+      IconData icon, String label, int index, WidgetRef ref, int currentIndex,
+      {int badgeCount = 0}) {
     final isSelected = currentIndex == index;
     final color = isSelected ? const Color(0xFF1E1B4B) : Colors.grey.shade400;
+
+    Widget iconWidget = Icon(icon, color: color, size: 26);
+
+    // Mostrar badge si hay mensajes no leídos
+    if (badgeCount > 0) {
+      iconWidget = Badge(
+        label: Text(
+          badgeCount > 9 ? '9+' : '$badgeCount',
+          style: const TextStyle(color: Colors.white, fontSize: 10),
+        ),
+        backgroundColor: const Color(0xFFEF4444),
+        child: iconWidget,
+      );
+    }
 
     return InkWell(
       onTap: () => ref.read(clientNavProvider.notifier).state = index,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, color: color, size: 26),
+          iconWidget,
           const SizedBox(height: 4),
           Text(label,
               style: TextStyle(

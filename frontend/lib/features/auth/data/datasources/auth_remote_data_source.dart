@@ -57,6 +57,13 @@ class AuthRemoteDataSource {
 
   /// Cierra sesión borrando los tokens
   Future<void> logout() async {
+    try {
+      // 1. Borrar el FCM token en el backend para dejar de recibir notificaciones de esta cuenta
+      await apiClient.dio.put('/auth/fcm-token', data: {'fcm_token': ''});
+    } catch (e) {
+      debugPrint('No se pudo limpiar el FCM token en el servidor: $e');
+    }
+    // 2. Borrar las credenciales locales
     await apiClient.storage.delete(key: 'jwt_token');
     await apiClient.storage.delete(key: 'refresh_token');
   }

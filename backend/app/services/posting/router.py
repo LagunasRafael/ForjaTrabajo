@@ -10,7 +10,7 @@ from app.utils.s3 import upload_service_evidence_to_s3
 
 # Importamos los schemas, models globales y el servicio local
 from app.services import schemas, models
-from app.services.postings import service
+from app.services.posting import service
 
 router = APIRouter()
 

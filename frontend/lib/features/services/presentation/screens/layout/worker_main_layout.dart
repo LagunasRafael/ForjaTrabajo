@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja_trabajo/features/services/presentation/screens/worker/marketplace_screen.dart';
 import 'package:forja_trabajo/features/services/presentation/providers/nav_providers.dart';
+import 'package:forja_trabajo/features/chat/presentation/providers/unread_count_provider.dart';
+import 'package:forja_trabajo/features/notifications/presentation/providers/notification_provider.dart';
 import '../worker/my_jobs_screen.dart';
 import 'package:forja_trabajo/features/chat/presentation/screens/chat_list_screen.dart';
-import 'package:forja_trabajo/features/services/presentation/screens/layout/client_main_layout.dart';
-import '../shared/notifications_screen.dart';
-import '../worker/worker_profile_screen.dart'; // O ClientProfileScreen si reúsas
+import 'package:forja_trabajo/features/notifications/presentation/screens/notifications_screen.dart';
+import '../worker/worker_profile_screen.dart';
 
 class WorkerMainLayout extends ConsumerWidget {
   const WorkerMainLayout({super.key});
@@ -14,13 +15,15 @@ class WorkerMainLayout extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final currentIndex = ref.watch(workerNavProvider);
+    final unreadChatCount = ref.watch(unreadCountProvider);
+    final unreadNotifCount = ref.watch(unreadNotificationCountProvider);
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
     final List<Widget> screens = [
       const MarketplaceScreen(), // 0
       const MyJobsScreen(), // 1
-      ChatListScreen(), // 2
+      const ChatListScreen(), // 2
       const NotificationsScreen(), // 3
       const WorkerProfileScreen(), // 4
     ];
@@ -31,10 +34,7 @@ class WorkerMainLayout extends ConsumerWidget {
         children: screens,
       ),
 
-      // 🚫 SIN BOTÓN FLOTANTE
-      // 🚫 SIN RECORTE
-
-      // ✅ BARRA SÓLIDA ESTÁNDAR
+      // ✅ BARRA SÓLIDA ESTÁNDAR con badge de no leídos
       bottomNavigationBar: NavigationBar(
         selectedIndex: currentIndex,
         onDestinationSelected: (index) {
@@ -43,30 +43,62 @@ class WorkerMainLayout extends ConsumerWidget {
         backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
         elevation: 3,
         indicatorColor: isDark
-            ? const Color(0xFF4F46E5).withOpacity(0.2)
-            : const Color(0xFF1E1B4B).withOpacity(0.1),
-        destinations: const [
-          NavigationDestination(
+            ? const Color(0xFF4F46E5).withValues(alpha: 0.2)
+            : const Color(0xFF1E1B4B).withValues(alpha: 0.1),
+        destinations: [
+          const NavigationDestination(
             icon: Icon(Icons.search),
             selectedIcon: Icon(Icons.search, color: Color(0xFF1E1B4B)),
             label: 'Explorar',
           ),
-          NavigationDestination(
+          const NavigationDestination(
             icon: Icon(Icons.work_history_outlined),
             selectedIcon: Icon(Icons.work_history, color: Color(0xFF1E1B4B)),
             label: 'Mis Tareas',
           ),
           NavigationDestination(
-            icon: Icon(Icons.chat_bubble_outline),
-            selectedIcon: Icon(Icons.chat_bubble, color: Color(0xFF1E1B4B)),
+            icon: Badge(
+              isLabelVisible: unreadChatCount > 0,
+              label: Text(
+                unreadChatCount > 9 ? '9+' : '$unreadChatCount',
+                style: const TextStyle(color: Colors.white, fontSize: 10),
+              ),
+              backgroundColor: const Color(0xFFEF4444),
+              child: const Icon(Icons.chat_bubble_outline),
+            ),
+            selectedIcon: Badge(
+              isLabelVisible: unreadChatCount > 0,
+              label: Text(
+                unreadChatCount > 9 ? '9+' : '$unreadChatCount',
+                style: const TextStyle(color: Colors.white, fontSize: 10),
+              ),
+              backgroundColor: const Color(0xFFEF4444),
+              child: const Icon(Icons.chat_bubble, color: Color(0xFF1E1B4B)),
+            ),
             label: 'Chats',
           ),
           NavigationDestination(
-            icon: Icon(Icons.notifications_outlined),
-            selectedIcon: Icon(Icons.notifications, color: Color(0xFF1E1B4B)),
+            icon: Badge(
+              isLabelVisible: unreadNotifCount > 0,
+              label: Text(
+                unreadNotifCount > 9 ? '9+' : '$unreadNotifCount',
+                style: const TextStyle(color: Colors.white, fontSize: 10),
+              ),
+              backgroundColor: const Color(0xFFEF4444),
+              child: const Icon(Icons.notifications_outlined),
+            ),
+            selectedIcon: Badge(
+              isLabelVisible: unreadNotifCount > 0,
+              label: Text(
+                unreadNotifCount > 9 ? '9+' : '$unreadNotifCount',
+                style: const TextStyle(color: Colors.white, fontSize: 10),
+              ),
+              backgroundColor: const Color(0xFFEF4444),
+              child: const Icon(Icons.notifications, color: Color(0xFF1E1B4B)),
+            ),
             label: 'Avisos',
           ),
-          NavigationDestination(
+          const NavigationDestination(
             icon: Icon(Icons.person_outline),
             selectedIcon: Icon(Icons.person, color: Color(0xFF1E1B4B)),
             label: 'Perfil',
