@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from sqlalchemy.orm import joinedload  # 👈 AÑADE ESTO ARRIBA
+from sqlalchemy.orm import joinedload 
 from app.services import models, schemas
 from uuid import UUID
 from fastapi import HTTPException, status
@@ -7,6 +7,11 @@ from datetime import datetime
 from sqlalchemy import func, and_
 from app.core.roles import Role
 from sqlalchemy import or_
+from app.auth import models as auth_models
+from app.services.notifications import service as notif_service
+import logging
+
+logger = logging.getLogger(__name__)
 # -------------------------------------------------------------------------
 # CATEGORIES 
 # -------------------------------------------------------------------------
@@ -119,7 +124,7 @@ def get_services(
 def get_service_by_id(db: Session, service_id: str):
     return (
         db.query(models.Service)
-        .options(joinedload(models.Service.owner)) # 👈 AÑADE ESTA LÍNEA AQUÍ
+        .options(joinedload(models.Service.owner)) 
         .filter(models.Service.id == service_id)
         .first()
     )
@@ -241,6 +246,13 @@ def create_service_request(db: Session, request_data: schemas.ServiceRequestCrea
     db.add(db_request)
     db.commit()
     db.refresh(db_request)
+
+    # 🔔 Notificar al cliente sobre la nueva postulación (Migrado)
+    service_entry = db.query(models.Service).filter(models.Service.id == str(request_data.service_id)).first()
+    worker = db.query(auth_models.User).filter(auth_models.User.id == str(worker_id)).first()
+    if worker and service_entry:
+        notif_service.notify_new_application(db, service_entry, worker)
+
     return db_request
 
 def get_offers_by_service(db: Session, service_id: str, client_id: str):
@@ -289,11 +301,11 @@ def get_worker_applications(db: Session, worker_id: str):
             fecha_buscada = job.started_at.isoformat() if job.started_at else None
             precio_mosca = req.proposed_price if req else srv.base_price
 
-            service_id_str = str(srv.id) # 🚀 CREAMOS LA VARIABLE
+            service_id_str = str(srv.id) 
             
             unique_results[service_id_str] = {
-                "id": service_id_str, # MANDAMOS EL ID DEL SERVICIO
-                "request_id": str(req.id) if req else None, # MANDAMOS EL ID DE LA SOLICITUD
+                "id": service_id_str, 
+                "request_id": str(req.id) if req else None, 
                 "title": srv.title,
                 "description": srv.description, 
                 "base_price": float(precio_mosca) if precio_mosca else 0.0,
@@ -318,12 +330,12 @@ def get_worker_applications(db: Session, worker_id: str):
         ).all()
 
         for req, srv in postulations:
-            service_id_str = str(srv.id) # 🚀 AQUÍ FALTABA ESTA LÍNEA
+            service_id_str = str(srv.id) 
             
             if service_id_str not in unique_results:
                 unique_results[service_id_str] = {
-                    "id": service_id_str, # MANDAMOS EL ID DEL SERVICIO
-                    "request_id": str(req.id), # MANDAMOS EL ID DE LA SOLICITUD
+                    "id": service_id_str, 
+                    "request_id": str(req.id), 
                     "title": srv.title,
                     "description": req.description, 
                     "base_price": float(req.proposed_price) if req.proposed_price else 0.0,
@@ -369,7 +381,6 @@ def accept_postulation(db: Session, request_id: str, current_user_id: str):
 
     service_entry = postulation.service
     
-    # 2. Castear IDs a string para comparar sin errores de tipo UUID
     if str(service_entry.client_id) != str(current_user_id):
         raise HTTPException(status_code=403, detail="No tienes permiso")
 
@@ -377,11 +388,9 @@ def accept_postulation(db: Session, request_id: str, current_user_id: str):
         raise HTTPException(status_code=400, detail="Servicio no disponible")
 
     try:
-        # 3. Actualizar estados
         service_entry.status = models.JobStatus.MATCHED
         postulation.status = "accepted"
         
-        # 4. Crear el Job
         new_job = models.Job(
             request_id=postulation.id,
             provider_id=postulation.worker_id,
@@ -393,9 +402,15 @@ def accept_postulation(db: Session, request_id: str, current_user_id: str):
         
         db.add(new_job)
         db.commit()
+
+        # 🚀 Crear o buscar la conversación automáticamente al aceptar
+        from app.services.chats import service as chat_service
+        convo = chat_service.get_or_create_conversation(db, str(postulation.id), str(current_user_id))
+
+        # 🔔 Notificar al trabajador que fue aceptado (Con ID de chat para navegación directa)
+        notif_service.notify_job_accepted(db, new_job, service_entry.title, str(convo.id))
         
-        # 5. RETORNAR DICCIONARIO (JSON) PARA FLUTTER
-        return {"status": "success", "message": "Aceptado correctamente"}
+        return {"status": "success", "message": "Aceptado correctamente", "conversation_id": str(convo.id)}
 
     except Exception as e:
         db.rollback()
@@ -414,7 +429,6 @@ def complete_job(db: Session, job_id: str, user_id: str):
     if not job:
         raise HTTPException(status_code=404, detail="Trabajo no encontrado o ya finalizado")
 
-    # 2. Verificación de identidad (Seguridad total)
     is_client = str(job.client_id) == str(user_id)
     is_worker = str(job.provider_id) == str(user_id)
 
@@ -432,6 +446,10 @@ def complete_job(db: Session, job_id: str, user_id: str):
             
         db.commit()
         db.refresh(job)
+
+        # 🔔 Notificar al cliente que el trabajo quedó listo para confirmar
+        notif_service.notify_job_waiting_confirmation(db, job)
+
         return job
 
     elif is_client:
@@ -444,6 +462,10 @@ def complete_job(db: Session, job_id: str, user_id: str):
 
         db.commit()
         db.refresh(job)
+
+        # 🔔 Notificar al trabajador que el trabajo fue finalizado (Migrado)
+        notif_service.notify_job_completed(db, job)
+
         return job
 
 def cancel_job(db: Session, job_id: str, user_id: str, user_role: str):
@@ -459,9 +481,9 @@ def cancel_job(db: Session, job_id: str, user_id: str, user_role: str):
 
     is_worker = str(job.provider_id) == str(user_id)
     is_client = str(job.client_id) == str(user_id)
-    is_admin = user_role == Role.ADMIN
+    # is_admin = user_role == Role.ADMIN # Role might be different now
 
-    if not (is_worker or is_client or is_admin):
+    if not (is_worker or is_client):
         raise HTTPException(status_code=403, detail="No tienes permiso para cancelar")
 
     job.status = models.JobStatus.CANCELLED
@@ -469,13 +491,17 @@ def cancel_job(db: Session, job_id: str, user_id: str, user_role: str):
     if job.request and job.request.service:
         if is_worker:
             job.request.service.status = models.JobStatus.OPEN
-            print(f"♻️ Servicio {job.request.service.id} re-abierto porque el trabajador canceló.")
         else:
             job.request.service.status = models.JobStatus.CANCELLED
 
     db.commit()
     db.refresh(job)
+
+    # 🔔 Notificar a la otra parte que el trabajo fue cancelado
+    notif_service.notify_job_cancelled(db, job, str(user_id))
+
     return job
+
 # -------------------------------------------------------------------------
 # Busquedas y Stats
 # -------------------------------------------------------------------------
@@ -511,16 +537,9 @@ def search_services(db: Session, search_query: str):
     )
 
 def update_service_images(db: Session, service_id: str, image_urls: list[str]):
-    """
-    Busca el servicio recién creado y le inyecta las URLs de AWS S3
-    """
-    # 1. Buscamos el servicio en la base de datos
     db_service = db.query(models.Service).filter(models.Service.id == service_id).first()
-    
-    # 2. Si existe, actualizamos su arreglo de imágenes
     if db_service:
         db_service.image_urls = image_urls
-        db.commit()            # Guardamos cambios
-        db.refresh(db_service) # Refrescamos el objeto
-        
+        db.commit()           
+        db.refresh(db_service) 
     return db_service

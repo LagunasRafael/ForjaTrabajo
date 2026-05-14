@@ -1,8 +1,10 @@
+from app.utils.notifications import send_push_notification
 from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
 from sqlalchemy.orm import Session
 from typing import Dict, List
 import json
 from pydantic import BaseModel
+import logging
 
 from app.db.database import get_db
 from app.auth.security import get_current_user, check_role
@@ -12,8 +14,11 @@ from app.services.chats import schemas
 from app.services.chats import service 
 from app.services import models as service_models
 from app.utils.s3 import upload_chat_media_to_s3
+from app.services.notifications import service as notif_service
 from fastapi import UploadFile, File, BackgroundTasks
 from app.utils.email import send_dispute_opened_email, send_dispute_resolved_email
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -161,7 +166,41 @@ async def websocket_endpoint(websocket: WebSocket, conversation_id: str, user_id
             }
             await manager.broadcast(conversation_id, message_to_send)
             print(f"WS BROADCASTED MSG to convo={conversation_id}")
-            
+
+            # 🔔 Push notification si el receptor NO está conectado al WS
+            try:
+                convo = db.query(service_models.Conversation).filter(
+                    service_models.Conversation.id == conversation_id
+                ).first()
+                if convo:
+                    # Determinar receptor
+                    receiver_id = str(convo.worker_id) if str(convo.client_id) == user_id else str(convo.client_id)
+                    active_ws_count = len(manager.active_connections.get(conversation_id, []))
+                    # Solo enviar push si el receptor no está en el chat (1 conexión = solo el emisor)
+                    if active_ws_count < 2:
+                        receiver = db.query(auth_models.User).filter(
+                            auth_models.User.id == receiver_id
+                        ).first()
+                        sender = db.query(auth_models.User).filter(
+                            auth_models.User.id == user_id
+                        ).first()
+                        if receiver and receiver.fcm_token:
+                            sender_name = sender.full_name if sender else "Nuevo mensaje"
+                            preview = content[:60] + "..." if len(content) > 60 else content
+                            if msg_type == "image": preview = "📷 Imagen"
+                            elif msg_type == "audio": preview = "🎤 Audio"
+                            elif msg_type == "video": preview = "🎥 Video"
+                            elif msg_type == "location": preview = "📍 Ubicación"
+                            send_push_notification(
+                                fcm_token=str(receiver.fcm_token),
+                                title=str(sender_name),
+                                body=preview,
+                                data={"type": "new_message", "conversation_id": conversation_id,
+                                      "sender_name": sender_name}
+                            )
+            except Exception as notify_err:
+                logger.warning(f"⚠️ Error notificando mensaje WS: {notify_err}")
+
     except WebSocketDisconnect:
         print(f"WS DISCONNECTED: convo={conversation_id}")
         manager.disconnect(websocket, conversation_id)
@@ -197,6 +236,23 @@ async def create_counter_offer(
         "status": "pending"
     }
     await manager.broadcast(offer_data.conversation_id, message_to_send)
+
+    # 🔔 Notificar al otro usuario sobre la nueva contraoferta (Migrado)
+    try:
+        convo = db.query(service_models.Conversation).filter(
+            service_models.Conversation.id == offer_data.conversation_id
+        ).first()
+        if convo:
+            # El receptor es el que NO mandó la oferta
+            receiver_id = str(convo.worker_id) if str(convo.client_id) == str(current_user.id) else str(convo.client_id)
+            notif_service.notify_new_offer(
+                db=db,
+                conversation_id=offer_data.conversation_id,
+                receiver_id=receiver_id,
+                amount=new_offer.content
+            )
+    except Exception as notify_err:
+        logger.warning(f"⚠️ Error notificando contraoferta: {notify_err}")
 
     return new_offer
 

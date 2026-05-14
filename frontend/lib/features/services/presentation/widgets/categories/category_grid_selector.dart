@@ -6,7 +6,7 @@ import 'package:forja_trabajo/features/services/presentation/widgets/categories/
 class CategoryGridSelector extends StatelessWidget {
   final List<dynamic> categories;
   final String? selectedId;
-  final Function(String) onSelected;
+  final void Function(String) onSelected;
 
   const CategoryGridSelector({
     super.key, 
@@ -17,18 +17,23 @@ class CategoryGridSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 1. Siempre mostramos las primeras 5 categorías fijas
     List<dynamic> displayCats = categories.take(5).toList();
     
-    if (selectedId != null && !displayCats.any((c) => c.id == selectedId)) {
-      final selected = categories.firstWhere((c) => c.id == selectedId, orElse: () => null);
-      if (selected != null) displayCats[4] = selected;
+    // 2. Buscamos si la seleccionada está fuera de esas 5
+    dynamic externalSelectedCat;
+    bool isSelectedInGrid = displayCats.any((c) => c.id?.toString() == selectedId);
+    
+    if (selectedId != null && !isSelectedInGrid) {
+      // Usamos where para evitar el error de "orElse: () => null" con tipos estrictos
+      final matched = categories.where((c) => c.id?.toString() == selectedId).toList();
+      if (matched.isNotEmpty) {
+        externalSelectedCat = matched.first;
+      }
     }
 
-    // 🛡️ SOLUCIÓN AL LAG: Usamos LayoutBuilder en lugar de MediaQuery
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Calculamos el ancho exacto que le toca a cada tarjeta (3 columnas con 12px de espacio)
-        // El 24 representa los dos espacios de 12px entre las 3 columnas
         final cardWidth = (constraints.maxWidth - 24) / 3;
 
         return Wrap(
@@ -37,14 +42,20 @@ class CategoryGridSelector extends StatelessWidget {
           children: [
             ...displayCats.map((cat) => _CategoryCard(
               cat: cat, 
-              isSelected: selectedId == cat.id, 
-              onTap: () => onSelected(cat.id),
-              width: cardWidth, // Le pasamos el ancho fijo
+              isSelected: selectedId == cat.id?.toString(), 
+              onTap: () => onSelected(cat.id?.toString() ?? ""),
+              width: cardWidth,
             )),
             
+            // El botón de "Ver más" ahora se vuelve "dinámico"
             _SeeMoreCard(
-              onTap: () => showCategoryModal(context, categories),
-              width: cardWidth, // Le pasamos el ancho fijo
+              selectedCat: externalSelectedCat,
+              onTap: () => showCategoryModal(
+                context, 
+                categories, 
+                onSelected: (id) => onSelected(id) // Envoltura explícita para evitar líos de tipos
+              ),
+              width: cardWidth,
             ),
           ],
         );
@@ -57,7 +68,7 @@ class _CategoryCard extends StatelessWidget {
   final dynamic cat;
   final bool isSelected;
   final VoidCallback onTap;
-  final double width; // 🚀 Recibimos el ancho como parámetro constante
+  final double width;
 
   const _CategoryCard({
     required this.cat, 
@@ -75,7 +86,7 @@ class _CategoryCard extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        width: width, // 🚀 Usamos el ancho estático
+        width: width,
         padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 8),
         decoration: BoxDecoration(
           color: isSelected ? const Color(0xFFEEF2FF) : Colors.white,
@@ -108,33 +119,51 @@ class _CategoryCard extends StatelessWidget {
 }
 
 class _SeeMoreCard extends StatelessWidget {
+  final dynamic selectedCat;
   final VoidCallback onTap;
-  final double width; // 🚀 Recibimos el ancho como parámetro constante
+  final double width;
 
   const _SeeMoreCard({
+    this.selectedCat,
     required this.onTap,
     required this.width,
   });
 
   @override
   Widget build(BuildContext context) {
+    final bool isSelected = selectedCat != null;
+    final String catName = isSelected ? selectedCat.name.toString() : "Ver más";
+    final icon = isSelected ? catName.toCategoryIcon : Icons.grid_view_rounded;
+    final primaryColor = isSelected ? const Color(0xFF4F46E5) : Colors.grey;
+
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        width: width, // 🚀 Usamos el ancho estático
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        width: width,
         padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 8),
         decoration: BoxDecoration(
-          color: const Color(0xFFF9FAFB), 
+          color: isSelected ? const Color(0xFFEEF2FF) : const Color(0xFFF9FAFB), 
           borderRadius: BorderRadius.circular(20), 
-          border: Border.all(color: Colors.grey.shade300)
+          border: Border.all(
+            color: isSelected ? const Color(0xFF4F46E5) : Colors.grey.shade300,
+            width: isSelected ? 2 : 1
+          )
         ),
-        child: const Column(
+        child: Column(
           children: [
-            Icon(Icons.grid_view_rounded, color: Colors.grey, size: 32),
+            Icon(icon, color: isSelected ? primaryColor : Colors.grey, size: 32),
             const SizedBox(height: 12),
             Text(
-              "Ver más", 
-              style: TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.bold)
+              catName, 
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: isSelected ? primaryColor : Colors.grey, 
+                fontSize: 11, 
+                fontWeight: FontWeight.bold
+              )
             ),
           ],
         ),

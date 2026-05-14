@@ -2,8 +2,6 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, and_
 from uuid import UUID
 from fastapi import HTTPException
-
-# 🚀 Ajusta esta importación si tus schemas están en otro lado
 from app.services import models, schemas 
 
 def create_category(db: Session, category: schemas.CategoryCreate):

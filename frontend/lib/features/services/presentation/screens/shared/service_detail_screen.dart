@@ -111,16 +111,27 @@ class _ServiceDetailScreenState extends ConsumerState<ServiceDetailScreen> {
   // 🛠️ Generador de botones de acción
   Widget? _buildBottomAction(bool hasApplied) {
     if (_isOwner || widget.currentUser.role == 'admin') {
+      final isOpen = _currentService.status.toString().toLowerCase().contains('open');
+
       return _BottomBarContainer(
-        child: ElevatedButton(
-          onPressed: _navigateToEdit,
-          style: _btnStyle(const Color(0xFF2563EB)),
-          child: const Text("Editar Servicio", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        child: ElevatedButton.icon(
+          onPressed: isOpen ? _navigateToEdit : null,
+          icon: Icon(isOpen ? Icons.edit : Icons.lock_outline, color: Colors.white),
+          label: Text(
+            isOpen ? "Editar Servicio" : "Servicio Bloqueado (En curso)", 
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)
+          ),
+          style: _btnStyle(isOpen ? const Color(0xFF2563EB) : Colors.grey),
         ),
       );
     } 
     
     if (_isWorker) {
+      final isOpen = _currentService.status.toString().toLowerCase().contains('open');
+      if (!isOpen) {
+        return null; // Oculta el botón si el servicio ya está en curso/cerrado
+      }
+
       return _BottomBarContainer(
         child: hasApplied
             ? ElevatedButton.icon(
@@ -141,7 +152,9 @@ class _ServiceDetailScreenState extends ConsumerState<ServiceDetailScreen> {
 
   ButtonStyle _btnStyle(Color color) => ElevatedButton.styleFrom(
         backgroundColor: color,
+        disabledBackgroundColor: Colors.grey[400],
         foregroundColor: Colors.white,
+        disabledForegroundColor: Colors.white,
         padding: const EdgeInsets.symmetric(vertical: 16),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         elevation: 0,

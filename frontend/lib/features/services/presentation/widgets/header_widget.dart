@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart';
+import 'package:forja_trabajo/features/notifications/presentation/providers/notification_provider.dart';
+import 'package:forja_trabajo/features/notifications/presentation/screens/notifications_screen.dart';
 
 class HeaderWidget extends ConsumerWidget {
   const HeaderWidget({super.key});
@@ -10,6 +12,7 @@ class HeaderWidget extends ConsumerWidget {
     final authState = ref.watch(authProvider);
     final userName = authState.user?.fullName ?? 'Usuario';
     final userImageUrl = authState.user?.profilePictureUrl;
+    final unreadNotifCount = ref.watch(unreadNotificationCountProvider);
     
     // 🎨 Detección del tema (Modo Claro / Oscuro)
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -33,6 +36,30 @@ class HeaderWidget extends ConsumerWidget {
                 maxLines: 1
               )
             ]
+          ),
+        ),
+        const SizedBox(width: 8),
+        Container(
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF334155) : Colors.grey.shade100,
+            shape: BoxShape.circle,
+          ),
+          child: IconButton(
+            icon: Badge(
+              isLabelVisible: unreadNotifCount > 0,
+              label: Text(
+                unreadNotifCount > 9 ? '9+' : '$unreadNotifCount',
+                style: const TextStyle(color: Colors.white, fontSize: 10),
+              ),
+              backgroundColor: const Color(0xFFEF4444),
+              child: Icon(Icons.notifications_outlined, color: isDark ? Colors.white70 : Colors.black87),
+            ),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const NotificationsScreen()),
+              );
+            },
           ),
         ),
         const SizedBox(width: 12),
