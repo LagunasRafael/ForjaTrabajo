@@ -175,14 +175,18 @@ class _ClientCompletedActions extends ConsumerWidget {
                 height: 48,
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? const Color(0xFF1E293B)
+                      : Colors.grey.shade100,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 alignment: Alignment.center,
-                child: const Text(
+                child: Text(
                   "Ya calificaste",
                   style: TextStyle(
-                    color: Colors.grey,
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.grey.shade400
+                        : Colors.grey,
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
                   ),
@@ -215,7 +219,7 @@ class _ClientCompletedActions extends ConsumerWidget {
       builder: (dialogContext) => ProviderScope(
         parent: ProviderScope.containerOf(context),
         child: forja_review.ReviewDialog(
-          jobId: service.id,
+          jobId: service.requestId ?? service.id,
           revieweeName: service.workerName ?? 'el trabajador',
         ),
       ),
