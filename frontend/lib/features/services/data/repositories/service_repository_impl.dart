@@ -132,12 +132,14 @@ class ServiceRepositoryImpl implements ServiceRepository {
       final List<dynamic> data = await requestDS.getMyApplications(token);
       return data.map<ServiceEntity>((json) {
         final serviceMap = json as Map<String, dynamic>;
+        debugPrint("🔍 Worker app JSON: $serviceMap");
         final service = ServiceModel.fromJson(serviceMap).toEntity();
         final precioReal = (serviceMap['base_price'] as num?)?.toDouble() ?? 0.0;
         
         return service.copyWith(
           requestId: serviceMap['request_id']?.toString(),
           basePrice: precioReal,
+          alreadyReviewed: serviceMap['already_reviewed'] ?? false,
         );
       }).toList();
     } catch (e) {

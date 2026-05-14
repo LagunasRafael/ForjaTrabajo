@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
 import '../providers/public_profile_provider.dart';
+import 'package:forja_trabajo/features/services/presentation/providers/service_list_provider.dart';
+import 'package:forja_trabajo/features/services/presentation/providers/job_management_provider.dart';
 
 class ReviewDialog extends ConsumerStatefulWidget {
   final String jobId;
@@ -35,7 +37,9 @@ class _ReviewDialogState extends ConsumerState<ReviewDialog> {
         _commentController.text.trim(),
       );
       if (mounted) {
-        Navigator.of(context).pop(true); // Devuelve true si fue exitoso
+        ref.invalidate(myRequestsProvider);
+        ref.invalidate(workerJobsProvider);
+        Navigator.of(context).pop(true);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('¡Reseña enviada con éxito!')),
         );
