@@ -80,13 +80,17 @@ class WorkerCompletedJobCard extends StatelessWidget {
                     ? Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                         decoration: BoxDecoration(
-                          color: Colors.grey.shade100,
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? const Color(0xFF1E293B)
+                              : Colors.grey.shade100,
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: const Text(
+                        child: Text(
                           "Ya calificaste",
                           style: TextStyle(
-                            color: Colors.grey,
+                            color: Theme.of(context).brightness == Brightness.dark
+                                ? Colors.grey.shade400
+                                : Colors.grey,
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
                           ),

@@ -73,19 +73,17 @@ def get_my_services(db: Session, user_id: str):
 
     result = []
     for service_obj in services:
-        request = db.query(ServiceRequest).filter(ServiceRequest.service_id == service_obj.id).first()
-        job = None
-        if request:
-            job = db.query(Job).filter(Job.request_id == request.id).first()
-
         already_reviewed = False
-        if job:
-            existing_review = db.query(Review).filter(
-                Review.job_id == job.id,
-                Review.reviewer_id == user_id
-            ).first()
-            if existing_review:
-                already_reviewed = True
+
+        for request in service_obj.requests:
+            if request.job and request.job.status != models.JobStatus.CANCELLED:
+                existing_review = db.query(Review).filter(
+                    Review.job_id == request.job.id,
+                    Review.reviewer_id == user_id
+                ).first()
+                if existing_review:
+                    already_reviewed = True
+                break
 
         setattr(service_obj, 'already_reviewed', already_reviewed)
         result.append(service_obj)
