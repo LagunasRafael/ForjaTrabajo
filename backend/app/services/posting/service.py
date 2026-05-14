@@ -61,7 +61,6 @@ def get_service_by_id(db: Session, service_id: str):
 def get_my_services(db: Session, user_id: str):
     """Devuelve todos los servicios creados por el usuario logueado."""
     from app.services.models import ServiceRequest, Job, Review
-    from sqlalchemy import or_
 
     services = (
         db.query(models.Service)
@@ -73,8 +72,8 @@ def get_my_services(db: Session, user_id: str):
     )
 
     result = []
-    for service in services:
-        request = db.query(ServiceRequest).filter(ServiceRequest.service_id == service.id).first()
+    for service_obj in services:
+        request = db.query(ServiceRequest).filter(ServiceRequest.service_id == service_obj.id).first()
         job = None
         if request:
             job = db.query(Job).filter(Job.request_id == request.id).first()
@@ -88,15 +87,8 @@ def get_my_services(db: Session, user_id: str):
             if existing_review:
                 already_reviewed = True
 
-        service.already_reviewed = already_reviewed
-
-        if job and request:
-            service.request_id = request.id
-            if request.worker:
-                service.worker_name = request.worker.full_name
-                service.worker_image_url = request.worker.profile_picture_url
-
-        result.append(service)
+        setattr(service_obj, 'already_reviewed', already_reviewed)
+        result.append(service_obj)
 
     return result
 

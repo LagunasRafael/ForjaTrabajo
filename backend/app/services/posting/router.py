@@ -56,7 +56,33 @@ def search_services_route(query: str, db: Session = Depends(get_db)):
 
 @router.get("/my-requests", response_model=List[schemas.Service])
 def read_my_requests(db: Session = Depends(get_db), current_user: auth_models.User = Depends(get_current_user)):
-    return service.get_my_services(db, user_id=str(current_user.id))
+    services = service.get_my_services(db, user_id=str(current_user.id))
+    result = []
+    for svc in services:
+        svc_dict = {
+            "id": svc.id,
+            "title": svc.title,
+            "summary": svc.summary,
+            "description": svc.description,
+            "base_price": float(svc.base_price) if svc.base_price else 0.0,
+            "category_id": svc.category_id,
+            "client_id": svc.client_id,
+            "latitude": svc.latitude,
+            "longitude": svc.longitude,
+            "exact_address": svc.exact_address,
+            "image_urls": svc.image_urls or [],
+            "status": svc.status.value if hasattr(svc.status, 'value') else str(svc.status),
+            "is_active": svc.is_active,
+            "created_at": svc.created_at,
+            "author_name": svc.author_name,
+            "author_image_url": svc.author_image_url,
+            "request_id": svc.request_id,
+            "worker_name": svc.worker_name,
+            "worker_image_url": svc.worker_image_url,
+            "already_reviewed": getattr(svc, 'already_reviewed', False),
+        }
+        result.append(svc_dict)
+    return result
 
 @router.get("/category/{category_id}", response_model=List[schemas.Service])
 def services_by_category(category_id: str, db: Session = Depends(get_db)):

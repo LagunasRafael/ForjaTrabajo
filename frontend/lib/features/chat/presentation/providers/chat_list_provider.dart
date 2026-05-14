@@ -11,6 +11,7 @@ final chatListProvider = StateNotifierProvider<ChatListNotifier, AsyncValue<List
 
 class ChatListNotifier extends StateNotifier<AsyncValue<List<ChatSummaryEntity>>> {
   final ChatRepository repository;
+  bool _disposed = false;
 
   ChatListNotifier(this.repository) : super(const AsyncValue.loading()) {
     loadRealChats();
@@ -19,19 +20,22 @@ class ChatListNotifier extends StateNotifier<AsyncValue<List<ChatSummaryEntity>>
   Future<void> loadRealChats() async {
     try {
       final chats = await repository.getUserChats();
+      if (_disposed) return;
       state = AsyncValue.data(chats);
     } catch (e, stack) {
+      if (_disposed) return;
       state = AsyncValue.error(e, stack);
     }
   }
 
   Future<void> refresh() async {
+    if (_disposed) return;
     state = const AsyncValue.loading();
     await loadRealChats();
   }
 
-  /// Actualización optimista: cambia la UI al instante, llama al backend, revierte si falla.
   Future<void> toggleArchiveStatus(String chatId, bool archive) async {
+    if (_disposed) return;
     final currentChats = state.value ?? [];
     
     final updatedChats = currentChats.map((chat) {
@@ -46,14 +50,14 @@ class ChatListNotifier extends StateNotifier<AsyncValue<List<ChatSummaryEntity>>
     try {
       await repository.archiveChat(chatId, archive);
     } catch (e) {
-      // Rollback: restaurar el estado anterior si falla
+      if (_disposed) return;
       state = AsyncData(currentChats);
       print("Error archivando: $e");
     }
   }
 
-  /// Eliminación optimista: quita el chat de la UI, llama al backend, revierte si falla.
   Future<void> deleteChat(String chatId) async {
+    if (_disposed) return;
     final currentChats = state.value ?? [];
     
     final updatedChats = currentChats.where((chat) => chat.id != chatId).toList();
@@ -62,9 +66,15 @@ class ChatListNotifier extends StateNotifier<AsyncValue<List<ChatSummaryEntity>>
     try {
       await repository.deleteChat(chatId);
     } catch (e) {
-      // Rollback: restaurar el estado anterior si falla
+      if (_disposed) return;
       state = AsyncData(currentChats);
       print("Error eliminando chat: $e");
     }
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
   }
 }

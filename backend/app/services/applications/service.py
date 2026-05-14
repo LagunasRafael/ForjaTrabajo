@@ -68,6 +68,7 @@ def update_service_request(db: Session, request_id: str, description: str, propo
 def get_worker_applications(db: Session, worker_id: str):
     try:
         from app.services.models import Review
+        from app.auth.models import User
 
         unique_results = {}
 
@@ -90,9 +91,10 @@ def get_worker_applications(db: Session, worker_id: str):
 
             author_name = "Usuario Cliente"
             author_image_url = None
-            if job.client:
-                author_name = job.client.full_name
-                author_image_url = job.client.profile_picture_url
+            client = db.query(User).filter(User.id == job.client_id).first()
+            if client:
+                author_name = client.full_name or "Usuario Cliente"
+                author_image_url = client.profile_picture_url
 
             unique_results[service_id_str] = {
                 "id": service_id_str,
@@ -126,21 +128,31 @@ def get_worker_applications(db: Session, worker_id: str):
         for req, srv in postulations:
             service_id_str = str(srv.id)
             if service_id_str not in unique_results:
+                author_name = "Usuario Cliente"
+                author_image_url = None
+                client = db.query(User).filter(User.id == srv.client_id).first()
+                if client:
+                    author_name = client.full_name or "Usuario Cliente"
+                    author_image_url = client.profile_picture_url
+
                 unique_results[service_id_str] = {
-                    "id": service_id_str, 
-                    "request_id": str(req.id), 
+                    "id": service_id_str,
+                    "request_id": str(req.id),
                     "title": srv.title,
-                    "description": req.description, 
+                    "description": req.description,
                     "base_price": float(req.proposed_price) if req.proposed_price else 0.0,
                     "category_id": str(srv.category_id),
                     "client_id": str(srv.client_id),
                     "latitude": srv.latitude,
                     "longitude": srv.longitude,
                     "exact_address": srv.exact_address,
-                    "status": "open", 
+                    "status": "open",
                     "is_active": srv.is_active,
                     "created_at": req.created_at.isoformat() if req.created_at else None,
-                    "image_urls": srv.image_urls if srv.image_urls else [], 
+                    "image_urls": srv.image_urls if srv.image_urls else [],
+                    "already_reviewed": False,
+                    "author_name": author_name,
+                    "author_image_url": author_image_url,
                 }
                 
         return list(unique_results.values())
