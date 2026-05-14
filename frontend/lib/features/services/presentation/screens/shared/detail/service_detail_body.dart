@@ -3,6 +3,7 @@ import 'package:forja_trabajo/features/services/domain/entities/service_entity.d
 import 'package:forja_trabajo/features/services/presentation/screens/shared/utils/category_icon_helper.dart';
 import 'package:forja_trabajo/features/services/presentation/screens/shared/detail/service_image_carousel.dart';
 import 'package:forja_trabajo/features/services/presentation/screens/shared/detail/service_map_section.dart';
+import 'package:forja_trabajo/features/profile/presentation/screens/user_profile_screen.dart';
 
 class ServiceDetailBody extends StatelessWidget {
   final ServiceEntity service;
@@ -10,6 +11,7 @@ class ServiceDetailBody extends StatelessWidget {
   final String authorName;
   final bool isOwner;
   final String? authorImageUrl;
+  final String? authorId;
 
   const ServiceDetailBody({
     super.key,
@@ -18,6 +20,7 @@ class ServiceDetailBody extends StatelessWidget {
     required this.authorName,
     required this.isOwner,
     this.authorImageUrl,
+    this.authorId,
   });
 
   @override
@@ -66,7 +69,7 @@ class ServiceDetailBody extends StatelessWidget {
                 // 🎨 Divisores adaptables
                 Divider(height: 40, color: isDark ? Colors.white10 : const Color(0xFFF3F4F6)),
                 
-                _buildAuthorTile(mainColor, isDark),
+                _buildAuthorTile(context, mainColor, isDark),
                 
                 Divider(height: 40, color: isDark ? Colors.white10 : const Color(0xFFF3F4F6)),
                 
@@ -123,10 +126,20 @@ class ServiceDetailBody extends StatelessWidget {
     );
   }
 
-  Widget _buildAuthorTile(Color color, bool isDark) {
+  Widget _buildAuthorTile(BuildContext context, Color color, bool isDark) {
     final initial = authorName.isNotEmpty ? authorName[0].toUpperCase() : 'U';
 
-    return Row(
+    return GestureDetector(
+      onTap: () {
+        if (authorId != null && !isOwner) {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => UserProfileScreen(userId: authorId!),
+            ),
+          );
+        }
+      },
+      child: Row(
       children: [
         Container(
           width: 44,
@@ -176,6 +189,7 @@ class ServiceDetailBody extends StatelessWidget {
           ),
         ),
       ],
+      ),
     );
   }
 }

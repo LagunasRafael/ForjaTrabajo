@@ -1,13 +1,14 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Eye, PlusCircle, Search } from 'lucide-react';
+import { Eye, PlusCircle, Search, RefreshCw } from 'lucide-react';
 import { getServices, createService } from '../services/service.service';
 import { getCategories } from '../services/category.service';
 import { getUsersApi } from '../../users/services/user.service';
 
 export const ServicesPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [services, setServices] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -17,29 +18,30 @@ export const ServicesPage = () => {
   // 🟢 Estado de las pestañas
   const [filterMode, setFilterMode] = useState<'active' | 'inactive' | 'MATCHED' | 'COMPLETED' |'all'>('active');
 
-  useEffect(() => {
-    const fetchAllData = async () => {
-      try {
-        setIsLoading(true);
-        const [servicesData, categoriesData, usersData] = await Promise.all([
-          getServices(),
-          getCategories(),
-          getUsersApi()
-        ]);
+  const fetchAllData = async () => {
+    try {
+      setIsLoading(true);
+      const [servicesData, categoriesData, usersData] = await Promise.all([
+        getServices(),
+        getCategories(),
+        getUsersApi()
+      ]);
 
-        console.log("👀 RAW DATA DE FASTAPI:", servicesData); // 🟢 Agrega esto temporalmente
-        
-        setServices(servicesData);
-        setCategories(categoriesData);
-        setUsers(usersData);
-      } catch (error) {
-        toast.error('Error de sincronización con el servidor');
-      } finally {
-        setIsLoading(false);
-      }
-    };
+      console.log("👀 RAW DATA DE FASTAPI:", servicesData);
+      
+      setServices(servicesData);
+      setCategories(categoriesData);
+      setUsers(usersData);
+    } catch (error) {
+      toast.error('Error de sincronización con el servidor');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchAllData();
-  }, []);
+  }, [location.pathname]);
 
   // 🟢 LÓGICA COMBINADA: Pestañas + Buscador
   const filteredServices = useMemo(() => {
@@ -54,16 +56,16 @@ export const ServicesPage = () => {
         statusMatch = service.isActive === true && currentStatus === 'OPEN';
       } 
       else if (filterMode === 'inactive') {
-        // Pestaña Baneadas: Todas las que tú deshabilitaste (sin importar si estaban en MATCHED, COMPLETED o OPEN)
-        statusMatch = service.isActive === false;
+        // Pestaña Baneadas: TODAS las deshabilitadas (excepto COMPLETED que se desactivan naturalmente)
+        statusMatch = service.isActive === false && currentStatus !== 'COMPLETED';
       } 
       else if (filterMode === 'MATCHED') {
-        // 🟢 Pestaña En Proceso: SOLO los que tienen el estado MATCHED y NO están baneados
-        statusMatch = currentStatus === 'MATCHED' && service.isActive !== false;
+        // Pestaña En Proceso: MATCHED o WAITING_CONFIRMATION, pero SOLO si están activas
+        statusMatch = (currentStatus === 'MATCHED' || currentStatus === 'WAITING_CONFIRMATION') && service.isActive === true;
       } 
       else if (filterMode === 'COMPLETED') {
-        // Pestaña Terminados: SOLO los que tienen el estado COMPLETED y NO están baneados
-        statusMatch = currentStatus === 'COMPLETED' && service.isActive !== false;
+        // Pestaña Terminados: SOLO los que tienen el estado COMPLETED
+        statusMatch = currentStatus === 'COMPLETED';
       }
       else {
         statusMatch = true; // 'all'
@@ -129,6 +131,13 @@ export const ServicesPage = () => {
               className="pl-10 pr-4 py-2 bg-slate-900 border border-slate-800 rounded-xl text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500/50 outline-none transition-all w-64"
             />
           </div>
+          <button 
+            onClick={() => fetchAllData()}
+            className="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 text-white px-3 py-2 rounded-xl text-sm font-bold transition-all"
+            title="Refrescar datos"
+          >
+            <RefreshCw size={16} />
+          </button>
           <button 
             onClick={handleCreateTestService}
             className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-lg shadow-indigo-600/20"
@@ -198,12 +207,20 @@ export const ServicesPage = () => {
           {filteredServices.map((service) => (
             <div key={service.id} className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/40 p-5 hover:border-indigo-500/50 transition-all hover:shadow-2xl hover:shadow-indigo-500/10 backdrop-blur-md">
               
-              {/* Etiqueta de Inactivo (Oculto) si aplica */}
-              {!service.isActive && (
-                <div className="absolute top-0 right-0 bg-rose-500 text-white text-[10px] font-black uppercase px-3 py-1 rounded-bl-lg z-10">
-                  Oculta / Baneada
-                </div>
-              )}
+              {/* Etiqueta de estado */}
+              {(() => {
+                const st = (service.status || '').toUpperCase();
+                if (!service.isActive && st !== 'COMPLETED') {
+                  return <div className="absolute top-0 right-0 bg-rose-500 text-white text-[10px] font-black uppercase px-3 py-1 rounded-bl-lg z-10">Oculta / Baneada</div>;
+                }
+                if (st === 'COMPLETED') {
+                  return <div className="absolute top-0 right-0 bg-blue-500/80 text-white text-[10px] font-black uppercase px-3 py-1 rounded-bl-lg z-10">Completado</div>;
+                }
+                if (st === 'MATCHED' || st === 'WAITING_CONFIRMATION') {
+                  return <div className="absolute top-0 right-0 bg-emerald-500/80 text-white text-[10px] font-black uppercase px-3 py-1 rounded-bl-lg z-10">En Proceso</div>;
+                }
+                return null;
+              })()}
 
               <div>
                 <div className="flex items-center justify-between mb-4 mt-2">
@@ -215,7 +232,11 @@ export const ServicesPage = () => {
                   </div>
                 </div>
 
-                <h4 className={`text-md font-bold transition-colors line-clamp-1 ${!service.isActive ? 'text-slate-500 line-through' : 'text-slate-100 group-hover:text-indigo-300'}`}>
+                <h4 className={`text-md font-bold transition-colors line-clamp-1 ${
+                  !service.isActive && (service.status || '').toUpperCase() !== 'COMPLETED'
+                    ? 'text-slate-500 line-through'
+                    : 'text-slate-100 group-hover:text-indigo-300'
+                }`}>
                   {service.title}
                 </h4>
                 <p className="mt-3 text-xs text-slate-400 leading-relaxed line-clamp-3 h-12">

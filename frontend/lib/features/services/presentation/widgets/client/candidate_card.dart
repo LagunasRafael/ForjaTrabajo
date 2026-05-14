@@ -6,6 +6,7 @@ import 'package:forja_trabajo/features/chat/presentation/providers/chat_list_pro
 import 'package:forja_trabajo/features/chat/presentation/screens/shared_chat_screen.dart';
 import 'package:forja_trabajo/features/services/presentation/providers/service_request_provider.dart';
 import 'package:forja_trabajo/features/services/presentation/providers/nav_providers.dart';
+import 'package:forja_trabajo/features/profile/presentation/screens/user_profile_screen.dart';
 
 class CandidateCard extends ConsumerStatefulWidget {
   final dynamic offer;
@@ -53,8 +54,19 @@ class _CandidateCardState extends ConsumerState<CandidateCard> {
     final imgUrl = widget.offer.authorImageUrl; 
     final name = widget.offer.workerName ?? "Trabajador";
     final initial = name.trim().isNotEmpty ? name.trim()[0].toUpperCase() : "U";
+    final workerId = widget.offer.workerId?.toString();
 
-    return Row(
+    return GestureDetector(
+      onTap: () {
+        if (workerId != null) {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => UserProfileScreen(userId: workerId),
+            ),
+          );
+        }
+      },
+      child: Row(
       children: [
         CircleAvatar(
           radius: 24, 
@@ -81,7 +93,8 @@ class _CandidateCardState extends ConsumerState<CandidateCard> {
             style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)
           ),
         )
-      ]
+      ],
+      ),
     );
   }
 

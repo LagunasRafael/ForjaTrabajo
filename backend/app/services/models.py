@@ -110,6 +110,13 @@ class Service(Base):
                 if request.worker and request.worker.profile_picture_url:
                     return request.worker.profile_picture_url
         return None
+
+    @property
+    def worker_id(self):
+        for request in self.requests:
+            if request.job and request.job.status != JobStatus.CANCELLED:
+                return str(request.worker_id)
+        return None
 # -----------------------------
 # SERVICE REQUEST (POSTULACIÓN DEL WORKER)  
 # -----------------------------

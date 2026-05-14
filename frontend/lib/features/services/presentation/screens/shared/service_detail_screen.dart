@@ -101,6 +101,7 @@ class _ServiceDetailScreenState extends ConsumerState<ServiceDetailScreen> {
             authorName: _isOwner ? "${widget.currentUser.fullName} (Tú)" : (_currentService.authorName ?? "Cliente"),
             isOwner: _isOwner,
             authorImageUrl: _isOwner ? widget.currentUser.profilePictureUrl : _currentService.profilePictureUrl,
+            authorId: _isOwner ? null : _currentService.clientId,
           ),
           bottomNavigationBar: _buildBottomAction(hasApplied),
         );
