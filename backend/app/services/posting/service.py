@@ -64,6 +64,13 @@ def get_my_services(db: Session, user_id: str):
 
     services = (
         db.query(models.Service)
+        .options(
+            joinedload(models.Service.owner),
+            joinedload(models.Service.requests)
+                .joinedload(ServiceRequest.job),
+            joinedload(models.Service.requests)
+                .joinedload(ServiceRequest.worker)
+        )
         .filter(
             models.Service.client_id == user_id,
         )
@@ -119,7 +126,7 @@ def update_service(db: Session, service_id: str, data: schemas.ServiceUpdate, us
         category = db.query(models.Category).filter(models.Category.id == str(data.category_id)).first()
         if not category:
             raise HTTPException(status_code=400, detail="La categoría no existe")
-        service_entry.category_id = str(data.category_id)
+        service_entry.category_id = data.category_id  # type: ignore[assignment]
 
     fields = ["title", "summary", "description", "base_price", "latitude", "longitude", "exact_address", "image_urls"]
     for field in fields:
@@ -151,7 +158,7 @@ def cancel_service(db: Session, service_id: str, user_id: str, user_role: str):
     if not (is_owner or is_admin or is_assigned_worker):
         raise HTTPException(status_code=403, detail="No tienes permiso para cancelar")
         
-    service_entry.status = models.JobStatus.CANCELLED
+    service_entry.status = models.JobStatus.CANCELLED  # type: ignore[assignment] 
     db.commit()
     db.refresh(service_entry)
     return {"message": "Servicio cancelado correctamente", "status": "cancelled"}
@@ -184,7 +191,7 @@ def search_services(db: Session, search_query: str):
 def update_service_images(db: Session, service_id: str, image_urls: list[str]):
     db_service = db.query(models.Service).filter(models.Service.id == service_id).first()
     if db_service:
-        db_service.image_urls = image_urls
+        db_service.image_urls = image_urls #type: ignore
         db.commit()            
         db.refresh(db_service) 
     return db_service

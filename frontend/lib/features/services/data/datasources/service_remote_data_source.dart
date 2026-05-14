@@ -67,6 +67,7 @@ class ServiceRemoteDataSource {
         '$_path/my-requests',
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
+      debugPrint("🔍 Client services JSON: ${response.data}");
       return (response.data as List).map((e) => ServiceModel.fromJson(e)).toList();
     } catch (e) {
       throw Exception('Error al cargar tus servicios: $e');
