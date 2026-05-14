@@ -20,6 +20,7 @@ class ServiceEntity {
   final String? requestId;
   final String? workerName;
   final String? workerImageUrl;
+  final String? workerId;
   final bool alreadyReviewed;
 
   ServiceEntity({
@@ -42,6 +43,7 @@ class ServiceEntity {
     this.requestId,
     this.workerName,
     this.workerImageUrl,
+    this.workerId,
     this.alreadyReviewed = false,
   });
 
@@ -65,6 +67,7 @@ class ServiceEntity {
     String? requestId,
     String? workerName,
     String? workerImageUrl,
+    String? workerId,
     bool? alreadyReviewed,
   }) {
     return ServiceEntity(
@@ -87,6 +90,7 @@ class ServiceEntity {
       requestId: requestId ?? this.requestId,
       workerName: workerName ?? this.workerName,
       workerImageUrl: workerImageUrl ?? this.workerImageUrl,
+      workerId: workerId ?? this.workerId,
       alreadyReviewed: alreadyReviewed ?? this.alreadyReviewed,
     );
   }

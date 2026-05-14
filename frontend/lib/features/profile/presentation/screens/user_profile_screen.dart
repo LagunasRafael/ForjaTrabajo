@@ -59,6 +59,20 @@ class UserProfileScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 16),
                 _buildStatsRow(profile),
+                if (profile.completedJobs.isNotEmpty) ...[
+                  const SizedBox(height: 24),
+                  const Divider(),
+                  const SizedBox(height: 16),
+                  const Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Trabajos completados',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  ...profile.completedJobs.map((job) => _buildJobCard(context, profile, job)),
+                ],
                 const SizedBox(height: 24),
                 const Divider(),
                 const SizedBox(height: 16),
@@ -107,6 +121,62 @@ class UserProfileScreen extends ConsumerWidget {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildJobCard(BuildContext context, PublicProfileModel profile, JobSummaryModel job) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    job.title,
+                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    job.roleInJob == 'client' ? 'Como cliente' : 'Como trabajador',
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  ),
+                  if (job.finalPrice != null)
+                    Text(
+                      '\$${job.finalPrice!.toStringAsFixed(0)}',
+                      style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
+                    ),
+                ],
+              ),
+            ),
+            if (job.otherPartyName != null)
+              Column(
+                children: [
+                  CircleAvatar(
+                    radius: 18,
+                    backgroundImage: job.otherPartyImageUrl != null && job.otherPartyImageUrl!.isNotEmpty
+                        ? NetworkImage(job.otherPartyImageUrl!)
+                        : null,
+                    child: job.otherPartyImageUrl == null || job.otherPartyImageUrl!.isEmpty
+                        ? const Icon(Icons.person, size: 18)
+                        : null,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    job.otherPartyName!.split(' ').first,
+                    style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                  ),
+                ],
+              ),
+          ],
+        ),
+      ),
     );
   }
 
