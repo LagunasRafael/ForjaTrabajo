@@ -33,13 +33,19 @@ class ServiceUpdate(BaseModel):
 
 class Service(ServiceBase):
     id: str
-    client_id: str  
+    client_id: str
     status: JobStatus
     is_active: bool
     created_at: datetime
 
     author_name: Optional[str] = "Usuario Cliente"
     author_image_url: Optional[str] = None
+
+    request_id: Optional[str] = None
+    worker_name: Optional[str] = None
+    worker_image_url: Optional[str] = None
+
+    already_reviewed: bool = False
 
     class Config:
         orm_mode = True

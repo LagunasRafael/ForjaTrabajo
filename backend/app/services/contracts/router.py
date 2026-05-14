@@ -99,7 +99,7 @@ def leave_review(
     if not job:
         raise HTTPException(status_code=404, detail="Trabajo no encontrado")
         
-    if job.status.value != "completed":
+    if job.status.value not in ["completed", "waiting_confirmation"]:
         raise HTTPException(status_code=400, detail="Solo puedes calificar un trabajo que haya sido completado.")
         
     # Verificar que el usuario sea parte del trabajo
