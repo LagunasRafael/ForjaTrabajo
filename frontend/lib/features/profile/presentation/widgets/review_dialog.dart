@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:dio/dio.dart';
 import '../providers/public_profile_provider.dart';
 
 class ReviewDialog extends ConsumerStatefulWidget {
@@ -41,8 +42,20 @@ class _ReviewDialogState extends ConsumerState<ReviewDialog> {
       }
     } catch (e) {
       if (mounted) {
+        String errorMessage = e.toString().replaceAll("Exception:", "");
+        // Si es un error de Dio, intentamos extraer el mensaje real del backend
+        if (e is DioException && e.response?.data != null) {
+          final data = e.response!.data;
+          if (data is Map && data.containsKey('detail')) {
+            errorMessage = data['detail'];
+          }
+        }
+        
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.toString().replaceAll("Exception:", "")}')),
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } finally {

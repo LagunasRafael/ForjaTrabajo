@@ -67,25 +67,38 @@ def update_service_request(db: Session, request_id: str, description: str, propo
 
 def get_worker_applications(db: Session, worker_id: str):
     try:
+        from app.services.models import Review
+
         unique_results = {}
 
-        # 1. BUSCAMOS LOS JOBS ACTIVOS
         jobs = db.query(models.Job).filter(models.Job.provider_id == worker_id).all()
 
         for job in jobs:
             req = job.request
             srv = req.service if req else None
             if not srv: continue
-            
+
+            existing_review = db.query(Review).filter(
+                Review.job_id == job.id,
+                Review.reviewer_id == worker_id
+            ).first()
+            already_reviewed = existing_review is not None
+
             fecha_buscada = job.started_at.isoformat() if job.started_at else None
             precio_mosca = req.proposed_price if req else srv.base_price
             service_id_str = str(srv.id)
-            
+
+            author_name = "Usuario Cliente"
+            author_image_url = None
+            if job.client:
+                author_name = job.client.full_name
+                author_image_url = job.client.profile_picture_url
+
             unique_results[service_id_str] = {
-                "id": service_id_str, 
-                "request_id": str(req.id) if req else None, 
+                "id": service_id_str,
+                "request_id": str(req.id) if req else None,
                 "title": srv.title,
-                "description": srv.description, 
+                "description": srv.description,
                 "base_price": float(precio_mosca) if precio_mosca else 0.0,
                 "category_id": str(srv.category_id),
                 "client_id": str(job.client_id),
@@ -94,8 +107,11 @@ def get_worker_applications(db: Session, worker_id: str):
                 "exact_address": srv.exact_address,
                 "status": job.status.value if hasattr(job.status, 'value') else str(job.status),
                 "is_active": srv.is_active,
-                "created_at": fecha_buscada, 
-                "image_urls": srv.image_urls if srv.image_urls else [], 
+                "created_at": fecha_buscada,
+                "image_urls": srv.image_urls if srv.image_urls else [],
+                "already_reviewed": already_reviewed,
+                "author_name": author_name,
+                "author_image_url": author_image_url,
             }
 
         # 2. BUSCAMOS LAS POSTULACIONES PENDIENTES

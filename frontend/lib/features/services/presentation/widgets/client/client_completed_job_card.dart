@@ -169,18 +169,36 @@ class _ClientCompletedActions extends ConsumerWidget {
           ),
         ),
         const SizedBox(width: 12),
-        
-        Container(
-          height: 48, width: 48,
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey.shade300),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: IconButton(
-            icon: const Icon(Icons.star_rate_rounded, color: Colors.black54),
-            onPressed: () => _handleRateWorker(context, ref),
-          ),
-        )
+
+        service.alreadyReviewed
+            ? Container(
+                height: 48,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                alignment: Alignment.center,
+                child: const Text(
+                  "Ya calificaste",
+                  style: TextStyle(
+                    color: Colors.grey,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              )
+            : Container(
+                height: 48, width: 48,
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey.shade300),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: IconButton(
+                  icon: const Icon(Icons.star_rate_rounded, color: Colors.black54),
+                  onPressed: () => _handleRateWorker(context, ref),
+                ),
+              )
       ],
     );
   }
