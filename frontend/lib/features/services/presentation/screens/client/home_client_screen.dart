@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:forja_trabajo/core/network/notification_service.dart';
 import 'package:forja_trabajo/features/services/presentation/widgets/header_widget.dart';
 import 'package:forja_trabajo/features/services/presentation/widgets/categories/category_selector_widget.dart';
 import 'package:forja_trabajo/features/services/presentation/widgets/service_list_widget.dart'; 
@@ -11,6 +13,18 @@ class HomeClientScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // 🔔 Escuchar eventos de notificación para refrescar el marketplace en tiempo real
+    ref.listen<AsyncValue<RemoteMessage>>(notificationEventProvider, (previous, next) {
+      next.whenData((message) {
+        final type = message.data['type'] ?? '';
+        // Si llega una señal de nuevo servicio o actualización general, refrescamos
+        if (type == 'new_service' || type == 'marketplace_refresh') {
+          debugPrint('🔄 [HomeClientScreen] Refrescando marketplace...');
+          ref.invalidate(serviceListProvider);
+        }
+      });
+    });
+
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 

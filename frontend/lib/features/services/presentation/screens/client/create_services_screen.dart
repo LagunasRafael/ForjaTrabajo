@@ -13,6 +13,7 @@ import '../../providers/create_service_form_provider.dart'; // 👈 El cerebro i
 import 'create_service_steps/step1_details.dart'; // 👈 Tu widget separado
 import 'create_service_steps/step2_location.dart'; // 👈 Tu widget separado
 import 'create_service_steps/step3_summary.dart'; // 👈 Tu widget separado
+import '../../providers/nav_providers.dart';
 import 'package:forja_trabajo/features/services/presentation/widgets/createservices/create_services_header.dart';
 
 class CreateServiceScreen extends ConsumerStatefulWidget {
@@ -122,9 +123,15 @@ class _CreateServiceScreenState extends ConsumerState<CreateServiceScreen> {
     ref.listen(serviceControllerProvider, (previous, next) {
       if (next.hasError && !next.isLoading) _showError("Error: ${next.error}");
       if (previous?.isLoading == true && !next.isLoading && !next.hasError) {
+        // 🔄 Refrescar lista principal e ir al Home
         ref.invalidate(serviceListProvider);
+        ref.read(clientNavProvider.notifier).state = 0; 
+        
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ ¡Proceso completado!'), backgroundColor: Color(0xFF10B981)));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('✅ ¡Servicio publicado con éxito!'), 
+          backgroundColor: Color(0xFF10B981)
+        ));
       }
     });
 

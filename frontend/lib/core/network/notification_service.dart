@@ -12,10 +12,14 @@ import 'package:forja_trabajo/features/services/presentation/screens/worker/my_j
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja_trabajo/features/chat/presentation/providers/chat_list_provider.dart';
 import 'package:forja_trabajo/features/services/presentation/providers/nav_providers.dart';
-import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart';
 
 /// Clave global para que el NotificationService pueda navegar sin BuildContext.
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
+/// Provider para escuchar eventos de notificación de forma reactiva en cualquier parte de la app.
+final notificationEventProvider = StreamProvider<RemoteMessage>((ref) {
+  return NotificationService._onNotificationController.stream;
+});
 
 // Handler para mensajes en background/terminado (debe ser top-level)
 @pragma('vm:entry-point')

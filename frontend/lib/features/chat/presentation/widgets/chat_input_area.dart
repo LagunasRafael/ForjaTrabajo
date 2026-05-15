@@ -412,12 +412,21 @@ class _ChatInputAreaState extends ConsumerState<ChatInputArea> {
               )
             else ...[
               Padding(
-                padding: const EdgeInsets.only(right: 8.0),
+                padding: const EdgeInsets.only(right: 4.0),
                 child: IconButton(
-                  icon: const Icon(Icons.add_circle, color: Color(0xFF4F46E5), size: 28),
+                  icon: const Icon(Icons.add_circle_outline, color: Colors.grey, size: 28),
                   onPressed: widget.isEnabled ? () => _showActionMenu(context) : null,
                 ),
               ),
+              if (widget.isClient && widget.canSendOffer)
+                Padding(
+                  padding: const EdgeInsets.only(right: 8.0),
+                  child: IconButton(
+                    icon: const Icon(Icons.local_offer_rounded, color: Color(0xFF10B981), size: 28),
+                    onPressed: widget.isEnabled ? _showOfferDialog : null,
+                    tooltip: 'Enviar Propuesta',
+                  ),
+                ),
               Expanded(
                 child: TextField(
                   controller: _messageController,

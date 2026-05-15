@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:forja_trabajo/features/services/presentation/screens/shared/utils/currency_input_formatter.dart';
+
 
 class WorkerDragHandle extends StatelessWidget {
   const WorkerDragHandle({super.key});
@@ -63,7 +63,9 @@ class WorkerPriceField extends StatelessWidget {
   Widget build(BuildContext context) => TextFormField(
     controller: controller, 
     keyboardType: const TextInputType.numberWithOptions(decimal: true),
-    inputFormatters: [FilteringTextInputFormatter.digitsOnly, CurrencyInputFormatter()],
+    inputFormatters: [
+      FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
+    ],
     style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF4B5563)),
     decoration: workerInputStyle("").copyWith(
       contentPadding: const EdgeInsets.symmetric(vertical: 18),
