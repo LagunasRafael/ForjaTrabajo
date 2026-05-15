@@ -9,8 +9,10 @@ import 'package:forja_trabajo/features/services/presentation/screens/client/offe
 import 'package:forja_trabajo/features/notifications/presentation/screens/notifications_screen.dart';
 import 'package:forja_trabajo/features/services/presentation/screens/client/my_requests_screen.dart';
 import 'package:forja_trabajo/features/services/presentation/screens/worker/my_jobs_screen.dart';
-import 'package:forja_trabajo/features/services/presentation/providers/nav_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:forja_trabajo/features/chat/presentation/providers/chat_list_provider.dart';
+import 'package:forja_trabajo/features/services/presentation/providers/nav_providers.dart';
+import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart';
 
 /// Clave global para que el NotificationService pueda navegar sin BuildContext.
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -30,11 +32,12 @@ class NotificationService {
 
   // 📺 Canal de alta importancia para Android (EL POP)
   static const AndroidNotificationChannel _channel = AndroidNotificationChannel(
-    'forja_notif_channel', // id
-    'Notificaciones ForjaTrabajo', // name
-    description: 'Canal para mensajes y actualizaciones importantes', // description
+    'forja_high_priority', // 🚀 ID NUEVO para forzar el banner flotante
+    'Alertas de Forja', // name
+    description: 'Notificaciones importantes de mensajes y trabajos',
     importance: Importance.max,
     playSound: true,
+    enableVibration: true,
   );
 
   // 📢 Stream para avisar a las pantallas que algo cambió
@@ -55,9 +58,6 @@ class NotificationService {
     const iosInit = DarwinInitializationSettings();
     await _localNotifications.initialize(
       const InitializationSettings(android: androidInit, iOS: iosInit),
-      onDidReceiveNotificationResponse: (details) {
-        // Manejar el tap en la notificación local si es necesario
-      },
     );
 
     // Crear el canal en Android
@@ -65,20 +65,22 @@ class NotificationService {
         .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(_channel);
 
-    // 3. Foreground: mostrar banner visual
+    // 3. Foreground: mostrar banner visual y REFRESCAR PROVIDERS
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      debugPrint('📩 Notificación en foreground: ${message.notification?.title}');
+      debugPrint('🚀 [FCM] ¡NOTIFICACIÓN RECIBIDA EN FOREGROUND!');
+      debugPrint('🚀 Tipo: ${message.data['type']} | ID: ${message.messageId}');
       
-      // Emitir el evento para que las pantallas se actualicen
+      // Emitir el evento para que ChatList y otros refresquen
       _onNotificationController.add(message);
       
-      // MOSTRAR EL POP-UP NATIVO
-      _showLocalNotification(message);
+      // Mostrar el pop-up visual (el banner azul premium)
+      _showForegroundBanner(message);
     });
 
     // 4. Background tap: app abierta desde segundo plano
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      debugPrint('📲 App abierta desde background por notificación');
+      debugPrint('📲 [FCM] APP ABIERTA DESDE NOTIFICACIÓN');
+      _onNotificationController.add(message); // 🔄 Refresca ChatList también aquí
       _handleNotificationNavigation(message);
     });
 
@@ -213,11 +215,18 @@ class NotificationService {
     final data = message.data;
     final type = data['type'] ?? '';
     final navigator = navigatorKey.currentState;
-    if (navigator == null) return;
+    final context = navigatorKey.currentContext;
+    if (navigator == null || context == null) return;
+
+    // Usamos el ProviderContainer global para modificar estados sin depender del widget tree
+    final container = ProviderScope.containerOf(context);
 
     if (type == 'new_message' || type == 'new_offer' || type == 'admin_message' || type == 'dispute_opened') {
       final conversationId = data['conversation_id'];
       if (conversationId != null) {
+        // 🔄 Refrescar la lista de chats globalmente
+        container.read(chatListProvider.notifier).loadRealChats();
+        
         navigator.push(
           MaterialPageRoute(
             builder: (_) => SharedChatScreen(
@@ -226,45 +235,66 @@ class NotificationService {
             ),
           ),
         );
-      } else {
-        navigator.push(
-          MaterialPageRoute(builder: (_) => const NotificationsScreen()),
-        );
       }
-    } else if (type == 'job_accepted') {
-      // El trabajador va a sus trabajos "En Curso" (Index 1)
-      navigator.push(
-        MaterialPageRoute(builder: (_) => const MyJobsScreen(initialIndex: 1)),
-      );
-    } else if (type == 'job_completed' || type == 'job_cancelled') {
-      // Si es cliente va a Finalizados (Index 2), si es trabajador va a Historial (Index 2)
-      // Nota: Aquí asumimos que el usuario actual es el receptor
-      navigator.push(
-        MaterialPageRoute(builder: (_) => const MyJobsScreen(initialIndex: 2)),
-      );
-    } else if (type == 'job_waiting_confirmation') {
-      // El cliente va a "En Proceso" (Index 1) para confirmar
-      navigator.push(
-        MaterialPageRoute(builder: (_) => const MyRequestsScreen(initialIndex: 1)),
-      );
     } else if (type == 'new_application') {
       final serviceId = data['service_id'];
       if (serviceId != null) {
-        navigator.push(
-          MaterialPageRoute(
-            builder: (_) => OffersReceivedScreen(serviceId: serviceId),
-          ),
-        );
+        navigator.push(MaterialPageRoute(builder: (_) => OffersReceivedScreen(serviceId: serviceId)));
       } else {
-        navigator.push(
-          MaterialPageRoute(builder: (_) => const NotificationsScreen()),
-        );
+        switch (type) {
+          case 'new_request':
+            // Ir a Mis Solicitudes -> Pestaña Postulaciones (1)
+            container.read(clientNavProvider.notifier).state = 3;
+            container.read(myRequestsTabProvider.notifier).state = 1;
+            navigatorKey.currentState?.pushNamed('/my_requests');
+            break;
+
+          case 'job_accepted':
+          case 'in_progress':
+            // Ir a Mis Empleos -> En Proceso (1)
+            container.read(workerNavProvider.notifier).state = 1;
+            container.read(workerJobsTabProvider.notifier).state = 1;
+            navigatorKey.currentState?.pushNamed('/my_jobs');
+            break;
+
+          case 'job_completed':
+          case 'job_cancelled':
+            // Ir a Mis Empleos -> Finalizados (2)
+            container.read(workerNavProvider.notifier).state = 1;
+            container.read(workerJobsTabProvider.notifier).state = 2;
+            navigatorKey.currentState?.pushNamed('/my_jobs');
+            break;
+
+          case 'general':
+          default:
+            // Pantalla de notificaciones general
+            navigatorKey.currentState?.push(
+              MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+            );
+            break;
+        }
+      }
+    } else if (type == 'job_completed') {
+      // ✅ Trabajador: Mis Trabajos (Index 1) -> Historial (Index 2)
+      container.read(workerNavProvider.notifier).state = 1;
+      container.read(workerJobsTabProvider.notifier).state = 2;
+      navigator.push(MaterialPageRoute(builder: (_) => const MyJobsScreen(initialIndex: 2)));
+    } else if (type == 'job_waiting_confirmation') {
+      // ✅ Cliente: Mis Trabajos (Index 3) -> En Proceso (Index 1)
+      container.read(clientNavProvider.notifier).state = 3;
+      container.read(myRequestsTabProvider.notifier).state = 1;
+      navigator.push(MaterialPageRoute(builder: (_) => const MyRequestsScreen(initialIndex: 1)));
+    } else if (type == 'job_cancelled') {
+      container.read(workerNavProvider.notifier).state = 1;
+      container.read(workerJobsTabProvider.notifier).state = 2;
+      navigator.push(MaterialPageRoute(builder: (_) => const MyJobsScreen(initialIndex: 2)));
+    } else if (type == 'offer_responded' || type == 'new_offer') {
+      final conversationId = data['conversation_id'];
+      if (conversationId != null) {
+        navigator.push(MaterialPageRoute(builder: (_) => SharedChatScreen(conversationId: conversationId, otherUserName: data['sender_name'] ?? 'Chat')));
       }
     } else {
-      // Por defecto, llevar a la lista de notificaciones si no es un chat específico
-      navigator.push(
-        MaterialPageRoute(builder: (_) => const NotificationsScreen()),
-      );
+      navigator.push(MaterialPageRoute(builder: (_) => const NotificationsScreen()));
     }
   }
 

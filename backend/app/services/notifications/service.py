@@ -152,8 +152,8 @@ def notify_job_waiting_confirmation(db: Session, job: models.Job):
     try:
         client = db.query(auth_models.User).filter(auth_models.User.id == job.client_id).first()
         if client:
-            title = "Trabajo terminado 🏁"
-            body = "El trabajador terminó. ¡Confirma para cerrar el trabajo!"
+            title = "¡Trabajo terminado! 🏁"
+            body = f"El trabajador ha marcado como finalizado el servicio. Por favor, confirma la entrega."
             
             create_in_app_notification(
                 db=db, user_id=str(client.id), title=title, body=body,

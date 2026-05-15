@@ -466,6 +466,15 @@ def complete_job(db: Session, job_id: str, user_id: str):
         # 🔔 Notificar al trabajador que el trabajo fue finalizado (Migrado)
         notif_service.notify_job_completed(db, job)
 
+        # 🔒 BLOQUEAR EL CHAT: Al finalizar el trabajo, se cierra la conversación
+        try:
+            convo = db.query(models.Conversation).filter(models.Conversation.request_id == str(job.request_id)).first()
+            if convo:
+                convo.status = models.ConversationStatus.CLOSED.value # type: ignore
+                db.commit()
+        except Exception as e:
+            logger.warning(f"⚠️ No se pudo cerrar el chat al finalizar el trabajo: {e}")
+
         return job
 
 def cancel_job(db: Session, job_id: str, user_id: str, user_role: str):
@@ -497,8 +506,14 @@ def cancel_job(db: Session, job_id: str, user_id: str, user_role: str):
     db.commit()
     db.refresh(job)
 
-    # 🔔 Notificar a la otra parte que el trabajo fue cancelado
-    notif_service.notify_job_cancelled(db, job, str(user_id))
+    # 🔒 BLOQUEAR EL CHAT: Al cancelar el trabajo, se cierra la conversación
+    try:
+        convo = db.query(models.Conversation).filter(models.Conversation.request_id == str(job.request_id)).first()
+        if convo:
+            convo.status = models.ConversationStatus.CLOSED.value # type: ignore
+            db.commit()
+    except Exception as e:
+        logger.warning(f"⚠️ No se pudo cerrar el chat al cancelar el trabajo: {e}")
 
     return job
 

@@ -24,8 +24,10 @@ class ChatListNotifier extends StateNotifier<AsyncValue<List<ChatSummaryEntity>>
   void _listenToNotifications() {
     _notifSubscription = NotificationService.onNotification.listen((message) {
       final type = message.data['type'];
-      // Si llega un nuevo mensaje, se abre una disputa o un mensaje de admin, refrescamos la lista
-      if (type == 'new_message' || type == 'admin_message' || type == 'dispute_opened') {
+      print("🔔 [ChatListProvider] Notificación recibida: $type");
+      
+      if (type == 'new_message' || type == 'admin_message' || type == 'dispute_opened' || type == 'new_offer') {
+        print("🔄 [ChatListProvider] Recargando lista de chats...");
         loadRealChats();
       }
     });

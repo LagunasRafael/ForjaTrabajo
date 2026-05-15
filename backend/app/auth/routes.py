@@ -342,22 +342,22 @@ def update_fcm_token(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    # Si estamos asignando un token real (no vacío al cerrar sesión)
+    # Si estamos asignando un token real
     if data.fcm_token:
-        # Remover este token de cualquier otro usuario que lo tenga
-        # Esto evita que si el Usuario A no cerró sesión bien, sus notificaciones 
-        # le lleguen al Usuario B que ahora usa el mismo dispositivo.
+        # 🛡️ SEGURIDAD AGRESIVA: 
+        # Borrar este token de CUALQUIER otro usuario que no sea el actual.
+        # Esto soluciona el error de "veo notificaciones de otros perfiles".
         db.query(models.User).filter(
             models.User.fcm_token == data.fcm_token,
             models.User.id != current_user.id
         ).update({"fcm_token": ""}, synchronize_session=False)
         
-    # LOG PARA DEBUG
-    print(f"DEBUG: Actualizando FCM token para usuario {current_user.email}. Token: {data.fcm_token[:15]}...")
-    
+    # Actualizar el token del usuario actual
     current_user.fcm_token = data.fcm_token # type: ignore
     db.commit()
-    return {"status": "success", "message": "FCM token actualizado"}
+    
+    logger.info(f"🚀 FCM Token actualizado para {current_user.email}")
+    return {"status": "success", "message": "FCM token actualizado y vinculado exclusivamente"}
 
 # ============================================================
 # 🛡️ ENDPOINT PROTEGIDO: Solo un admin puede crear usuarios

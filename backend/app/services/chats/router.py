@@ -191,22 +191,42 @@ async def websocket_endpoint(websocket: WebSocket, conversation_id: str, user_id
                         sender = db.query(auth_models.User).filter(
                             auth_models.User.id == user_id
                         ).first()
-                        if receiver and receiver.fcm_token:
-                            sender_name = sender.full_name if sender else "Nuevo mensaje"
-                            preview = content[:60] + "..." if len(content) > 60 else content
-                            if msg_type == "image": preview = "📷 Imagen"
-                            elif msg_type == "audio": preview = "🎤 Audio"
-                            elif msg_type == "video": preview = "🎥 Video"
-                            elif msg_type == "location": preview = "📍 Ubicación"
-                            send_push_notification(
+                    sender = db.query(auth_models.User).filter(auth_models.User.id == user_id).first()
+                    sender_name = sender.full_name if sender else "Nuevo mensaje"
+                    preview = content[:60] + "..." if len(content) > 60 else content
+                    if msg_type == "image": preview = "📷 Imagen"
+                    elif msg_type == "audio": preview = "🎤 Audio"
+                    elif msg_type == "video": preview = "🎥 Video"
+                    elif msg_type == "location": preview = "📍 Ubicación"
+                    
+                    # 📱 Enviar Notificación Push para Tiempo Real
+                    receiver_id = str(convo.worker_id) if str(convo.client_id) == str(user_id) else str(convo.client_id)
+                    receiver = db.query(auth_models.User).filter(auth_models.User.id == receiver_id).first()
+                    
+                    if receiver and receiver.fcm_token:
+                        # Si solo hay una persona en el WS (el emisor), el receptor necesita push
+                        active_ws_count = len(manager.active_connections.get(conversation_id, []))
+                        
+                        # Siempre enviamos la push si el receptor no está en el chat activo
+                        if active_ws_count < 2:
+                            logger.info(f"📣 [WS] Enviando Push a {receiver.full_name} (Token: {str(receiver.fcm_token)[:10]}...)")
+                            response = send_push_notification(
                                 fcm_token=str(receiver.fcm_token),
                                 title=str(sender_name),
                                 body=preview,
-                                data={"type": "new_message", "conversation_id": conversation_id,
-                                      "sender_name": sender_name}
+                                data={
+                                    "type": "new_message", 
+                                    "conversation_id": conversation_id,
+                                    "sender_name": sender_name
+                                }
                             )
+                            logger.info(f"📡 [WS] Resultado Push: {response}")
+                        else:
+                            logger.info(f"✅ [WS] Receptor está en la sala {conversation_id}, no hace falta push.")
+                    else:
+                        logger.warning(f"⚠️ [WS] No se envió push: Receptor {receiver_id} no tiene token.")
             except Exception as notify_err:
-                logger.warning(f"⚠️ Error notificando mensaje WS: {notify_err}")
+                logger.error(f"❌ [WS] Error notificando: {notify_err}", exc_info=True)
 
     except WebSocketDisconnect:
         print(f"WS DISCONNECTED: convo={conversation_id}")
@@ -501,7 +521,8 @@ async def send_admin_message(
             
             for user in [client, worker]:
                 if user and user.fcm_token:
-                    send_push_notification(
+                    logger.info(f"📣 [ADMIN] Enviando Push a {user.full_name}...")
+                    response = send_push_notification(
                         fcm_token=str(user.fcm_token),
                         title="Soporte Forja",
                         body=preview,
@@ -511,6 +532,9 @@ async def send_admin_message(
                             "sender_name": "Soporte Forja"
                         }
                     )
+                    logger.info(f"📡 [ADMIN] Resultado Push: {response}")
+                else:
+                    logger.warning(f"⚠️ [ADMIN] Un usuario no tiene token FCM.")
     except Exception as e:
         print(f"Error enviando Push de Admin: {e}")
 
@@ -571,6 +595,12 @@ async def resolve_dispute(
             background_tasks.add_task(send_dispute_resolved_email, worker.email, True, "worker") # type: ignore
     else:
         raise HTTPException(status_code=400, detail="El ganador debe ser 'client' o 'worker'")
+        
+    # 🏁 ACTUALIZAR EL SERVICIO PRINCIPAL: Reflejar el fin de la labor en el Marketplace
+    if request_entry and request_entry.service:
+        request_entry.service.status = job.status
+        if job.status == service_models.JobStatus.COMPLETED or job.status == service_models.JobStatus.CANCELLED:
+            request_entry.service.is_active = False
         
     # Cerrar la conversación
     convo.status = service_models.ConversationStatus.CLOSED.value # type: ignore

@@ -137,6 +137,10 @@ def get_user_chats(db: Session, user_id: str):
                 last_message_text = "🖼️ Galería multimedia"
             else:
                 last_message_text = last_msg.content
+            
+            # ✍️ Indicar si el mensaje es nuestro
+            if str(last_msg.sender_id) == str(user_id) and last_msg.message_type != "offer":
+                last_message_text = f"Tú: {last_message_text}"
         else:
             last_message_text = "¡Comienza la conversación!"
 
@@ -253,8 +257,8 @@ def handle_offer_action(db: Session, message_id: str, action: str, user_id: str)
         )
         db.add(new_job)
 
-        # 5. Cerrar la conversación (el trato se cerró)
-        convo.status = models.ConversationStatus.CLOSED.value # type: ignore
+        # 5. El chat permanece ABIERTO para coordinar el trabajo
+        convo.status = models.ConversationStatus.OPEN.value # type: ignore
 
     elif action == "reject":
         offer_msg.status = "rejected" # type: ignore

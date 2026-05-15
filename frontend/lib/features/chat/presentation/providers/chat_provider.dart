@@ -147,9 +147,9 @@ class ChatNotifier extends StateNotifier<List<MessageModel>> {
 
       state = [newMessage, ...state];
       
-      // 3. Si llega un mensaje mientras estamos dentro, marcar como leído automáticamente
+      // 3. Si llega un mensaje mientras estamos dentro, refrescar la lista global
+      ref.read(chatListProvider.notifier).loadRealChats();
       _repository.markAsRead(conversationId);
-      ref.read(chatListProvider.notifier).markAsReadLocal(conversationId);
     } catch (e) {
       print("🚨 Error procesando mensaje WS: $e");
     }
@@ -176,6 +176,8 @@ class ChatNotifier extends StateNotifier<List<MessageModel>> {
       "conversation_id": conversationId
     });
     _channel!.sink.add(message);
+    // Refrescar lista para ver nuestro mensaje enviado como último mensaje
+    ref.read(chatListProvider.notifier).loadRealChats();
   }
 
   void sendTyping(bool isTyping) {
@@ -217,6 +219,7 @@ class ChatNotifier extends StateNotifier<List<MessageModel>> {
   Future<void> sendOffer(double amount) async {
     try {
       await _repository.sendOffer(conversationId, amount);
+      ref.read(chatListProvider.notifier).loadRealChats();
     } catch (e) {
       print("🚨 Error enviando oferta: $e");
       rethrow;
@@ -226,6 +229,7 @@ class ChatNotifier extends StateNotifier<List<MessageModel>> {
   Future<void> respondOffer(String messageId, String action) async {
     try {
       await _repository.respondOffer(messageId, action);
+      ref.read(chatListProvider.notifier).loadRealChats();
     } catch (e) {
       print("🚨 Error respondiendo oferta: $e");
       rethrow;
