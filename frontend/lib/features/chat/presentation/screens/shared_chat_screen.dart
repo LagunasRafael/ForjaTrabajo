@@ -137,6 +137,18 @@ class _SharedChatScreenState extends ConsumerState<SharedChatScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // 🔔 Escuchar eventos de notificación para refrescar en tiempo real (Resolución de Admin o Fin de Trabajo)
+    ref.listen(notificationEventProvider, (previous, next) {
+      next.whenData((message) {
+        final type = message.data['type'] ?? '';
+        if (type == 'job_completed' || type == 'job_cancelled' || type == 'dispute_resolved') {
+          debugPrint('🔄 [ChatScreen] Refrescando por resolución: $type');
+          ref.invalidate(chatListProvider);
+          ref.invalidate(chatProvider(widget.conversationId));
+        }
+      });
+    });
+
     final messages = ref.watch(chatProvider(widget.conversationId));
     final isOtherUserTyping = ref.watch(chatTypingProvider(widget.conversationId));
     final user = ref.watch(authProvider).user;
@@ -161,7 +173,8 @@ class _SharedChatScreenState extends ConsumerState<SharedChatScreen> {
       orElse: () => null,
     );
     
-    final isClosed = thisChat?.status == 'CERRADO' || isOfferAccepted;
+    // Un chat se cierra si el Admin lo marcó como CLOSED o si ya se aceptó una oferta
+    final isClosed = thisChat?.status == 'CLOSED' || thisChat?.status == 'CERRADO' || isOfferAccepted;
     final canSendOffer = !isClosed;
     final hasActiveOffer = lastOffer != null && !isClosed;
     final messageCount = messages.length;
