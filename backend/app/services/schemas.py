@@ -183,4 +183,5 @@ class UserProfileResponse(BaseModel):
     created_at: datetime
     average_rating: float = 0.0
     total_reviews: int = 0
+    is_identity_verified: bool = False
     completed_jobs: List[JobSummarySchema] = []
