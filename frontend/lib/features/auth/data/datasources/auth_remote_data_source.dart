@@ -14,21 +14,17 @@ class AuthRemoteDataSource {
   /// Inicia sesión y guarda el JWT en el dispositivo
   Future<String> login(String email, String password) async {
     try {
-      // 1. Enviamos un JSON normal (Diccionario) en lugar de FormData
       final response = await apiClient.dio.post(
         '/auth/login',
         data: {
-          'email':
-              email, // 👈 OJO: Verifica si tu backend espera "email" o "username"
+          'email': email,
           'password': password,
         },
       );
 
-      // 2. Extraemos el token y el refresh token de la respuesta
       final token = response.data['access_token'];
       final refreshToken = response.data['refresh_token'];
 
-      // 3. Los guardamos de forma segura
       await apiClient.storage.write(key: 'jwt_token', value: token);
       if (refreshToken != null) {
         await apiClient.storage
@@ -37,21 +33,25 @@ class AuthRemoteDataSource {
 
       return token;
     } on DioException catch (e) {
-      // Manejo de error mejorado para leer el JSON que nos manda FastAPI
-      String errorMessage = 'Error desconocido al iniciar sesión';
+      String errorMessage = 'Credenciales incorrectas. Revisa tu correo y contraseña.';
 
-      if (e.response != null && e.response?.data != null) {
-        // A veces FastAPI manda el error en "detail"
-        if (e.response?.data['detail'] is String) {
-          errorMessage = e.response?.data['detail'];
-        } else {
-          errorMessage = 'Datos incorrectos. Verifica tu correo y contraseña.';
+      if (e.response != null) {
+        final data = e.response?.data;
+        if (data is Map && data.containsKey('detail') && data['detail'] != null) {
+          errorMessage = data['detail'].toString();
+        } else if (e.response?.statusCode == 401 || e.response?.statusCode == 400) {
+          errorMessage = 'Credenciales incorrectas. Revisa tu correo y contraseña.';
+        } else if (e.response?.statusCode != null) {
+          errorMessage = 'Error del servidor (${e.response?.statusCode}). Intenta de nuevo.';
         }
+      } else {
+        // Sin respuesta del servidor → servidor caído o sin internet
+        errorMessage = 'No se pudo conectar al servidor. Verifica tu conexión a internet.';
       }
       throw Exception(errorMessage);
     } catch (e) {
-      throw Exception(
-          'Error de conexión: Verifica que el servidor esté encendido.');
+      if (e is Exception) rethrow;
+      throw Exception('Error de conexión. Verifica tu internet.');
     }
   }
 
