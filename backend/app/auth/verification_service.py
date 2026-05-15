@@ -90,7 +90,7 @@ def compare_faces_rekognition(bucket_name: str, source_url: str, target_url: str
         region = os.getenv('AWS_REGION', 'us-east-1').replace('"', '').replace("'", '').strip()
 
         if not access_key or not secret_key:
-            print("AWS Rekognition: credenciales no configuradas.")
+            print("⚠️ AWS Rekognition: credenciales no configuradas.")
             return None
 
         client = boto3.client(
@@ -102,6 +102,8 @@ def compare_faces_rekognition(bucket_name: str, source_url: str, target_url: str
 
         source_key = urlparse(source_url).path.lstrip('/')
         target_key = urlparse(target_url).path.lstrip('/')
+        
+        print(f"🔍 Rekognition: comparando {source_key} vs {target_key}")
 
         response = client.compare_faces(
             SourceImage={'S3Object': {'Bucket': bucket_name, 'Name': source_key}},
@@ -110,11 +112,15 @@ def compare_faces_rekognition(bucket_name: str, source_url: str, target_url: str
         )
 
         if response.get('FaceMatches'):
-            return response['FaceMatches'][0]['Similarity']
-        return 0.0
+            similarity = response['FaceMatches'][0]['Similarity']
+            print(f"✅ Rekognition match: {similarity}%")
+            return similarity
+        else:
+            print(f"❌ Rekognition: no se detectó rostro en alguna imagen o similitud < 80%")
+            return 0.0
 
     except Exception as e:
-        print(f"Rekognition error: {e}")
+        print(f"🔥 Rekognition error: {e}")
         return None
 
 
@@ -162,6 +168,8 @@ def get_pending_verifications_admin(db: Session):
 
 
 def approve_verification_admin(db: Session, verification_id: str, admin_id: str):
+    from app.services.notifications.service import create_in_app_notification
+
     verification = db.query(models.IdentityVerification).filter(
         models.IdentityVerification.id == verification_id
     ).first()
@@ -174,16 +182,27 @@ def approve_verification_admin(db: Session, verification_id: str, admin_id: str)
 
     verification.status = models.VerificationStatus.APPROVED
     verification.reviewed_by = admin_id
-    verification.reviewed_at = None
     from datetime import datetime
     verification.reviewed_at = datetime.utcnow()
     user.is_identity_verified = True
 
     db.commit()
+
+    create_in_app_notification(
+        db,
+        user_id=str(user.id),
+        title="Identidad Verificada",
+        body="Tu verificación de identidad ha sido aprobada. Ya apareces como usuario verificado.",
+        notification_type="verification_approved",
+        reference_id=verification.id
+    )
+
     return {"message": "Verificación aprobada", "status": "approved"}
 
 
 def reject_verification_admin(db: Session, verification_id: str, admin_id: str, reason: str):
+    from app.services.notifications.service import create_in_app_notification
+
     verification = db.query(models.IdentityVerification).filter(
         models.IdentityVerification.id == verification_id
     ).first()
@@ -197,4 +216,14 @@ def reject_verification_admin(db: Session, verification_id: str, admin_id: str, 
     verification.reviewed_at = datetime.utcnow()
 
     db.commit()
+
+    create_in_app_notification(
+        db,
+        user_id=str(verification.user_id),
+        title="Verificación Rechazada",
+        body=f"Tu verificación fue rechazada. Motivo: {reason}. Puedes intentarlo de nuevo desde tu perfil.",
+        notification_type="verification_rejected",
+        reference_id=verification.id
+    )
+
     return {"message": "Verificación rechazada", "status": "rejected"}

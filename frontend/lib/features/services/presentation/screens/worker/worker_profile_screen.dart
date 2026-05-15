@@ -12,6 +12,7 @@ import 'package:forja_trabajo/features/profile/presentation/screens/user_profile
 import 'package:forja_trabajo/features/services/presentation/screens/worker/my_jobs_screen.dart';
 import 'package:forja_trabajo/features/services/presentation/providers/nav_providers.dart';
 import 'package:forja_trabajo/features/profile/presentation/screens/identity_verification_screen.dart';
+import 'package:forja_trabajo/features/profile/presentation/providers/public_profile_provider.dart';
 
 class WorkerProfileScreen extends ConsumerWidget {
   const WorkerProfileScreen({super.key});
@@ -20,6 +21,7 @@ class WorkerProfileScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authProvider);
     final user = authState.user;
+    final verificationAsync = ref.watch(verificationStatusProvider);
 
     final theme = Theme.of(context);
 
@@ -152,7 +154,8 @@ class WorkerProfileScreen extends ConsumerWidget {
                     onTap: () {
                       ref.read(workerNavProvider.notifier).state = 1;
                     }),
-                if (user?.isIdentityVerified != true)
+                if (user?.isIdentityVerified != true &&
+                    verificationAsync.valueOrNull?['has_pending_verification'] != true)
                   ProfileMenuOption(
                       icon: LucideIcons.shieldCheck,
                       title: 'Verificar Identidad',
@@ -163,7 +166,10 @@ class WorkerProfileScreen extends ConsumerWidget {
                             builder: (context) =>
                                 const IdentityVerificationScreen(),
                           ),
-                        );
+                        ).then((_) {
+                          ref.invalidate(verificationStatusProvider);
+                          ref.invalidate(authProvider);
+                        });
                       }),
                 ProfileMenuOption(
                     icon: LucideIcons.settings,
