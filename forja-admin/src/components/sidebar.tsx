@@ -23,6 +23,15 @@ export default function Sidebar() {
         >
           Usuarios
         </NavLink>
+
+        <NavLink
+          to="/verifications"
+          className={({ isActive }) =>
+            `p-2 rounded ${isActive ? "bg-gray-700" : "hover:bg-gray-800"}`
+          }
+        >
+          Verificaciones
+        </NavLink>
       </nav>
     </aside>
   );

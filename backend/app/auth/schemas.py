@@ -31,15 +31,13 @@ class UserCreate(UserBase):
 class UserResponse(UserBase):
     model_config = ConfigDict(from_attributes=True)
 
-    # --- CORRECCIÓN CRÍTICA ---
-    # Cambiamos int a str para soportar el UUID de 36 caracteres
     id: str 
     profile_picture_url: Optional[str] = None
     
-    # Usamos str para el rol para evitar errores de validación con el Enum de la BD
     role: str 
     is_active: bool
     is_email_verified: bool
+    is_identity_verified: bool = False
     verification_code: Optional[str] = None
     created_at: Optional[datetime] = None
 
@@ -110,3 +108,38 @@ class ResetPasswordRequest(BaseModel):
         if len(v.encode("utf-8")) > 72:
             raise ValueError("La contraseña no puede exceder los 72 bytes")
         return v
+
+# Schemas para Verificación de Identidad
+class IdentityVerificationResponse(BaseModel):
+    id: str
+    user_id: str
+    ine_front_url: str
+    ine_back_url: str
+    selfie_url: str
+    status: str
+    rejection_reason: Optional[str] = None
+    face_similarity: Optional[float] = None
+    created_at: datetime
+    reviewed_at: Optional[datetime] = None
+    user_name: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+class IdentityVerificationListResponse(BaseModel):
+    id: str
+    user_id: str
+    user_name: str
+    user_email: str
+    ine_front_url: str
+    ine_back_url: str
+    selfie_url: str
+    status: str
+    face_similarity: Optional[float] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class RejectVerificationRequest(BaseModel):
+    reason: str = Field(..., min_length=5, max_length=500)

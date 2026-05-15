@@ -492,6 +492,7 @@ def get_user_profile(user_id: str, db: Session = Depends(get_db)):
         "created_at": user.created_at,
         "average_rating": average_rating,
         "total_reviews": total_reviews,
+        "is_identity_verified": bool(user.is_identity_verified),
         "completed_jobs": completed_jobs[:10]
     }
 
@@ -518,3 +519,58 @@ def get_user_reviews(user_id: str, skip: int = 0, limit: int = 15, db: Session =
             "reviewer_image_url": reviewer.profile_picture_url if reviewer else None
         })
     return result
+
+# ============================================================
+# 🪪 VERIFICACIÓN DE IDENTIDAD (INE + Rekognition)
+# ============================================================
+from app.auth.verification_service import (
+    create_verification,
+    get_verification_status,
+    get_pending_verifications_admin,
+    approve_verification_admin,
+    reject_verification_admin
+)
+
+@router.post("/verify-identity", response_model=dict)
+async def upload_identity_verification(
+    ine_front: UploadFile = File(...),
+    ine_back: UploadFile = File(...),
+    selfie: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    return create_verification(
+        db, str(current_user.id),
+        ine_front, ine_back, selfie
+    )
+
+@router.get("/verification-status", response_model=dict)
+def read_verification_status(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    return get_verification_status(db, str(current_user.id))
+
+@router.get("/admin/verifications", response_model=list[dict])
+def list_pending_verifications(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(check_role([Role.ADMIN]))
+):
+    return get_pending_verifications_admin(db)
+
+@router.post("/admin/verifications/{verification_id}/approve", response_model=dict)
+def approve_verification(
+    verification_id: str,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(check_role([Role.ADMIN]))
+):
+    return approve_verification_admin(db, verification_id, str(current_user.id))
+
+@router.post("/admin/verifications/{verification_id}/reject", response_model=dict)
+def reject_verification(
+    verification_id: str,
+    payload: schemas.RejectVerificationRequest,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(check_role([Role.ADMIN]))
+):
+    return reject_verification_admin(db, verification_id, str(current_user.id), payload.reason)

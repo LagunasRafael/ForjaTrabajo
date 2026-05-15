@@ -64,6 +64,19 @@ class UserProfileScreen extends ConsumerWidget {
                   profile.fullName,
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
                 ),
+                if (profile.isIdentityVerified)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.verified, color: Colors.blue, size: 18),
+                        const SizedBox(width: 4),
+                        Text('Identidad Verificada',
+                            style: TextStyle(color: Colors.blue, fontSize: 13, fontWeight: FontWeight.w600)),
+                      ],
+                    ),
+                  ),
                 const SizedBox(height: 4),
                 Text(
                   profile.role.toUpperCase(),
