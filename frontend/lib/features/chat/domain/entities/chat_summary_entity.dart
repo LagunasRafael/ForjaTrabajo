@@ -12,6 +12,7 @@ class ChatSummaryEntity extends Equatable {
   final String otherUserId;
   final bool hasUnread;
   final bool isArchived;
+  final String serviceStatus;
 
   const ChatSummaryEntity({
     required this.id,
@@ -25,6 +26,7 @@ class ChatSummaryEntity extends Equatable {
     required this.otherUserId,
     this.hasUnread = false,
     this.isArchived = false,
+    this.serviceStatus = 'OPEN',
   });
 
   ChatSummaryEntity copyWith({
@@ -39,6 +41,7 @@ class ChatSummaryEntity extends Equatable {
     String? otherUserId,
     bool? hasUnread,
     bool? isArchived,
+    String? serviceStatus,
   }) {
     return ChatSummaryEntity(
       id: id ?? this.id,
@@ -52,10 +55,11 @@ class ChatSummaryEntity extends Equatable {
       otherUserId: otherUserId ?? this.otherUserId,
       hasUnread: hasUnread ?? this.hasUnread,
       isArchived: isArchived ?? this.isArchived,
+      serviceStatus: serviceStatus ?? this.serviceStatus,
     );
   }
 
   @override
-  List<Object?> get props => [id, name, avatarUrl, serviceName, lastMessage, time, status, myRole, otherUserId, hasUnread, isArchived];
+  List<Object?> get props => [id, name, avatarUrl, serviceName, lastMessage, time, status, myRole, otherUserId, hasUnread, isArchived, serviceStatus];
 }
 

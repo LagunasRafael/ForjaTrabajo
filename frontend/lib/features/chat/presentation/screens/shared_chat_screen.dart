@@ -9,6 +9,8 @@ import 'package:forja_trabajo/features/chat/presentation/widgets/chat_bubble.dar
 import 'package:forja_trabajo/features/chat/presentation/widgets/chat_app_bar.dart';
 import 'package:forja_trabajo/features/chat/presentation/widgets/chat_input_area.dart';
 import 'package:forja_trabajo/features/chat/presentation/widgets/offer_bottom_sheet.dart';
+import 'package:forja_trabajo/core/network/notification_service.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 
 class SharedChatScreen extends ConsumerStatefulWidget {
   final String conversationId;
@@ -138,7 +140,7 @@ class _SharedChatScreenState extends ConsumerState<SharedChatScreen> {
   @override
   Widget build(BuildContext context) {
     // 🔔 Escuchar eventos de notificación para refrescar en tiempo real (Resolución de Admin o Fin de Trabajo)
-    ref.listen(notificationEventProvider, (previous, next) {
+    ref.listen<AsyncValue<RemoteMessage>>(notificationEventProvider, (previous, next) {
       next.whenData((message) {
         final type = message.data['type'] ?? '';
         if (type == 'job_completed' || type == 'job_cancelled' || type == 'dispute_resolved') {
@@ -173,10 +175,18 @@ class _SharedChatScreenState extends ConsumerState<SharedChatScreen> {
       orElse: () => null,
     );
     
-    // Un chat se cierra si el Admin lo marcó como CLOSED o si ya se aceptó una oferta
-    final isClosed = thisChat?.status == 'CLOSED' || thisChat?.status == 'CERRADO' || isOfferAccepted;
-    final canSendOffer = !isClosed;
-    final hasActiveOffer = lastOffer != null && !isClosed;
+    // El chat solo se bloquea totalmente si el Admin o el Sistema lo cierran (CLOSED)
+    final isClosed = thisChat?.status == 'CLOSED' || thisChat?.status == 'CERRADO';
+    
+    // ¿El servicio ya está en proceso con alguien? (MATCHED, etc)
+    final isMatched = thisChat?.serviceStatus != 'OPEN' && thisChat?.serviceStatus != 'JobStatus.open';
+
+    // Las ofertas se bloquean si el chat está cerrado, si ya hay trato aceptado aquí,
+    // o si el servicio ya está en proceso (MATCHED)
+    final canSendOffer = !isClosed && !isOfferAccepted && !isMatched;
+    
+    // El banner de negociación solo se muestra si podemos enviar ofertas
+    final hasActiveOffer = lastOffer != null && canSendOffer;
     final messageCount = messages.length;
 
 

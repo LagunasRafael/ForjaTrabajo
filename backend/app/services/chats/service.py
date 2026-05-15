@@ -152,7 +152,7 @@ def get_user_chats(db: Session, user_id: str):
 
         # 7. Traducir status para la UI
         status_db = str(convo.status).lower()
-        if status_db == "open":
+        if status_db in ["open", "negociating", "matched", "waiting_confirmation"]:
             status_ui = "ACTIVO"
         elif status_db == "dispute":
             status_ui = "EN DISPUTA"
@@ -175,7 +175,8 @@ def get_user_chats(db: Session, user_id: str):
             "otherUserId": str(other_user_id),
             "isOnline": False,
             "hasUnread": has_unread,
-            "isArchived": is_archived or False
+            "isArchived": is_archived or False,
+            "serviceStatus": str(request.service.status) if request and request.service else "OPEN"
         })
 
     return chat_list
