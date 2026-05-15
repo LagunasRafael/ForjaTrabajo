@@ -438,36 +438,35 @@ def complete_job(db: Session, job_id: str, user_id: str):
     if not (is_client or is_worker):
         raise HTTPException(status_code=403, detail="No tienes permiso para modificar este trabajo")
 
-    if is_worker:
-        if job.status == models.JobStatus.WAITING_CONFIRMATION:
-            return job 
-        
-        job.status = models.JobStatus.WAITING_CONFIRMATION
-        
-        if job.request and job.request.service:
-            job.request.service.status = models.JobStatus.WAITING_CONFIRMATION
-            
-        db.commit()
-        db.refresh(job)
+    if is_worker or is_client:
+        # Si ya está completado, no hacemos nada
+        if job.status == models.JobStatus.COMPLETED:
+            return job
 
-        # 🔔 Notificar al cliente que el trabajo quedó listo para confirmar
-        notif_service.notify_job_waiting_confirmation(db, job)
-
-        return job
-
-    elif is_client:
         job.status = models.JobStatus.COMPLETED
         job.completed_at = datetime.utcnow()
         
         if job.request and job.request.service:
             job.request.service.status = models.JobStatus.COMPLETED
             job.request.service.is_active = False
-
+            
         db.commit()
         db.refresh(job)
 
-        # 🔔 Notificar al trabajador que el trabajo fue finalizado (Migrado)
-        notif_service.notify_job_completed(db, job)
+        # 🔔 Notificar a la otra parte
+        if is_worker:
+            notif_service.notify_job_completed(db, job) # 🚀 Ahora enviamos notificación de fin total
+        else:
+            notif_service.notify_job_completed(db, job)
+
+        # 🔒 BLOQUEAR EL CHAT: Al finalizar el trabajo, se cierra la conversación
+        try:
+            convo = db.query(models.Conversation).filter(models.Conversation.request_id == str(job.request_id)).first()
+            if convo:
+                convo.status = models.ConversationStatus.CLOSED.value # type: ignore
+                db.commit()
+        except Exception as e:
+            logger.warning(f"⚠️ No se pudo cerrar el chat al finalizar el trabajo: {e}")
 
         return job
 
@@ -500,8 +499,14 @@ def cancel_job(db: Session, job_id: str, user_id: str, user_role: str):
     db.commit()
     db.refresh(job)
 
-    # 🔔 Notificar a la otra parte que el trabajo fue cancelado
-    notif_service.notify_job_cancelled(db, job, str(user_id))
+    # 🔒 BLOQUEAR EL CHAT: Al cancelar el trabajo, se cierra la conversación
+    try:
+        convo = db.query(models.Conversation).filter(models.Conversation.request_id == str(job.request_id)).first()
+        if convo:
+            convo.status = models.ConversationStatus.CLOSED.value # type: ignore
+            db.commit()
+    except Exception as e:
+        logger.warning(f"⚠️ No se pudo cerrar el chat al cancelar el trabajo: {e}")
 
     return job
 

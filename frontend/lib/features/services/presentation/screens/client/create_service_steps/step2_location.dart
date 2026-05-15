@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja_trabajo/features/services/presentation/widgets/client/create_service_widgets.dart'; 
-import 'package:forja_trabajo/features/services/presentation/screens/shared/utils/currency_input_formatter.dart';
 import 'package:forja_trabajo/features/services/domain/usecases/location/get_device_location_usecase.dart';
 
 class Step2Location extends ConsumerStatefulWidget {
@@ -153,10 +152,15 @@ class _Step2LocationState extends ConsumerState<Step2Location> {
                   controller: widget.priceCtrl,
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   inputFormatters: [
-                    FilteringTextInputFormatter.digitsOnly,
-                    CurrencyInputFormatter(),
+                    FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
                   ],
-                  style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: Color(0xFF10B981)),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) return 'Indica un precio';
+                    final price = double.tryParse(value);
+                    if (price == null || price <= 0) return 'El precio debe ser mayor a 0';
+                    return null;
+                  },
+                  style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w300, color: Color(0xFF10B981)),
                   decoration: InputDecoration(
                     prefixText: "\$ ",
                     prefixStyle: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: Color(0xFF10B981)),

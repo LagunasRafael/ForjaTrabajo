@@ -32,12 +32,14 @@ class OffersReceivedScreen extends ConsumerWidget {
           // El servicio ya no acepta postulaciones. Redirigir a "Mis Trabajos".
           Future.microtask(() {
             if (context.mounted) {
+              // 1. Establecer la pestaña principal (Mis Trabajos = Índice 3)
               ref.read(clientNavProvider.notifier).state = 3;
-              if (status.contains('completed') || status.contains('cancelled')) {
-                ref.read(myRequestsTabProvider.notifier).state = 2; // Finalizados
-              } else {
-                ref.read(myRequestsTabProvider.notifier).state = 1; // En curso
-              }
+              
+              // 2. Establecer la sub-pestaña (En Proceso = 1, Finalizados = 2)
+              final subTabIndex = (status.contains('completed') || status.contains('cancelled')) ? 2 : 1;
+              ref.read(myRequestsTabProvider.notifier).state = subTabIndex;
+
+              // 3. Navegar a la Home para que el Layout cargue los providers actualizados
               Navigator.pushNamedAndRemoveUntil(context, '/client_home', (route) => false);
             }
           });

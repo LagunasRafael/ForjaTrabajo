@@ -106,12 +106,22 @@ async def websocket_endpoint(websocket: WebSocket, conversation_id: str, user_id
     URL ejemplo: ws://localhost:8000/chat/ws/1234-abcd/mi-user-id
     """
     await manager.connect(websocket, conversation_id)
-    print(f"WS CONNECTED: convo={conversation_id}, user={user_id}")
+    # Marcar como leído al entrar
+    service.mark_chat_as_read(db, conversation_id, user_id)
+    print(f"WS CONNECTED & READ: convo={conversation_id}, user={user_id}")
+    
     try:
         while True:
             # Espera a que Flutter mande un mensaje
             data = await websocket.receive_text()
             print(f"WS RECEIVED DATA: {data}")
+            
+            # Verificar si la conversación está cerrada ANTES de procesar nada
+            convo = db.query(service_models.Conversation).filter(service_models.Conversation.id == conversation_id).first()
+            if convo and convo.status == service_models.ConversationStatus.CLOSED.value:
+                await websocket.send_json({"error": "Esta conversación ya está cerrada y no admite más mensajes."})
+                continue
+
             payload = json.loads(data)
             
             msg_type = payload.get("type", "text")
@@ -121,7 +131,8 @@ async def websocket_endpoint(websocket: WebSocket, conversation_id: str, user_id
                 typing_event = {
                     "type": "typing",
                     "sender_id": user_id,
-                    "is_typing": payload.get("is_typing", False)
+                    "is_typing": payload.get("is_typing", False),
+                    "conversation_id": conversation_id # 👈 Importante para el filtrado frontend
                 }
                 # Broadcast a todos EXCEPTO al que envió
                 if conversation_id in manager.active_connections:
@@ -138,12 +149,8 @@ async def websocket_endpoint(websocket: WebSocket, conversation_id: str, user_id
             
             # --- SEGURIDAD: Solo el cliente puede despachar type "offer" directamente por WS o endpoints
             if msg_type == "offer":
-                convo = db.query(service_models.Conversation).filter(service_models.Conversation.id == conversation_id).first()
                 if convo and str(convo.client_id) != str(user_id):
                     await websocket.send_json({"error": "Solo el cliente puede enviar propuestas."})
-                    continue
-                if convo and convo.status == service_models.ConversationStatus.CLOSED.value:
-                    await websocket.send_json({"error": "Esta conversación ya está cerrada."})
                     continue
                 
             
@@ -184,22 +191,42 @@ async def websocket_endpoint(websocket: WebSocket, conversation_id: str, user_id
                         sender = db.query(auth_models.User).filter(
                             auth_models.User.id == user_id
                         ).first()
-                        if receiver and receiver.fcm_token:
-                            sender_name = sender.full_name if sender else "Nuevo mensaje"
-                            preview = content[:60] + "..." if len(content) > 60 else content
-                            if msg_type == "image": preview = "📷 Imagen"
-                            elif msg_type == "audio": preview = "🎤 Audio"
-                            elif msg_type == "video": preview = "🎥 Video"
-                            elif msg_type == "location": preview = "📍 Ubicación"
-                            send_push_notification(
+                    sender = db.query(auth_models.User).filter(auth_models.User.id == user_id).first()
+                    sender_name = sender.full_name if sender else "Nuevo mensaje"
+                    preview = content[:60] + "..." if len(content) > 60 else content
+                    if msg_type == "image": preview = "📷 Imagen"
+                    elif msg_type == "audio": preview = "🎤 Audio"
+                    elif msg_type == "video": preview = "🎥 Video"
+                    elif msg_type == "location": preview = "📍 Ubicación"
+                    
+                    # 📱 Enviar Notificación Push para Tiempo Real
+                    receiver_id = str(convo.worker_id) if str(convo.client_id) == str(user_id) else str(convo.client_id)
+                    receiver = db.query(auth_models.User).filter(auth_models.User.id == receiver_id).first()
+                    
+                    if receiver and receiver.fcm_token:
+                        # Si solo hay una persona en el WS (el emisor), el receptor necesita push
+                        active_ws_count = len(manager.active_connections.get(conversation_id, []))
+                        
+                        # Siempre enviamos la push si el receptor no está en el chat activo
+                        if active_ws_count < 2:
+                            logger.info(f"📣 [WS] Enviando Push a {receiver.full_name} (Token: {str(receiver.fcm_token)[:10]}...)")
+                            response = send_push_notification(
                                 fcm_token=str(receiver.fcm_token),
                                 title=str(sender_name),
                                 body=preview,
-                                data={"type": "new_message", "conversation_id": conversation_id,
-                                      "sender_name": sender_name}
+                                data={
+                                    "type": "new_message", 
+                                    "conversation_id": conversation_id,
+                                    "sender_name": sender_name
+                                }
                             )
+                            logger.info(f"📡 [WS] Resultado Push: {response}")
+                        else:
+                            logger.info(f"✅ [WS] Receptor está en la sala {conversation_id}, no hace falta push.")
+                    else:
+                        logger.warning(f"⚠️ [WS] No se envió push: Receptor {receiver_id} no tiene token.")
             except Exception as notify_err:
-                logger.warning(f"⚠️ Error notificando mensaje WS: {notify_err}")
+                logger.error(f"❌ [WS] Error notificando: {notify_err}", exc_info=True)
 
     except WebSocketDisconnect:
         print(f"WS DISCONNECTED: convo={conversation_id}")
@@ -229,6 +256,7 @@ async def create_counter_offer(
 
     message_to_send = {
         "id": new_offer.id,
+        "conversation_id": new_offer.conversation_id,
         "sender_id": new_offer.sender_id,
         "content": new_offer.content,
         "message_type": new_offer.message_type,
@@ -249,6 +277,7 @@ async def create_counter_offer(
                 db=db,
                 conversation_id=offer_data.conversation_id,
                 receiver_id=receiver_id,
+                sender_id=str(current_user.id),
                 amount=new_offer.content
             )
     except Exception as notify_err:
@@ -294,6 +323,16 @@ def toggle_archive_chat(
         user_id=str(current_user.id)
     )
 
+@router.post("/chat/{conversation_id}/read")
+def mark_chat_as_read(
+    conversation_id: str,
+    db: Session = Depends(get_db),
+    current_user: auth_models.User = Depends(get_current_user)
+):
+    """Permite marcar un chat como leído explícitamente."""
+    service.mark_chat_as_read(db, conversation_id, str(current_user.id))
+    return {"status": "success"}
+
 @router.delete("/chat/{conversation_id}")
 def delete_chat(
     conversation_id: str,
@@ -308,7 +347,7 @@ def delete_chat(
     )
 
 @router.post("/chat/{conversation_id}/dispute")
-def open_dispute_endpoint(
+async def open_dispute_endpoint(
     conversation_id: str,
     dispute_data: schemas.DisputeCreate,
     background_tasks: BackgroundTasks,
@@ -336,6 +375,7 @@ def open_dispute_endpoint(
     # Notificamos por WebSocket a la otra parte para que aparezca el mensaje de inmediato
     message_to_send = {
         "id": response["system_message"].id,
+        "conversation_id": conversation_id,
         "sender_id": response["system_message"].sender_id,
         "content": response["system_message"].content,
         "message_type": response["system_message"].message_type,
@@ -343,13 +383,31 @@ def open_dispute_endpoint(
         "status": "pending"
     }
     
-    # Hacemos el broadcast de manera asíncrona usando async loop (si manager está importado/disponible)
-    import asyncio
+    await manager.broadcast(conversation_id, message_to_send)
+    print(f"🚩 DISPUTE broadcasted to {conversation_id}")
+
+    # 🔔 Notificar por Push que se inició una disputa
     try:
-        loop = asyncio.get_running_loop()
-        loop.create_task(manager.broadcast(conversation_id, message_to_send))
-    except RuntimeError:
-        pass # Ignoramos si no hay loop corriendo en el test
+        if convo:
+            client = db.query(auth_models.User).filter(auth_models.User.id == convo.client_id).first()
+            worker = db.query(auth_models.User).filter(auth_models.User.id == convo.worker_id).first()
+            
+            dispute_msg = "Este chat ha entrado en disputa y un administrador intervendrá pronto."
+            
+            for user in [client, worker]:
+                if user and user.fcm_token:
+                    send_push_notification(
+                        fcm_token=str(user.fcm_token),
+                        title="Disputa Iniciada",
+                        body=dispute_msg,
+                        data={
+                            "type": "dispute_opened", 
+                            "conversation_id": conversation_id,
+                            "sender_name": "Sistema"
+                        }
+                    )
+    except Exception as e:
+        print(f"Error enviando Push de Inicio de Disputa: {e}")
         
     return {"status": "success", "message": "Disputa iniciada correctamente"}
 
@@ -409,7 +467,7 @@ class AdminMessageCreate(BaseModel):
     content: str
 
 @router.post("/admin/chat/{conversation_id}/message")
-def send_admin_message(
+async def send_admin_message(
     conversation_id: str,
     message_data: AdminMessageCreate,
     db: Session = Depends(get_db),
@@ -427,7 +485,7 @@ def send_admin_message(
         id=str(uuid.uuid4()),
         conversation_id=conversation_id,
         sender_id=str(current_user.id),
-        content=f"👨‍⚖️ ADMIN: {message_data.content}",
+        content=f"ADMINISTRADOR: {message_data.content}",
         message_type=service_models.MessageType.SYSTEM.value,
         status="pending",
         created_at=datetime.utcnow()
@@ -441,6 +499,7 @@ def send_admin_message(
     # Broadcast websocket
     message_to_send = {
         "id": new_msg.id,
+        "conversation_id": conversation_id,
         "sender_id": new_msg.sender_id,
         "content": new_msg.content,
         "message_type": new_msg.message_type,
@@ -448,12 +507,37 @@ def send_admin_message(
         "status": "pending"
     }
     
-    import asyncio
+    await manager.broadcast(conversation_id, message_to_send)
+    print(f"ADMIN MSG broadcasted to {conversation_id}")
+
+    # 🔔 Notificar por Push al Cliente y al Trabajador
     try:
-        loop = asyncio.get_running_loop()
-        loop.create_task(manager.broadcast(conversation_id, message_to_send))
-    except RuntimeError:
-        pass
+        convo = db.query(service_models.Conversation).filter(service_models.Conversation.id == conversation_id).first()
+        if convo:
+            client = db.query(auth_models.User).filter(auth_models.User.id == convo.client_id).first()
+            worker = db.query(auth_models.User).filter(auth_models.User.id == convo.worker_id).first()
+            
+            preview = message_data.content[:60] + "..." if len(message_data.content) > 60 else message_data.content
+            
+            for user in [client, worker]:
+                if user and user.fcm_token:
+                    logger.info(f"📣 [ADMIN] Enviando Push a {user.full_name}...")
+                    response = send_push_notification(
+                        fcm_token=str(user.fcm_token),
+                        title="Soporte Forja",
+                        body=preview,
+                        data={
+                            "type": "new_message", 
+                            "conversation_id": conversation_id,
+                            "sender_name": "Soporte Forja"
+                        }
+                    )
+                    logger.info(f"📡 [ADMIN] Resultado Push: {response}")
+                else:
+                    logger.warning(f"⚠️ [ADMIN] Un usuario no tiene token FCM.")
+    except Exception as e:
+        print(f"Error enviando Push de Admin: {e}")
+
         
     return {"status": "success", "message": "Mensaje de administrador enviado"}
 
@@ -461,7 +545,7 @@ class DisputeResolveRequest(BaseModel):
     winner_role: str # "client" o "worker"
 
 @router.post("/admin/chat/{conversation_id}/resolve")
-def resolve_dispute(
+async def resolve_dispute(
     conversation_id: str,
     resolve_data: DisputeResolveRequest,
     background_tasks: BackgroundTasks,
@@ -491,7 +575,7 @@ def resolve_dispute(
     import datetime
     if resolve_data.winner_role == "client":
         job.status = service_models.JobStatus.CANCELLED # type: ignore
-        resolution_msg = "⚖️ RESOLUCIÓN FINAL: La disputa se ha resuelto a favor del CLIENTE. Se procederá al reembolso del dinero congelado."
+        resolution_msg = "RESOLUCION FINAL: La disputa se ha resuelto a favor del CLIENTE. Se procedera al reembolso del dinero congelado."
         
         # Enviar emails
         if client and client.email: # type: ignore
@@ -502,7 +586,7 @@ def resolve_dispute(
     elif resolve_data.winner_role == "worker":
         job.status = service_models.JobStatus.COMPLETED # type: ignore
         job.completed_at = datetime.datetime.utcnow() # type: ignore
-        resolution_msg = "⚖️ RESOLUCIÓN FINAL: La disputa se ha resuelto a favor del TRABAJADOR. El pago ha sido autorizado y liberado."
+        resolution_msg = "RESOLUCION FINAL: La disputa se ha resuelto a favor del TRABAJADOR. El pago ha sido autorizado y liberado."
         
         # Enviar emails
         if client and client.email: # type: ignore
@@ -511,6 +595,12 @@ def resolve_dispute(
             background_tasks.add_task(send_dispute_resolved_email, worker.email, True, "worker") # type: ignore
     else:
         raise HTTPException(status_code=400, detail="El ganador debe ser 'client' o 'worker'")
+        
+    # 🏁 ACTUALIZAR EL SERVICIO PRINCIPAL: Reflejar el fin de la labor en el Marketplace
+    if request_entry and request_entry.service:
+        request_entry.service.status = job.status
+        if job.status == service_models.JobStatus.COMPLETED or job.status == service_models.JobStatus.CANCELLED:
+            request_entry.service.is_active = False
         
     # Cerrar la conversación
     convo.status = service_models.ConversationStatus.CLOSED.value # type: ignore
@@ -533,6 +623,7 @@ def resolve_dispute(
     # Broadcast websocket
     message_to_send = {
         "id": new_msg.id,
+        "conversation_id": conversation_id, # 👈 ¡ESTO FALTABA!
         "sender_id": new_msg.sender_id,
         "content": new_msg.content,
         "message_type": new_msg.message_type,
@@ -540,11 +631,30 @@ def resolve_dispute(
         "status": "pending"
     }
     
-    import asyncio
+    await manager.broadcast(conversation_id, message_to_send)
+    print(f"RESOLUTION broadcasted to {conversation_id}")
+
+    # 🔔 Notificar por Push la resolución final
     try:
-        loop = asyncio.get_running_loop()
-        loop.create_task(manager.broadcast(conversation_id, message_to_send))
-    except RuntimeError:
-        pass
+        convo = db.query(service_models.Conversation).filter(service_models.Conversation.id == conversation_id).first()
+        if convo:
+            client = db.query(auth_models.User).filter(auth_models.User.id == convo.client_id).first()
+            worker = db.query(auth_models.User).filter(auth_models.User.id == convo.worker_id).first()
+            
+            for user in [client, worker]:
+                if user and user.fcm_token:
+                    send_push_notification(
+                        fcm_token=str(user.fcm_token),
+                        title="Resolución de Trabajo",
+                        body=resolution_msg,
+                        data={
+                            "type": "job_completed" if resolve_data.winner_role == "worker" else "job_cancelled",
+                            "conversation_id": conversation_id,
+                            "sender_name": "Soporte Forja"
+                        }
+                    )
+    except Exception as e:
+        print(f"Error enviando Push de Resolucion: {e}")
+
         
     return {"status": "success", "message": "Disputa resuelta y dinero manejado"}

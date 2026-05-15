@@ -3,6 +3,7 @@ import 'package:forja_trabajo/features/chat/domain/entities/message_entity.dart'
 class MessageModel extends MessageEntity {
   const MessageModel({
     required super.id,
+    required super.conversationId,
     required super.senderId,
     required super.content,
     required super.messageType,
@@ -34,6 +35,7 @@ class MessageModel extends MessageEntity {
 
     return MessageModel(
       id: json['id']?.toString() ?? '',
+      conversationId: json['conversation_id']?.toString() ?? json['conversationId']?.toString() ?? '',
       senderId: json['sender_id']?.toString() ?? json['senderId']?.toString() ?? '',
       content: json['content']?.toString() ?? '',
       messageType: json['message_type']?.toString() ?? json['type']?.toString() ?? 'text',
@@ -48,11 +50,25 @@ class MessageModel extends MessageEntity {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
+      'conversation_id': conversationId,
       'sender_id': senderId,
       'content': content,
       'message_type': messageType,
       'created_at': createdAt.toIso8601String(),
       'status': status,
     };
+  }
+
+  /// Helper para convertir desde Entity a Model si es necesario
+  factory MessageModel.fromEntity(MessageEntity entity) {
+    return MessageModel(
+      id: entity.id,
+      conversationId: entity.conversationId,
+      senderId: entity.senderId,
+      content: entity.content,
+      messageType: entity.messageType,
+      createdAt: entity.createdAt,
+      status: entity.status,
+    );
   }
 }

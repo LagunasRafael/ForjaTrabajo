@@ -58,8 +58,10 @@ class _OfferBottomSheetState extends State<OfferBottomSheet> {
           // 💰 Campo de Texto Elegante
           TextField(
             controller: _offerController,
-            keyboardType: TextInputType.number,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
+            ],
             style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             decoration: InputDecoration(
               prefixText: "\$ ",
@@ -88,7 +90,7 @@ class _OfferBottomSheetState extends State<OfferBottomSheet> {
                 final amountText = _offerController.text.trim();
                 if (amountText.isNotEmpty) {
                   final amount = double.tryParse(amountText);
-                  if (amount != null) {
+                  if (amount != null && amount > 0) {
                     widget.onSendOffer(amount); // Le avisamos a la pantalla
                     Navigator.pop(context); // Cerramos el modal
                   }

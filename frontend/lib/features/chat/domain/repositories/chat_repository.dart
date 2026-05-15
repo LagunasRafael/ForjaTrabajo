@@ -11,4 +11,5 @@ abstract class ChatRepository {
   Future<void> deleteChat(String conversationId);
   Future<String?> uploadChatMedia(String conversationId, String filePath);
   Future<void> openDispute(String conversationId, String reason);
+  Future<void> markAsRead(String conversationId);
 }
