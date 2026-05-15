@@ -1,8 +1,8 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:image_picker/image_picker.dart';
 import '../../data/datasources/verification_remote_data_source.dart';
+import '../widgets/camera_guide_overlay.dart';
 
 class IdentityVerificationScreen extends ConsumerStatefulWidget {
   const IdentityVerificationScreen({super.key});
@@ -12,7 +12,6 @@ class IdentityVerificationScreen extends ConsumerStatefulWidget {
 }
 
 class _IdentityVerificationScreenState extends ConsumerState<IdentityVerificationScreen> {
-  final _picker = ImagePicker();
   File? _ineFront;
   File? _ineBack;
   File? _selfie;
@@ -35,23 +34,37 @@ class _IdentityVerificationScreenState extends ConsumerState<IdentityVerificatio
     } catch (_) {}
   }
 
-  Future<void> _pickImage(String type) async {
-    final file = await _picker.pickImage(source: ImageSource.camera, imageQuality: 80);
-    if (file != null) {
-      setState(() {
-        switch (type) {
-          case 'front':
-            _ineFront = File(file.path);
-            break;
-          case 'back':
-            _ineBack = File(file.path);
-            break;
-          case 'selfie':
-            _selfie = File(file.path);
-            break;
-        }
-      });
-    }
+  Future<void> _openCameraFor(String type) async {
+    final captureType = type == 'front'
+        ? CaptureType.ineFront
+        : type == 'back'
+            ? CaptureType.ineBack
+            : CaptureType.selfie;
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => CameraGuideScreen(
+          captureType: captureType,
+          onPhotoTaken: (file) {
+            if (mounted) {
+              setState(() {
+                switch (type) {
+                  case 'front':
+                    _ineFront = file;
+                    break;
+                  case 'back':
+                    _ineBack = file;
+                    break;
+                  case 'selfie':
+                    _selfie = file;
+                    break;
+                }
+              });
+            }
+          },
+        ),
+      ),
+    );
   }
 
   Future<void> _submit() async {
@@ -135,11 +148,11 @@ class _IdentityVerificationScreenState extends ConsumerState<IdentityVerificatio
               ),
             ),
             const SizedBox(height: 24),
-            _buildPhotoButton('INE - Frente', _ineFront, () => _pickImage('front')),
+            _buildPhotoButton('INE - Frente', _ineFront, () => _openCameraFor('front')),
             const SizedBox(height: 12),
-            _buildPhotoButton('INE - Reverso', _ineBack, () => _pickImage('back')),
+            _buildPhotoButton('INE - Reverso', _ineBack, () => _openCameraFor('back')),
             const SizedBox(height: 12),
-            _buildPhotoButton('Selfie', _selfie, () => _pickImage('selfie')),
+            _buildPhotoButton('Selfie', _selfie, () => _openCameraFor('selfie')),
             const SizedBox(height: 32),
             ElevatedButton(
               onPressed: _isSubmitting ? null : _submit,
