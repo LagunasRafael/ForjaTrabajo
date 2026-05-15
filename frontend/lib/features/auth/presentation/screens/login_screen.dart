@@ -52,7 +52,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final authState = ref.watch(authProvider);
     final isLoading = authState.status == 'loading';
 
-    // LÓGICA DE NAVEGACIÓN Y LIMPIEZA
+    // LÓGICA DE NAVEGACIÓN Y ERRORES
     ref.listen<AuthState>(authProvider, (previous, next) {
       if (next.status == 'authenticated' && next.user != null) {
         // 🧹 1. LIMPIEZA DE DATOS
@@ -86,6 +86,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           context,
           MaterialPageRoute(builder: (context) => nextScreen),
           (route) => false,
+        );
+      } else if (next.status == 'error' && next.errorMessage.isNotEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(next.errorMessage),
+            backgroundColor: Colors.red.shade700,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 4),
+          ),
         );
       }
     });

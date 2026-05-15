@@ -229,14 +229,35 @@ export const ServiceDetail = () => {
       {/* 🟢 Agregar esto al final, antes del último </div> */}
 <div className="mt-8">
   <h2 className="text-xl font-bold text-white mb-4">Postulaciones Recibidas</h2>
-  <div className="grid grid-cols-1 gap-4">
-    {offers.map((offer) => (
-      <div key={offer.id} className="p-4 rounded-xl border border-slate-800 bg-slate-900">
-        <p className="text-slate-300">{offer.description}</p>
-        <p className="text-emerald-400 font-bold">${offer.proposedPrice}</p>
-      </div>
-    ))}
-  </div>
+  {offers.length === 0 ? (
+    <div className="p-8 text-center text-slate-500 border-2 border-dashed border-slate-800 rounded-2xl bg-slate-900/20">
+      <p className="font-medium">No se han recibido postulaciones para este servicio.</p>
+    </div>
+  ) : (
+    <div className="grid grid-cols-1 gap-4">
+      {offers.map((offer) => (
+        <div key={offer.id} className="p-4 rounded-xl border border-slate-800 bg-slate-900 hover:border-indigo-500/30 transition-all">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="h-8 w-8 rounded-full bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 text-xs font-bold uppercase">
+              {(offer.workerName || 'T').charAt(0)}
+            </div>
+            <div>
+              <p className="text-sm font-bold text-slate-200">{offer.workerName || 'Trabajador'}</p>
+              <p className="text-[10px] text-slate-500 uppercase tracking-tighter">{offer.status}</p>
+            </div>
+            <div className="ml-auto text-emerald-400 font-black text-lg">
+              ${offer.proposedPrice?.toLocaleString() || '0'}
+            </div>
+          </div>
+          {offer.description && (
+            <p className="text-xs text-slate-400 leading-relaxed pl-11 border-l border-slate-800 ml-4">
+              "{offer.description}"
+            </p>
+          )}
+        </div>
+      ))}
+    </div>
+  )}
 </div>
     </div>
   );

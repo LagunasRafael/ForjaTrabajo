@@ -71,7 +71,7 @@ class ServiceUpdate(BaseModel):
 
 class Service(ServiceBase):
     id: str
-    client_id: str  
+    client_id: str
     status: JobStatus
     is_active: bool
     created_at: datetime
@@ -81,6 +81,9 @@ class Service(ServiceBase):
     request_id: Optional[str] = None
     worker_name: Optional[str] = None
     worker_image_url: Optional[str] = None
+    worker_id: Optional[str] = None
+
+    already_reviewed: bool = False
 
     class Config:
         from_attributes = True
@@ -161,6 +164,17 @@ class ReviewResponse(BaseModel):
     class Config:
         from_attributes = True
 
+class JobSummarySchema(BaseModel):
+    id: str
+    title: str
+    status: str
+    base_price: float = 0.0
+    final_price: Optional[float] = None
+    completed_at: Optional[datetime] = None
+    other_party_name: Optional[str] = None
+    other_party_image_url: Optional[str] = None
+    role_in_job: str = "client"
+
 class UserProfileResponse(BaseModel):
     id: str
     full_name: str
@@ -169,3 +183,5 @@ class UserProfileResponse(BaseModel):
     created_at: datetime
     average_rating: float = 0.0
     total_reviews: int = 0
+    is_identity_verified: bool = False
+    completed_jobs: List[JobSummarySchema] = []

@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status,UploadFile,File
 from sqlalchemy.orm import Session
 from typing import List
+from datetime import datetime
 # Corregimos el typo de 'segurity' a 'security' y limpiamos imports
 from app.auth import schemas
 from app.auth import service
@@ -8,7 +9,7 @@ from app.auth import models
 from app.services import models as service_models
 from app.services import schemas as service_schemas
 from app.db.database import get_db
-from app.auth.security import create_access_token, create_refresh_token, get_current_user, SECRET_KEY, ALGORITHM
+from app.auth.security import create_access_token, create_refresh_token, get_current_user, check_role, SECRET_KEY, ALGORITHM
 from app.core.roles import Role # Para forzar el rol en el registro
 from app.utils.s3 import upload_file_to_s3, delete_old_file_from_s3
 from app.utils.email import generate_verification_code, send_verification_email, send_password_reset_email
@@ -422,12 +423,11 @@ from sqlalchemy import func
 
 @router.get("/users/{user_id}/profile", response_model=service_schemas.UserProfileResponse)
 def get_user_profile(user_id: str, db: Session = Depends(get_db)):
-    """Devuelve el perfil público de un usuario y sus estadísticas de reseñas."""
+    """Devuelve el perfil público de un usuario, sus estadísticas de reseñas y trabajos completados."""
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
         
-    # Calcular estadísticas de reseñas
     stats = db.query(
         func.count(service_models.Review.id).label("total"),
         func.avg(service_models.Review.rating).label("average")
@@ -435,6 +435,57 @@ def get_user_profile(user_id: str, db: Session = Depends(get_db)):
     
     total_reviews = stats.total if stats and stats.total else 0
     average_rating = round(stats.average, 1) if stats and stats.average else 0.0
+
+    completed_jobs = []
+    jobs_as_client = db.query(service_models.Job)\
+        .filter(service_models.Job.client_id == user_id, service_models.Job.status == service_models.JobStatus.COMPLETED)\
+        .order_by(service_models.Job.completed_at.desc()).limit(10).all()
+    
+    for job in jobs_as_client:
+        req = job.request
+        srv = req.service if req else None
+        worker_name = None
+        worker_image = None
+        if req and req.worker:
+            worker_name = req.worker.full_name
+            worker_image = req.worker.profile_picture_url
+        completed_jobs.append({
+            "id": job.id,
+            "title": srv.title if srv else "Sin título",
+            "status": job.status.value,
+            "base_price": float(srv.base_price) if srv and srv.base_price else 0.0,
+            "final_price": float(job.final_price) if job.final_price else 0.0,
+            "completed_at": job.completed_at,
+            "other_party_name": worker_name,
+            "other_party_image_url": worker_image,
+            "role_in_job": "client",
+        })
+
+    jobs_as_worker = db.query(service_models.Job)\
+        .filter(service_models.Job.provider_id == user_id, service_models.Job.status == service_models.JobStatus.COMPLETED)\
+        .order_by(service_models.Job.completed_at.desc()).limit(10).all()
+    
+    for job in jobs_as_worker:
+        req = job.request
+        srv = req.service if req else None
+        client_name = None
+        client_image = None
+        if srv and srv.owner:
+            client_name = srv.owner.full_name
+            client_image = srv.owner.profile_picture_url
+        completed_jobs.append({
+            "id": job.id,
+            "title": srv.title if srv else "Sin título",
+            "status": job.status.value,
+            "base_price": float(srv.base_price) if srv and srv.base_price else 0.0,
+            "final_price": float(job.final_price) if job.final_price else 0.0,
+            "completed_at": job.completed_at,
+            "other_party_name": client_name,
+            "other_party_image_url": client_image,
+            "role_in_job": "worker",
+        })
+
+    completed_jobs.sort(key=lambda j: j.get("completed_at") or datetime.min, reverse=True)
     
     return {
         "id": user.id,
@@ -443,7 +494,9 @@ def get_user_profile(user_id: str, db: Session = Depends(get_db)):
         "role": user.role.value if hasattr(user.role, 'value') else str(user.role),
         "created_at": user.created_at,
         "average_rating": average_rating,
-        "total_reviews": total_reviews
+        "total_reviews": total_reviews,
+        "is_identity_verified": bool(user.is_identity_verified),
+        "completed_jobs": completed_jobs[:10]
     }
 
 @router.get("/users/{user_id}/reviews", response_model=List[service_schemas.ReviewResponse])
@@ -469,3 +522,58 @@ def get_user_reviews(user_id: str, skip: int = 0, limit: int = 15, db: Session =
             "reviewer_image_url": reviewer.profile_picture_url if reviewer else None
         })
     return result
+
+# ============================================================
+# 🪪 VERIFICACIÓN DE IDENTIDAD (INE + Rekognition)
+# ============================================================
+from app.auth.verification_service import (
+    create_verification,
+    get_verification_status,
+    get_pending_verifications_admin,
+    approve_verification_admin,
+    reject_verification_admin
+)
+
+@router.post("/verify-identity", response_model=dict)
+async def upload_identity_verification(
+    ine_front: UploadFile = File(...),
+    ine_back: UploadFile = File(...),
+    selfie: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    return create_verification(
+        db, str(current_user.id),
+        ine_front, ine_back, selfie
+    )
+
+@router.get("/verification-status", response_model=dict)
+def read_verification_status(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    return get_verification_status(db, str(current_user.id))
+
+@router.get("/admin/verifications", response_model=list[dict])
+def list_pending_verifications(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(check_role([Role.ADMIN]))
+):
+    return get_pending_verifications_admin(db)
+
+@router.post("/admin/verifications/{verification_id}/approve", response_model=dict)
+def approve_verification(
+    verification_id: str,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(check_role([Role.ADMIN]))
+):
+    return approve_verification_admin(db, verification_id, str(current_user.id))
+
+@router.post("/admin/verifications/{verification_id}/reject", response_model=dict)
+def reject_verification(
+    verification_id: str,
+    payload: schemas.RejectVerificationRequest,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(check_role([Role.ADMIN]))
+):
+    return reject_verification_admin(db, verification_id, str(current_user.id), payload.reason)

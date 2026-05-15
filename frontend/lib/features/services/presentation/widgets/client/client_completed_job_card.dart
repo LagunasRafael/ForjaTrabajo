@@ -7,6 +7,7 @@ import 'package:forja_trabajo/features/profile/presentation/widgets/review_dialo
 
 // 🚀 Legos universales
 import 'package:forja_trabajo/features/services/presentation/screens/shared/widgets/shared_job_widgets.dart';
+import 'package:forja_trabajo/features/profile/presentation/screens/user_profile_screen.dart';
 
 class ClientCompletedJobCard extends ConsumerWidget {
   final ServiceEntity service;
@@ -75,7 +76,7 @@ class ClientCompletedJobCard extends ConsumerWidget {
                   children: [
                     _buildTitleAndStars(isDark),
                     const SizedBox(height: 6),
-                    _buildWorkerInfo(),
+                    _buildWorkerInfo(context),
                     const SizedBox(height: 12),
                     _buildDescription(isDark),
                     const SizedBox(height: 16),
@@ -116,16 +117,37 @@ class ClientCompletedJobCard extends ConsumerWidget {
     );
   }
 
-  Widget _buildWorkerInfo() {
-    return Row(
-      children: [
-        const Icon(Icons.person, size: 14, color: Colors.grey),
-        const SizedBox(width: 6),
-        Text(
-          service.authorName ?? "Trabajador asignado",
-          style: const TextStyle(color: Colors.grey, fontSize: 13),
-        ),
-      ],
+  Widget _buildWorkerInfo(BuildContext context) {
+    final workerName = service.workerName ?? "Trabajador asignado";
+    final workerId = service.workerId;
+    return GestureDetector(
+      onTap: () {
+        if (workerId != null) {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => UserProfileScreen(userId: workerId),
+            ),
+          );
+        }
+      },
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 12,
+            backgroundImage: service.workerImageUrl != null && service.workerImageUrl!.isNotEmpty
+                ? NetworkImage(service.workerImageUrl!)
+                : null,
+            child: service.workerImageUrl == null || service.workerImageUrl!.isEmpty
+                ? const Icon(Icons.person, size: 12)
+                : null,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            workerName,
+            style: const TextStyle(color: Colors.grey, fontSize: 13),
+          ),
+        ],
+      ),
     );
   }
 
@@ -169,18 +191,40 @@ class _ClientCompletedActions extends ConsumerWidget {
           ),
         ),
         const SizedBox(width: 12),
-        
-        Container(
-          height: 48, width: 48,
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey.shade300),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: IconButton(
-            icon: const Icon(Icons.star_rate_rounded, color: Colors.black54),
-            onPressed: () => _handleRateWorker(context, ref),
-          ),
-        )
+
+        service.alreadyReviewed
+            ? Container(
+                height: 48,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? const Color(0xFF1E293B)
+                      : Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  "Ya calificaste",
+                  style: TextStyle(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.grey.shade400
+                        : Colors.grey,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              )
+            : Container(
+                height: 48, width: 48,
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey.shade300),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: IconButton(
+                  icon: const Icon(Icons.star_rate_rounded, color: Colors.black54),
+                  onPressed: () => _handleRateWorker(context, ref),
+                ),
+              )
       ],
     );
   }
@@ -197,7 +241,7 @@ class _ClientCompletedActions extends ConsumerWidget {
       builder: (dialogContext) => ProviderScope(
         parent: ProviderScope.containerOf(context),
         child: forja_review.ReviewDialog(
-          jobId: service.id,
+          jobId: service.requestId ?? service.id,
           revieweeName: service.workerName ?? 'el trabajador',
         ),
       ),

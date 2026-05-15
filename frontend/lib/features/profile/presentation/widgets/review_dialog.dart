@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:dio/dio.dart';
 import '../providers/public_profile_provider.dart';
+import 'package:forja_trabajo/features/services/presentation/providers/service_list_provider.dart';
+import 'package:forja_trabajo/features/services/presentation/providers/job_management_provider.dart';
 
 class ReviewDialog extends ConsumerStatefulWidget {
   final String jobId;
@@ -34,15 +37,29 @@ class _ReviewDialogState extends ConsumerState<ReviewDialog> {
         _commentController.text.trim(),
       );
       if (mounted) {
-        Navigator.of(context).pop(true); // Devuelve true si fue exitoso
+        ref.invalidate(myRequestsProvider);
+        ref.invalidate(workerJobsProvider);
+        Navigator.of(context).pop(true);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('¡Reseña enviada con éxito!')),
         );
       }
     } catch (e) {
       if (mounted) {
+        String errorMessage = e.toString().replaceAll("Exception:", "");
+        // Si es un error de Dio, intentamos extraer el mensaje real del backend
+        if (e is DioException && e.response?.data != null) {
+          final data = e.response!.data;
+          if (data is Map && data.containsKey('detail')) {
+            errorMessage = data['detail'];
+          }
+        }
+        
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.toString().replaceAll("Exception:", "")}')),
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } finally {

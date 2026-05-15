@@ -8,13 +8,10 @@ class ApiClient {
   late Dio dio;
   final FlutterSecureStorage storage;
 
-  static String get baseUrl {
-    if (kDebugMode) {
-      // 💡 10.0.2.2 es la IP especial para que el emulador de Android vea el localhost de tu PC
-      return Platform.isAndroid ? 'http://10.0.2.2:8000' : 'http://localhost:8000';
-    }
-    return 'https://forja-api-rw0r.onrender.com';
-  }
+  //static final String _baseUrl = 'http://10.0.2.2:8000'; // LOCAL (Android Emulator)
+  static final String _baseUrl = 'https://forja-api-rw0r.onrender.com'; // PRODUCCIÓN
+
+  static String get baseUrl => _baseUrl;
 
   factory ApiClient() => _instance;
 

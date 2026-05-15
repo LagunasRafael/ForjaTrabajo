@@ -36,12 +36,15 @@ def create_service_request(db: Session, request_data: schemas.ServiceRequestCrea
 
     return db_request
 
-def get_offers_by_service(db: Session, service_id: str, client_id: str):
-    db_service = db.query(models.Service).filter(models.Service.id == service_id).first()
+def get_offers_by_service(db: Session, service_id: str, client_id: str, is_admin: bool = False):
+    from sqlalchemy.orm import joinedload
+    db_service = db.query(models.Service)\
+        .options(joinedload(models.Service.requests).joinedload(models.ServiceRequest.worker))\
+        .filter(models.Service.id == service_id).first()
     if not db_service:
         raise HTTPException(status_code=404, detail="Servicio no encontrado")
 
-    if str(db_service.client_id) == str(client_id):
+    if is_admin or str(db_service.client_id) == str(client_id):
         return db_service.requests
 
     my_requests = [
@@ -67,25 +70,40 @@ def update_service_request(db: Session, request_id: str, description: str, propo
 
 def get_worker_applications(db: Session, worker_id: str):
     try:
+        from app.services.models import Review
+        from app.auth.models import User
+
         unique_results = {}
 
-        # 1. BUSCAMOS LOS JOBS ACTIVOS
         jobs = db.query(models.Job).filter(models.Job.provider_id == worker_id).all()
 
         for job in jobs:
             req = job.request
             srv = req.service if req else None
             if not srv: continue
-            
+
+            existing_review = db.query(Review).filter(
+                Review.job_id == job.id,
+                Review.reviewer_id == worker_id
+            ).first()
+            already_reviewed = existing_review is not None
+
             fecha_buscada = job.started_at.isoformat() if job.started_at else None
             precio_mosca = req.proposed_price if req else srv.base_price
             service_id_str = str(srv.id)
-            
+
+            author_name = "Usuario Cliente"
+            author_image_url = None
+            client = db.query(User).filter(User.id == job.client_id).first()
+            if client:
+                author_name = client.full_name or "Usuario Cliente"
+                author_image_url = client.profile_picture_url
+
             unique_results[service_id_str] = {
-                "id": service_id_str, 
-                "request_id": str(req.id) if req else None, 
+                "id": service_id_str,
+                "request_id": str(req.id) if req else None,
                 "title": srv.title,
-                "description": srv.description, 
+                "description": srv.description,
                 "base_price": float(precio_mosca) if precio_mosca else 0.0,
                 "category_id": str(srv.category_id),
                 "client_id": str(job.client_id),
@@ -94,8 +112,11 @@ def get_worker_applications(db: Session, worker_id: str):
                 "exact_address": srv.exact_address,
                 "status": job.status.value if hasattr(job.status, 'value') else str(job.status),
                 "is_active": srv.is_active,
-                "created_at": fecha_buscada, 
-                "image_urls": srv.image_urls if srv.image_urls else [], 
+                "created_at": fecha_buscada,
+                "image_urls": srv.image_urls if srv.image_urls else [],
+                "already_reviewed": already_reviewed,
+                "author_name": author_name,
+                "author_image_url": author_image_url,
             }
 
         # 2. BUSCAMOS LAS POSTULACIONES PENDIENTES
@@ -110,21 +131,31 @@ def get_worker_applications(db: Session, worker_id: str):
         for req, srv in postulations:
             service_id_str = str(srv.id)
             if service_id_str not in unique_results:
+                author_name = "Usuario Cliente"
+                author_image_url = None
+                client = db.query(User).filter(User.id == srv.client_id).first()
+                if client:
+                    author_name = client.full_name or "Usuario Cliente"
+                    author_image_url = client.profile_picture_url
+
                 unique_results[service_id_str] = {
-                    "id": service_id_str, 
-                    "request_id": str(req.id), 
+                    "id": service_id_str,
+                    "request_id": str(req.id),
                     "title": srv.title,
-                    "description": req.description, 
+                    "description": req.description,
                     "base_price": float(req.proposed_price) if req.proposed_price else 0.0,
                     "category_id": str(srv.category_id),
                     "client_id": str(srv.client_id),
                     "latitude": srv.latitude,
                     "longitude": srv.longitude,
                     "exact_address": srv.exact_address,
-                    "status": "open", 
+                    "status": "open",
                     "is_active": srv.is_active,
                     "created_at": req.created_at.isoformat() if req.created_at else None,
-                    "image_urls": srv.image_urls if srv.image_urls else [], 
+                    "image_urls": srv.image_urls if srv.image_urls else [],
+                    "already_reviewed": False,
+                    "author_name": author_name,
+                    "author_image_url": author_image_url,
                 }
                 
         return list(unique_results.values())

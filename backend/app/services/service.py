@@ -255,12 +255,15 @@ def create_service_request(db: Session, request_data: schemas.ServiceRequestCrea
 
     return db_request
 
-def get_offers_by_service(db: Session, service_id: str, client_id: str):
-    db_service = db.query(models.Service).filter(models.Service.id == service_id).first()
+def get_offers_by_service(db: Session, service_id: str, client_id: str, is_admin: bool = False):
+    from sqlalchemy.orm import joinedload
+    db_service = db.query(models.Service)\
+        .options(joinedload(models.Service.requests).joinedload(models.ServiceRequest.worker))\
+        .filter(models.Service.id == service_id).first()
     if not db_service:
         raise HTTPException(status_code=404, detail="Servicio no encontrado")
 
-    if str(db_service.client_id) == str(client_id):
+    if is_admin or str(db_service.client_id) == str(client_id):
         return db_service.requests
 
     my_requests = [

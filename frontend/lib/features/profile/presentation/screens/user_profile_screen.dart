@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../providers/public_profile_provider.dart';
 import '../../domain/models/public_profile_model.dart';
 import '../../domain/models/review_model.dart';
@@ -38,20 +39,44 @@ class UserProfileScreen extends ConsumerWidget {
             padding: const EdgeInsets.all(24.0),
             child: Column(
               children: [
-                CircleAvatar(
-                  radius: 50,
-                  backgroundImage: profile.profilePictureUrl != null && profile.profilePictureUrl!.isNotEmpty
-                      ? NetworkImage(profile.profilePictureUrl!)
-                      : null,
-                  child: profile.profilePictureUrl == null || profile.profilePictureUrl!.isEmpty
-                      ? const Icon(Icons.person, size: 50)
-                      : null,
-                ),
+                profile.profilePictureUrl != null && profile.profilePictureUrl!.isNotEmpty
+                    ? CachedNetworkImage(
+                        imageUrl: profile.profilePictureUrl!,
+                        imageBuilder: (context, imageProvider) => CircleAvatar(
+                          radius: 50,
+                          backgroundImage: imageProvider,
+                        ),
+                        placeholder: (context, url) => const CircleAvatar(
+                          radius: 50,
+                          child: Icon(Icons.person, size: 50),
+                        ),
+                        errorWidget: (context, url, error) => const CircleAvatar(
+                          radius: 50,
+                          child: Icon(Icons.person, size: 50),
+                        ),
+                      )
+                    : const CircleAvatar(
+                        radius: 50,
+                        child: Icon(Icons.person, size: 50),
+                      ),
                 const SizedBox(height: 16),
                 Text(
                   profile.fullName,
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
                 ),
+                if (profile.isIdentityVerified)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.verified, color: Colors.blue, size: 18),
+                        const SizedBox(width: 4),
+                        Text('Identidad Verificada',
+                            style: TextStyle(color: Colors.blue, fontSize: 13, fontWeight: FontWeight.w600)),
+                      ],
+                    ),
+                  ),
                 const SizedBox(height: 4),
                 Text(
                   profile.role.toUpperCase(),
@@ -59,6 +84,20 @@ class UserProfileScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 16),
                 _buildStatsRow(profile),
+                if (profile.completedJobs.isNotEmpty) ...[
+                  const SizedBox(height: 24),
+                  const Divider(),
+                  const SizedBox(height: 16),
+                  const Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Trabajos completados',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  ...profile.completedJobs.map((job) => _buildJobCard(context, profile, job)),
+                ],
                 const SizedBox(height: 24),
                 const Divider(),
                 const SizedBox(height: 16),
@@ -110,6 +149,64 @@ class UserProfileScreen extends ConsumerWidget {
     );
   }
 
+  Widget _buildJobCard(BuildContext context, PublicProfileModel profile, JobSummaryModel job) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    job.title,
+                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    job.roleInJob == 'client' ? 'Como cliente' : 'Como trabajador',
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  ),
+                ],
+              ),
+            ),
+            if (job.otherPartyName != null)
+              Column(
+                children: [
+                  job.otherPartyImageUrl != null && job.otherPartyImageUrl!.isNotEmpty
+                      ? CachedNetworkImage(
+                          imageUrl: job.otherPartyImageUrl!,
+                          imageBuilder: (context, imageProvider) => CircleAvatar(
+                            radius: 18,
+                            backgroundImage: imageProvider,
+                          ),
+                          errorWidget: (context, url, error) => const CircleAvatar(
+                            radius: 18,
+                            child: Icon(Icons.person, size: 18),
+                          ),
+                        )
+                      : const CircleAvatar(
+                          radius: 18,
+                          child: Icon(Icons.person, size: 18),
+                        ),
+                  const SizedBox(height: 4),
+                  Text(
+                    job.otherPartyName!.split(' ').first,
+                    style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                  ),
+                ],
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildStatsRow(PublicProfileModel profile) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -157,15 +254,22 @@ class UserProfileScreen extends ConsumerWidget {
           children: [
             Row(
               children: [
-                CircleAvatar(
-                  radius: 20,
-                  backgroundImage: review.reviewerImageUrl != null && review.reviewerImageUrl!.isNotEmpty
-                      ? NetworkImage(review.reviewerImageUrl!)
-                      : null,
-                  child: review.reviewerImageUrl == null || review.reviewerImageUrl!.isEmpty
-                      ? const Icon(Icons.person, size: 20)
-                      : null,
-                ),
+                review.reviewerImageUrl != null && review.reviewerImageUrl!.isNotEmpty
+                      ? CachedNetworkImage(
+                          imageUrl: review.reviewerImageUrl!,
+                          imageBuilder: (context, imageProvider) => CircleAvatar(
+                            radius: 20,
+                            backgroundImage: imageProvider,
+                          ),
+                          errorWidget: (context, url, error) => const CircleAvatar(
+                            radius: 20,
+                            child: Icon(Icons.person, size: 20),
+                          ),
+                        )
+                      : const CircleAvatar(
+                          radius: 20,
+                          child: Icon(Icons.person, size: 20),
+                        ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(

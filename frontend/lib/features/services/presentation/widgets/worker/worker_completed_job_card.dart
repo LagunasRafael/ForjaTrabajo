@@ -69,33 +69,52 @@ class WorkerCompletedJobCard extends StatelessWidget {
                     Text(
                       "Ganancia: \$${job.basePrice.toStringAsFixed(0)}",
                       style: const TextStyle(
-                        fontSize: 15, 
-                        fontWeight: FontWeight.w600, 
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
                         color: Color(0xFF4B5563)
                       ),
                     ),
                   ],
                 ),
-                // Botón para calificar
-                TextButton.icon(
-                  onPressed: () {
-                    showDialog(
-                      context: context,
-                      builder: (dialogContext) => ProviderScope(
-                        parent: ProviderScope.containerOf(context),
-                        child: forja_review.ReviewDialog(
-                          jobId: job.id,
-                          revieweeName: job.authorName ?? 'el cliente',
+                job.alreadyReviewed
+                    ? Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? const Color(0xFF1E293B)
+                              : Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          "Ya calificaste",
+                          style: TextStyle(
+                            color: Theme.of(context).brightness == Brightness.dark
+                                ? Colors.grey.shade400
+                                : Colors.grey,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      )
+                    : TextButton.icon(
+                        onPressed: () {
+                          showDialog(
+                            context: context,
+                            builder: (dialogContext) => ProviderScope(
+                              parent: ProviderScope.containerOf(context),
+                              child: forja_review.ReviewDialog(
+                                jobId: job.id,
+                                revieweeName: job.authorName ?? 'el cliente',
+                              ),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.star_outline, size: 16, color: Color(0xFF6366F1)),
+                        label: const Text(
+                          "Calificar",
+                          style: TextStyle(color: Color(0xFF6366F1), fontWeight: FontWeight.bold)
                         ),
                       ),
-                    );
-                  },
-                  icon: const Icon(Icons.star_outline, size: 16, color: Color(0xFF6366F1)),
-                  label: const Text(
-                    "Calificar", 
-                    style: TextStyle(color: Color(0xFF6366F1), fontWeight: FontWeight.bold)
-                  ),
-                ),
               ],
             ),
           ],

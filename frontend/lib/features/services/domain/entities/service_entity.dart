@@ -3,15 +3,15 @@ enum JobStatus { open, matched, waiting_confirmation, completed, cancelled }
 class ServiceEntity {
   final String id;
   final String title;
-  final String? summary; // ✅ NUEVO
+  final String? summary;
   final String description;
   final double basePrice;
   final String categoryId;
   final String clientId;
-  final double? latitude; // ✅ NUEVO
-  final double? longitude; // ✅ NUEVO
-  final String? exactAddress; // ✅ NUEVO
-  final List<String> imageUrls; // ✅ NUEVO
+  final double? latitude;
+  final double? longitude;
+  final String? exactAddress;
+  final List<String> imageUrls;
   final JobStatus status;
   final bool isActive;
   final DateTime createdAt;
@@ -20,6 +20,8 @@ class ServiceEntity {
   final String? requestId;
   final String? workerName;
   final String? workerImageUrl;
+  final String? workerId;
+  final bool alreadyReviewed;
 
   ServiceEntity({
     required this.id,
@@ -41,6 +43,8 @@ class ServiceEntity {
     this.requestId,
     this.workerName,
     this.workerImageUrl,
+    this.workerId,
+    this.alreadyReviewed = false,
   });
 
   ServiceEntity copyWith({
@@ -63,6 +67,8 @@ class ServiceEntity {
     String? requestId,
     String? workerName,
     String? workerImageUrl,
+    String? workerId,
+    bool? alreadyReviewed,
   }) {
     return ServiceEntity(
       id: id ?? this.id,
@@ -84,6 +90,8 @@ class ServiceEntity {
       requestId: requestId ?? this.requestId,
       workerName: workerName ?? this.workerName,
       workerImageUrl: workerImageUrl ?? this.workerImageUrl,
+      workerId: workerId ?? this.workerId,
+      alreadyReviewed: alreadyReviewed ?? this.alreadyReviewed,
     );
   }
 }

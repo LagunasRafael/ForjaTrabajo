@@ -21,6 +21,8 @@ class ServiceModel extends ServiceEntity {
     super.requestId,
     super.workerName,
     super.workerImageUrl,
+    super.workerId,
+    super.alreadyReviewed,
   });
 
   factory ServiceModel.fromJson(Map<String, dynamic> json) {
@@ -59,14 +61,16 @@ class ServiceModel extends ServiceEntity {
       imageUrls: parseImages(json['image_urls']),
       status: statusFromString(json['status']?.toString() ?? 'open'),
       isActive: json['is_active'] ?? true,
-      createdAt: json['created_at'] != null 
-          ? DateTime.parse(json['created_at'].toString()) 
+      createdAt: json['created_at'] != null
+          ? DateTime.parse(json['created_at'].toString())
           : DateTime.now(),
       authorName: json['author_name']?.toString() ?? "Usuario Cliente",
       profilePictureUrl: json['author_image_url']?.toString(),
       requestId: json['request_id']?.toString(),
       workerName: json['worker_name']?.toString(),
       workerImageUrl: json['worker_image_url']?.toString(),
+      workerId: json['worker_id']?.toString(),
+      alreadyReviewed: json['already_reviewed'] ?? false,
     );
   }
 
@@ -108,6 +112,8 @@ class ServiceModel extends ServiceEntity {
       requestId: entity.requestId,
       workerName: entity.workerName,
       workerImageUrl: entity.workerImageUrl,
+      workerId: entity.workerId,
+      alreadyReviewed: entity.alreadyReviewed,
     );
   }
 
@@ -132,6 +138,8 @@ class ServiceModel extends ServiceEntity {
       requestId: requestId,
       workerName: workerName,
       workerImageUrl: workerImageUrl,
+      workerId: workerId,
+      alreadyReviewed: alreadyReviewed,
     );
   }
 }
