@@ -9,7 +9,7 @@ from app.auth import models
 from app.services import models as service_models
 from app.services import schemas as service_schemas
 from app.db.database import get_db
-from app.auth.security import create_access_token, create_refresh_token, get_current_user, SECRET_KEY, ALGORITHM
+from app.auth.security import create_access_token, create_refresh_token, get_current_user, check_role, SECRET_KEY, ALGORITHM
 from app.core.roles import Role # Para forzar el rol en el registro
 from app.utils.s3 import upload_file_to_s3, delete_old_file_from_s3
 from app.utils.email import generate_verification_code, send_verification_email, send_password_reset_email
