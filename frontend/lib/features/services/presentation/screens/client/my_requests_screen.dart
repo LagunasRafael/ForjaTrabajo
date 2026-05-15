@@ -25,7 +25,9 @@ class _MyRequestsScreenState extends ConsumerState<MyRequestsScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    // Leer el valor actual del provider para arrancar en la pestaña correcta
+    final initialIndex = ref.read(myRequestsTabProvider);
+    _tabController = TabController(length: 3, vsync: this, initialIndex: initialIndex);
   }
 
   @override

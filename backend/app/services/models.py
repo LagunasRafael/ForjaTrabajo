@@ -8,7 +8,8 @@ from sqlalchemy import (
     Boolean,
     Numeric,
     Float, 
-    JSON  
+    JSON,
+    Integer
 )
 from sqlalchemy.orm import relationship
 from datetime import datetime
@@ -109,6 +110,13 @@ class Service(Base):
                 if request.worker and request.worker.profile_picture_url:
                     return request.worker.profile_picture_url
         return None
+
+    @property
+    def worker_id(self):
+        for request in self.requests:
+            if request.job and request.job.status != JobStatus.CANCELLED:
+                return str(request.worker_id)
+        return None
 # -----------------------------
 # SERVICE REQUEST (POSTULACIÓN DEL WORKER)  
 # -----------------------------
@@ -181,6 +189,7 @@ class Job(Base):
 class ConversationStatus(str, enum.Enum):
     OPEN = "open"
     CLOSED = "closed" 
+    DISPUTE = "dispute"
 
 class MessageType(str, enum.Enum):
     TEXT = "text" 
@@ -220,3 +229,42 @@ class Message(Base):
     
     created_at = Column(DateTime, default=datetime.utcnow)
     conversation = relationship("Conversation", back_populates="messages")
+
+# -----------------------------
+# NOTIFICACIONES IN-APP
+# -----------------------------
+class Notification(Base):
+    __tablename__ = "notifications"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
+    title = Column(String(150), nullable=False)
+    body = Column(Text, nullable=True)
+    notification_type = Column(String(50), nullable=False) # e.g., 'new_application', 'job_accepted'
+    reference_id = Column(String(36), nullable=True) # e.g., service_id, job_id, conversation_id
+    is_read = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User")
+
+# -----------------------------
+# REVIEWS AND RATINGS
+# -----------------------------
+class Review(Base):
+    """
+    Modelo para guardar la calificación y comentario después de finalizar un trabajo.
+    """
+    __tablename__ = "reviews"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    job_id = Column(String(36), ForeignKey("jobs.id"), nullable=False, index=True)
+    reviewer_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
+    reviewee_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
+    
+    rating = Column(Integer, nullable=False) # 1 to 5
+    comment = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    job = relationship("Job", backref="reviews")
+    reviewer = relationship("User", foreign_keys=[reviewer_id])
+    reviewee = relationship("User", foreign_keys=[reviewee_id])

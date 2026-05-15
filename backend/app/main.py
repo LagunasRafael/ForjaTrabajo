@@ -45,7 +45,7 @@ app.add_middleware(
 from app.core.rate_limit import limiter
 
 # 🚦 Rate Limiting (Protección contra fuerza bruta y SPAM)
-app.state.limiter = limiter
+app.state.limiter = limiter # type: ignore
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
 

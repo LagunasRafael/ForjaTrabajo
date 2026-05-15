@@ -7,35 +7,8 @@ class ApiClient {
   late Dio dio;
   final FlutterSecureStorage storage;
 
-  // Constructor
-  ApiClient()
-      : dio = Dio(
-          BaseOptions(
-            // OJO: Esta URL cambiará dependiendo de Project IDX. 
-            // Por ahora ponemos la estándar de FastAPI local.
-           
-           // baseUrl: 'http://127.0.0.1:8000', 
-           baseUrl: 'http://127.0.0.1:8000',
-            connectTimeout: const Duration(seconds: 10),
-            receiveTimeout: const Duration(seconds: 10),
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-            },
-          ),
-        ),
-        storage = const FlutterSecureStorage() {
-   //final String _baseUrl =
-     // 'https://forja-api-rw0r.onrender.com'; // ✨ URL DE PRODUCCIÓN
-  // final String _baseUrl = Platform.isAndroid
-  //     ? 'http://10.0.2.2:8000'
-  //     : 'http://localhost:8000'; // 💻 URL DE DESARROLLO
-
-//Pruebaaaaa
-static final String _baseUrl = Platform.isAndroid
-      ? 'http://10.0.2.2:8000'      // 📱 Emulador Android -> PC local
-      : 'http://localhost:8000';    // 💻 iOS o Web -> PC local
-//Termina la pruebaaaa
+  //static final String _baseUrl = 'http://10.0.2.2:8000'; // LOCAL (Android Emulator)
+  static final String _baseUrl = 'https://forja-api-rw0r.onrender.com'; // PRODUCCIÓN
 
   static String get baseUrl => _baseUrl;
 

@@ -1,9 +1,10 @@
 from sqlalchemy.orm import Session
+from typing import Optional
 from app.auth import models, schemas
 from app.auth.security import hash_password, verify_password 
 from app.core.roles import Role
 
-def get_user_by_email(db: Session, email: str):
+def get_user_by_email(db: Session, email: str) -> Optional[models.User]:
     return db.query(models.User).filter(models.User.email == email).first()
 
 def get_user_by_phone(db: Session, phone: str):
@@ -11,10 +12,10 @@ def get_user_by_phone(db: Session, phone: str):
         return None
     return db.query(models.User).filter(models.User.phone == phone).first()
 
-def get_user_by_id(db: Session, user_id: int):
+def get_user_by_id(db: Session, user_id: str) -> Optional[models.User]:
     return db.query(models.User).filter(models.User.id == user_id).first()
 
-def create_user(db: Session, user_data: dict, verification_code: str = None):
+def create_user(db: Session, user_data: dict, verification_code: Optional[str] = None):
     db_user = models.User(
         email=user_data["email"],
         hashed_password=hash_password(user_data["password"]),
@@ -33,7 +34,7 @@ def authenticate_user(db: Session, email: str, password: str):
     user = get_user_by_email(db, email)
     if not user:
         return None
-    if not verify_password(password, user.hashed_password):
+    if not verify_password(password, str(user.hashed_password)):
         return None
     return user
 

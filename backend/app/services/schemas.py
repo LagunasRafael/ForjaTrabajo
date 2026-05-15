@@ -71,7 +71,7 @@ class ServiceUpdate(BaseModel):
 
 class Service(ServiceBase):
     id: str
-    client_id: str  
+    client_id: str
     status: JobStatus
     is_active: bool
     created_at: datetime
@@ -81,6 +81,9 @@ class Service(ServiceBase):
     request_id: Optional[str] = None
     worker_name: Optional[str] = None
     worker_image_url: Optional[str] = None
+    worker_id: Optional[str] = None
+
+    already_reviewed: bool = False
 
     class Config:
         orm_mode = True
@@ -137,3 +140,47 @@ class Job(BaseModel):
 
 class ServiceActiveUpdate(BaseModel):
     is_active: bool
+
+# -----------------------------
+# REVIEWS AND PROFILES
+# -----------------------------
+
+class ReviewCreate(BaseModel):
+    rating: int # 1 to 5
+    comment: Optional[str] = None
+
+class ReviewResponse(BaseModel):
+    id: str
+    job_id: str
+    reviewer_id: str
+    reviewee_id: str
+    rating: int
+    comment: Optional[str] = None
+    created_at: datetime
+    
+    reviewer_name: Optional[str] = None
+    reviewer_image_url: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+class JobSummarySchema(BaseModel):
+    id: str
+    title: str
+    status: str
+    base_price: float = 0.0
+    final_price: Optional[float] = None
+    completed_at: Optional[datetime] = None
+    other_party_name: Optional[str] = None
+    other_party_image_url: Optional[str] = None
+    role_in_job: str = "client"
+
+class UserProfileResponse(BaseModel):
+    id: str
+    full_name: str
+    profile_picture_url: Optional[str] = None
+    role: str
+    created_at: datetime
+    average_rating: float = 0.0
+    total_reviews: int = 0
+    completed_jobs: List[JobSummarySchema] = []

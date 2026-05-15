@@ -125,4 +125,17 @@ class ChatRemoteDataSource {
       return null;
     }
   }
+
+  Future<void> openDispute(String conversationId, String reason) async {
+    try {
+      await _apiClient.dio.post(
+        '/services/chat/$conversationId/dispute',
+        data: {"reason": reason},
+      );
+      print("✅ Disputa abierta exitosamente para la conversación: $conversationId");
+    } catch (e) {
+      print("🚨 ERROR EN DATASOURCE (OPEN DISPUTE): $e");
+      rethrow;
+    }
+  }
 }
