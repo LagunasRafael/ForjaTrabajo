@@ -12,7 +12,8 @@ import 'package:forja_trabajo/features/services/presentation/widgets/client/clie
 import 'package:forja_trabajo/features/services/presentation/widgets/client/client_completed_job_card.dart';
 
 class MyRequestsScreen extends ConsumerStatefulWidget {
-  const MyRequestsScreen({super.key});
+  final int initialIndex;
+  const MyRequestsScreen({super.key, this.initialIndex = 0});
 
   @override
   ConsumerState<MyRequestsScreen> createState() => _MyRequestsScreenState();
@@ -25,9 +26,9 @@ class _MyRequestsScreenState extends ConsumerState<MyRequestsScreen>
   @override
   void initState() {
     super.initState();
-    // Leer el valor actual del provider para arrancar en la pestaña correcta
-    final initialIndex = ref.read(myRequestsTabProvider);
-    _tabController = TabController(length: 3, vsync: this, initialIndex: initialIndex);
+    // Prioridad: 1. Índice que viene por constructor (notificaciones) 2. Índice del provider (navegación interna)
+    final index = widget.initialIndex != 0 ? widget.initialIndex : ref.read(myRequestsTabProvider);
+    _tabController = TabController(length: 3, vsync: this, initialIndex: index);
   }
 
   @override

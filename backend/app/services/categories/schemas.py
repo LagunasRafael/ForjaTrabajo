@@ -13,7 +13,7 @@ class Category(CategoryBase):
     is_active: bool
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class CategoryUpdate(BaseModel):
     name: Optional[str] = None

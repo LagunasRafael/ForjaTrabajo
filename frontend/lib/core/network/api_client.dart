@@ -1,15 +1,20 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart'; // Para kDebugMode
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'dart:io' show Platform; // Import Platform for conditional baseUrl
+import 'dart:io' show Platform;
 
 class ApiClient {
   static final ApiClient _instance = ApiClient._internal();
   late Dio dio;
   final FlutterSecureStorage storage;
 
-  static final String _baseUrl = 'https://forja-api-rw0r.onrender.com'; // URL DE PRODUCCIÓN
-
-  static String get baseUrl => _baseUrl;
+  static String get baseUrl {
+    if (kDebugMode) {
+      // 💡 10.0.2.2 es la IP especial para que el emulador de Android vea el localhost de tu PC
+      return Platform.isAndroid ? 'http://10.0.2.2:8000' : 'http://localhost:8000';
+    }
+    return 'https://forja-api-rw0r.onrender.com';
+  }
 
   factory ApiClient() => _instance;
 
@@ -17,7 +22,7 @@ class ApiClient {
   ApiClient._internal() : storage = const FlutterSecureStorage() {
     dio = Dio(
       BaseOptions(
-        baseUrl: _baseUrl,
+        baseUrl: baseUrl, // 👈 Ahora usa el getter dinámico
         connectTimeout: const Duration(seconds: 10),
         receiveTimeout: const Duration(seconds: 10),
         headers: {

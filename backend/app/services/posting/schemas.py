@@ -42,7 +42,7 @@ class Service(ServiceBase):
     author_image_url: Optional[str] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class ServiceActiveUpdate(BaseModel):
     is_active: bool

@@ -6,7 +6,8 @@ import 'package:forja_trabajo/features/services/domain/entities/service_entity.d
 import 'package:forja_trabajo/features/services/presentation/widgets/worker/worker_job_list_view.dart';
 
 class MyJobsScreen extends ConsumerStatefulWidget {
-  const MyJobsScreen({super.key});
+  final int initialIndex;
+  const MyJobsScreen({super.key, this.initialIndex = 0});
 
   @override
   ConsumerState<MyJobsScreen> createState() => _WorkerMyJobsScreenState();
@@ -19,7 +20,11 @@ class _WorkerMyJobsScreenState extends ConsumerState<MyJobsScreen> with SingleTi
   void initState() {
     super.initState();
     // Mantenemos tu controlador personalizado porque es más potente que el DefaultTabController
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(
+      length: 3, 
+      vsync: this, 
+      initialIndex: widget.initialIndex
+    );
   }
 
   @override

@@ -39,6 +39,15 @@ def send_push_notification(fcm_token: str, title: str, body: str, data: dict = N
         data = {}
 
     try:
+        # 📱 Configuración específica para que Android muestre el "Pop" (Heads-up)
+        android_config = messaging.AndroidConfig(
+            priority='high',
+            notification=messaging.AndroidNotification(
+                channel_id='forja_notif_channel',
+                default_sound=True
+            )
+        )
+
         # Preparamos el mensaje
         message = messaging.Message(
             notification=messaging.Notification(
@@ -47,6 +56,7 @@ def send_push_notification(fcm_token: str, title: str, body: str, data: dict = N
             ),
             data=data,
             token=fcm_token,
+            android=android_config
         )
 
         # Lo enviamos

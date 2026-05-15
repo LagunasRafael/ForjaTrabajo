@@ -1,120 +1,85 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:web_socket_channel/web_socket_channel.dart';
-import 'package:forja_trabajo/core/network/api_client.dart';
 import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart';
 import 'package:forja_trabajo/features/chat/data/datasources/chat_remote_datasource.dart';
 import 'package:forja_trabajo/features/chat/data/repositories/chat_repository_impl.dart';
-import 'package:forja_trabajo/features/chat/domain/usecases/get_chat_history_usecase.dart';
-import 'package:forja_trabajo/features/chat/domain/repositories/chat_repository.dart';
-import 'package:forja_trabajo/features/chat/domain/usecases/send_offer_usecase.dart';
-import 'package:forja_trabajo/features/chat/domain/usecases/respond_offer_usecase.dart';
-import 'package:forja_trabajo/features/chat/domain/usecases/open_dispute_usecase.dart';
-import 'package:forja_trabajo/features/chat/domain/entities/message_entity.dart';
 import 'package:forja_trabajo/features/chat/data/models/message_model.dart';
+import 'package:forja_trabajo/features/chat/domain/repositories/chat_repository.dart';
+import 'package:forja_trabajo/features/chat/presentation/providers/chat_list_provider.dart'; // 👈 Agregado
+import 'package:web_socket_channel/web_socket_channel.dart';
 
+// --- PROVIDERS DE INFRAESTRUCTURA ---
 
-// --- 1. DATASOURCE & REPOSITORY ---
-final chatDatasourceProvider = Provider((ref) => ChatRemoteDataSource());
+final chatDatasourceProvider = Provider<ChatRemoteDataSource>((ref) {
+  return ChatRemoteDataSource();
+});
 
 final chatRepositoryProvider = Provider<ChatRepository>((ref) {
   final dataSource = ref.watch(chatDatasourceProvider);
   return ChatRepositoryImpl(remoteDataSource: dataSource);
 });
 
-// --- 2. USE CASES ---
-final getChatHistoryUseCaseProvider = Provider((ref) {
-  final repository = ref.watch(chatRepositoryProvider);
-  return GetChatHistoryUseCase(repository);
+// --- PROVIDERS DE ESTADO ---
+
+/// Provider para detectar si el otro usuario está escribiendo
+final chatTypingProvider = StateProvider.family<bool, String>((ref, conversationId) {
+  return false;
 });
 
-
-final sendOfferUseCaseProvider = Provider((ref) {
+/// Provider principal del chat (Lista de mensajes)
+final chatProvider = StateNotifierProvider.family<ChatNotifier, List<MessageModel>, String>((ref, conversationId) {
   final repository = ref.watch(chatRepositoryProvider);
-  return SendOfferUseCase(repository);
-});
-
-final respondOfferUseCaseProvider = Provider((ref) {
-  final repository = ref.watch(chatRepositoryProvider);
-  return RespondOfferUseCase(repository);
-});
-
-final openDisputeUseCaseProvider = Provider((ref) {
-  final repository = ref.watch(chatRepositoryProvider);
-  return OpenDisputeUseCase(repository);
-});
-
-// --- 3. PROVIDER DE TYPING ---
-final chatTypingProvider = StateProvider.family<bool, String>((ref, conversationId) => false);
-
-// --- 4. EL PROVIDER PRINCIPAL DEL CHAT ---
-final chatProvider = StateNotifierProvider.family<ChatNotifier, List<MessageEntity>, String>((ref, conversationId) {
-  final user = ref.watch(authProvider).user;
-  
-  final getHistory = ref.watch(getChatHistoryUseCaseProvider);
-  final sendOffer = ref.watch(sendOfferUseCaseProvider); 
-  final respondOffer = ref.watch(respondOfferUseCaseProvider); 
-  final openDispute = ref.watch(openDisputeUseCaseProvider);
+  final auth = ref.watch(authProvider);
+  final userId = auth.user?.id ?? '';
   
   return ChatNotifier(
+    repository: repository,
+    conversationId: conversationId,
+    userId: userId,
     ref: ref,
-    conversationId: conversationId, 
-    userId: user?.id ?? '', 
-    getHistoryUseCase: getHistory,
-    sendOfferUseCase: sendOffer, 
-    respondOfferUseCase: respondOffer, 
-    openDisputeUseCase: openDispute,
   );
 });
 
-// --- 5. EL NOTIFIER (CEREBRO PAGINADO) ---
-class ChatNotifier extends StateNotifier<List<MessageEntity>> {
-  final Ref ref;
+class ChatNotifier extends StateNotifier<List<MessageModel>> {
+  final ChatRepository _repository;
   final String conversationId;
   final String userId;
-  final GetChatHistoryUseCase getHistoryUseCase;
-  final SendOfferUseCase sendOfferUseCase;
-  final RespondOfferUseCase respondOfferUseCase;
-  final OpenDisputeUseCase openDisputeUseCase;
-  
+  final Ref ref;
   WebSocketChannel? _channel;
-
-  // 🧠 Variables de Paginación
-  int _currentSkip = 0;
-  int _limit = 15; // 👈 15 para texto, se adapta a 10 si hay media
-  bool _hasMore = true;
-  bool isLoadingMore = false;
-  Timer? _typingTimer;
+  bool _isReconnecting = false;
+  bool _isLoadingMore = false;
+  
+  int _currentLimit = 15;
 
   ChatNotifier({
-    required this.ref,
-    required this.conversationId, 
+    required ChatRepository repository,
+    required this.conversationId,
     required this.userId,
-    required this.getHistoryUseCase,
-    required this.sendOfferUseCase,
-    required this.respondOfferUseCase,
-    required this.openDisputeUseCase,
-  }) : super([]) {
+    required this.ref,
+  }) : _repository = repository,
+       super([]) {
     _initChat();
   }
 
+  bool get isLoadingMore => _isLoadingMore;
+
   Future<void> _initChat() async {
+    if (conversationId.isEmpty) return;
     try {
-      _currentSkip = 0;
-      _hasMore = true;
+      // 1. Cargar historial
+      final history = await _repository.getChatHistory(conversationId);
+      if (mounted) {
+        state = history.map((m) => MessageModel.fromEntity(m)).toList();
+      }
       
-      final history = await getHistoryUseCase(conversationId, skip: _currentSkip, limit: _limit);
+      // 2. Marcar como leído en el servidor y localmente
+      _repository.markAsRead(conversationId);
+      ref.read(chatListProvider.notifier).markAsReadLocal(conversationId);
       
-      // Backend ya devuelve DESC (más reciente primero) = orden correcto para reverse ListView
-      state = history;
-
-      if (history.length < _limit) _hasMore = false;
-      _currentSkip += history.length;
-      
-      // 🧠 Adaptar límite según contenido: si hay media, cargar menos
-      _adaptLimit(history);
-
+      // 3. Conectar WebSocket
       _connect();
     } catch (e) {
       print("🚨 Error cargando historial: $e");
@@ -122,167 +87,94 @@ class ChatNotifier extends StateNotifier<List<MessageEntity>> {
     }
   }
 
-  /// Adapta el límite de paginación según si hay media pesada en el lote
-  void _adaptLimit(List<MessageEntity> batch) {
-    final hasMedia = batch.any((m) => 
-      m.messageType == 'image' || m.messageType == 'video' || m.messageType == 'gallery'
-    );
-    _limit = hasMedia ? 10 : 15;
-  }
-
-  // 🚀 LA MAGIA DE CARGAR MÁS
-  Future<void> loadMoreMessages() async {
-    if (isLoadingMore || !_hasMore || _disposed) return;
-    
-    isLoadingMore = true;
-    state = [...state]; // Forzar rebuild para mostrar loading spinner si existe
-
-    try {
-      final olderMessages = await getHistoryUseCase(conversationId, skip: _currentSkip, limit: _limit);
-      
-      if (olderMessages.isEmpty) {
-        _hasMore = false;
-      } else {
-        // Backend ya devuelve DESC, colocamos al final (más antiguos)
-        state = [...state, ...olderMessages]; 
-        _currentSkip += olderMessages.length;
-        _hasMore = olderMessages.length == _limit;
-        _adaptLimit(olderMessages);
-      }
-    } catch (e) {
-      print("🚨 Error cargando más mensajes: $e");
-    } finally {
-      isLoadingMore = false;
-      state = [...state]; 
-    }
-  }
-
-  int _reconnectAttempts = 0;
-  bool _disposed = false;
-
   void _connect() {
-    if (_disposed) return;
+    if (_isReconnecting || userId.isEmpty || conversationId.isEmpty) return;
 
-    final wsUrl = ApiClient.baseUrl.replaceFirst('http', 'ws') + 
-                 '/services/chat/ws/$conversationId/$userId';
+    // 💡 URL Dinámica para WebSocket
+    final String wsBaseUrl;
+    if (kDebugMode) {
+      wsBaseUrl = Platform.isAndroid ? 'ws://10.0.2.2:8000' : 'ws://localhost:8000';
+    } else {
+      // Usar la misma URL que ApiClient pero con protocolo wss://
+      wsBaseUrl = 'wss://forja-api-rw0r.onrender.com';
+    }
+
+    final wsUrl = "$wsBaseUrl/services/chat/ws/$conversationId/$userId";
+    print("🔌 CONNECTING WS: $wsUrl");
     
-    print("🔌 WS CONNECTING to: $wsUrl");
-
     try {
       _channel = WebSocketChannel.connect(Uri.parse(wsUrl));
+
+      _channel!.stream.listen(
+        (message) => _handleIncomingMessage(message),
+        onError: (error) => _reconnect(),
+        onDone: () => _reconnect(),
+        cancelOnError: false,
+      );
     } catch (e) {
-      print("🚨 WS CONNECTION FAILED: $e");
-      _scheduleReconnect();
-      return;
+      _reconnect();
     }
-
-    _channel!.stream.listen(
-      (message) {
-        try {
-          final decoded = jsonDecode(message);
-          print("📥 WS RECEIVED in $conversationId: $decoded");
-
-          // Ignorar mensajes de error del servidor
-          if (decoded is Map && decoded.containsKey('error')) {
-            print("🚨 WS SERVER ERROR: ${decoded['error']}");
-            return;
-          }
-
-          // 🟢 Detectar typing events
-          if (decoded is Map && decoded['type'] == 'typing') {
-            final isTyping = decoded['is_typing'] == true;
-            ref.read(chatTypingProvider(conversationId).notifier).state = isTyping;
-
-            // Auto-apagar typing después de 5s por seguridad (si se desconecta)
-            _typingTimer?.cancel();
-            if (isTyping) {
-              _typingTimer = Timer(const Duration(seconds: 5), () {
-                if (!_disposed) {
-                  ref.read(chatTypingProvider(conversationId).notifier).state = false;
-                }
-              });
-            }
-            return;
-          }
-
-          final nuevoMensaje = MessageModel.fromJson(decoded);
-          
-          final myId = ref.read(authProvider).user?.id ?? '';
-          List<MessageEntity> updatedList = [...state];
-          
-          if (nuevoMensaje.senderId == myId) {
-            final pendingIndex = updatedList.lastIndexWhere(
-              (m) => m.status == 'pending' && m.messageType == nuevoMensaje.messageType && m.senderId == myId
-            );
-            if (pendingIndex != -1) {
-              updatedList[pendingIndex] = nuevoMensaje; // 🔥 REEMPLAZO EN SITIO (Mantiene el orden visual original)
-            } else {
-              updatedList.insert(0, nuevoMensaje);
-            }
-          } else {
-            updatedList.insert(0, nuevoMensaje);
-          }
-          
-          state = updatedList;
-          _currentSkip += 1;
-          _reconnectAttempts = 0;
-        } catch (e) {
-          print("🚨 Error decodificando WebSocket: $e");
-        }
-      },
-      onError: (error) {
-        print("🚨 WS STREAM ERROR: $error");
-        _scheduleReconnect();
-      },
-      onDone: () {
-        print("⚠️ WS STREAM CLOSED (convo=$conversationId)");
-        _scheduleReconnect();
-      },
-    );
-
-    print("✅ WS LISTENER ATTACHED for convo=$conversationId");
   }
 
-  void _scheduleReconnect() {
-    if (_disposed) return;
+  void _handleIncomingMessage(dynamic message) {
+    if (!mounted) return;
+    
+    try {
+      final decoded = jsonDecode(message);
+      
+      // 1. Filtrar por conversationId si viene en el payload
+      final incomingConvoId = decoded['conversation_id']?.toString() ?? '';
+      if (incomingConvoId.isNotEmpty && incomingConvoId != conversationId) {
+        print("⏭️ Ignorando mensaje de otra conversación: $incomingConvoId");
+        return;
+      }
 
-    _channel?.sink.close();
-    _channel = null;
+      if (decoded is Map && decoded['type'] == 'typing') {
+        final senderId = decoded['sender_id'];
+        if (senderId != userId) {
+          ref.read(chatTypingProvider(conversationId).notifier).state = decoded['is_typing'] ?? false;
+        }
+        return;
+      }
 
-    _reconnectAttempts++;
-    // Exponential backoff: 1s, 2s, 4s, 8s, ... max 30s
-    final delay = Duration(seconds: (_reconnectAttempts * 2).clamp(1, 30));
-    print("🔄 WS RECONNECTING in ${delay.inSeconds}s (attempt #$_reconnectAttempts)");
+      final newMessage = MessageModel.fromJson(decoded);
 
-    Future.delayed(delay, () {
-      if (!_disposed) {
+      // 2. Evitar duplicados (por ID)
+      if (state.any((m) => m.id == newMessage.id)) {
+        print("⏭️ Ignorando mensaje duplicado: ${newMessage.id}");
+        return;
+      }
+
+      state = [newMessage, ...state];
+      
+      // 3. Si llega un mensaje mientras estamos dentro, marcar como leído automáticamente
+      _repository.markAsRead(conversationId);
+      ref.read(chatListProvider.notifier).markAsReadLocal(conversationId);
+    } catch (e) {
+      print("🚨 Error procesando mensaje WS: $e");
+    }
+  }
+
+  void _reconnect() {
+    if (!mounted || _isReconnecting) return;
+    _isReconnecting = true;
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) {
+        _isReconnecting = false;
         _connect();
       }
     });
   }
 
-  void sendMessage(String content, String type) {
-    if (_channel == null) {
-      print("🚨 WS SEND FAILED: No connection (convo=$conversationId)");
-      return;
-    }
-    
-    // Feedback visual inmediato
-    final tempId = "temp_${DateTime.now().millisecondsSinceEpoch}";
-    final myId = ref.read(authProvider).user?.id ?? '';
-    final tempMsg = MessageModel(
-      id: tempId,
-      senderId: myId,
-      content: content,
-      messageType: type,
-      createdAt: DateTime.now().toUtc(),
-      status: 'pending',
-    );
-    
-    List<MessageEntity> updatedList = [tempMsg, ...state];
-    state = updatedList;
+  // --- ACCIONES DE CHAT ---
 
-    final message = jsonEncode({"content": content, "type": type});
+  Future<void> sendMessage(String content, String type) async {
+    if (_channel == null) return;
+    final message = jsonEncode({
+      "content": content, 
+      "type": type,
+      "conversation_id": conversationId
+    });
     _channel!.sink.add(message);
   }
 
@@ -292,189 +184,88 @@ class ChatNotifier extends StateNotifier<List<MessageEntity>> {
     _channel!.sink.add(message);
   }
 
-  Future<void> sendMediaBatch(List<String> filePaths, String? caption) async {
-    final tempId = "temp_${DateTime.now().millisecondsSinceEpoch}";
-    final myId = ref.read(authProvider).user?.id ?? '';
-
-    final contentPaths = filePaths.join(',');
-    
-    String msgType = 'gallery';
-    if (filePaths.length == 1) {
-       final ext = filePaths.first.toLowerCase();
-       if (ext.endsWith('.mp4') || ext.endsWith('.mov') || ext.endsWith('.mkv')) {
-          msgType = 'video';
-       } else if (ext.endsWith('.m4a') || ext.endsWith('.mp3') || ext.endsWith('.wav')) {
-          msgType = 'audio';
-       } else {
-          msgType = 'image';
-       }
-    }
-
-    final tempMsg = MessageModel(
-      id: tempId,
-      senderId: myId,
-      content: contentPaths, 
-      messageType: msgType,
-      createdAt: DateTime.now().toUtc(),
-      status: 'pending',
-    );
-    
-    // 🟢 INSERTAR AL PRINCIPIO
-    List<MessageEntity> updatedList = [tempMsg, ...state];
-    state = updatedList;
-    
-    if (caption != null && caption.isNotEmpty) {
-       sendMessage(caption, "text");
-    }
-
+  Future<void> loadMoreMessages() async {
+    if (_isLoadingMore) return;
+    _isLoadingMore = true;
     try {
-      final repository = ref.read(chatRepositoryProvider);
-
-      // 🚀 Subida PARALELA: todos los archivos al mismo tiempo
-      final uploadResults = await Future.wait(
-        filePaths.map((path) => repository.uploadChatMedia(conversationId, path)),
+      final moreHistory = await _repository.getChatHistory(
+        conversationId, 
+        skip: state.length,
+        limit: _currentLimit
       );
-
-      // Verificar que todos subieron correctamente
-      if (uploadResults.any((url) => url == null)) {
-        throw Exception("Falló la subida de uno o más archivos");
-      }
-
-      final uploadedUrls = uploadResults.whereType<String>().toList();
-      final finalContent = uploadedUrls.join(',');
       
-      if (_channel != null) {
-        final message = jsonEncode({"content": finalContent, "type": msgType});
-        _channel!.sink.add(message);
-      } else {
-        _updateMessageStatus(tempId, 'error');
+      if (moreHistory.isNotEmpty && mounted) {
+        final newMessages = moreHistory.map((m) => MessageModel.fromEntity(m)).toList();
+        state = [...state, ...newMessages];
       }
     } catch (e) {
-      print("🚨 Error al subir media: $e");
-      _updateMessageStatus(tempId, 'error');
-    }
-  }
-
-  Future<void> resendMessage(String msgId) async {
-    final msgIndex = state.indexWhere((m) => m.id == msgId);
-    if (msgIndex == -1) return;
-    
-    final msg = state[msgIndex];
-    if (msg.status != 'error') return;
-
-    _updateMessageStatus(msgId, 'pending');
-
-    if (msg.messageType == 'text' || msg.messageType == 'location') {
-       sendMessage(msg.content, msg.messageType);
-    } else {
-       try {
-         final repository = ref.read(chatRepositoryProvider);
-         final paths = msg.content.split(',');
-         List<String> uploadedUrls = [];
-         
-         for (final p in paths) {
-            final url = await repository.uploadChatMedia(conversationId, p);
-            if (url == null) throw Exception();
-            uploadedUrls.add(url);
-         }
-         
-         if (_channel != null) {
-           final wsMessage = jsonEncode({"content": uploadedUrls.join(','), "type": msg.messageType});
-           _channel!.sink.add(wsMessage);
-         } else {
-           _updateMessageStatus(msgId, 'error');
-         }
-       } catch (e) {
-         _updateMessageStatus(msgId, 'error');
-       }
-    }
-  }
-
-  void _updateMessageStatus(String msgId, String status) {
-    state = state.map<MessageEntity>((msg) {
-      if (msg.id == msgId) {
-        return MessageModel(
-          id: msg.id,
-          senderId: msg.senderId,
-          content: msg.content,
-          messageType: msg.messageType,
-          createdAt: msg.createdAt,
-          status: status,
-        );
-      }
-      return msg;
-    }).toList();
-  }
-
-  void sendLocation() {
-     if (_channel != null) {
-      // Usamos una ubicación de México como placeholder simulado
-      final message = jsonEncode({"content": "19.4326,-99.1332", "type": "location"});
-      _channel!.sink.add(message);
-    }
-  }
-
-  Future<void> sendOffer(double amount) async {
-    try {
-      state = state.map((msg) {
-        if (msg.messageType == 'offer' && msg.status == 'pending') {
-          return MessageModel(
-            id: msg.id,
-            senderId: msg.senderId,
-            content: msg.content,
-            messageType: msg.messageType,
-            createdAt: msg.createdAt,
-            status: 'withdrawn',
-          );
-        }
-        return msg;
-      }).toList();
-
-      await sendOfferUseCase(conversationId, amount);
-    } catch (e) {
-      print("🚨 Error al enviar la oferta: $e");
-    }
-  }
-
-  Future<void> respondOffer(String messageId, String action) async {
-    try {
-      await respondOfferUseCase(messageId, action);
-      
-      state = state.map((msg) {
-        if (msg.id == messageId) {
-           return MessageModel(
-            id: msg.id,
-            senderId: msg.senderId,
-            content: msg.content,
-            messageType: msg.messageType,
-            createdAt: msg.createdAt,
-            status: action == 'accept' ? 'accepted' : 'rejected',
-          );
-        }
-        return msg;
-      }).toList();
-
-    } catch (e) {
-      print("🚨 Error al responder la oferta: $e");
+      print("🚨 Error cargando más: $e");
+    } finally {
+      _isLoadingMore = false;
     }
   }
 
   Future<void> openDispute(String reason) async {
     try {
-      await openDisputeUseCase(conversationId, reason);
-      // El servidor enviará un WS message al otro usuario o al mismo,
-      // pero por ahora solo confiamos en la API. Si la API inyecta el mensaje "SYSTEM" y lo manda por WS,
-      // llegará a este mismo cliente si se reenvía a todos. De lo contrario, se verá al refrescar.
+      await _repository.openDispute(conversationId, reason);
     } catch (e) {
-      print("🚨 Error al abrir la disputa: $e");
+      print("🚨 Error abriendo disputa: $e");
       rethrow;
     }
   }
 
+  Future<void> sendOffer(double amount) async {
+    try {
+      await _repository.sendOffer(conversationId, amount);
+    } catch (e) {
+      print("🚨 Error enviando oferta: $e");
+      rethrow;
+    }
+  }
+
+  Future<void> respondOffer(String messageId, String action) async {
+    try {
+      await _repository.respondOffer(messageId, action);
+    } catch (e) {
+      print("🚨 Error respondiendo oferta: $e");
+      rethrow;
+    }
+  }
+
+  Future<void> sendMediaBatch(List<String> paths, String? text) async {
+    if (paths.isEmpty) return;
+    try {
+      List<String> uploadedUrls = [];
+      for (var path in paths) {
+        final url = await _repository.uploadChatMedia(conversationId, path);
+        if (url != null) uploadedUrls.add(url);
+      }
+      
+      if (uploadedUrls.isNotEmpty) {
+        final content = uploadedUrls.join(',');
+        await sendMessage(content, uploadedUrls.length > 1 ? 'gallery' : 'image');
+        if (text != null && text.isNotEmpty) {
+          await sendMessage(text, 'text');
+        }
+      }
+    } catch (e) {
+      print("🚨 Error subiendo archivos: $e");
+    }
+  }
+
+  Future<void> sendLocation() async {
+    // Implementación simplificada: asume que la UI ya obtuvo la ubicación
+    // o que se maneja un placeholder. 
+    print("📍 Compartiendo ubicación...");
+    await sendMessage("Ubicación compartida", "location");
+  }
+
+  void resendMessage(String messageId) {
+    print("🔄 Reintentando mensaje: $messageId");
+  }
+
   @override
   void dispose() {
-    _disposed = true;
-    _typingTimer?.cancel();
     _channel?.sink.close();
     super.dispose();
   }

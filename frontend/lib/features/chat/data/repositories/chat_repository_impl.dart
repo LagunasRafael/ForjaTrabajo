@@ -56,4 +56,9 @@ class ChatRepositoryImpl implements ChatRepository {
   Future<void> openDispute(String conversationId, String reason) async {
     await remoteDataSource.openDispute(conversationId, reason);
   }
+
+  @override
+  Future<void> markAsRead(String conversationId) async {
+    await remoteDataSource.markAsRead(conversationId);
+  }
 }

@@ -352,6 +352,9 @@ def update_fcm_token(
             models.User.id != current_user.id
         ).update({"fcm_token": ""}, synchronize_session=False)
         
+    # LOG PARA DEBUG
+    print(f"DEBUG: Actualizando FCM token para usuario {current_user.email}. Token: {data.fcm_token[:15]}...")
+    
     current_user.fcm_token = data.fcm_token # type: ignore
     db.commit()
     return {"status": "success", "message": "FCM token actualizado"}

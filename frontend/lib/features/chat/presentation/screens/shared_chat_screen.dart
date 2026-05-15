@@ -4,6 +4,7 @@ import 'package:forja_trabajo/features/chat/domain/entities/message_entity.dart'
 import 'package:forja_trabajo/features/chat/presentation/widgets/negotiation_card.dart';
 import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart';
 import 'package:forja_trabajo/features/chat/presentation/providers/chat_provider.dart';
+import 'package:forja_trabajo/features/chat/presentation/providers/chat_list_provider.dart'; // 👈 Agregado
 import 'package:forja_trabajo/features/chat/presentation/widgets/chat_bubble.dart';
 import 'package:forja_trabajo/features/chat/presentation/widgets/chat_app_bar.dart';
 import 'package:forja_trabajo/features/chat/presentation/widgets/chat_input_area.dart';
@@ -146,8 +147,23 @@ class _SharedChatScreenState extends ConsumerState<SharedChatScreen> {
     final lastOffer = _getLastOffer(messages);
     final isOfferAccepted = messages.any((m) => m.messageType == 'offer' && 
         (m.status.toLowerCase() == 'accept' || m.status.toLowerCase() == 'accepted'));
-    final canSendOffer = !isOfferAccepted;
-    final hasActiveOffer = lastOffer != null && canSendOffer;
+    
+    // Detectar si el chat está cerrado desde la lista de chats
+    final chatList = ref.watch(chatListProvider);
+    final thisChat = chatList.maybeWhen(
+      data: (chats) {
+        try {
+          return chats.firstWhere((c) => c.id == widget.conversationId);
+        } catch (_) {
+          return null;
+        }
+      },
+      orElse: () => null,
+    );
+    
+    final isClosed = thisChat?.status == 'CERRADO' || isOfferAccepted;
+    final canSendOffer = !isClosed;
+    final hasActiveOffer = lastOffer != null && !isClosed;
     final messageCount = messages.length;
 
 
@@ -263,6 +279,7 @@ class _SharedChatScreenState extends ConsumerState<SharedChatScreen> {
             conversationId: widget.conversationId,
             isClient: isClient,
             canSendOffer: canSendOffer,
+            isEnabled: !isClosed,
             onMessageSent: _scrollToBottom,
           ),
         ],

@@ -51,7 +51,7 @@ class WorkerDescriptionField extends StatelessWidget {
     controller: controller, 
     maxLines: 4, 
     style: const TextStyle(fontSize: 15), 
-    decoration: workerInputStyle("Ej. Tengo experiencia en reparaciones...")
+    decoration: workerInputStyle("Agrega una breve descripción de tu trabajo...")
   );
 }
 

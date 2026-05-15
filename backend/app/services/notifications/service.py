@@ -52,10 +52,10 @@ def notify_new_application(db: Session, service_entry: models.Service, worker: a
             ).count()
 
             if request_count <= 1:
-                title = "Nueva postulación recibida 🔨"
+                title = "Nueva postulación recibida"
                 body = f"{worker.full_name} se postuló a: {service_entry.title}"
             else:
-                title = "Postulaciones recibidas 🔨"
+                title = "Postulaciones recibidas"
                 body = f"{request_count} personas se han postulado a: {service_entry.title}"
             
             # Buscar si ya hay una notificación de este tipo no leída para este servicio
@@ -97,7 +97,7 @@ def notify_job_accepted(db: Session, job: models.Job, service_title: str, conver
     try:
         worker = db.query(auth_models.User).filter(auth_models.User.id == job.provider_id).first()
         if worker:
-            title = "¡Fuiste aceptado! 🎉"
+            title = "¡Fuiste aceptado!"
             body = f"El cliente aceptó tu propuesta para: {service_title}"
             
             create_in_app_notification(
@@ -129,7 +129,7 @@ def notify_job_completed(db: Session, job: models.Job):
     try:
         worker = db.query(auth_models.User).filter(auth_models.User.id == job.provider_id).first()
         if worker:
-            title = "Trabajo finalizado ✅"
+            title = "Trabajo finalizado"
             body = f"El cliente confirmó la finalización de el trabajo"
             
             create_in_app_notification(
@@ -170,14 +170,16 @@ def notify_job_waiting_confirmation(db: Session, job: models.Job):
     except Exception as e:
         logger.warning(f"⚠️ Error en notify_job_waiting_confirmation: {e}")
 
-def notify_offer_responded(db: Session, conversation_id: str, receiver_id: str, amount: str, action: str):
+def notify_offer_responded(db: Session, conversation_id: str, receiver_id: str, sender_id: str, amount: str, action: str):
     """Notifica a un usuario que su contraoferta fue aceptada o rechazada."""
     try:
         receiver = db.query(auth_models.User).filter(auth_models.User.id == receiver_id).first()
+        sender = db.query(auth_models.User).filter(auth_models.User.id == sender_id).first()
         if receiver:
-            action_text = "aceptó" if action == "accept" else "rechazó"
-            title = f"Oferta {action_text} 💸"
-            body = f"Tu contraoferta de ${amount} fue {action_text}."
+            action_text = "acepto" if action == "accept" else "rechazo"
+            sender_name = sender.full_name if sender else "La otra parte"
+            title = f"Oferta {action_text}"
+            body = f"{sender_name} {action_text} tu contraoferta de ${amount}."
             
             create_in_app_notification(
                 db=db, user_id=str(receiver.id), title=title, body=body,
@@ -189,18 +191,25 @@ def notify_offer_responded(db: Session, conversation_id: str, receiver_id: str, 
                     fcm_token=str(receiver.fcm_token),
                     title=title,
                     body=body,
-                    data={"type": "offer_responded", "action": action, "conversation_id": str(conversation_id)}
+                    data={
+                        "type": "offer_responded", 
+                        "action": action, 
+                        "conversation_id": str(conversation_id),
+                        "sender_name": sender_name
+                    }
                 )
     except Exception as e:
         logger.warning(f"⚠️ Error en notify_offer_responded: {e}")
 
-def notify_new_offer(db: Session, conversation_id: str, receiver_id: str, amount: str):
+def notify_new_offer(db: Session, conversation_id: str, receiver_id: str, sender_id: str, amount: str):
     """Notifica al usuario que recibió una nueva contraoferta en el chat."""
     try:
         receiver = db.query(auth_models.User).filter(auth_models.User.id == receiver_id).first()
+        sender = db.query(auth_models.User).filter(auth_models.User.id == sender_id).first()
         if receiver:
-            title = "Nueva contraoferta recibida 💰"
-            body = f"Recibiste una propuesta de ${amount} MXN"
+            sender_name = sender.full_name if sender else "Alguien"
+            title = "Nueva contraoferta"
+            body = f"{sender_name} ha realizado una contraoferta de ${amount}"
             
             create_in_app_notification(
                 db=db, user_id=str(receiver.id), title=title, body=body,
@@ -212,7 +221,11 @@ def notify_new_offer(db: Session, conversation_id: str, receiver_id: str, amount
                     fcm_token=str(receiver.fcm_token),
                     title=title,
                     body=body,
-                    data={"type": "new_offer", "conversation_id": str(conversation_id)}
+                    data={
+                        "type": "new_offer", 
+                        "conversation_id": str(conversation_id),
+                        "sender_name": sender_name
+                    }
                 )
     except Exception as e:
         logger.warning(f"⚠️ Error en notify_new_offer: {e}")

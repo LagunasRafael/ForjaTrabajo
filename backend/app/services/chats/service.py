@@ -138,19 +138,32 @@ def get_user_chats(db: Session, user_id: str):
             else:
                 last_message_text = last_msg.content
         else:
-            last_message_text = "No hay mensajes aún"
+            last_message_text = "¡Comienza la conversación!"
 
-        # 6. Calcular si hay mensajes no leídos (si el último mensaje es del otro usuario)
+        # 6. Calcular si hay mensajes no leídos usando el nuevo sistema de timestamps
+        last_read = convo.last_read_at_client if str(convo.client_id) == str(user_id) else convo.last_read_at_worker
         has_unread = False
-        if last_msg and str(last_msg.sender_id) != str(user_id):
+        if last_msg and last_msg.created_at > last_read:
             has_unread = True
 
-        # 7. Armar el JSON exacto que espera Flutter
+        # 7. Traducir status para la UI
+        status_db = str(convo.status).lower()
+        if status_db == "open":
+            status_ui = "ACTIVO"
+        elif status_db == "dispute":
+            status_ui = "EN DISPUTA"
+        else:
+            status_ui = "CERRADO"
+
+        # 8. Obtener el estado de archivado por usuario
+        is_archived = convo.is_archived_by_client if str(convo.client_id) == str(user_id) else convo.is_archived_by_worker
+
+        # 9. Armar el JSON exacto que espera Flutter
         chat_list.append({
             "id": str(convo.id),
             "name": other_name,
             "serviceName": str(service_name),
-            "status": "ACTIVO" if str(convo.status) == "OPEN" else "CERRADO",
+            "status": status_ui,
             "lastMessage": last_message_text,
             "time": last_msg.created_at.strftime("%I:%M %p") if last_msg and hasattr(last_msg.created_at, "strftime") else "", # type: ignore
             "avatarUrl": avatar,
@@ -158,7 +171,7 @@ def get_user_chats(db: Session, user_id: str):
             "otherUserId": str(other_user_id),
             "isOnline": False,
             "hasUnread": has_unread,
-            "isArchived": convo.is_archived or False
+            "isArchived": is_archived or False
         })
 
     return chat_list
@@ -253,6 +266,7 @@ def handle_offer_action(db: Session, message_id: str, action: str, user_id: str)
         db=db,
         conversation_id=str(convo.id),
         receiver_id=offer_msg.sender_id,
+        sender_id=str(user_id),
         amount=offer_msg.content,
         action=action
     )
@@ -267,14 +281,30 @@ def toggle_chat_archive(db: Session, conversation_id: str, is_archived: bool, us
     if not convo:
         raise HTTPException(status_code=404, detail="Conversación no encontrada")
         
-    # Verificar que el usuario tenga permisos
-    if str(convo.client_id) != str(user_id) and str(convo.worker_id) != str(user_id):
+    # Verificar que el usuario tenga permisos y aplicar el archivo solo a ese usuario
+    if str(convo.client_id) == str(user_id):
+        convo.is_archived_by_client = is_archived # type: ignore
+    elif str(convo.worker_id) == str(user_id):
+        convo.is_archived_by_worker = is_archived # type: ignore
+    else:
         raise HTTPException(status_code=403, detail="No tienes permiso para modificar este chat")
 
-    # Guardamos el estado de archivo
-    convo.is_archived = is_archived # type: ignore
     db.commit()
     return {"message": "Estado del chat actualizado correctamente"}
+
+def mark_chat_as_read(db: Session, conversation_id: str, user_id: str):
+    """Actualiza el timestamp de última lectura para un usuario en un chat."""
+    convo = db.query(models.Conversation).filter(models.Conversation.id == conversation_id).first()
+    if not convo:
+        return
+    
+    now = datetime.utcnow()
+    if str(convo.client_id) == str(user_id):
+        convo.last_read_at_client = now # type: ignore
+    elif str(convo.worker_id) == str(user_id):
+        convo.last_read_at_worker = now # type: ignore
+    
+    db.commit()
 
 def delete_conversation(db: Session, conversation_id: str, user_id: str):
     """Aplica soft-delete a la conversación. Si ambos la eliminan, se borra permanentemente."""
@@ -315,7 +345,7 @@ def open_dispute(db: Session, conversation_id: str, user_id: str, reason: str):
     convo.status = models.ConversationStatus.DISPUTE.value # type: ignore
     convo.updated_at = datetime.utcnow() # type: ignore
 
-    system_msg_content = f"🚨 {user_name} ha abierto una DISPUTA.\nMotivo: {reason}\nUn administrador revisará este caso pronto."
+    system_msg_content = f"{user_name} ha abierto una DISPUTA.\nMotivo: {reason}\nUn administrador revisará este caso pronto."
     new_msg = models.Message(
         conversation_id=str(conversation_id),
         sender_id=str(user_id),
