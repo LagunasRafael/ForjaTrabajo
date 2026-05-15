@@ -90,7 +90,7 @@ class WorkerProfileScreen extends ConsumerWidget {
 
             // 👇 4. EL MENÚ LIMPIO (Usando Shared Widgets)
             ProfileMenuCard(
-              children: [
+              [
                 ProfileMenuOption(
                     icon: LucideIcons.user,
                     title: 'Editar Perfil',

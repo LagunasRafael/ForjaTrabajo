@@ -24,8 +24,8 @@ def create_category(db: Session, category: schemas.CategoryCreate):
     if existing_category:
         if existing_category.is_active:
             raise HTTPException(status_code=400, detail="La categoría ya existe y está activa.")
-        existing_category.is_active = True
-        existing_category.description = category.description
+        existing_category.is_active = True  # type: ignore
+        existing_category.description = category.description  # type: ignore
         db.commit()
         db.refresh(existing_category)
         return existing_category
@@ -52,9 +52,9 @@ def update_category(db: Session, category_id: UUID, data: schemas.CategoryUpdate
     if not category:
         raise HTTPException(status_code=404, detail="Categoría no encontrada")
     if data.name is not None:
-        category.name = data.name
+        category.name = data.name  # type: ignore
     if data.description is not None:
-        category.description = data.description
+        category.description = data.description  # type: ignore
     db.commit()
     db.refresh(category)
     return category
@@ -166,10 +166,10 @@ def update_service(db: Session, service_id: str, data: schemas.ServiceUpdate, us
         raise HTTPException(status_code=400, detail="No puedes editar un servicio que ya fue tomado o finalizado")
 
     if data.category_id is not None:
-        category = db.query(models.Category).filter(models.Category.id == str(data.category_id)).first()
+        category = db.query(models.Category).filter(models.Category.id == str(data.category_id)).first()  # type: ignore
         if not category:
             raise HTTPException(status_code=400, detail="La categoría no existe")
-        service_entry.category_id = str(data.category_id)
+        service_entry.category_id = str(data.category_id)  # type: ignore
 
     fields = ["title", "summary", "description", "base_price", "latitude", "longitude", "exact_address", "image_urls"]
     for field in fields:
@@ -191,8 +191,8 @@ def cancel_service(db: Session, service_id: str, user_id: str, user_role: str):
     is_assigned_worker = False
     
     if service_entry.status == models.JobStatus.MATCHED:
-        active_job = db.query(models.Job).filter(
-            models.Job.client_id == service_entry.client_id,
+        active_job = db.query(models.Job).join(models.ServiceRequest).filter(
+            models.ServiceRequest.service_id == service_entry.id,
             models.Job.status == models.JobStatus.MATCHED
         ).first()
         if active_job and str(active_job.provider_id) == str(user_id):
@@ -201,7 +201,7 @@ def cancel_service(db: Session, service_id: str, user_id: str, user_role: str):
     if not (is_owner or is_admin or is_assigned_worker):
         raise HTTPException(status_code=403, detail="No tienes permiso para cancelar")
         
-    service_entry.status = models.JobStatus.CANCELLED
+    service_entry.status = models.JobStatus.CANCELLED  # type: ignore
     db.commit()
     db.refresh(service_entry)
     return {"message": "Servicio cancelado correctamente", "status": "cancelled"}
@@ -212,12 +212,18 @@ def delete_service(db: Session, service_id: str):
     if not service_entry:
         raise HTTPException(status_code=404, detail="Servicio no encontrado")
 
-    db.query(models.ServiceRequest).filter(models.ServiceRequest.service_id == service_id).delete()
+    # 1. Obtener IDs de las solicitudes (ServiceRequests) de este servicio
+    request_ids_query = db.query(models.ServiceRequest.id).filter(models.ServiceRequest.service_id == service_id).all()
+    request_ids = [r[0] for r in request_ids_query]
     
-    db.query(models.Job).filter(
-        models.Job.client_id == service_entry.client_id,
-    ).delete() 
+    # 2. Borrar los Jobs asociados a esas solicitudes
+    if request_ids:
+        db.query(models.Job).filter(models.Job.request_id.in_(request_ids)).delete(synchronize_session=False)
 
+    # 3. Borrar las solicitudes
+    db.query(models.ServiceRequest).filter(models.ServiceRequest.service_id == service_id).delete(synchronize_session=False)
+    
+    # 4. Borrar el servicio
     db.delete(service_entry)
     db.commit()
     
@@ -277,8 +283,8 @@ def update_service_request(db: Session, request_id: str, description: str, propo
     if not postulation:
         raise HTTPException(status_code=404, detail="Postulación no encontrada")
 
-    postulation.description = description
-    postulation.proposed_price = proposed_price
+    postulation.description = description  # type: ignore
+    postulation.proposed_price = proposed_price  # type: ignore
 
     db.commit()
     db.refresh(postulation)
@@ -388,8 +394,9 @@ def accept_postulation(db: Session, request_id: str, current_user_id: str):
         raise HTTPException(status_code=400, detail="Servicio no disponible")
 
     try:
-        service_entry.status = models.JobStatus.MATCHED
-        postulation.status = "accepted"
+        # 3. Actualizar estados
+        service_entry.status = models.JobStatus.MATCHED  # type: ignore
+        postulation.status = "accepted"  # type: ignore
         
         new_job = models.Job(
             request_id=postulation.id,
@@ -439,10 +446,10 @@ def complete_job(db: Session, job_id: str, user_id: str):
         if job.status == models.JobStatus.WAITING_CONFIRMATION:
             return job 
         
-        job.status = models.JobStatus.WAITING_CONFIRMATION
+        job.status = models.JobStatus.WAITING_CONFIRMATION  # type: ignore
         
         if job.request and job.request.service:
-            job.request.service.status = models.JobStatus.WAITING_CONFIRMATION
+            job.request.service.status = models.JobStatus.WAITING_CONFIRMATION  # type: ignore
             
         db.commit()
         db.refresh(job)
@@ -453,12 +460,12 @@ def complete_job(db: Session, job_id: str, user_id: str):
         return job
 
     elif is_client:
-        job.status = models.JobStatus.COMPLETED
-        job.completed_at = datetime.utcnow()
+        job.status = models.JobStatus.COMPLETED  # type: ignore
+        job.completed_at = datetime.utcnow()  # type: ignore
         
         if job.request and job.request.service:
-            job.request.service.status = models.JobStatus.COMPLETED
-            job.request.service.is_active = False
+            job.request.service.status = models.JobStatus.COMPLETED  # type: ignore
+            job.request.service.is_active = False  # type: ignore
 
         db.commit()
         db.refresh(job)
@@ -486,13 +493,14 @@ def cancel_job(db: Session, job_id: str, user_id: str, user_role: str):
     if not (is_worker or is_client):
         raise HTTPException(status_code=403, detail="No tienes permiso para cancelar")
 
-    job.status = models.JobStatus.CANCELLED
+    job.status = models.JobStatus.CANCELLED  # type: ignore
     
     if job.request and job.request.service:
         if is_worker:
-            job.request.service.status = models.JobStatus.OPEN
+            job.request.service.status = models.JobStatus.OPEN  # type: ignore
+            print(f"♻️ Servicio {job.request.service.id} re-abierto porque el trabajador canceló.")
         else:
-            job.request.service.status = models.JobStatus.CANCELLED
+            job.request.service.status = models.JobStatus.CANCELLED  # type: ignore
 
     db.commit()
     db.refresh(job)
@@ -539,7 +547,8 @@ def search_services(db: Session, search_query: str):
 def update_service_images(db: Session, service_id: str, image_urls: list[str]):
     db_service = db.query(models.Service).filter(models.Service.id == service_id).first()
     if db_service:
-        db_service.image_urls = image_urls
-        db.commit()           
-        db.refresh(db_service) 
+        db_service.image_urls = image_urls  # type: ignore
+        db.commit()            # Guardamos cambios
+        db.refresh(db_service) # Refrescamos el objeto
+        
     return db_service

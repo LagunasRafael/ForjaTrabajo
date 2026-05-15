@@ -55,10 +55,6 @@ class ForjaTrabajoApp extends ConsumerWidget {
       title: 'Forja Trabajo',
       // Usamos el tema global del proyecto
       theme: AppTheme.theme, 
-
-      // Iniciamos con la selección de roles para obtener el Token y evitar el error 401
-      home: const LoginScreen(),
-      theme: AppTheme.theme,
       darkTheme: AppTheme.darkTheme,
       themeMode: themeMode,
       navigatorKey: navigatorKey, // 🔑 Clave para navegación desde notificaciones
@@ -72,14 +68,8 @@ class ForjaTrabajoApp extends ConsumerWidget {
         '/roles':       (context) => const RoleSelectionScreen(),
         '/client_home': (context) => const ClientMainLayout(),
         '/worker_home': (context) => const WorkerMainLayout(),
-        '/admin_home':  (context) => const AdminMainLayout(),
         '/client/contracts': (context) => const ContractsScreen(),
         '/client/payment_history': (context) => const PaymentHistoryScreen(),
-        '/login': (context) =>
-            const LoginScreen(), // 👈 RUTA CLAVE PARA CERRAR SESIÓN
-        '/roles': (context) => const RoleSelectionScreen(),
-        '/client_home': (context) => const ClientMainLayout(),
-        '/worker_home': (context) => const WorkerMainLayout(),
       },
     );
   }

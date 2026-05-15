@@ -37,7 +37,7 @@ def create_payment(db: Session, payment: schemas.PaymentCreate):
         status=models.PaymentStatus.COMPLETED
     )
 
-    db_contract.status = "in_progress"
+    db_contract.status = "in_progress"  # type: ignore
 
     db.add(db_payment)
     db.commit()
@@ -72,12 +72,12 @@ def create_payment_intent(db: Session, job_id: str, amount: float):
 
     # 2. Buscar o crear contrato para este job
     contract = db.query(models.Contract).filter(
-        models.Contract.job_id == job_id
+        models.Contract.job_id == job.id
     ).first()
 
     if not contract:
         contract = models.Contract(
-            job_id=job_id,
+            job_id=job.id,
             client_id=job.client_id,
             status="pending"
         )
@@ -109,8 +109,8 @@ def create_payment_intent(db: Session, job_id: str, amount: float):
             currency="mxn",
             capture_method="manual",
             metadata={
-                "job_id": job_id,
-                "contract_id": contract.id
+                "job_id": str(job.id),
+                "contract_id": str(contract.id)
             }
         )
     except stripe.error.StripeError as e:
@@ -177,14 +177,14 @@ def confirm_escrow(db: Session, payment_intent_id: str):
         )
 
     # Actualizar estado en nuestra BD
-    payment.status = models.PaymentStatus.HELD_IN_ESCROW
+    payment.status = models.PaymentStatus.HELD_IN_ESCROW  # type: ignore
 
     # Actualizar contrato a in_progress
     contract = db.query(models.Contract).filter(
         models.Contract.id == payment.contract_id
     ).first()
     if contract:
-        contract.status = "in_progress"
+        contract.status = "in_progress"  # type: ignore
 
     db.commit()
     db.refresh(payment)
@@ -196,9 +196,17 @@ def capture_payment(db: Session, job_id: str):
     Captura los fondos retenidos en Stripe cuando el trabajo se completa.
     Busca el Payment asociado al job y llama a PaymentIntent.capture().
     """
-    # 1. Buscar el contrato del job
+    # 1. Buscar el job primero por si job_id es en realidad un service_id
+    job = db.query(Job).filter(Job.id == job_id).first()
+    if not job:
+        job = db.query(Job).join(ServiceRequest).filter(ServiceRequest.service_id == job_id).first()
+
+    if not job:
+        return None
+
+    # 2. Buscar el contrato del job usando el ID real del job
     contract = db.query(models.Contract).filter(
-        models.Contract.job_id == job_id
+        models.Contract.job_id == job.id
     ).first()
 
     if not contract:
@@ -221,7 +229,7 @@ def capture_payment(db: Session, job_id: str):
     # 3. Capturar en Stripe
     try:
         captured_intent = stripe.PaymentIntent.capture(
-            payment.stripe_payment_intent_id
+            str(payment.stripe_payment_intent_id)
         )
     except stripe.error.StripeError as e:
         raise HTTPException(
@@ -230,8 +238,8 @@ def capture_payment(db: Session, job_id: str):
         )
 
     # 4. Actualizar nuestra BD
-    payment.status = models.PaymentStatus.RELEASED
-    contract.status = "completed"
+    payment.status = models.PaymentStatus.RELEASED  # type: ignore
+    contract.status = "completed"  # type: ignore
 
     db.commit()
     db.refresh(payment)

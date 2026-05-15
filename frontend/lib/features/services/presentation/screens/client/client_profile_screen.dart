@@ -38,7 +38,7 @@ class ClientProfileScreen extends ConsumerWidget {
 
             // MENÚ DE OPCIONES
             ProfileMenuCard(
-              children: [
+              [
                 ProfileMenuOption(
                     icon: LucideIcons.user,
                     title: 'Mi Información',
