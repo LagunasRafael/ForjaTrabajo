@@ -156,13 +156,18 @@ class ChatBubble extends StatelessWidget {
   }
 
   Widget _buildStatusIcon() {
-    if (status == 'pending') {
+    if (status == 'sending') {
+      return const SizedBox(
+        width: 12,
+        height: 12,
+        child: CircularProgressIndicator(strokeWidth: 1.5, color: Colors.white54),
+      );
+    } else if (status == 'pending') {
       return const SizedBox.shrink();
     } else if (status == 'error') {
       return const Icon(Icons.refresh, size: 14, color: Colors.orangeAccent);
     } else {
-      // No mostrar nada para mensajes enviados (privacidad total)
-      return const SizedBox.shrink();
+      return const Icon(Icons.check, size: 14, color: Colors.white54);
     }
   }
 
