@@ -9,6 +9,7 @@ import 'package:forja_trabajo/features/services/presentation/providers/service_l
 import 'package:forja_trabajo/features/chat/presentation/providers/chat_provider.dart';
 import 'package:forja_trabajo/features/chat/presentation/screens/shared_chat_screen.dart';
 import 'package:forja_trabajo/features/profile/presentation/widgets/review_dialog.dart' as forja_review;
+import 'package:forja_trabajo/features/services/presentation/screens/client/checkout_screen.dart';
 
 class ClientMatchedJobCard extends ConsumerWidget {
   final ServiceEntity service;
@@ -56,8 +57,8 @@ class ClientMatchedJobCard extends ConsumerWidget {
           children: [
             SharedJobImage(
               imageUrls: service.imageUrls,
-              badgeText: isWaiting ? "LISTO PARA REVISIÓN" : "EN PROCESO",
-              badgeColor: isWaiting ? const Color(0xFF10B981) : Colors.orange,
+              badgeText: isWaiting ? "LISTO PARA REVISIÓN" : (service.status == JobStatus.matched ? "PAGO PENDIENTE" : "EN PROCESO"),
+              badgeColor: isWaiting ? const Color(0xFF10B981) : (service.status == JobStatus.matched ? Colors.red : Colors.orange),
             ),
             Padding(
               padding: const EdgeInsets.all(16),
@@ -147,19 +148,40 @@ class _ClientMatchedActionsState extends ConsumerState<_ClientMatchedActions> {
               onPressed: (isCompleting || _isOpeningChat) ? null : () => _openChat(context),
             ),
             const SizedBox(width: 12),
-            _btn(
-              context: context,
-              label: widget.isWaiting ? "Confirmar Fin" : "En curso...",
-              icon: widget.isWaiting ? Icons.check_circle_outline : Icons.hourglass_empty,
-              color: widget.isWaiting ? const Color(0xFF10B981) : Colors.orange,
-              isLoading: isCompleting,
-              onPressed: (widget.isWaiting && !isCompleting) 
-                ? () => _handleComplete(context) 
-                : null,
-            ),
+            if (widget.service.status == JobStatus.matched && !widget.isWaiting)
+              _btn(
+                context: context,
+                label: "Pagar ahora",
+                icon: Icons.payment,
+                color: const Color(0xFF7B4DFF),
+                onPressed: () => _handlePayment(context),
+              )
+            else
+              _btn(
+                context: context,
+                label: widget.isWaiting ? "Confirmar Fin" : "En curso...",
+                icon: widget.isWaiting ? Icons.check_circle_outline : Icons.hourglass_empty,
+                color: widget.isWaiting ? const Color(0xFF10B981) : Colors.orange,
+                isLoading: isCompleting,
+                onPressed: (widget.isWaiting && !isCompleting) 
+                  ? () => _handleComplete(context) 
+                  : null,
+              ),
           ],
         ),
       ],
+    );
+  }
+
+  void _handlePayment(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CheckoutScreen(
+          jobId: widget.service.id,
+          amount: widget.service.basePrice.toDouble(),
+        ),
+      ),
     );
   }
 

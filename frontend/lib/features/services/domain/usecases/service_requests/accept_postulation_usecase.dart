@@ -6,15 +6,14 @@ class AcceptPostulationUseCase {
   AcceptPostulationUseCase(this.repository);
 
   // 🚀 Usamos 'call' y pedimos el token para que sea idéntico a tus otros UseCases
-  Future<bool> call(String postulationId, String token) async {
+  Future<Map<String, dynamic>> call(String postulationId, String token) async {
     try {
       // OJO: Si tu método en el repositorio no se llama acceptPostulation, 
       // cámbialo aquí por el nombre correcto (ej. acceptWorker, acceptOffer, etc.)
-      await repository.acceptPostulation(postulationId, token);
-      return true;
+      return await repository.acceptPostulation(postulationId, token);
     } catch (e) {
       print("🚨 Error en AcceptPostulationUseCase: $e");
-      return false;
+      throw Exception('Fallo al aceptar la postulación.');
     }
   }
 }

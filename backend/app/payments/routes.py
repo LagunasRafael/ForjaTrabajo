@@ -86,3 +86,33 @@ def confirm_escrow(
     Actualiza el estado del pago a 'held_in_escrow'.
     """
     return services.confirm_escrow(db=db, payment_intent_id=data.payment_intent_id)
+
+
+@router.post("/refund/{payment_id}", response_model=schemas.PaymentResponse)
+def refund_payment(
+    payment_id: str,
+    db: Session = Depends(get_db),
+    current_user: auth_models.User = Depends(get_current_user)
+):
+    """
+    Realiza un reembolso (solo Admin por ahora).
+    """
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="No tienes permiso")
+    return services.refund_payment(db=db, payment_id=payment_id)
+
+
+@router.post("/resolve-dispute")
+def resolve_dispute(
+    conversation_id: str,
+    resolution: str,
+    db: Session = Depends(get_db),
+    current_user: auth_models.User = Depends(get_current_user)
+):
+    """
+    Resuelve una disputa administrativa.
+    resolution: 'refund' o 'release'.
+    """
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="No tienes permiso")
+    return services.resolve_dispute(db=db, conversation_id=conversation_id, resolution=resolution)

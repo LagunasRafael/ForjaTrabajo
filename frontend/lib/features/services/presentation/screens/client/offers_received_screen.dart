@@ -28,7 +28,7 @@ class OffersReceivedScreen extends ConsumerWidget {
       error: (e, s) => Scaffold(body: Center(child: Text("Error cargando servicio: $e"))),
       data: (serviceData) {
         final status = serviceData.status.toString().toLowerCase();
-        if (!status.contains('open')) {
+        if (!status.contains('open') && !status.contains('matched')) {
           // El servicio ya no acepta postulaciones. Redirigir a "Mis Trabajos".
           Future.microtask(() {
             if (context.mounted) {

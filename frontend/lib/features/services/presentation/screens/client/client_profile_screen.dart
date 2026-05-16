@@ -75,6 +75,12 @@ class ClientProfileScreen extends ConsumerWidget {
                       );
                     }),
                 ProfileMenuOption(
+                    icon: LucideIcons.fileText,
+                    title: 'Mis Facturas',
+                    onTap: () {
+                      Navigator.pushNamed(context, '/client/invoices');
+                    }),
+                ProfileMenuOption(
                     icon: LucideIcons.bell,
                     title: 'Notificaciones',
                     onTap: () {

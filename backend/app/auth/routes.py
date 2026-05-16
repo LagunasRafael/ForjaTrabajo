@@ -187,6 +187,7 @@ def login(request: Request, data: schemas.UserLogin, db: Session = Depends(get_d
     token = create_access_token({"sub": str(user.id)})
     refresh_token = create_refresh_token({"sub": str(user.id)})
 
+    print(f"DEBUG: Login exitoso para {user.email}. Rol: {user.role}")
     return {
         "access_token": token,
         "refresh_token": refresh_token,
@@ -228,6 +229,7 @@ def refresh_token(data: schemas.TokenRefresh, db: Session = Depends(get_db)):
 
 @router.get("/me", response_model=schemas.UserResponse)
 def get_me(current_user: models.User = Depends(get_current_user)):
+    print(f"DEBUG: /auth/me llamado para {current_user.email}. Rol en objeto: {current_user.role}")
     return current_user
 
 @router.get("/users", response_model=List[schemas.UserResponse])
@@ -248,10 +250,13 @@ def update_user(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado")
     
     # 2. Actualizamos los campos
+    print(f"DEBUG: Actualizando usuario {db_user.email}. Rol actual en DB: {db_user.role}")
     if user_data.full_name is not None:
         db_user.full_name = user_data.full_name # type: ignore
-    if user_data.role is not None:
-        db_user.role = user_data.role # type: ignore
+    # El rol NO se debe poder cambiar desde la edición de perfil general
+    # para evitar bugs de persistencia. Solo se cambia vía Admin si fuera necesario.
+    # if user_data.role is not None:
+    #     db_user.role = user_data.role # type: ignore
     if user_data.phone is not None:
         db_user.phone = user_data.phone # type: ignore
     

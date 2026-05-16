@@ -125,11 +125,8 @@ class _ContractsScreenState extends ConsumerState<ContractsScreen> {
                       context,
                       MaterialPageRoute(
                         builder: (context) => CheckoutScreen(
-                          // Pasamos un objeto anónimo temporal que simula la data del contrato para CheckoutScreen
-                          contract: _TempContract(
-                            id: service.id, // Pasamos el ID COMPLETO para el backend
-                            amount: service.basePrice,
-                          ),
+                          jobId: service.id,
+                          amount: service.basePrice.toDouble(),
                         ),
                       ),
                     );

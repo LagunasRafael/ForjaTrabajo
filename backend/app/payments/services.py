@@ -103,6 +103,7 @@ def create_payment_intent(db: Session, job_id: str, amount: float):
     amount_cents = int(amount * 100)
 
     # 5. Crear PaymentIntent en Stripe (capture_method='manual' = escrow)
+    print(f"DEBUG: Intentando crear PaymentIntent para Job: {job.id}, Amount: {amount_cents} cents")
     try:
         intent = stripe.PaymentIntent.create(
             amount=amount_cents,
@@ -113,7 +114,9 @@ def create_payment_intent(db: Session, job_id: str, amount: float):
                 "contract_id": str(contract.id)
             }
         )
+        print(f"DEBUG: PaymentIntent creado exitosamente: {intent.id}")
     except stripe.error.StripeError as e:
+        print(f"🚨 ERROR STRIPE: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"Error al crear PaymentIntent en Stripe: {str(e)}"
@@ -163,14 +166,17 @@ def confirm_escrow(db: Session, payment_intent_id: str):
         )
 
     # Verificar en Stripe que realmente requires_capture
+    print(f"DEBUG: Confirmando escrow para Intent: {payment_intent_id}")
     try:
         intent = stripe.PaymentIntent.retrieve(payment_intent_id)
+        print(f"DEBUG: Estado de Intent en Stripe: {intent.status}")
         if intent.status != "requires_capture":
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Stripe: el PaymentIntent no está listo para retener. Estado: {intent.status}"
             )
     except stripe.error.StripeError as e:
+        print(f"🚨 ERROR STRIPE AL RECUPERAR: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"Error al consultar Stripe: {str(e)}"
@@ -278,3 +284,89 @@ def get_contracts_by_role(db: Session, current_user):
         return query.all()
     
     return query.filter(models.Contract.client_id == current_user.id).all()
+
+
+def refund_payment(db: Session, payment_id: str):
+    """
+    Realiza un reembolso en Stripe y actualiza el estado en la BD.
+    Se usa en disputas o cancelaciones justificadas.
+    """
+    payment = db.query(models.Payment).filter(models.Payment.id == payment_id).first()
+    if not payment:
+        raise HTTPException(status_code=404, detail="Pago no encontrado")
+
+    if payment.status == models.PaymentStatus.REFUNDED:
+        return payment
+
+    # 1. Reembolsar en Stripe
+    try:
+        if payment.stripe_payment_intent_id:
+            # Si el pago está en escrow (manual capture), lo cancelamos (cancel) 
+            # Si ya fue capturado, hacemos refund.
+            intent = stripe.PaymentIntent.retrieve(payment.stripe_payment_intent_id)
+            if intent.status == "requires_capture":
+                stripe.PaymentIntent.cancel(payment.stripe_payment_intent_id)
+            else:
+                stripe.Refund.create(payment_intent=payment.stripe_payment_intent_id)
+    except stripe.error.StripeError as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Error al procesar reembolso en Stripe: {str(e)}"
+        )
+
+    # 2. Actualizar BD
+    payment.status = models.PaymentStatus.REFUNDED # type: ignore
+    
+    contract = db.query(models.Contract).filter(models.Contract.id == payment.contract_id).first()
+    if contract:
+        contract.status = "cancelled" # type: ignore
+
+    db.commit()
+    db.refresh(payment)
+    return payment
+
+
+def resolve_dispute(db: Session, conversation_id: str, resolution: str):
+    """
+    Resuelve una disputa. 
+    resolution: 'refund' (devuelve al cliente) o 'release' (paga al trabajador).
+    """
+    from app.services.models import Conversation, ConversationStatus
+    
+    convo = db.query(Conversation).filter(Conversation.id == conversation_id).first()
+    if not convo:
+        raise HTTPException(status_code=404, detail="Conversación no encontrada")
+
+    # Buscar el Job asociado a través del request
+    if not convo.request or not convo.request.job:
+        raise HTTPException(status_code=404, detail="No hay un trabajo asociado a este chat")
+    
+    job = convo.request.job
+    
+    # Buscar el pago asociado
+    contract = db.query(models.Contract).filter(
+        models.Contract.job_id == job.id
+    ).first()
+    if not contract:
+        raise HTTPException(status_code=404, detail="No se encontró un contrato para este trabajo")
+    
+    payment = db.query(models.Payment).filter(
+        models.Payment.contract_id == contract.id,
+        models.Payment.status == models.PaymentStatus.HELD_IN_ESCROW
+    ).first()
+
+    if resolution == "refund":
+        if payment:
+            refund_payment(db, payment.id)
+        job.status = JobStatus.CANCELLED # type: ignore
+    elif resolution == "release":
+        if payment:
+            capture_payment(db, job.id)
+        job.status = JobStatus.COMPLETED # type: ignore
+    else:
+        raise HTTPException(status_code=400, detail="Resolución inválida. Use 'refund' o 'release'")
+
+    convo.status = ConversationStatus.CLOSED.value # type: ignore
+    db.commit()
+    
+    return {"status": "success", "message": f"Disputa resuelta como: {resolution}"}

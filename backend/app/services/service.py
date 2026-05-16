@@ -420,7 +420,12 @@ def accept_postulation(db: Session, request_id: str, current_user_id: str):
         # 🔔 Notificar al trabajador que fue aceptado (Con ID de chat para navegación directa)
         notif_service.notify_job_accepted(db, new_job, service_entry.title, str(convo.id))
         
-        return {"status": "success", "message": "Aceptado correctamente", "conversation_id": str(convo.id)}
+        return {
+            "status": "success", 
+            "message": "Aceptado correctamente", 
+            "conversation_id": str(convo.id),
+            "job_id": str(new_job.id)
+        }
 
     except Exception as e:
         db.rollback()

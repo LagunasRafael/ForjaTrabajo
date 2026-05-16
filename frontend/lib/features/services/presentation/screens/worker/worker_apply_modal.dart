@@ -55,8 +55,12 @@ class _WorkerApplyModalWidgetState extends ConsumerState<_WorkerApplyModalWidget
   Future<void> _submitAction() async {
     final cleanPrice = double.tryParse(_priceCtrl.text.replaceAll(',', '')) ?? 0.0;
                       
-    if (_descCtrl.text.trim().isEmpty || cleanPrice <= 0) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("⚠️ Indica un precio y un mensaje"), backgroundColor: Colors.orange));
+    if (_descCtrl.text.trim().isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("⚠️ Por favor escribe un mensaje de propuesta"), backgroundColor: Colors.orange));
+        return;
+    }
+    if (cleanPrice <= 0) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("⚠️ El precio debe ser mayor a 0"), backgroundColor: Colors.orange));
         return;
     }
     FocusScope.of(context).unfocus();
@@ -70,10 +74,22 @@ class _WorkerApplyModalWidgetState extends ConsumerState<_WorkerApplyModalWidget
       success = await notifier.applyToService(widget.service.id, _descCtrl.text.trim(), cleanPrice);
     }
 
-    if (mounted && success) {
+    if (mounted) {
+      if (success) {
         ref.invalidate(workerJobsProvider); 
         Navigator.pop(context); 
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_isEditing ? "✅ Propuesta actualizada" : "✅ Postulación enviada"), backgroundColor: const Color(0xFF10B981), behavior: SnackBarBehavior.floating));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(_isEditing ? "✅ Propuesta actualizada" : "✅ Postulación enviada"), 
+          backgroundColor: const Color(0xFF10B981), 
+          behavior: SnackBarBehavior.floating
+        ));
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text("🚨 Error al enviar la postulación. Inténtalo de nuevo."), 
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating
+        ));
+      }
     }
   }
 

@@ -6,6 +6,7 @@ import 'package:forja_trabajo/features/chat/presentation/providers/chat_list_pro
 import 'package:forja_trabajo/features/chat/presentation/screens/shared_chat_screen.dart';
 import 'package:forja_trabajo/features/services/presentation/providers/service_request_provider.dart';
 import 'package:forja_trabajo/features/services/presentation/providers/nav_providers.dart';
+import '../../screens/client/checkout_screen.dart';
 import 'package:forja_trabajo/features/profile/presentation/screens/user_profile_screen.dart';
 
 class CandidateCard extends ConsumerStatefulWidget {
@@ -139,7 +140,7 @@ class _CandidateCardState extends ConsumerState<CandidateCard> {
             onPressed: isAccepting ? null : _handleAccept, 
             child: isAccepting 
                 ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) 
-                : const Text("Aceptar", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))
+                : Text(widget.offer.status == "accepted" ? "Pagar ahora" : "Aceptar", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12))
           )
         ),
       ]
@@ -222,33 +223,15 @@ class _CandidateCardState extends ConsumerState<CandidateCard> {
   }
 
   Future<void> _handleAccept() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text("¿Contratar?"), 
-        content: const Text("Al aceptar, el trabajo pasará a 'En Curso'."),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Volver")),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, true), 
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF10B981)), 
-            child: const Text("Contratar", style: TextStyle(color: Colors.white))
-          ),
-        ],
+    // En lugar de aceptar aquí, navegamos al Checkout
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CheckoutScreen(
+          offer: widget.offer,
+          serviceId: widget.serviceId,
+        ),
       ),
     );
-
-    if (confirm != true) return;
-
-    ref.read(isAcceptingProvider(widget.offer.id).notifier).state = true;
-    final success = await ref.read(serviceRequestProvider.notifier).acceptWorker(widget.offer.id);
-    ref.read(isAcceptingProvider(widget.offer.id).notifier).state = false;
-
-    if (success && mounted) {
-      Navigator.pop(context); 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("✅ Contratado"), backgroundColor: Color(0xFF10B981))
-      );
-    }
   }
 }
