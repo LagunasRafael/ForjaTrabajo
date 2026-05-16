@@ -58,16 +58,31 @@ class NotificationService {
     debugPrint('🔔 Permisos notificaciones: ${settings.authorizationStatus}');
 
     // 2. Inicializar Local Notifications para el Pop-up (Android)
-    const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const iosInit = DarwinInitializationSettings();
-    await _localNotifications.initialize(
-      const InitializationSettings(android: androidInit, iOS: iosInit),
-    );
+    try {
+      const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
+      const iosInit = DarwinInitializationSettings(
+        requestAlertPermission: true,
+        requestBadgePermission: true,
+        requestSoundPermission: true,
+      );
+      
+      await _localNotifications.initialize(
+        const InitializationSettings(android: androidInit, iOS: iosInit),
+        onDidReceiveNotificationResponse: (response) {
+          debugPrint('🎯 Tap en notificación local: ${response.payload}');
+        },
+      );
 
-    // Crear el canal en Android
-    await _localNotifications
-        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
-        ?.createNotificationChannel(_channel);
+      // Crear el canal en Android
+      await _localNotifications
+          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+          ?.createNotificationChannel(_channel);
+      
+      debugPrint('✅ Local Notifications inicializadas correctamente.');
+    } catch (e) {
+      debugPrint('❌ Error inicializando Local Notifications: $e');
+      // No lanzamos el error para que la app pueda seguir funcionando sin notificaciones locales
+    }
 
     // 3. Foreground: mostrar banner visual y REFRESCAR PROVIDERS
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
@@ -220,16 +235,26 @@ class NotificationService {
     final type = data['type'] ?? '';
     final navigator = navigatorKey.currentState;
     final context = navigatorKey.currentContext;
-    if (navigator == null || context == null) return;
+    if (navigator == null || context == null) {
+      debugPrint('⚠️ [NotificationService] Navigator o Context no disponibles.');
+      return;
+    }
 
-    // Usamos el ProviderContainer global para modificar estados sin depender del widget tree
-    final container = ProviderScope.containerOf(context);
+    // Intentamos obtener el container de Riverpod de forma segura
+    ProviderContainer? container;
+    try {
+      container = ProviderScope.containerOf(context);
+    } catch (e) {
+      debugPrint('⚠️ [NotificationService] No se pudo obtener el ProviderContainer: $e');
+    }
 
     if (type == 'new_message' || type == 'new_offer' || type == 'admin_message' || type == 'dispute_opened') {
       final conversationId = data['conversation_id'];
       if (conversationId != null) {
         // 🔄 Refrescar la lista de chats globalmente
-        container.read(chatListProvider.notifier).loadRealChats();
+        if (container != null) {
+          container.read(chatListProvider.notifier).loadRealChats();
+        }
         
         navigator.push(
           MaterialPageRoute(
@@ -248,24 +273,24 @@ class NotificationService {
         switch (type) {
           case 'new_request':
             // Ir a Mis Solicitudes -> Pestaña Postulaciones (1)
-            container.read(clientNavProvider.notifier).state = 3;
-            container.read(myRequestsTabProvider.notifier).state = 1;
+            container?.read(clientNavProvider.notifier).state = 3;
+            container?.read(myRequestsTabProvider.notifier).state = 1;
             navigatorKey.currentState?.pushNamed('/my_requests');
             break;
 
           case 'job_accepted':
           case 'in_progress':
             // Ir a Mis Empleos -> En Proceso (1)
-            container.read(workerNavProvider.notifier).state = 1;
-            container.read(workerJobsTabProvider.notifier).state = 1;
+            container?.read(workerNavProvider.notifier).state = 1;
+            container?.read(workerJobsTabProvider.notifier).state = 1;
             navigatorKey.currentState?.pushNamed('/my_jobs');
             break;
 
           case 'job_completed':
           case 'job_cancelled':
             // Ir a Mis Empleos -> Finalizados (2)
-            container.read(workerNavProvider.notifier).state = 1;
-            container.read(workerJobsTabProvider.notifier).state = 2;
+            container?.read(workerNavProvider.notifier).state = 1;
+            container?.read(workerJobsTabProvider.notifier).state = 2;
             navigatorKey.currentState?.pushNamed('/my_jobs');
             break;
 
@@ -280,17 +305,17 @@ class NotificationService {
       }
     } else if (type == 'job_completed') {
       // ✅ Trabajador: Mis Trabajos (Index 1) -> Historial (Index 2)
-      container.read(workerNavProvider.notifier).state = 1;
-      container.read(workerJobsTabProvider.notifier).state = 2;
+      container?.read(workerNavProvider.notifier).state = 1;
+      container?.read(workerJobsTabProvider.notifier).state = 2;
       navigator.push(MaterialPageRoute(builder: (_) => const MyJobsScreen(initialIndex: 2)));
     } else if (type == 'job_waiting_confirmation') {
       // ✅ Cliente: Mis Trabajos (Index 3) -> En Proceso (Index 1)
-      container.read(clientNavProvider.notifier).state = 3;
-      container.read(myRequestsTabProvider.notifier).state = 1;
+      container?.read(clientNavProvider.notifier).state = 3;
+      container?.read(myRequestsTabProvider.notifier).state = 1;
       navigator.push(MaterialPageRoute(builder: (_) => const MyRequestsScreen(initialIndex: 1)));
     } else if (type == 'job_cancelled') {
-      container.read(workerNavProvider.notifier).state = 1;
-      container.read(workerJobsTabProvider.notifier).state = 2;
+      container?.read(workerNavProvider.notifier).state = 1;
+      container?.read(workerJobsTabProvider.notifier).state = 2;
       navigator.push(MaterialPageRoute(builder: (_) => const MyJobsScreen(initialIndex: 2)));
     } else if (type == 'offer_responded' || type == 'new_offer') {
       final conversationId = data['conversation_id'];

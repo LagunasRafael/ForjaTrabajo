@@ -53,6 +53,7 @@ class ChatNotifier extends StateNotifier<List<MessageModel>> {
   bool _isLoadingMore = false;
   
   int _currentLimit = 15;
+  bool _isDisposed = false;
 
   ChatNotifier({
     required ChatRepository repository,
@@ -61,60 +62,91 @@ class ChatNotifier extends StateNotifier<List<MessageModel>> {
     required this.ref,
   }) : _repository = repository,
        super([]) {
-    _initChat();
+    if (userId.isNotEmpty && conversationId.isNotEmpty) {
+      _initChat();
+    }
   }
 
   bool get isLoadingMore => _isLoadingMore;
+  bool get isConnected => _channel != null && !_isReconnecting;
+
+  @override
+  void dispose() {
+    _isDisposed = true;
+    _channel?.sink.close();
+    super.dispose();
+  }
 
   Future<void> _initChat() async {
-    if (conversationId.isEmpty) return;
+    if (conversationId.isEmpty || _isDisposed) return;
+    
     try {
+      print("📦 [Chat] Cargando historial para $conversationId...");
       // 1. Cargar historial
       final history = await _repository.getChatHistory(conversationId);
-      if (mounted) {
+      
+      if (!_isDisposed) {
         state = history.map((m) => MessageModel.fromEntity(m)).toList();
       }
       
-      // 2. Marcar como leído en el servidor y localmente
-      _repository.markAsRead(conversationId);
-      ref.read(chatListProvider.notifier).markAsReadLocal(conversationId);
+      // 2. Marcar como leído
+      try {
+        await _repository.markAsRead(conversationId);
+        ref.read(chatListProvider.notifier).markAsReadLocal(conversationId);
+      } catch (e) {
+        print("⚠️ [Chat] Error al marcar como leído (no crítico): $e");
+      }
       
       // 3. Conectar WebSocket
       _connect();
     } catch (e) {
-      print("🚨 Error cargando historial: $e");
+      print("🚨 [Chat] Error crítico cargando historial: $e");
+      // Intentamos conectar el WS de todos modos para ver si llegan mensajes nuevos
       _connect(); 
     }
   }
 
   void _connect() {
-    if (_isReconnecting || userId.isEmpty || conversationId.isEmpty) return;
+    if (_isDisposed || _isReconnecting || userId.isEmpty || conversationId.isEmpty) return;
 
     // 💡 URL Dinámica para WebSocket
     final String wsBaseUrl;
     if (kDebugMode) {
-      wsBaseUrl = Platform.isAndroid ? 'ws://10.0.2.2:8000' : 'ws://localhost:8000';
+      // Priorizar 10.0.2.2 para Android Emulator
+      wsBaseUrl = (defaultTargetPlatform == TargetPlatform.android) 
+          ? 'ws://10.0.2.2:8000' 
+          : 'ws://localhost:8000';
     } else {
-      // Usar la misma URL que ApiClient pero con protocolo wss://
       wsBaseUrl = 'wss://forja-api-rw0r.onrender.com';
     }
 
     final wsUrl = "$wsBaseUrl/services/chat/ws/$conversationId/$userId";
-    print("🔌 CONNECTING WS: $wsUrl");
+    print("🔌 [WS] Conectando a: $wsUrl");
     
     try {
       _channel = WebSocketChannel.connect(Uri.parse(wsUrl));
 
       _channel!.stream.listen(
-        (message) => _handleIncomingMessage(message),
-        onError: (error) => _reconnect(),
-        onDone: () => _reconnect(),
+        (message) {
+          print("📥 [WS] Mensaje recibido del servidor");
+          _handleIncomingMessage(message);
+        },
+        onError: (error) {
+          print("❌ [WS] Error de conexión: $error");
+          _reconnect();
+        },
+        onDone: () {
+          print("🔌 [WS] Conexión cerrada por el servidor");
+          _reconnect();
+        },
         cancelOnError: false,
       );
     } catch (e) {
+      print("🚨 [WS] Excepción al conectar: $e");
       _reconnect();
     }
   }
+
 
   void _handleIncomingMessage(dynamic message) {
     if (!mounted) return;
@@ -266,11 +298,5 @@ class ChatNotifier extends StateNotifier<List<MessageModel>> {
 
   void resendMessage(String messageId) {
     print("🔄 Reintentando mensaje: $messageId");
-  }
-
-  @override
-  void dispose() {
-    _channel?.sink.close();
-    super.dispose();
   }
 }
