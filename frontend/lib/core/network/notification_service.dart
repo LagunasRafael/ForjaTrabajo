@@ -89,18 +89,24 @@ class NotificationService {
       debugPrint('🚀 [FCM] ¡NOTIFICACIÓN RECIBIDA EN FOREGROUND!');
       debugPrint('🚀 Tipo: ${message.data['type']} | ID: ${message.messageId}');
       
-      // Emitir el evento para que ChatList y otros refresquen
       _onNotificationController.add(message);
       
-      // Mostrar el pop-up visual (el banner azul premium)
-      _showForegroundBanner(message);
+      try {
+        _showForegroundBanner(message);
+      } catch (e) {
+        debugPrint('❌ [FCM] Error mostrando banner foreground: $e');
+      }
     });
 
     // 4. Background tap: app abierta desde segundo plano
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
       debugPrint('📲 [FCM] APP ABIERTA DESDE NOTIFICACIÓN');
-      _onNotificationController.add(message); // 🔄 Refresca ChatList también aquí
-      _handleNotificationNavigation(message);
+      _onNotificationController.add(message);
+      try {
+        _handleNotificationNavigation(message);
+      } catch (e) {
+        debugPrint('❌ [FCM] Error navegando desde onMessageOpenedApp: $e');
+      }
     });
 
     // 5. Registrar handler de background
@@ -144,47 +150,31 @@ class NotificationService {
 
   /// Muestra un banner elegante en la parte superior cuando la app está en foreground.
   void _showForegroundBanner(RemoteMessage message) {
-    final context = navigatorKey.currentContext;
-    if (context == null) return;
+    try {
+      final context = navigatorKey.currentContext;
+      if (context == null || !context.mounted) return;
 
-    final title = message.notification?.title ?? message.data['title'] ?? 'ForjaTrabajo';
-    final body = message.notification?.body ?? message.data['body'] ?? '';
-    final type = message.data['type'] ?? '';
+      final title = message.notification?.title ?? message.data['title'] ?? 'ForjaTrabajo';
+      final body = message.notification?.body ?? message.data['body'] ?? '';
+      final type = message.data['type'] ?? '';
 
-    final IconData notifIcon = _iconForType(type);
+      final IconData notifIcon = _iconForType(type);
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        padding: EdgeInsets.zero,
-        duration: const Duration(seconds: 4),
-        behavior: SnackBarBehavior.floating,
-        margin: EdgeInsets.only(
-          bottom: MediaQuery.of(context).size.height - 150, 
-          left: 10,
-          right: 10,
-        ),
-        dismissDirection: DismissDirection.up,
-        content: GestureDetector(
-          onTap: () {
-            ScaffoldMessenger.of(context).hideCurrentSnackBar();
-            _handleNotificationNavigation(message);
-          },
-          child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: const Color(0xFF1E1B4B),
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.35),
-                  blurRadius: 16,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
+      final scaffoldMessenger = ScaffoldMessenger.maybeOf(context);
+      if (scaffoldMessenger == null) return;
+
+      scaffoldMessenger.showSnackBar(
+        SnackBar(
+          backgroundColor: const Color(0xFF1E1B4B),
+          duration: const Duration(seconds: 4),
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.all(16),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          content: GestureDetector(
+            onTap: () {
+              scaffoldMessenger.hideCurrentSnackBar();
+              _handleNotificationNavigation(message);
+            },
             child: Row(
               children: [
                 Container(
@@ -230,19 +220,22 @@ class NotificationService {
             ),
           ),
         ),
-      ),
-    );
+      );
+    } catch (e) {
+      debugPrint('❌ [FCM] Error en _showForegroundBanner: $e');
+    }
   }
 
   void _handleNotificationNavigation(RemoteMessage message) {
-    final data = message.data;
-    final type = data['type'] ?? '';
-    final navigator = navigatorKey.currentState;
-    final context = navigatorKey.currentContext;
-    if (navigator == null || context == null) {
-      debugPrint('⚠️ [NotificationService] Navigator o Context no disponibles.');
-      return;
-    }
+    try {
+      final data = message.data;
+      final type = data['type'] ?? '';
+      final navigator = navigatorKey.currentState;
+      final context = navigatorKey.currentContext;
+      if (navigator == null || context == null) {
+        debugPrint('⚠️ [NotificationService] Navigator o Context no disponibles.');
+        return;
+      }
 
     // Intentamos obtener el container de Riverpod de forma segura
     ProviderContainer? container;
@@ -328,6 +321,9 @@ class NotificationService {
       }
     } else {
       navigator.push(MaterialPageRoute(builder: (_) => const NotificationsScreen()));
+    }
+    } catch (e) {
+      debugPrint('❌ [FCM] Error navegando desde notificación: $e');
     }
   }
 
