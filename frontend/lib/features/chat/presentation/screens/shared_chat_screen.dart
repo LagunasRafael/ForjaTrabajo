@@ -152,11 +152,17 @@ class _SharedChatScreenState extends ConsumerState<SharedChatScreen> {
     });
 
     final messages = ref.watch(chatProvider(widget.conversationId));
+    final chatNotifier = ref.read(chatProvider(widget.conversationId).notifier);
+    
     final isOtherUserTyping = ref.watch(chatTypingProvider(widget.conversationId));
-    final user = ref.watch(authProvider).user;
+    final authState = ref.watch(authProvider);
+    final user = authState.user;
     final myId = user?.id;
     final myRole = widget.myRole ?? user?.role ?? 'client';
     final isClient = myRole == 'client'; 
+    
+    // 🧠 ESTADO DE CARGA: Si el usuario no está listo, o no hay mensajes pero el WS no está conectado, estamos cargando
+    final isInitialLoading = authState.status == 'loading' || (messages.isEmpty && !chatNotifier.isConnected);
     
     final lastOffer = _getLastOffer(messages);
     final isOfferAccepted = messages.any((m) => m.messageType == 'offer' && 
@@ -203,41 +209,65 @@ class _SharedChatScreenState extends ConsumerState<SharedChatScreen> {
       body: Column(
         children: [
           Expanded(
-            child: NotificationListener<ScrollNotification>(
-              onNotification: (ScrollNotification scrollInfo) {
-                if (scrollInfo.metrics.pixels >= scrollInfo.metrics.maxScrollExtent - 100) {
-                  ref.read(chatProvider(widget.conversationId).notifier).loadMoreMessages();
-                }
-                return false;
-              },
-              child: ListView.builder(
-                controller: _scrollController,
-                reverse: true,
-                padding: const EdgeInsets.all(16),
-                // 🔥 CLAVE: cacheExtent ayuda a mantener widgets renderizados
-                cacheExtent: 1000,
-                itemCount: messageCount + 1,
-                itemBuilder: (context, index) {
-                  if (index == messageCount) {
-                    final notifier = ref.read(chatProvider(widget.conversationId).notifier);
-                    if (notifier.isLoadingMore) {
-                      return const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 20),
-                        child: Center(
-                          child: SizedBox(
-                            width: 24, height: 24,
-                            child: CircularProgressIndicator(
-                              color: Color(0xFF4F46E5), 
-                              strokeWidth: 2
-                            )
-                          )
-                        ),
-                      );
-                    }
-                    return const SizedBox.shrink();
-                  }
-                  
-                  final m = messages[index];
+            child: isInitialLoading
+              ? const Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      CircularProgressIndicator(color: Color(0xFF4F46E5)),
+                      SizedBox(height: 16),
+                      Text("Abriendo chat...", style: TextStyle(color: Colors.grey)),
+                    ],
+                  ),
+                )
+              : messages.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey.shade300),
+                        const SizedBox(height: 16),
+                        const Text("No hay mensajes todavía", style: TextStyle(color: Colors.grey, fontSize: 16)),
+                        const SizedBox(height: 8),
+                        const Text("Di hola para comenzar", style: TextStyle(color: Colors.grey, fontSize: 14)),
+                      ],
+                    ),
+                  )
+                : NotificationListener<ScrollNotification>(
+                    onNotification: (ScrollNotification scrollInfo) {
+                      if (scrollInfo.metrics.pixels >= scrollInfo.metrics.maxScrollExtent - 100) {
+                        ref.read(chatProvider(widget.conversationId).notifier).loadMoreMessages();
+                      }
+                      return false;
+                    },
+                    child: ListView.builder(
+                      controller: _scrollController,
+                      reverse: true,
+                      padding: const EdgeInsets.all(16),
+                      // 🔥 CLAVE: cacheExtent ayuda a mantener widgets renderizados
+                      cacheExtent: 1000,
+                      itemCount: messageCount + 1,
+                      itemBuilder: (context, index) {
+                        if (index == messageCount) {
+                          final notifier = ref.read(chatProvider(widget.conversationId).notifier);
+                          if (notifier.isLoadingMore) {
+                            return const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 20),
+                              child: Center(
+                                child: SizedBox(
+                                  width: 24, height: 24,
+                                  child: CircularProgressIndicator(
+                                    color: Color(0xFF4F46E5), 
+                                    strokeWidth: 2
+                                  )
+                                )
+                              ),
+                            );
+                          }
+                          return const SizedBox.shrink();
+                        }
+                        
+                        final m = messages[index];
                   final isMyMessage = m.senderId == myId;
                   
                   String displayTime = "";
