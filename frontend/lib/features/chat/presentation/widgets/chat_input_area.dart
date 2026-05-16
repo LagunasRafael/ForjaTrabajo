@@ -16,6 +16,7 @@ class ChatInputArea extends ConsumerStatefulWidget {
   final String conversationId;
   final bool isClient;
   final bool canSendOffer;
+  final bool isEnabled;
   final VoidCallback? onMessageSent;
 
   const ChatInputArea({
@@ -23,6 +24,7 @@ class ChatInputArea extends ConsumerStatefulWidget {
     required this.conversationId,
     required this.isClient,
     this.canSendOffer = true,
+    this.isEnabled = true,
     this.onMessageSent,
   });
 
@@ -410,18 +412,28 @@ class _ChatInputAreaState extends ConsumerState<ChatInputArea> {
               )
             else ...[
               Padding(
-                padding: const EdgeInsets.only(right: 8.0),
+                padding: const EdgeInsets.only(right: 4.0),
                 child: IconButton(
-                  icon: const Icon(Icons.add_circle, color: Color(0xFF4F46E5), size: 28),
-                  onPressed: () => _showActionMenu(context),
+                  icon: const Icon(Icons.add_circle_outline, color: Colors.grey, size: 28),
+                  onPressed: widget.isEnabled ? () => _showActionMenu(context) : null,
                 ),
               ),
+              if (widget.isClient && widget.canSendOffer)
+                Padding(
+                  padding: const EdgeInsets.only(right: 8.0),
+                  child: IconButton(
+                    icon: const Icon(Icons.local_offer_rounded, color: Color(0xFF10B981), size: 28),
+                    onPressed: widget.isEnabled ? _showOfferDialog : null,
+                    tooltip: 'Enviar Propuesta',
+                  ),
+                ),
               Expanded(
                 child: TextField(
                   controller: _messageController,
                   onChanged: _onTyping,
+                  enabled: widget.isEnabled,
                   decoration: InputDecoration(
-                    hintText: "Escribe un mensaje...",
+                    hintText: widget.isEnabled ? "Escribe un mensaje..." : "Chat finalizado",
                     filled: true,
                     fillColor: const Color(0xFFF3F4F6),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
@@ -437,8 +449,8 @@ class _ChatInputAreaState extends ConsumerState<ChatInputArea> {
                 shape: BoxShape.circle
               ),
               child: GestureDetector(
-                onLongPress: !hasInput && !_isLockedRecording ? _startRecording : null,
-                onLongPressEnd: !hasInput && !_isLockedRecording ? (details) => _stopRecording() : null,
+                onLongPress: widget.isEnabled && !hasInput && !_isLockedRecording ? _startRecording : null,
+                onLongPressEnd: widget.isEnabled && !hasInput && !_isLockedRecording ? (details) => _stopRecording() : null,
                 onPanUpdate: (!hasInput && _isRecording && !_isLockedRecording) 
                      ? (details) {
                          if (details.localPosition.dx < -30) {

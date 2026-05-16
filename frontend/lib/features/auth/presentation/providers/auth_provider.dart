@@ -306,10 +306,13 @@ class AuthNotifier extends Notifier<AuthState> {
     final notificationService = NotificationService();
     await notificationService.initNotifications();
     final String? fcmToken = await notificationService.getToken();
+    debugPrint('📢 DEBUG SYNC: Token obtenido = ${fcmToken != null ? 'SI' : 'NO (NULL)'}');
     if (fcmToken != null) {
+      debugPrint('📢 DEBUG SYNC: Enviando token al servidor...');
       final dataSource = ref.read(authDataSourceProvider);
       await dataSource.updateFcmToken(fcmToken);
       notificationService.listenToTokenChanges((newToken) {
+        debugPrint('📢 DEBUG SYNC: Token refrescado, enviando nuevo...');
         dataSource.updateFcmToken(newToken);
       });
     }

@@ -4,10 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 // 🚀 TUS IMPORTS MODULARES (Ganaron por orden)
 import 'package:forja_trabajo/features/services/domain/entities/service_entity.dart';
 import 'package:forja_trabajo/features/services/presentation/widgets/worker/worker_job_list_view.dart';
+import 'package:forja_trabajo/features/services/presentation/providers/nav_providers.dart';
 
 class MyJobsScreen extends ConsumerStatefulWidget {
-  final int initialTab;
-  const MyJobsScreen({super.key, this.initialTab = 0});
+  final int initialIndex;
+  const MyJobsScreen({super.key, this.initialIndex = 0});
 
   @override
   ConsumerState<MyJobsScreen> createState() => _WorkerMyJobsScreenState();
@@ -19,7 +20,13 @@ class _WorkerMyJobsScreenState extends ConsumerState<MyJobsScreen> with SingleTi
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this, initialIndex: widget.initialTab);
+    // Prioridad: 1. Índice que viene por constructor 2. Índice del provider
+    final index = widget.initialIndex != 0 ? widget.initialIndex : ref.read(workerJobsTabProvider);
+    _tabController = TabController(
+      length: 3, 
+      vsync: this, 
+      initialIndex: index
+    );
   }
 
   @override
@@ -30,7 +37,11 @@ class _WorkerMyJobsScreenState extends ConsumerState<MyJobsScreen> with SingleTi
 
   @override
   Widget build(BuildContext context) {
-    // 🎨 LÓGICA DE TUS COMPAÑEROS: Detección de tema
+    // Escuchamos si el provider cambia para animar la pestaña
+    ref.listen<int>(workerJobsTabProvider, (previous, nextIndex) {
+      _tabController.animateTo(nextIndex);
+    });
+
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 

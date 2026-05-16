@@ -22,10 +22,9 @@ class WorkerMainLayout extends ConsumerWidget {
 
     final List<Widget> screens = [
       const MarketplaceScreen(), // 0
-      const MyJobsScreen(), // 1
-      const ChatListScreen(), // 2
-      const NotificationsScreen(), // 3
-      const WorkerProfileScreen(), // 4
+      const ChatListScreen(), // 1
+      const MyJobsScreen(), // 2
+      const WorkerProfileScreen(), // 3
     ];
 
     return Scaffold(
@@ -51,11 +50,7 @@ class WorkerMainLayout extends ConsumerWidget {
             selectedIcon: Icon(Icons.search, color: Color(0xFF1E1B4B)),
             label: 'Explorar',
           ),
-          const NavigationDestination(
-            icon: Icon(Icons.work_history_outlined),
-            selectedIcon: Icon(Icons.work_history, color: Color(0xFF1E1B4B)),
-            label: 'Mis Tareas',
-          ),
+
           NavigationDestination(
             icon: Badge(
               isLabelVisible: unreadChatCount > 0,
@@ -75,28 +70,12 @@ class WorkerMainLayout extends ConsumerWidget {
               backgroundColor: const Color(0xFFEF4444),
               child: const Icon(Icons.chat_bubble, color: Color(0xFF1E1B4B)),
             ),
-            label: 'Chats',
+            label: 'Mensajes',
           ),
-          NavigationDestination(
-            icon: Badge(
-              isLabelVisible: unreadNotifCount > 0,
-              label: Text(
-                unreadNotifCount > 9 ? '9+' : '$unreadNotifCount',
-                style: const TextStyle(color: Colors.white, fontSize: 10),
-              ),
-              backgroundColor: const Color(0xFFEF4444),
-              child: const Icon(Icons.notifications_outlined),
-            ),
-            selectedIcon: Badge(
-              isLabelVisible: unreadNotifCount > 0,
-              label: Text(
-                unreadNotifCount > 9 ? '9+' : '$unreadNotifCount',
-                style: const TextStyle(color: Colors.white, fontSize: 10),
-              ),
-              backgroundColor: const Color(0xFFEF4444),
-              child: const Icon(Icons.notifications, color: Color(0xFF1E1B4B)),
-            ),
-            label: 'Avisos',
+          const NavigationDestination(
+            icon: Icon(Icons.work_history_outlined),
+            selectedIcon: Icon(Icons.work_history, color: Color(0xFF1E1B4B)),
+            label: 'Mis Trabajos',
           ),
           const NavigationDestination(
             icon: Icon(Icons.person_outline),

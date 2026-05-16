@@ -31,7 +31,7 @@ class Category(CategoryBase):
     is_active: bool
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class CategoryUpdate(BaseModel):
     name: Optional[str] = None
@@ -86,7 +86,7 @@ class Service(ServiceBase):
     already_reviewed: bool = False
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 # -----------------------------
@@ -113,7 +113,7 @@ class ServiceRequest(BaseModel):
     author_image_url: Optional[str] = None 
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class UpdatePostulationRequest(BaseModel):
     description: str

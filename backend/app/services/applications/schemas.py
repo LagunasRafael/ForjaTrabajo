@@ -21,7 +21,7 @@ class ServiceRequest(BaseModel):
     author_image_url: Optional[str] = None 
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class UpdatePostulationRequest(BaseModel):
     description: str

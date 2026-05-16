@@ -209,9 +209,13 @@ class Conversation(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    is_archived = Column(Boolean, default=False)
+    is_archived_by_client = Column(Boolean, default=False)
+    is_archived_by_worker = Column(Boolean, default=False)
     is_deleted_by_client = Column(Boolean, default=False)
     is_deleted_by_worker = Column(Boolean, default=False)
+
+    last_read_at_client = Column(DateTime, default=datetime.utcnow)
+    last_read_at_worker = Column(DateTime, default=datetime.utcnow)
 
     request = relationship("ServiceRequest", back_populates="conversation")
     messages = relationship("Message", back_populates="conversation", cascade="all, delete-orphan")
