@@ -17,6 +17,12 @@ class ChatRepositoryImpl implements ChatRepository {
   }
 
   @override
+  Future<MessageEntity> sendMessageRest(String conversationId, String content, String messageType) async {
+    final json = await remoteDataSource.sendMessageRest(conversationId, content, messageType);
+    return MessageModel.fromJson(json);
+  }
+
+  @override
   Future<String> getOrCreateConversation(String requestId) async {
     return await remoteDataSource.startOrGetChat(requestId);
   }

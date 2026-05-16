@@ -3,6 +3,7 @@ import '../entities/chat_summary_entity.dart';
 
 abstract class ChatRepository {
   Future<List<MessageEntity>> getChatHistory(String conversationId, {int skip = 0, int limit = 15});
+  Future<MessageEntity> sendMessageRest(String conversationId, String content, String messageType);
   Future<void> sendOffer(String conversationId, double amount);
   Future<void> respondOffer(String messageId, String action);
   Future<String> getOrCreateConversation(String requestId);

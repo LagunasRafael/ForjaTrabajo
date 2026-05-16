@@ -22,6 +22,11 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+
+class MessagePayload(BaseModel):
+    content: str
+    message_type: str = "text"
+
 # ---------------------------------------------------------
 # MANAGER DE WEBSOCKETS (El "Operador del Conmutador")
 # ---------------------------------------------------------
@@ -62,6 +67,72 @@ manager = ConnectionManager()
 # ---------------------------------------------------------
 
 # ✅ 1. PON ESTA RUTA HASTA ARRIBA (Para que nada la bloquee)
+@router.post("/chat/{conversation_id}/message", response_model=schemas.MessageResponse)
+async def send_message_rest(
+    conversation_id: str,
+    payload: MessagePayload,
+    db: Session = Depends(get_db),
+    current_user: auth_models.User = Depends(get_current_user)
+):
+    """REST fallback para enviar mensajes cuando WebSocket no esta disponible."""
+    convo = db.query(service_models.Conversation).filter(
+        service_models.Conversation.id == conversation_id
+    ).first()
+    if not convo:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    if str(convo.client_id) != str(current_user.id) and str(convo.worker_id) != str(current_user.id):
+        raise HTTPException(status_code=403, detail="No perteneces a esta conversacion")
+    if convo.status == service_models.ConversationStatus.CLOSED.value:
+        raise HTTPException(status_code=400, detail="Esta conversacion ya esta cerrada")
+
+    saved_msg = service.save_message(
+        db, conversation_id, str(current_user.id),
+        payload.content, payload.message_type
+    )
+
+    message_to_send = {
+        "id": str(saved_msg.id),
+        "conversation_id": str(saved_msg.conversation_id),
+        "sender_id": str(saved_msg.sender_id),
+        "content": saved_msg.content,
+        "message_type": saved_msg.message_type,
+        "created_at": saved_msg.created_at.isoformat(),
+        "status": getattr(saved_msg, "status", "pending")
+    }
+    await manager.broadcast(conversation_id, message_to_send)
+
+    try:
+        receiver_id = str(convo.worker_id) if str(convo.client_id) == str(current_user.id) else str(convo.client_id)
+        receiver = db.query(auth_models.User).filter(auth_models.User.id == receiver_id).first()
+        sender = db.query(auth_models.User).filter(auth_models.User.id == str(current_user.id)).first()
+        sender_name = sender.full_name if sender else "Nuevo mensaje"
+        content = payload.content
+        msg_type = payload.message_type
+        preview = content[:60] + "..." if len(content) > 60 else content
+        if msg_type == "image": preview = "Imagen"
+        elif msg_type == "audio": preview = "Audio"
+        elif msg_type == "video": preview = "Video"
+        elif msg_type == "location": preview = "Ubicacion"
+
+        active_ws_count = len(manager.active_connections.get(conversation_id, []))
+        if receiver and receiver.fcm_token and active_ws_count < 2:
+            logger.info(f"📣 [REST] Enviando Push a {receiver.full_name}")
+            send_push_notification(
+                fcm_token=str(receiver.fcm_token),
+                title=str(sender_name),
+                body=preview,
+                data={
+                    "type": "new_message",
+                    "conversation_id": conversation_id,
+                    "sender_name": sender_name
+                }
+            )
+    except Exception as notify_err:
+        logger.warning(f"⚠️ [REST] Error notificando: {notify_err}")
+
+    return saved_msg
+
+
 @router.get("/chat/my-chats")
 def get_my_chats(db: Session = Depends(get_db), current_user: auth_models.User = Depends(get_current_user)):
     """Flutter llama esto para pintar la bandeja de entrada completa."""
