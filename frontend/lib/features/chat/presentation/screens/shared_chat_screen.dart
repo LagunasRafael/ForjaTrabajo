@@ -4,10 +4,13 @@ import 'package:forja_trabajo/features/chat/domain/entities/message_entity.dart'
 import 'package:forja_trabajo/features/chat/presentation/widgets/negotiation_card.dart';
 import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart';
 import 'package:forja_trabajo/features/chat/presentation/providers/chat_provider.dart';
+import 'package:forja_trabajo/features/chat/presentation/providers/chat_list_provider.dart'; // 👈 Agregado
 import 'package:forja_trabajo/features/chat/presentation/widgets/chat_bubble.dart';
 import 'package:forja_trabajo/features/chat/presentation/widgets/chat_app_bar.dart';
 import 'package:forja_trabajo/features/chat/presentation/widgets/chat_input_area.dart';
 import 'package:forja_trabajo/features/chat/presentation/widgets/offer_bottom_sheet.dart';
+import 'package:forja_trabajo/core/network/notification_service.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 
 class SharedChatScreen extends ConsumerStatefulWidget {
   final String conversationId;
@@ -136,6 +139,18 @@ class _SharedChatScreenState extends ConsumerState<SharedChatScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // 🔔 Escuchar eventos de notificación para refrescar en tiempo real (Resolución de Admin o Fin de Trabajo)
+    ref.listen<AsyncValue<RemoteMessage>>(notificationEventProvider, (previous, next) {
+      next.whenData((message) {
+        final type = message.data['type'] ?? '';
+        if (type == 'job_completed' || type == 'job_cancelled' || type == 'dispute_resolved') {
+          debugPrint('🔄 [ChatScreen] Refrescando por resolución: $type');
+          ref.invalidate(chatListProvider);
+          ref.invalidate(chatProvider(widget.conversationId));
+        }
+      });
+    });
+
     final messages = ref.watch(chatProvider(widget.conversationId));
     final isOtherUserTyping = ref.watch(chatTypingProvider(widget.conversationId));
     final user = ref.watch(authProvider).user;
@@ -146,7 +161,31 @@ class _SharedChatScreenState extends ConsumerState<SharedChatScreen> {
     final lastOffer = _getLastOffer(messages);
     final isOfferAccepted = messages.any((m) => m.messageType == 'offer' && 
         (m.status.toLowerCase() == 'accept' || m.status.toLowerCase() == 'accepted'));
-    final canSendOffer = !isOfferAccepted;
+    
+    // Detectar si el chat está cerrado desde la lista de chats
+    final chatList = ref.watch(chatListProvider);
+    final thisChat = chatList.maybeWhen(
+      data: (chats) {
+        try {
+          return chats.firstWhere((c) => c.id == widget.conversationId);
+        } catch (_) {
+          return null;
+        }
+      },
+      orElse: () => null,
+    );
+    
+    // El chat solo se bloquea totalmente si el Admin o el Sistema lo cierran (CLOSED)
+    final isClosed = thisChat?.status == 'CLOSED' || thisChat?.status == 'CERRADO';
+    
+    // ¿El servicio ya está en proceso con alguien? (MATCHED, etc)
+    final isMatched = thisChat?.serviceStatus != 'OPEN' && thisChat?.serviceStatus != 'JobStatus.open';
+
+    // Las ofertas se bloquean si el chat está cerrado, si ya hay trato aceptado aquí,
+    // o si el servicio ya está en proceso (MATCHED)
+    final canSendOffer = !isClosed && !isOfferAccepted && !isMatched;
+    
+    // El banner de negociación solo se muestra si podemos enviar ofertas
     final hasActiveOffer = lastOffer != null && canSendOffer;
     final messageCount = messages.length;
 
@@ -263,6 +302,7 @@ class _SharedChatScreenState extends ConsumerState<SharedChatScreen> {
             conversationId: widget.conversationId,
             isClient: isClient,
             canSendOffer: canSendOffer,
+            isEnabled: !isClosed,
             onMessageSent: _scrollToBottom,
           ),
         ],

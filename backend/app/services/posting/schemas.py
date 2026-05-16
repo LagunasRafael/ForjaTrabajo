@@ -48,7 +48,7 @@ class Service(ServiceBase):
     already_reviewed: bool = False
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class ServiceActiveUpdate(BaseModel):
     is_active: bool

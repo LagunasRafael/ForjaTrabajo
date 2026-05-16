@@ -138,4 +138,14 @@ class ChatRemoteDataSource {
       rethrow;
     }
   }
+
+  Future<void> markAsRead(String conversationId) async {
+    try {
+      await _apiClient.dio.post('/services/chat/$conversationId/read');
+      print("✅ Chat marcado como leído: $conversationId");
+    } catch (e) {
+      // No lanzamos error para no interrumpir el flujo si falla el mark-as-read
+      print("⚠️ Error silencioso en markAsRead: $e");
+    }
+  }
 }

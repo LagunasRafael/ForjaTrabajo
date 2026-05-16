@@ -46,6 +46,7 @@ class PublicProfileModel {
   final DateTime createdAt;
   final double averageRating;
   final int totalReviews;
+  final bool isIdentityVerified;
   final List<JobSummaryModel> completedJobs;
 
   PublicProfileModel({
@@ -56,6 +57,7 @@ class PublicProfileModel {
     required this.createdAt,
     this.averageRating = 0.0,
     this.totalReviews = 0,
+    this.isIdentityVerified = false,
     this.completedJobs = const [],
   });
 
@@ -70,6 +72,7 @@ class PublicProfileModel {
           : DateTime.now(),
       averageRating: (json['average_rating'] ?? 0.0).toDouble(),
       totalReviews: json['total_reviews'] ?? 0,
+      isIdentityVerified: json['is_identity_verified'] ?? false,
       completedJobs: (json['completed_jobs'] as List<dynamic>?)
           ?.map((j) => JobSummaryModel.fromJson(j as Map<String, dynamic>))
           .toList() ?? [],

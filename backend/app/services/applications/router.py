@@ -43,4 +43,5 @@ def get_my_applications(db: Session = Depends(get_db), current_user: auth_models
 @router.get("/{service_id}/offers", response_model=List[schemas.ServiceRequest])
 def get_service_offers(service_id: str, db: Session = Depends(get_db), current_user: auth_models.User = Depends(get_current_user)):
     """Ver ofertas recibidas (Solo dueño o admin)"""
-    return service.get_offers_by_service(db, service_id, str(current_user.id))
+    is_admin = current_user.role.value == 'admin' if hasattr(current_user.role, 'value') else current_user.role == 'admin'
+    return service.get_offers_by_service(db, service_id, str(current_user.id), is_admin=is_admin)

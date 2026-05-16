@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../providers/public_profile_provider.dart';
 import '../../domain/models/public_profile_model.dart';
 import '../../domain/models/review_model.dart';
@@ -38,20 +39,44 @@ class UserProfileScreen extends ConsumerWidget {
             padding: const EdgeInsets.all(24.0),
             child: Column(
               children: [
-                CircleAvatar(
-                  radius: 50,
-                  backgroundImage: profile.profilePictureUrl != null && profile.profilePictureUrl!.isNotEmpty
-                      ? NetworkImage(profile.profilePictureUrl!)
-                      : null,
-                  child: profile.profilePictureUrl == null || profile.profilePictureUrl!.isEmpty
-                      ? const Icon(Icons.person, size: 50)
-                      : null,
-                ),
+                profile.profilePictureUrl != null && profile.profilePictureUrl!.isNotEmpty
+                    ? CachedNetworkImage(
+                        imageUrl: profile.profilePictureUrl!,
+                        imageBuilder: (context, imageProvider) => CircleAvatar(
+                          radius: 50,
+                          backgroundImage: imageProvider,
+                        ),
+                        placeholder: (context, url) => const CircleAvatar(
+                          radius: 50,
+                          child: Icon(Icons.person, size: 50),
+                        ),
+                        errorWidget: (context, url, error) => const CircleAvatar(
+                          radius: 50,
+                          child: Icon(Icons.person, size: 50),
+                        ),
+                      )
+                    : const CircleAvatar(
+                        radius: 50,
+                        child: Icon(Icons.person, size: 50),
+                      ),
                 const SizedBox(height: 16),
                 Text(
                   profile.fullName,
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
                 ),
+                if (profile.isIdentityVerified)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.verified, color: Colors.blue, size: 18),
+                        const SizedBox(width: 4),
+                        Text('Identidad Verificada',
+                            style: TextStyle(color: Colors.blue, fontSize: 13, fontWeight: FontWeight.w600)),
+                      ],
+                    ),
+                  ),
                 const SizedBox(height: 4),
                 Text(
                   profile.role.toUpperCase(),
@@ -147,26 +172,28 @@ class UserProfileScreen extends ConsumerWidget {
                     job.roleInJob == 'client' ? 'Como cliente' : 'Como trabajador',
                     style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                   ),
-                  if (job.finalPrice != null)
-                    Text(
-                      '\$${job.finalPrice!.toStringAsFixed(0)}',
-                      style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
-                    ),
                 ],
               ),
             ),
             if (job.otherPartyName != null)
               Column(
                 children: [
-                  CircleAvatar(
-                    radius: 18,
-                    backgroundImage: job.otherPartyImageUrl != null && job.otherPartyImageUrl!.isNotEmpty
-                        ? NetworkImage(job.otherPartyImageUrl!)
-                        : null,
-                    child: job.otherPartyImageUrl == null || job.otherPartyImageUrl!.isEmpty
-                        ? const Icon(Icons.person, size: 18)
-                        : null,
-                  ),
+                  job.otherPartyImageUrl != null && job.otherPartyImageUrl!.isNotEmpty
+                      ? CachedNetworkImage(
+                          imageUrl: job.otherPartyImageUrl!,
+                          imageBuilder: (context, imageProvider) => CircleAvatar(
+                            radius: 18,
+                            backgroundImage: imageProvider,
+                          ),
+                          errorWidget: (context, url, error) => const CircleAvatar(
+                            radius: 18,
+                            child: Icon(Icons.person, size: 18),
+                          ),
+                        )
+                      : const CircleAvatar(
+                          radius: 18,
+                          child: Icon(Icons.person, size: 18),
+                        ),
                   const SizedBox(height: 4),
                   Text(
                     job.otherPartyName!.split(' ').first,
@@ -227,15 +254,22 @@ class UserProfileScreen extends ConsumerWidget {
           children: [
             Row(
               children: [
-                CircleAvatar(
-                  radius: 20,
-                  backgroundImage: review.reviewerImageUrl != null && review.reviewerImageUrl!.isNotEmpty
-                      ? NetworkImage(review.reviewerImageUrl!)
-                      : null,
-                  child: review.reviewerImageUrl == null || review.reviewerImageUrl!.isEmpty
-                      ? const Icon(Icons.person, size: 20)
-                      : null,
-                ),
+                review.reviewerImageUrl != null && review.reviewerImageUrl!.isNotEmpty
+                      ? CachedNetworkImage(
+                          imageUrl: review.reviewerImageUrl!,
+                          imageBuilder: (context, imageProvider) => CircleAvatar(
+                            radius: 20,
+                            backgroundImage: imageProvider,
+                          ),
+                          errorWidget: (context, url, error) => const CircleAvatar(
+                            radius: 20,
+                            child: Icon(Icons.person, size: 20),
+                          ),
+                        )
+                      : const CircleAvatar(
+                          radius: 20,
+                          child: Icon(Icons.person, size: 20),
+                        ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(

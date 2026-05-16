@@ -42,6 +42,40 @@ class ChatBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 📢 ESTILO PARA MENSAJES DE SISTEMA (ADMIN / DISPUTAS)
+    if (messageType == 'system') {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 40),
+        child: Center(
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100, // Color neutro para mediador
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.grey.shade300, width: 1),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.03),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                )
+              ],
+            ),
+            child: Text(
+              text,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.blueGrey.shade900,
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Column(
@@ -84,7 +118,8 @@ class ChatBubble extends StatelessWidget {
                       ],
                     ),
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
+                      // Hora a la izquierda si soy yo, a la derecha si es el otro
+                      crossAxisAlignment: isMe ? CrossAxisAlignment.start : CrossAxisAlignment.end,
                       children: [
                         _buildContent(context),
                         if (time != null)
@@ -126,7 +161,8 @@ class ChatBubble extends StatelessWidget {
     } else if (status == 'error') {
       return const Icon(Icons.refresh, size: 14, color: Colors.orangeAccent);
     } else {
-      return Icon(Icons.done_all, size: 13, color: isMe ? Colors.white70 : Colors.grey.shade600);
+      // No mostrar nada para mensajes enviados (privacidad total)
+      return const SizedBox.shrink();
     }
   }
 
@@ -261,7 +297,7 @@ class ChatBubble extends StatelessWidget {
             color: Colors.grey.shade200,
             borderRadius: BorderRadius.circular(12),
             image: const DecorationImage(
-              image: AssetImage('assets/images/map_placeholder.png'), // Asumimos un placeholder genérico
+              image: AssetImage('assets/images/map_placeholder.png'), 
               fit: BoxFit.cover,
             )
           ),
@@ -291,7 +327,7 @@ class _AudioPlayerWidgetState extends State<_AudioPlayerWidget> {
   bool _isPlaying = false;
   Duration _duration = Duration.zero;
   Duration _position = Duration.zero;
-  bool _isLoading = true; // 🔥 NUEVO: estado de carga
+  bool _isLoading = true; 
 
   @override
   void initState() {
@@ -312,7 +348,7 @@ class _AudioPlayerWidgetState extends State<_AudioPlayerWidget> {
       if (mounted) {
         setState(() {
           _duration = newDuration;
-          _isLoading = false; // 🔥 Ya tenemos la duración
+          _isLoading = false; 
         });
       }
     });
@@ -336,7 +372,6 @@ class _AudioPlayerWidgetState extends State<_AudioPlayerWidget> {
         await _audioPlayer.setSourceUrl(widget.url);
       }
       
-      // 🔥 Si después de 2 segundos no hay duración, marcar como cargado igual
       Future.delayed(const Duration(seconds: 2), () {
         if (mounted && _isLoading) {
           setState(() => _isLoading = false);
@@ -364,7 +399,6 @@ class _AudioPlayerWidgetState extends State<_AudioPlayerWidget> {
 
   @override
   Widget build(BuildContext context) {
-    // 🔥 ALTURA FIJA: El widget SIEMPRE tiene 48px de altura
     return SizedBox(
       height: 48,
       child: Row(
@@ -423,12 +457,11 @@ class _AudioPlayerWidgetState extends State<_AudioPlayerWidget> {
             ),
           ),
           const SizedBox(width: 4),
-          // 🔥 ANCHO FIJO para el texto de duración
           SizedBox(
-            width: 40, // Suficiente para "99:59"
+            width: 40,
             child: Text(
               _isLoading 
-                  ? "..." // Placeholder mientras carga
+                  ? "..." 
                   : (_isPlaying 
                       ? _formatDuration(_position) 
                       : _formatDuration(_duration)),

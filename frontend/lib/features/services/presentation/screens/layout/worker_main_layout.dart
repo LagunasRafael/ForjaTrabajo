@@ -24,8 +24,7 @@ class WorkerMainLayout extends ConsumerWidget {
       const MarketplaceScreen(), // 0
       const MyJobsScreen(), // 1
       const ChatListScreen(), // 2
-      const NotificationsScreen(), // 3
-      const WorkerProfileScreen(), // 4
+      const WorkerProfileScreen(), // 3
     ];
 
     return Scaffold(
@@ -54,7 +53,7 @@ class WorkerMainLayout extends ConsumerWidget {
           const NavigationDestination(
             icon: Icon(Icons.work_history_outlined),
             selectedIcon: Icon(Icons.work_history, color: Color(0xFF1E1B4B)),
-            label: 'Mis Tareas',
+            label: 'Mis Trabajos',
           ),
           NavigationDestination(
             icon: Badge(
@@ -76,27 +75,6 @@ class WorkerMainLayout extends ConsumerWidget {
               child: const Icon(Icons.chat_bubble, color: Color(0xFF1E1B4B)),
             ),
             label: 'Chats',
-          ),
-          NavigationDestination(
-            icon: Badge(
-              isLabelVisible: unreadNotifCount > 0,
-              label: Text(
-                unreadNotifCount > 9 ? '9+' : '$unreadNotifCount',
-                style: const TextStyle(color: Colors.white, fontSize: 10),
-              ),
-              backgroundColor: const Color(0xFFEF4444),
-              child: const Icon(Icons.notifications_outlined),
-            ),
-            selectedIcon: Badge(
-              isLabelVisible: unreadNotifCount > 0,
-              label: Text(
-                unreadNotifCount > 9 ? '9+' : '$unreadNotifCount',
-                style: const TextStyle(color: Colors.white, fontSize: 10),
-              ),
-              backgroundColor: const Color(0xFFEF4444),
-              child: const Icon(Icons.notifications, color: Color(0xFF1E1B4B)),
-            ),
-            label: 'Avisos',
           ),
           const NavigationDestination(
             icon: Icon(Icons.person_outline),

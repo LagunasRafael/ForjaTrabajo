@@ -1,5 +1,7 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart'; // Para kDebugMode
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'dart:io' show Platform;
 
 class ApiClient {
   static final ApiClient _instance = ApiClient._internal();
@@ -18,7 +20,7 @@ class ApiClient {
   ApiClient._internal() : storage = const FlutterSecureStorage() {
     dio = Dio(
       BaseOptions(
-        baseUrl: _baseUrl,
+        baseUrl: baseUrl, // 👈 Ahora usa el getter dinámico
         connectTimeout: const Duration(seconds: 10),
         receiveTimeout: const Duration(seconds: 10),
         headers: {

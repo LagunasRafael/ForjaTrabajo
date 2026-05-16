@@ -40,19 +40,9 @@ class _WorkerApplyModalWidgetState extends ConsumerState<_WorkerApplyModalWidget
   void initState() {
     super.initState();
     _descCtrl = TextEditingController(text: widget.existingMessage ?? "");
-
-    if (_isEditing && widget.existingPrice != null) {
-      final String cents = (widget.existingPrice! * 100).toInt().toString();
-      _priceCtrl = TextEditingController(text: _applyCurrencyFormat(cents));
-    } else {
-      _priceCtrl = TextEditingController(text: "00.00");
-    }
-  }
-
-  String _applyCurrencyFormat(String value) {
-    if (value.isEmpty) return "00.00";
-    double amount = double.parse(value) / 100;
-    return amount.toStringAsFixed(2);
+    _priceCtrl = TextEditingController(
+      text: widget.existingPrice != null ? widget.existingPrice!.toStringAsFixed(0) : ""
+    );
   }
 
   @override

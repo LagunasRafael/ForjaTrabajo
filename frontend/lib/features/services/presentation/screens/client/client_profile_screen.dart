@@ -7,6 +7,11 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:forja_trabajo/features/auth/presentation/widgets/profile_shared_widgets.dart';
 import 'package:forja_trabajo/features/services/presentation/screens/client/edit_profile_screen.dart';
 import 'package:forja_trabajo/features/profile/presentation/settings_screen.dart';
+import 'package:forja_trabajo/features/profile/presentation/screens/user_profile_screen.dart';
+import 'package:forja_trabajo/features/services/presentation/providers/nav_providers.dart';
+import 'package:forja_trabajo/features/notifications/presentation/screens/notifications_screen.dart';
+import 'package:forja_trabajo/features/profile/presentation/screens/identity_verification_screen.dart';
+import 'package:forja_trabajo/features/profile/presentation/providers/public_profile_provider.dart';
 
 class ClientProfileScreen extends ConsumerWidget {
   const ClientProfileScreen({super.key});
@@ -15,6 +20,7 @@ class ClientProfileScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authProvider);
     final user = authState.user;
+    final verificationAsync = ref.watch(verificationStatusProvider);
 
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
@@ -24,37 +30,78 @@ class ClientProfileScreen extends ConsumerWidget {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // Pasamos los datos al header
             _buildHeader(
               user?.fullName ?? "Cliente",
               user?.email ?? "",
               "Cliente",
               user?.profilePictureUrl,
               user?.city,
+              user?.isIdentityVerified ?? false,
               ref,
               isDark,
             ),
             const SizedBox(height: 30),
 
-            // MENÚ DE OPCIONES
             ProfileMenuCard(
               [
                 ProfileMenuOption(
                     icon: LucideIcons.user,
                     title: 'Mi Información',
-                    onTap: () {}),
+                    onTap: () {
+                      if (user != null) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                UserProfileScreen(userId: user.id),
+                          ),
+                        );
+                      }
+                    }),
                 ProfileMenuOption(
                     icon: LucideIcons.shoppingBag,
                     title: 'Mis Solicitudes de Servicio',
-                    onTap: () {}),
+                    onTap: () {
+                      ref.read(clientNavProvider.notifier).state = 3;
+                    }),
                 ProfileMenuOption(
                     icon: LucideIcons.creditCard,
                     title: 'Métodos de Pago',
-                    onTap: () {}),
+                    onTap: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Métodos de pago en desarrollo'),
+                        ),
+                      );
+                    }),
                 ProfileMenuOption(
                     icon: LucideIcons.bell,
                     title: 'Notificaciones',
-                    onTap: () {}),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const NotificationsScreen(),
+                        ),
+                      );
+                    }),
+                if (user?.isIdentityVerified != true &&
+                    verificationAsync.valueOrNull?['has_pending_verification'] != true)
+                  ProfileMenuOption(
+                      icon: LucideIcons.shieldCheck,
+                      title: 'Verificar Identidad',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                const IdentityVerificationScreen(),
+                          ),
+                        ).then((_) {
+                          ref.invalidate(verificationStatusProvider);
+                          ref.invalidate(authProvider);
+                        });
+                      }),
                 ProfileMenuOption(
                   icon: LucideIcons.pencil,
                   title: 'Editar Perfil',
@@ -81,16 +128,15 @@ class ClientProfileScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 32),
             const ProfileLogoutButton(),
-            const SizedBox(height: 40), // Espacio extra al final
+            const SizedBox(height: 40),
           ],
         ),
       ),
     );
   }
 
-  // 👇 MOVIDO DENTRO DE LA CLASE PARA QUE FUNCIONE CORRECTAMENTE
   Widget _buildHeader(String name, String email, String role, String? imageUrl,
-      String? city, WidgetRef ref, bool isDark) {
+      String? city, bool isIdentityVerified, WidgetRef ref, bool isDark) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.only(top: 60, bottom: 30),
@@ -109,6 +155,19 @@ class ClientProfileScreen extends ConsumerWidget {
           Text(name,
               style:
                   GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.bold)),
+          if (isIdentityVerified)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.verified, color: Colors.blue, size: 18),
+                  const SizedBox(width: 4),
+                  Text('Identidad Verificada',
+                      style: GoogleFonts.inter(color: Colors.blue, fontSize: 13, fontWeight: FontWeight.w600)),
+                ],
+              ),
+            ),
           Text(email, style: GoogleFonts.inter(color: Colors.grey)),
           const SizedBox(height: 12),
 

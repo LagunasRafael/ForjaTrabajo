@@ -14,6 +14,7 @@ class ChatSummaryModel extends ChatSummaryEntity {
     required super.otherUserId,
     super.hasUnread,
     super.isArchived,
+    super.serviceStatus,
   });
 
   factory ChatSummaryModel.fromJson(Map<String, dynamic> json) {
@@ -34,6 +35,7 @@ class ChatSummaryModel extends ChatSummaryEntity {
       otherUserId: json['otherUserId']?.toString() ?? '',
       hasUnread: json['hasUnread'] ?? false,
       isArchived: json['isArchived'] ?? false,
+      serviceStatus: json['serviceStatus'] ?? 'OPEN',
     );
   }
 }

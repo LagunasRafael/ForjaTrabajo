@@ -39,6 +39,18 @@ def send_push_notification(fcm_token: str, title: str, body: str, data: dict = N
         data = {}
 
     try:
+        logger.info(f"🚀 Intentando enviar Push a token: {fcm_token[:20]}...")
+        logger.info(f"📦 Payload: title={title}, type={data.get('type')}")
+
+        # 📱 Configuración específica para que Android muestre el "Pop" (Heads-up)
+        android_config = messaging.AndroidConfig(
+            priority='high',
+            notification=messaging.AndroidNotification(
+                channel_id='forja_high_priority',
+                default_sound=True
+            )
+        )
+
         # Preparamos el mensaje
         message = messaging.Message(
             notification=messaging.Notification(
@@ -47,13 +59,19 @@ def send_push_notification(fcm_token: str, title: str, body: str, data: dict = N
             ),
             data=data,
             token=fcm_token,
+            android=android_config
         )
 
         # Lo enviamos
         response = messaging.send(message)
-        logger.info(f"✅ Notificación enviada con éxito: {response}")
+        logger.info(f"✅ Notificación enviada con éxito. ID de Firebase: {response}")
         return response
 
     except Exception as e:
-        logger.error(f"❌ Error al enviar notificación Push: {e}")
+        logger.error(f"❌ ERROR CRÍTICO al enviar notificación Push: {str(e)}")
+        # Si el error es 'Requested entity was not found', es un token inválido
+        if "not-found" in str(e).lower():
+            logger.warning("⚠️ El token ya no es válido en Firebase (Not Found).")
+        else:
+            logger.exception("Detalle del error Firebase:")
         return None

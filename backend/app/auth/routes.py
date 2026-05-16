@@ -9,7 +9,7 @@ from app.auth import models
 from app.services import models as service_models
 from app.services import schemas as service_schemas
 from app.db.database import get_db
-from app.auth.security import create_access_token, create_refresh_token, get_current_user, SECRET_KEY, ALGORITHM
+from app.auth.security import create_access_token, create_refresh_token, get_current_user, check_role, SECRET_KEY, ALGORITHM
 from app.core.roles import Role # Para forzar el rol en el registro
 from app.utils.s3 import upload_file_to_s3, delete_old_file_from_s3
 from app.utils.email import generate_verification_code, send_verification_email, send_password_reset_email
@@ -343,19 +343,22 @@ def update_fcm_token(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    # Si estamos asignando un token real (no vacío al cerrar sesión)
+    # Si estamos asignando un token real
     if data.fcm_token:
-        # Remover este token de cualquier otro usuario que lo tenga
-        # Esto evita que si el Usuario A no cerró sesión bien, sus notificaciones 
-        # le lleguen al Usuario B que ahora usa el mismo dispositivo.
+        # 🛡️ SEGURIDAD AGRESIVA: 
+        # Borrar este token de CUALQUIER otro usuario que no sea el actual.
+        # Esto soluciona el error de "veo notificaciones de otros perfiles".
         db.query(models.User).filter(
             models.User.fcm_token == data.fcm_token,
             models.User.id != current_user.id
         ).update({"fcm_token": ""}, synchronize_session=False)
         
+    # Actualizar el token del usuario actual
     current_user.fcm_token = data.fcm_token # type: ignore
     db.commit()
-    return {"status": "success", "message": "FCM token actualizado"}
+    
+    logger.info(f"🚀 FCM Token actualizado para {current_user.email}")
+    return {"status": "success", "message": "FCM token actualizado y vinculado exclusivamente"}
 
 # ============================================================
 # 🛡️ ENDPOINT PROTEGIDO: Solo un admin puede crear usuarios
@@ -492,6 +495,7 @@ def get_user_profile(user_id: str, db: Session = Depends(get_db)):
         "created_at": user.created_at,
         "average_rating": average_rating,
         "total_reviews": total_reviews,
+        "is_identity_verified": bool(user.is_identity_verified),
         "completed_jobs": completed_jobs[:10]
     }
 
@@ -518,3 +522,58 @@ def get_user_reviews(user_id: str, skip: int = 0, limit: int = 15, db: Session =
             "reviewer_image_url": reviewer.profile_picture_url if reviewer else None
         })
     return result
+
+# ============================================================
+# 🪪 VERIFICACIÓN DE IDENTIDAD (INE + Rekognition)
+# ============================================================
+from app.auth.verification_service import (
+    create_verification,
+    get_verification_status,
+    get_pending_verifications_admin,
+    approve_verification_admin,
+    reject_verification_admin
+)
+
+@router.post("/verify-identity", response_model=dict)
+async def upload_identity_verification(
+    ine_front: UploadFile = File(...),
+    ine_back: UploadFile = File(...),
+    selfie: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    return create_verification(
+        db, str(current_user.id),
+        ine_front, ine_back, selfie
+    )
+
+@router.get("/verification-status", response_model=dict)
+def read_verification_status(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    return get_verification_status(db, str(current_user.id))
+
+@router.get("/admin/verifications", response_model=list[dict])
+def list_pending_verifications(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(check_role([Role.ADMIN]))
+):
+    return get_pending_verifications_admin(db)
+
+@router.post("/admin/verifications/{verification_id}/approve", response_model=dict)
+def approve_verification(
+    verification_id: str,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(check_role([Role.ADMIN]))
+):
+    return approve_verification_admin(db, verification_id, str(current_user.id))
+
+@router.post("/admin/verifications/{verification_id}/reject", response_model=dict)
+def reject_verification(
+    verification_id: str,
+    payload: schemas.RejectVerificationRequest,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(check_role([Role.ADMIN]))
+):
+    return reject_verification_admin(db, verification_id, str(current_user.id), payload.reason)
