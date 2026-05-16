@@ -58,16 +58,20 @@ class NotificationService {
     debugPrint('🔔 Permisos notificaciones: ${settings.authorizationStatus}');
 
     // 2. Inicializar Local Notifications para el Pop-up (Android)
-    const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const iosInit = DarwinInitializationSettings();
-    await _localNotifications.initialize(
-      const InitializationSettings(android: androidInit, iOS: iosInit),
-    );
+    try {
+      const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
+      const iosInit = DarwinInitializationSettings();
+      await _localNotifications.initialize(
+        const InitializationSettings(android: androidInit, iOS: iosInit),
+      );
 
-    // Crear el canal en Android
-    await _localNotifications
-        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
-        ?.createNotificationChannel(_channel);
+      // Crear el canal en Android
+      await _localNotifications
+          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+          ?.createNotificationChannel(_channel);
+    } catch (e) {
+      debugPrint('⚠️ Local notifications no disponibles: $e');
+    }
 
     // 3. Foreground: mostrar banner visual y REFRESCAR PROVIDERS
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
@@ -96,21 +100,25 @@ class NotificationService {
     final notification = message.notification;
     if (notification == null) return;
 
-    _localNotifications.show(
-      notification.hashCode,
-      notification.title,
-      notification.body,
-      NotificationDetails(
-        android: AndroidNotificationDetails(
-          _channel.id,
-          _channel.name,
-          channelDescription: _channel.description,
-          importance: Importance.max,
-          priority: Priority.high,
-          icon: '@mipmap/ic_launcher',
+    try {
+      _localNotifications.show(
+        notification.hashCode,
+        notification.title,
+        notification.body,
+        NotificationDetails(
+          android: AndroidNotificationDetails(
+            _channel.id,
+            _channel.name,
+            channelDescription: _channel.description,
+            importance: Importance.max,
+            priority: Priority.high,
+            icon: '@mipmap/ic_launcher',
+          ),
         ),
-      ),
-    );
+      );
+    } catch (e) {
+      debugPrint('⚠️ Error mostrando local notification: $e');
+    }
   }
 
   /// Llamar desde main() para manejar tap cuando la app estaba terminada.

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja_trabajo/features/services/presentation/providers/service_list_provider.dart';
-import 'package:forja_trabajo/features/services/presentation/providers/category_provider.dart'; // 🚀 Importado para limpiar filtros
 import 'package:forja_trabajo/features/services/presentation/widgets/service_card.dart';
 import 'package:forja_trabajo/shared/widgets/service_card_skeleton.dart';
 
@@ -11,7 +10,6 @@ class ServiceListWidget extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final servicesAsync = ref.watch(serviceListProvider);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     // 🚀 ENVOLVEMOS LA LISTA EN UNA COLUMNA PARA AGREGAR EL TÍTULO
     return Column(
