@@ -139,6 +139,18 @@ class ChatRemoteDataSource {
     }
   }
 
+  Future<Map<String, dynamic>> sendMessageRest(String conversationId, String content, String messageType) async {
+    final response = await _apiClient.dio.post(
+      '/services/chat/$conversationId/message',
+      data: {
+        "content": content,
+        "message_type": messageType,
+      },
+    );
+    print("✅ Mensaje enviado por REST: ${response.data['id']}");
+    return response.data;
+  }
+
   Future<void> markAsRead(String conversationId) async {
     try {
       await _apiClient.dio.post('/services/chat/$conversationId/read');

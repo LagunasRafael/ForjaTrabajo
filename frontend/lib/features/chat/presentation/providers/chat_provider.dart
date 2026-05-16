@@ -8,7 +8,8 @@ import 'package:forja_trabajo/features/chat/data/datasources/chat_remote_datasou
 import 'package:forja_trabajo/features/chat/data/repositories/chat_repository_impl.dart';
 import 'package:forja_trabajo/features/chat/data/models/message_model.dart';
 import 'package:forja_trabajo/features/chat/domain/repositories/chat_repository.dart';
-import 'package:forja_trabajo/features/chat/presentation/providers/chat_list_provider.dart'; // 👈 Agregado
+import 'package:forja_trabajo/features/chat/presentation/providers/chat_list_provider.dart';
+import 'package:forja_trabajo/core/network/api_client.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 // --- PROVIDERS DE INFRAESTRUCTURA ---
@@ -109,16 +110,10 @@ class ChatNotifier extends StateNotifier<List<MessageModel>> {
   void _connect() {
     if (_isDisposed || _isReconnecting || userId.isEmpty || conversationId.isEmpty) return;
 
-    // 💡 URL Dinámica para WebSocket
-    final String wsBaseUrl;
-    if (kDebugMode) {
-      // Priorizar 10.0.2.2 para Android Emulator
-      wsBaseUrl = (defaultTargetPlatform == TargetPlatform.android) 
-          ? 'ws://10.0.2.2:8000' 
-          : 'ws://localhost:8000';
-    } else {
-      wsBaseUrl = 'wss://forja-api-rw0r.onrender.com';
-    }
+    final apiBase = ApiClient.baseUrl;
+    final wsBaseUrl = apiBase
+        .replaceFirst('https://', 'wss://')
+        .replaceFirst('http://', 'ws://');
 
     final wsUrl = "$wsBaseUrl/services/chat/ws/$conversationId/$userId";
     print("🔌 [WS] Conectando a: $wsUrl");
@@ -228,7 +223,6 @@ class ChatNotifier extends StateNotifier<List<MessageModel>> {
     state = [optimistic, ...state];
     ref.read(chatListProvider.notifier).loadRealChats();
 
-    bool wsSent = false;
     if (_channel != null) {
       try {
         final message = jsonEncode({
@@ -237,54 +231,79 @@ class ChatNotifier extends StateNotifier<List<MessageModel>> {
           "conversation_id": conversationId
         });
         _channel!.sink.add(message);
-        wsSent = true;
         print("📤 [Chat] Enviado por WS: $content");
 
-        final i = state.indexWhere((m) => m.id == tempId);
-        if (i != -1 && mounted) {
-          final sent = MessageModel(
-            id: tempId,
-            conversationId: conversationId,
-            senderId: userId,
-            content: content,
-            messageType: type,
-            createdAt: optimistic.createdAt,
-            status: 'sent',
-          );
-          state = [
-            for (int j = 0; j < state.length; j++)
-              if (j == i) sent else state[j],
-          ];
-        }
+        _markOptimisticSent(tempId, optimistic);
       } catch (e) {
         print("❌ [Chat] Error al enviar WS: $e");
+        _sendViaRest(content, type, tempId, optimistic);
       }
+    } else {
+      _sendViaRest(content, type, tempId, optimistic);
     }
+  }
 
-    if (!wsSent) {
-      print("⏰ [Chat] WS no disponible. Reintentando...");
-      _isReconnecting = false;
-      _connect();
+  void _markOptimisticSent(String tempId, MessageModel optimistic) {
+    final i = state.indexWhere((m) => m.id == tempId);
+    if (i != -1 && mounted) {
+      final sent = MessageModel(
+        id: tempId,
+        conversationId: conversationId,
+        senderId: userId,
+        content: optimistic.content,
+        messageType: optimistic.messageType,
+        createdAt: optimistic.createdAt,
+        status: 'sent',
+      );
+      state = [
+        for (int j = 0; j < state.length; j++)
+          if (j == i) sent else state[j],
+      ];
+    }
+  }
 
-      Future.delayed(const Duration(seconds: 10), () {
-        if (!mounted) return;
-        final i = state.indexWhere((m) => m.id == tempId);
-        if (i != -1 && state[i].status == 'sending') {
-          final updated = MessageModel(
-            id: tempId,
-            conversationId: conversationId,
-            senderId: userId,
-            content: content,
-            messageType: type,
-            createdAt: optimistic.createdAt,
-            status: 'error',
-          );
-          state = [
-            for (int j = 0; j < state.length; j++)
-              if (j == i) updated else state[j],
-          ];
-        }
-      });
+  Future<void> _sendViaRest(String content, String type, String tempId, MessageModel optimistic) async {
+    try {
+      print("📤 [Chat] Enviando por REST: $content");
+      final saved = await _repository.sendMessageRest(conversationId, content, type);
+      final realId = saved.id;
+
+      final i = state.indexWhere((m) => m.id == tempId);
+      if (i != -1 && mounted) {
+        final updated = MessageModel(
+          id: realId,
+          conversationId: conversationId,
+          senderId: userId,
+          content: content,
+          messageType: type,
+          createdAt: saved.createdAt,
+          status: 'sent',
+        );
+        state = [
+          for (int j = 0; j < state.length; j++)
+            if (j == i) updated else state[j],
+        ];
+        print("✅ [Chat] Mensaje enviado por REST: $realId");
+      }
+      ref.read(chatListProvider.notifier).loadRealChats();
+    } catch (e) {
+      print("❌ [Chat] Error enviando por REST: $e");
+      final i = state.indexWhere((m) => m.id == tempId);
+      if (i != -1 && mounted) {
+        final updated = MessageModel(
+          id: tempId,
+          conversationId: conversationId,
+          senderId: userId,
+          content: content,
+          messageType: type,
+          createdAt: optimistic.createdAt,
+          status: 'error',
+        );
+        state = [
+          for (int j = 0; j < state.length; j++)
+            if (j == i) updated else state[j],
+        ];
+      }
     }
   }
 
