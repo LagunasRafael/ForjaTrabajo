@@ -111,21 +111,25 @@ class NotificationService {
     final notification = message.notification;
     if (notification == null) return;
 
-    _localNotifications.show(
-      notification.hashCode,
-      notification.title,
-      notification.body,
-      NotificationDetails(
-        android: AndroidNotificationDetails(
-          _channel.id,
-          _channel.name,
-          channelDescription: _channel.description,
-          importance: Importance.max,
-          priority: Priority.high,
-          icon: '@mipmap/ic_launcher',
+    try {
+      _localNotifications.show(
+        notification.hashCode,
+        notification.title,
+        notification.body,
+        NotificationDetails(
+          android: AndroidNotificationDetails(
+            _channel.id,
+            _channel.name,
+            channelDescription: _channel.description,
+            importance: Importance.max,
+            priority: Priority.high,
+            icon: '@mipmap/ic_launcher',
+          ),
         ),
-      ),
-    );
+      );
+    } catch (e) {
+      debugPrint('⚠️ Error mostrando local notification: $e');
+    }
   }
 
   /// Llamar desde main() para manejar tap cuando la app estaba terminada.
