@@ -62,7 +62,7 @@ class ClientMainLayout extends ConsumerWidget {
             children: <Widget>[
               Expanded(
                   child: _buildNavItem(
-                      Icons.home_filled, 'Inicio', 0, ref, currentIndex,
+                      Icons.home_filled, 'Explorar', 0, ref, currentIndex,
                       badgeCount: 0)),
               Expanded(
                   child: _buildNavItem(
