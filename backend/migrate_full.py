@@ -23,7 +23,8 @@ def migrate_all():
             ("fcm_token", "VARCHAR(255)"),
             ("created_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"),
             ("is_email_verified", "BOOLEAN DEFAULT FALSE"),
-            ("verification_code", "VARCHAR(6)")
+            ("verification_code", "VARCHAR(6)"),
+            ("is_banned", "BOOLEAN DEFAULT FALSE"),
         ]
         
         # --- TABLA CONVERSATIONS ---
@@ -87,6 +88,27 @@ def migrate_all():
             print("Tabla 'messages' verificada/creada.")
         except Exception as e:
             print(f"Error creando tabla 'messages': {e}")
+
+        print("\nVerificando tabla 'reports'...")
+        try:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS reports (
+                    id VARCHAR(36) PRIMARY KEY,
+                    reporter_id VARCHAR(36) NOT NULL,
+                    reported_user_id VARCHAR(36),
+                    reported_service_id VARCHAR(36),
+                    reason VARCHAR(30) NOT NULL,
+                    description TEXT,
+                    status VARCHAR(30) DEFAULT 'pending',
+                    admin_id VARCHAR(36),
+                    admin_note TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    resolved_at TIMESTAMP
+                );
+            """)
+            print("Tabla 'reports' verificada/creada.")
+        except Exception as e:
+            print(f"Error creando tabla 'reports': {e}")
 
         cursor.close()
         conn.close()
