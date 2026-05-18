@@ -101,9 +101,27 @@ class ApiClient {
             // TODO: Aquí luego pondremos código para mandar al usuario a la pantalla de Login
             print('🚨 Sesión totalmente expirada. Limpiando tokens...');
           }
-          return handler.next(e);
+            return handler.next(e);
         },
       ),
     );
+  }
+
+  Future<Map<String, dynamic>> reportUser({
+    required String reportedUserId,
+    String? reportedServiceId,
+    required String reason,
+    String? description,
+  }) async {
+    final response = await dio.post(
+      '/services/report',
+      data: {
+        'reported_user_id': reportedUserId,
+        if (reportedServiceId != null) 'reported_service_id': reportedServiceId,
+        'reason': reason,
+        if (description != null) 'description': description,
+      },
+    );
+    return response.data;
   }
 }
