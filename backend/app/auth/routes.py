@@ -354,10 +354,10 @@ def update_fcm_token(
         current_user.fcm_token = token
         db.commit()
 
-        logger.info(f"FCM Token actualizado para {current_user.email}")
+        print(f"FCM Token actualizado para {current_user.email}")
         return {"status": "success", "message": "FCM token actualizado"}
     except Exception as e:
-        logger.error(f"Error actualizando FCM token: {e}", exc_info=True)
+        print(f"Error actualizando FCM token: {e}")
         db.rollback()
         return {"status": "error", "message": str(e)}
 

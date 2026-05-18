@@ -287,6 +287,9 @@ class Report(Base):
     reported_user = relationship("User", foreign_keys=[reported_user_id])
     admin = relationship("User", foreign_keys=[admin_id])
 
+class Review(Base):
+    __tablename__ = "reviews"
+
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     job_id = Column(String(36), ForeignKey("jobs.id"), nullable=False, index=True)
     reviewer_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
