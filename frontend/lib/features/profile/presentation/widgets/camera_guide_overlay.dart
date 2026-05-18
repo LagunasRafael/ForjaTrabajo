@@ -1,8 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
-
-enum CaptureType { ineFront, ineBack, selfie }
+import 'package:camera/camera.dart';
+import 'camera_capture_screen.dart';
 
 class CameraGuideScreen extends StatefulWidget {
   final CaptureType captureType;
@@ -19,8 +18,6 @@ class CameraGuideScreen extends StatefulWidget {
 }
 
 class _CameraGuideScreenState extends State<CameraGuideScreen> {
-  final _picker = ImagePicker();
-
   String get _title {
     switch (widget.captureType) {
       case CaptureType.ineFront:
@@ -33,13 +30,32 @@ class _CameraGuideScreenState extends State<CameraGuideScreen> {
   }
 
   Future<void> _openCamera() async {
-    final file = await _picker.pickImage(
-      source: ImageSource.camera,
-      imageQuality: 85,
-    );
-    if (file != null && mounted) {
-      widget.onPhotoTaken(File(file.path));
-      Navigator.of(context).pop();
+    try {
+      final cameras = await availableCameras();
+      if (!mounted) return;
+
+      if (cameras.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No se encontró cámara en el dispositivo')),
+        );
+        return;
+      }
+
+      await Navigator.of(context).push<File>(
+        MaterialPageRoute(
+          builder: (_) => CameraCaptureScreen(
+            captureType: widget.captureType,
+            onPhotoTaken: widget.onPhotoTaken,
+            cameras: cameras,
+          ),
+        ),
+      );
+
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+    } catch (e) {
+      debugPrint('Error abriendo cámara: $e');
     }
   }
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja_trabajo/features/services/domain/usecases/jobs/cancel_job_usecase.dart';
+import 'package:forja_trabajo/core/network/api_client.dart';
 
 // 🚀 PROVIDER DE ESTADO DE CANCELACIÓN (Lo ponemos aquí para que el Lego sea independiente)
 final isCancelingProvider = StateProvider.family<bool, String>((ref, id) => false);
@@ -85,8 +86,16 @@ class SharedJobInfo extends StatelessWidget {
 class SharedCancelMenu extends ConsumerWidget {
   final String jobId;
   final VoidCallback onCancelSuccess;
+  final String? reportUserId;
+  final String? reportServiceId;
 
-  const SharedCancelMenu({super.key, required this.jobId, required this.onCancelSuccess});
+  const SharedCancelMenu({
+    super.key,
+    required this.jobId,
+    required this.onCancelSuccess,
+    this.reportUserId,
+    this.reportServiceId,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -100,7 +109,10 @@ class SharedCancelMenu extends ConsumerWidget {
       backgroundColor: Colors.black45, radius: 18,
       child: PopupMenuButton<String>(
         padding: EdgeInsets.zero, icon: const Icon(Icons.more_vert, color: Colors.white, size: 20), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        onSelected: (val) => val == 'cancel' ? _handleCancel(context, ref) : null,
+        onSelected: (val) {
+          if (val == 'cancel') _handleCancel(context, ref);
+          if (val == 'report') _handleReport(context);
+        },
         itemBuilder: (context) => [
           const PopupMenuItem(value: 'report', child: Row(children: [Icon(Icons.flag_outlined, size: 20, color: Colors.black87), SizedBox(width: 10), Text("Reportar")])),
           const PopupMenuDivider(),
@@ -108,6 +120,79 @@ class SharedCancelMenu extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _handleReport(BuildContext context) async {
+    final reportedUserId = reportUserId;
+    if (reportedUserId == null || reportedUserId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No se pudo identificar al usuario'), backgroundColor: Colors.red),
+      );
+      return;
+    }
+
+    final reasonController = TextEditingController();
+    String selectedReason = 'inappropriate_content';
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Row(children: [Icon(Icons.flag, color: Colors.orange), SizedBox(width: 8), Text('Reportar servicio')]),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('¿Por qué quieres reportar este servicio?'),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: selectedReason,
+                  decoration: const InputDecoration(labelText: 'Motivo', border: OutlineInputBorder()),
+                  items: const [
+                    DropdownMenuItem(value: 'spam', child: Text('Spam')),
+                    DropdownMenuItem(value: 'inappropriate_content', child: Text('Contenido inapropiado')),
+                    DropdownMenuItem(value: 'scam', child: Text('Estafa')),
+                    DropdownMenuItem(value: 'harassment', child: Text('Acoso')),
+                    DropdownMenuItem(value: 'fake_profile', child: Text('Perfil falso')),
+                    DropdownMenuItem(value: 'other', child: Text('Otro')),
+                  ],
+                  onChanged: (v) { if (v != null) setDialogState(() => selectedReason = v); },
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: reasonController,
+                  maxLines: 3,
+                  decoration: const InputDecoration(hintText: 'Describe lo sucedido (opcional)...', border: OutlineInputBorder()),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+            ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: Colors.orange), onPressed: () => Navigator.pop(ctx, true), child: const Text('Enviar reporte', style: TextStyle(color: Colors.white))),
+          ],
+        ),
+      ),
+    );
+
+    if (result == true && context.mounted) {
+      try {
+        await ApiClient().reportUser(
+          reportedUserId: reportedUserId,
+          reportedServiceId: reportServiceId,
+          reason: selectedReason,
+          description: reasonController.text.isNotEmpty ? reasonController.text : null,
+        );
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Reporte enviado. Un administrador lo revisará.'), backgroundColor: Colors.green),
+        );
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: ${e.toString()}'), backgroundColor: Colors.red),
+        );
+      }
+    }
   }
 
   Future<void> _handleCancel(BuildContext context, WidgetRef ref) async {

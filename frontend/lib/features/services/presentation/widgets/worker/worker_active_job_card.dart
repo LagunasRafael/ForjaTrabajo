@@ -46,6 +46,8 @@ class WorkerActiveJobCard extends ConsumerWidget {
                   ref.invalidate(workerJobsProvider);
                   ref.invalidate(serviceListProvider);
                 },
+                reportUserId: job.clientId,
+                reportServiceId: job.id,
               ),
             ),
             Padding(

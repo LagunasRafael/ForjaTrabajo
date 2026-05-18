@@ -14,6 +14,7 @@ import { SettingsPage } from '../modules/admin/pages/SettingsPage'; // Ajusta la
 import { DisputesPage } from '../modules/disputes/pages/DisputesPage';
 import { ChatViewer } from '../modules/disputes/pages/ChatViewer';
 import { VerificationsPage } from '../modules/verifications/pages/VerificationsPage';
+import { ReportsPage } from '../modules/reports/pages/ReportsPage';
 
 export const router = createBrowserRouter([
   // 1. Ruta Pública (Login)
@@ -74,6 +75,10 @@ export const router = createBrowserRouter([
       {
         path: 'verifications',
         element: <VerificationsPage />
+      },
+      {
+        path: 'reports',
+        element: <ReportsPage />
       },
 
       // 🟡 3. EL COMODÍN SIEMPRE AL FINAL DE LOS CHILDREN
