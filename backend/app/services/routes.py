@@ -10,6 +10,9 @@ from app.db.database import get_db
 from app.services import schemas, service
 from app.auth import models as auth_models
 
+from app.services import models
+from app.user_profile.models import UserProfile
+
 router = APIRouter()
 
 # =================================================================
@@ -174,7 +177,7 @@ def complete_job_status(
     current_user: auth_models.User = Depends(check_role([Role.CLIENT, Role.WORKER, Role.ADMIN]))
 ):
     try:
-        updated_job = service.complete_job(db, job_id, current_user.id)
+        updated_job = service.complete_job(db, job_id, current_user.id) #type: ignore
         return updated_job
     except HTTPException as e:
         raise e
@@ -188,7 +191,7 @@ def withdraw_postulation(
     db: Session = Depends(get_db),
     current_user: auth_models.User = Depends(get_current_user)
 ):
-    return service.withdraw_postulation(db, request_id, current_user.id)
+    return service.withdraw_postulation(db, request_id, current_user.id) #type: ignore
 
 @router.put("/jobs/{job_id}/cancel", response_model=schemas.Job)
 def cancel_job_status(
@@ -196,7 +199,7 @@ def cancel_job_status(
     db: Session = Depends(get_db),
     current_user: auth_models.User = Depends(get_current_user)
 ):
-    return service.cancel_job(db, job_id, current_user.id, current_user.role)
+    return service.cancel_job(db, job_id, current_user.id, current_user.role) #type: ignore
 
 # =================================================================
 # 4.5. ADMIN ONLY ENDPOINTS (Jobs & Disputes)
@@ -228,7 +231,7 @@ def get_all_jobs_admin(
         result.append({
             "id": job.id,
             "status": job.status.value,
-            "final_price": float(job.final_price) if job.final_price else 0,
+            "final_price": float(job.final_price) if job.final_price else 0, # type: ignore
             "started_at": job.started_at,
             "completed_at": job.completed_at,
             "client_name": client.full_name if client else "Cliente Desconocido",
@@ -305,7 +308,7 @@ def get_service_offers(
     db: Session = Depends(get_db),
     current_user: auth_models.User = Depends(get_current_user)
 ):
-    return service.get_offers_by_service(db, service_id, current_user.id)
+    return service.get_offers_by_service(db, service_id, current_user.id) # type: ignore
 
 @router.get("/{service_id}", response_model=schemas.Service)
 def read_service(service_id: str, db: Session = Depends(get_db)):
