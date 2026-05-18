@@ -27,6 +27,33 @@ from app.payments.routes import router as payments_router
 print("📋 Tablas listas para crear:", Base.metadata.tables.keys())
 Base.metadata.create_all(bind=engine)
 
+from sqlalchemy import text
+def _migrate():
+    migs = [
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_banned BOOLEAN DEFAULT FALSE",
+        "CREATE TABLE IF NOT EXISTS reports ("
+        " id VARCHAR(36) PRIMARY KEY,"
+        " reporter_id VARCHAR(36) NOT NULL,"
+        " reported_user_id VARCHAR(36),"
+        " reported_service_id VARCHAR(36),"
+        " reason VARCHAR(30) NOT NULL,"
+        " description TEXT,"
+        " status VARCHAR(30) DEFAULT 'pending',"
+        " admin_id VARCHAR(36),"
+        " admin_note TEXT,"
+        " created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,"
+        " resolved_at TIMESTAMP"
+        ")",
+    ]
+    with engine.connect() as conn:
+        for m in migs:
+            try:
+                conn.execute(text(m))
+                conn.commit()
+            except Exception:
+                conn.rollback()
+    print("✅ Migraciones automáticas ejecutadas.")
+_migrate()
 
 app = FastAPI(
     title="Forja Trabajo API",
@@ -47,7 +74,7 @@ from app.core.rate_limit import limiter
 
 # 🚦 Rate Limiting (Protección contra fuerza bruta y SPAM)
 app.state.limiter = limiter # type: ignore
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
 app.add_middleware(SlowAPIMiddleware)
 
 # Configuración del Logger
