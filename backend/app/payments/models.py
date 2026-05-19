@@ -14,6 +14,7 @@ class ContractStatus(str, enum.Enum):
 
 class PaymentStatus(str, enum.Enum):
     PENDING = "pending"
+    HELD_IN_ESCROW = "held_in_escrow"
     COMPLETED = "completed"
     FAILED = "failed"
     REFUNDED = "refunded"
