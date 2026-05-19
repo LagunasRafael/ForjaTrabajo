@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:http_parser/http_parser.dart';
 import 'package:forja_trabajo/core/network/api_client.dart';
 // Asegúrate de importar tu modelo si lo necesitas
 // import '../models/message_model.dart'; 
@@ -111,8 +112,32 @@ class ChatRemoteDataSource {
 
   Future<String?> uploadMedia(String conversationId, String filePath) async {
     try {
+      final ext = filePath.split('.').last.toLowerCase();
+      String contentType;
+      if (['jpg', 'jpeg', 'png', 'webp'].contains(ext)) {
+        contentType = 'image/jpeg';
+      } else if (['mp4', 'mov', 'mkv'].contains(ext)) {
+        contentType = 'video/mp4';
+      } else if (['m4a', 'aac'].contains(ext)) {
+        contentType = 'audio/m4a';
+      } else if (ext == 'mp3') {
+        contentType = 'audio/mpeg';
+      } else if (ext == 'ogg') {
+        contentType = 'audio/ogg';
+      } else if (ext == 'wav') {
+        contentType = 'audio/wav';
+      } else if (ext == 'opus') {
+        contentType = 'audio/opus';
+      } else {
+        contentType = 'application/octet-stream';
+      }
+
       final formData = FormData.fromMap({
-        'file': await MultipartFile.fromFile(filePath),
+        'file': await MultipartFile.fromFile(
+          filePath,
+          filename: 'media.$ext',
+          contentType: MediaType.parse(contentType),
+        ),
       });
       final response = await _apiClient.dio.post(
         '/services/chat/$conversationId/upload',

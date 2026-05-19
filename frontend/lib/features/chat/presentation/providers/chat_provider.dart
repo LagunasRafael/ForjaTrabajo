@@ -363,24 +363,179 @@ class ChatNotifier extends StateNotifier<List<MessageModel>> {
     }
   }
 
-  Future<void> sendMediaBatch(List<String> paths, String? text) async {
+  Future<void> sendMediaBatch(List<String> paths, String? caption) async {
     if (paths.isEmpty) return;
-    try {
-      List<String> uploadedUrls = [];
-      for (var path in paths) {
-        final url = await _repository.uploadChatMedia(conversationId, path);
-        if (url != null) uploadedUrls.add(url);
-      }
-      
-      if (uploadedUrls.isNotEmpty) {
-        final content = uploadedUrls.join(',');
-        await sendMessage(content, uploadedUrls.length > 1 ? 'gallery' : 'image');
-        if (text != null && text.isNotEmpty) {
-          await sendMessage(text, 'text');
+
+    // Separar audios de imágenes/videos por extensión
+    final audioPaths = paths.where((p) {
+      final ext = p.split('.').last.toLowerCase();
+      return ['m4a', 'mp3', 'ogg', 'wav', 'aac', 'opus'].contains(ext);
+    }).toList();
+
+    final imagePaths = paths.where((p) {
+      final ext = p.split('.').last.toLowerCase();
+      return !['m4a', 'mp3', 'ogg', 'wav', 'aac', 'opus'].contains(ext);
+    }).toList();
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // 1. OPTIMISTA: insertar burbuja(s) de IMÁGENES de inmediato (local paths)
+    // ──────────────────────────────────────────────────────────────────────────
+    String? imageTempId;
+    if (imagePaths.isNotEmpty) {
+      imageTempId = 'temp_media_${DateTime.now().millisecondsSinceEpoch}';
+      final localContent = imagePaths.join(',');
+      final optimistic = MessageModel(
+        id: imageTempId,
+        conversationId: conversationId,
+        senderId: userId,
+        content: localContent,
+        messageType: imagePaths.length > 1 ? 'gallery' : 'image',
+        createdAt: DateTime.now().toUtc(),
+        status: 'sending',
+      );
+      state = [optimistic, ...state];
+      ref.read(chatListProvider.notifier).loadRealChats();
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // 2. OPTIMISTA: insertar burbuja(s) de AUDIO de inmediato (local paths)
+    // ──────────────────────────────────────────────────────────────────────────
+    final audioTempIds = <String, String>{}; // tempId -> localPath
+    for (final path in audioPaths) {
+      final tempId = 'temp_audio_${DateTime.now().millisecondsSinceEpoch}_${path.hashCode}';
+      final optimistic = MessageModel(
+        id: tempId,
+        conversationId: conversationId,
+        senderId: userId,
+        content: path,
+        messageType: 'audio',
+        createdAt: DateTime.now().toUtc(),
+        status: 'sending',
+      );
+      state = [optimistic, ...state];
+      audioTempIds[tempId] = path;
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // 3. SUBIDA REAL: imágenes
+    // ──────────────────────────────────────────────────────────────────────────
+    if (imagePaths.isNotEmpty && imageTempId != null) {
+      try {
+        List<String> uploadedUrls = [];
+        for (final path in imagePaths) {
+          final url = await _repository.uploadChatMedia(conversationId, path);
+          if (url != null) uploadedUrls.add(url);
         }
+
+        if (uploadedUrls.isNotEmpty) {
+          // Enviar al servidor y obtener ID real
+          final content = uploadedUrls.join(',');
+          final type = uploadedUrls.length > 1 ? 'gallery' : 'image';
+          
+          try {
+            final saved = await _repository.sendMessageRest(conversationId, content, type);
+            // Reemplazar el optimista con el real (URL de S3)
+            final idx = state.indexWhere((m) => m.id == imageTempId);
+            if (idx != -1 && mounted) {
+              state = [
+                for (int i = 0; i < state.length; i++)
+                  if (i == idx)
+                    MessageModel(
+                      id: saved.id,
+                      conversationId: conversationId,
+                      senderId: userId,
+                      content: content,
+                      messageType: type,
+                      createdAt: saved.createdAt,
+                      status: 'sent',
+                    )
+                  else
+                    state[i],
+              ];
+            }
+          } catch (e) {
+            _setMediaError(imageTempId!);
+          }
+        } else {
+          _setMediaError(imageTempId!);
+        }
+      } catch (e) {
+        print("🚨 Error subiendo imágenes: $e");
+        _setMediaError(imageTempId!);
       }
-    } catch (e) {
-      print("🚨 Error subiendo archivos: $e");
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // 4. SUBIDA REAL: audios (uno por uno)
+    // ──────────────────────────────────────────────────────────────────────────
+    for (final entry in audioTempIds.entries) {
+      final tempId = entry.key;
+      final path = entry.value;
+      try {
+        final url = await _repository.uploadChatMedia(conversationId, path);
+        if (url != null) {
+          try {
+            final saved = await _repository.sendMessageRest(conversationId, url, 'audio');
+            final idx = state.indexWhere((m) => m.id == tempId);
+            if (idx != -1 && mounted) {
+              state = [
+                for (int i = 0; i < state.length; i++)
+                  if (i == idx)
+                    MessageModel(
+                      id: saved.id,
+                      conversationId: conversationId,
+                      senderId: userId,
+                      content: url,
+                      messageType: 'audio',
+                      createdAt: saved.createdAt,
+                      status: 'sent',
+                    )
+                  else
+                    state[i],
+              ];
+            }
+          } catch (e) {
+            _setMediaError(tempId);
+          }
+        } else {
+          _setMediaError(tempId);
+        }
+      } catch (e) {
+        print("🚨 Error subiendo audio: $e");
+        _setMediaError(tempId);
+      }
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // 5. Caption (texto extra si se añadió)
+    // ──────────────────────────────────────────────────────────────────────────
+    if (caption != null && caption.isNotEmpty) {
+      await sendMessage(caption, 'text');
+    }
+
+    ref.read(chatListProvider.notifier).loadRealChats();
+  }
+
+  /// Marca un mensaje optimista como 'error' para que el usuario pueda reintentar
+  void _setMediaError(String tempId) {
+    final idx = state.indexWhere((m) => m.id == tempId);
+    if (idx != -1 && mounted) {
+      final old = state[idx];
+      state = [
+        for (int i = 0; i < state.length; i++)
+          if (i == idx)
+            MessageModel(
+              id: old.id,
+              conversationId: old.conversationId,
+              senderId: old.senderId,
+              content: old.content,
+              messageType: old.messageType,
+              createdAt: old.createdAt,
+              status: 'error',
+            )
+          else
+            state[i],
+      ];
     }
   }
 
