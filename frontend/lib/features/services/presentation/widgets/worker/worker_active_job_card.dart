@@ -104,7 +104,10 @@ class _WorkerActiveActionsState extends ConsumerState<_WorkerActiveActions> {
           builder: (_) => SharedChatScreen(
             conversationId: conversationId,
             myRole: 'worker',
-            service: {'title': widget.job.title},
+            service: {
+              'id': widget.job.id,
+              'title': widget.job.title,
+            },
             otherUserName: widget.job.authorName,
             otherUserAvatarUrl: widget.job.profilePictureUrl,
           ),

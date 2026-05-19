@@ -169,7 +169,10 @@ class _CandidateCardState extends ConsumerState<CandidateCard> {
               conversationId: chatId,
               otherUserName: widget.offer.workerName, 
               otherUserAvatarUrl: widget.offer.authorImageUrl, 
-              service: {'title': 'Propuesta de trabajo'}, 
+              service: {
+                'id': widget.serviceId,
+                'title': 'Propuesta de trabajo',
+              }, 
             ),
           ),
         );
@@ -290,7 +293,10 @@ class _CandidateCardState extends ConsumerState<CandidateCard> {
               conversationId: chatId,
               otherUserName: widget.offer.workerName, 
               otherUserAvatarUrl: widget.offer.authorImageUrl, 
-              service: {'title': 'Propuesta de trabajo'}, 
+              service: {
+                'id': widget.serviceId,
+                'title': 'Propuesta de trabajo',
+              }, 
             ),
           ),
         );

@@ -11,6 +11,8 @@ import 'package:forja_trabajo/features/chat/presentation/widgets/chat_input_area
 import 'package:forja_trabajo/features/chat/presentation/widgets/offer_bottom_sheet.dart';
 import 'package:forja_trabajo/core/network/notification_service.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:forja_trabajo/features/services/presentation/screens/shared/service_detail_screen.dart';
+import 'package:forja_trabajo/features/services/domain/entities/service_entity.dart';
 
 class SharedChatScreen extends ConsumerStatefulWidget {
   final String conversationId;
@@ -234,11 +236,44 @@ class _SharedChatScreenState extends ConsumerState<SharedChatScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF3F4F6),
       appBar: ChatAppBar(
-        service: widget.service,
+        service: {
+          'id': (widget.service is Map && widget.service['id'] != null) ? widget.service['id'] : thisChat?.serviceId,
+          'title': (widget.service is Map && widget.service['title'] != null) ? widget.service['title'] : (thisChat?.serviceName ?? 'Servicio'),
+        },
         otherUserName: widget.otherUserName,
         otherUserAvatarUrl: widget.otherUserAvatarUrl,
         otherUserId: widget.otherUserId,
         onOpenDispute: () => _showDisputeDialog(context),
+        onTapService: () {
+          final sId = (widget.service is Map && widget.service['id'] != null) ? widget.service['id'] : thisChat?.serviceId;
+          final sTitle = (widget.service is Map && widget.service['title'] != null) ? widget.service['title'] : (thisChat?.serviceName ?? 'Servicio');
+          
+          if (sId != null && sId.isNotEmpty) {
+            final currentUser = ref.read(authProvider).user;
+            if (currentUser != null) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ServiceDetailScreen(
+                    service: ServiceEntity(
+                      id: sId,
+                      title: sTitle,
+                      description: '',
+                      basePrice: 0.0,
+                      categoryId: '',
+                      clientId: '',
+                      status: JobStatus.open,
+                      isActive: true,
+                      createdAt: DateTime.now(),
+                    ),
+                    currentUser: currentUser,
+                    categoryName: 'Servicio',
+                  ),
+                ),
+              );
+            }
+          }
+        },
       ),
       body: Column(
         children: [

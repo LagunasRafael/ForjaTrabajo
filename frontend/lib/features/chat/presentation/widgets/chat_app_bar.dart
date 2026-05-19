@@ -7,6 +7,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String? otherUserAvatarUrl;
   final String? otherUserId;
   final VoidCallback? onOpenDispute;
+  final VoidCallback? onTapService;
 
   const ChatAppBar({
     super.key,
@@ -15,6 +16,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.otherUserAvatarUrl,
     this.otherUserId,
     this.onOpenDispute,
+    this.onTapService,
   });
 
   @override
@@ -86,11 +88,30 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                Text(
-                  serviceTitle,
-                  style: const TextStyle(color: Color(0xFF4F46E5), fontSize: 13, fontWeight: FontWeight.w600),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                GestureDetector(
+                  onTap: onTapService,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Flexible(
+                        child: Text(
+                          serviceTitle,
+                          style: const TextStyle(
+                            color: Color(0xFF4F46E5), 
+                            fontSize: 13, 
+                            fontWeight: FontWeight.w600,
+                            decoration: TextDecoration.underline,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (onTapService != null) ...[
+                        const SizedBox(width: 4),
+                        const Icon(Icons.open_in_new, size: 12, color: Color(0xFF4F46E5)),
+                      ],
+                    ],
+                  ),
                 ),
               ],
             ),

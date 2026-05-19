@@ -112,7 +112,10 @@ class _ClientMatchedActionsState extends ConsumerState<_ClientMatchedActions> {
           builder: (_) => SharedChatScreen(
             conversationId: conversationId,
             myRole: 'client',
-            service: {'title': widget.service.title},
+            service: {
+              'id': widget.service.id,
+              'title': widget.service.title,
+            },
             otherUserName: widget.service.workerName,
             otherUserAvatarUrl: widget.service.workerImageUrl,
           ),

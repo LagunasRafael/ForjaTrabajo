@@ -180,7 +180,8 @@ def get_user_chats(db: Session, user_id: str):
             "isOnline": False,
             "hasUnread": has_unread,
             "isArchived": is_archived or False,
-            "serviceStatus": str(request.service.status) if request and request.service else "OPEN"
+            "serviceStatus": str(request.service.status) if request and request.service else "OPEN",
+            "serviceId": str(request.service.id) if request and request.service else ""
         })
 
     return chat_list
