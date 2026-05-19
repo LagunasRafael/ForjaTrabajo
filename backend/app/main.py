@@ -30,29 +30,30 @@ Base.metadata.create_all(bind=engine)
 from sqlalchemy import text
 def _migrate():
     migs = [
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_banned BOOLEAN DEFAULT FALSE",
-        "CREATE TABLE IF NOT EXISTS reports ("
-        " id VARCHAR(36) PRIMARY KEY,"
-        " reporter_id VARCHAR(36) NOT NULL,"
-        " reported_user_id VARCHAR(36),"
-        " reported_service_id VARCHAR(36),"
-        " reason VARCHAR(30) NOT NULL,"
-        " description TEXT,"
-        " status VARCHAR(30) DEFAULT 'pending',"
-        " admin_id VARCHAR(36),"
-        " admin_note TEXT,"
-        " created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,"
-        " resolved_at TIMESTAMP"
-        ")",
+        ("is_banned en users", "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_banned BOOLEAN DEFAULT FALSE"),
+        ("tabla reports", "CREATE TABLE IF NOT EXISTS reports ("
+         " id VARCHAR(36) PRIMARY KEY,"
+         " reporter_id VARCHAR(36) NOT NULL,"
+         " reported_user_id VARCHAR(36),"
+         " reported_service_id VARCHAR(36),"
+         " reason VARCHAR(30) NOT NULL,"
+         " description TEXT,"
+         " status VARCHAR(30) DEFAULT 'pending',"
+         " admin_id VARCHAR(36),"
+         " admin_note TEXT,"
+         " created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,"
+         " resolved_at TIMESTAMP"
+         ")"),
     ]
     with engine.connect() as conn:
-        for m in migs:
+        for name, sql in migs:
             try:
-                conn.execute(text(m))
+                conn.execute(text(sql))
                 conn.commit()
-            except Exception:
+                print(f"Migracion ok: {name}")
+            except Exception as e:
                 conn.rollback()
-    print("✅ Migraciones automáticas ejecutadas.")
+                print(f"Migracion fallo ({name}): {e}")
 _migrate()
 
 app = FastAPI(

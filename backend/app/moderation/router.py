@@ -50,50 +50,57 @@ def create_report(
     db: Session = Depends(get_db),
     current_user: auth_models.User = Depends(get_current_user)
 ):
-    if not data.reported_user_id and not data.reported_service_id:
-        raise HTTPException(status_code=400, detail="Debes reportar un usuario o un servicio")
-
-    if data.reported_service_id:
-        service = db.query(service_models.Service).filter(
-            service_models.Service.id == data.reported_service_id
-        ).first()
-        if not service:
-            raise HTTPException(status_code=404, detail="Servicio no encontrado")
-        if str(service.owner_id) == str(current_user.id):
-            raise HTTPException(status_code=400, detail="No puedes reportar tu propio servicio")
-        if not data.reported_user_id:
-            data.reported_user_id = str(service.owner_id)
-
-    if data.reported_user_id and str(data.reported_user_id) == str(current_user.id):
-        raise HTTPException(status_code=400, detail="No puedes reportarte a ti mismo")
-
     try:
-        reason_enum = service_models.ReportReason(data.reason)
-    except ValueError:
-        raise HTTPException(status_code=400, detail=f"Motivo no valido: {data.reason}")
+        if not data.reported_user_id and not data.reported_service_id:
+            raise HTTPException(status_code=400, detail="Debes reportar un usuario o un servicio")
 
-    existing = db.query(service_models.Report).filter(
-        service_models.Report.reporter_id == str(current_user.id),
-        service_models.Report.reported_user_id == data.reported_user_id,
-        service_models.Report.status == service_models.ReportStatus.PENDING
-    ).first()
+        if data.reported_service_id:
+            service = db.query(service_models.Service).filter(
+                service_models.Service.id == data.reported_service_id
+            ).first()
+            if not service:
+                raise HTTPException(status_code=404, detail="Servicio no encontrado")
+            if str(service.owner_id) == str(current_user.id):
+                raise HTTPException(status_code=400, detail="No puedes reportar tu propio servicio")
+            if not data.reported_user_id:
+                data.reported_user_id = str(service.owner_id)
 
-    if existing:
-        raise HTTPException(status_code=409, detail="Ya reportaste a este usuario y esta pendiente de revision")
+        if data.reported_user_id and str(data.reported_user_id) == str(current_user.id):
+            raise HTTPException(status_code=400, detail="No puedes reportarte a ti mismo")
 
-    report = service_models.Report(
-        reporter_id=str(current_user.id),
-        reported_user_id=data.reported_user_id,
-        reported_service_id=data.reported_service_id,
-        reason=reason_enum,
-        description=data.description,
-        status=service_models.ReportStatus.PENDING,
-    )
-    db.add(report)
-    db.commit()
-    db.refresh(report)
+        try:
+            reason_enum = service_models.ReportReason(data.reason)
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"Motivo no valido: {data.reason}")
 
-    return {"status": "success", "message": "Reporte enviado. Un administrador lo revisara."}
+        existing = db.query(service_models.Report).filter(
+            service_models.Report.reporter_id == str(current_user.id),
+            service_models.Report.reported_user_id == data.reported_user_id,
+            service_models.Report.status == service_models.ReportStatus.PENDING
+        ).first()
+
+        if existing:
+            raise HTTPException(status_code=409, detail="Ya reportaste a este usuario y esta pendiente de revision")
+
+        report = service_models.Report(
+            reporter_id=str(current_user.id),
+            reported_user_id=data.reported_user_id,
+            reported_service_id=data.reported_service_id,
+            reason=reason_enum,
+            description=data.description,
+            status=service_models.ReportStatus.PENDING,
+        )
+        db.add(report)
+        db.commit()
+        db.refresh(report)
+
+        return {"status": "success", "message": "Reporte enviado. Un administrador lo revisara."}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error creando reporte: {e}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
 
 
 @router.get("/admin/reports")
