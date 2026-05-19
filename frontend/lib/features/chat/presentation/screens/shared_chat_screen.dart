@@ -292,9 +292,11 @@ class _SharedChatScreenState extends ConsumerState<SharedChatScreen> {
                     displayTime = "--:--";
                   }
 
+                  Widget messageWidget;
+
                   if (m.messageType == 'offer') {
                     final isCurrentOffer = lastOffer != null && lastOffer.id == m.id;
-                    return NegotiationCard(
+                    messageWidget = NegotiationCard(
                       key: ValueKey("offer_${m.id}_${m.status}"),
                       message: m,
                       isMe: isMyMessage,
@@ -304,20 +306,57 @@ class _SharedChatScreenState extends ConsumerState<SharedChatScreen> {
                       isProcessed: !isCurrentOffer,
                       time: displayTime,
                     );
+                  } else {
+                    messageWidget = ChatBubble(
+                      key: ValueKey("bubble_${m.id}"),
+                      text: m.content,
+                      isMe: isMyMessage,
+                      time: displayTime,
+                      messageType: m.messageType,
+                      status: m.status,
+                      senderAvatarUrl: isMyMessage ? null : widget.otherUserAvatarUrl,
+                      onRetry: () {
+                        ref.read(chatProvider(widget.conversationId).notifier).resendMessage(m.id);
+                      },
+                    );
                   }
-                  
-                  return ChatBubble(
-                    key: ValueKey("bubble_${m.id}"),
-                    text: m.content,
-                    isMe: isMyMessage,
-                    time: displayTime,
-                    messageType: m.messageType,
-                    status: m.status,
-                    senderAvatarUrl: isMyMessage ? null : widget.otherUserAvatarUrl,
-                    onRetry: () {
-                      ref.read(chatProvider(widget.conversationId).notifier).resendMessage(m.id);
-                    },
-                  );
+
+                  // Si es el último mensaje enviado y es mío, mostramos el estado abajo
+                  if (index == 0 && isMyMessage) {
+                    String statusText = "Enviado";
+                    Color statusColor = Colors.grey.shade600;
+
+                    if (m.status == 'sending') {
+                      statusText = "Enviando...";
+                      statusColor = const Color(0xFF4F46E5);
+                    } else if (m.status == 'error') {
+                      statusText = "Error al enviar";
+                      statusColor = Colors.red;
+                    } else if (m.status == 'pending') {
+                      statusText = "Pendiente";
+                      statusColor = Colors.orange;
+                    }
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        messageWidget,
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4, right: 12, bottom: 4),
+                          child: Text(
+                            statusText,
+                            style: TextStyle(
+                              color: statusColor,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  }
+
+                  return messageWidget;
                 },
               ),
             ),

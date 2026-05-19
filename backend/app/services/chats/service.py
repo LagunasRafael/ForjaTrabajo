@@ -126,15 +126,17 @@ def get_user_chats(db: Session, user_id: str):
                 else:
                     last_message_text = "📋 Contraoferta enviada" if is_mine else "📋 Contraoferta recibida"
             elif last_msg.message_type == "image":
-                last_message_text = "📷 Foto"
+                last_message_text = "ha enviado 1 imagen"
             elif last_msg.message_type == "video":
-                last_message_text = "🎬 Video"
+                last_message_text = "ha enviado 1 video"
             elif last_msg.message_type == "audio":
                 last_message_text = "🎵 Audio"
             elif last_msg.message_type == "location":
                 last_message_text = "📍 Ubicación compartida"
             elif last_msg.message_type == "gallery":
-                last_message_text = "🖼️ Galería multimedia"
+                urls = [u.strip() for u in last_msg.content.split(",") if u.strip()]
+                n = len(urls)
+                last_message_text = f"ha enviado {n} imagen" if n == 1 else f"ha enviado {n} imágenes"
             else:
                 last_message_text = last_msg.content
             

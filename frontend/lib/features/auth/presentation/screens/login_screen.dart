@@ -145,9 +145,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       const SizedBox(height: 8),
                       TextFormField(
                         controller: _emailController,
+                        keyboardType: TextInputType.emailAddress,
                         decoration: _buildInputDecoration('ejemplo@correo.com'),
-                        validator: (value) =>
-                            value!.isEmpty ? 'Ingresa tu correo' : null,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) return 'Ingresa tu correo';
+                          if (!value.contains('@')) return 'Correo no válido';
+                          return null;
+                        },
                       ),
                       const SizedBox(height: 20),
                       _buildLabel('Contraseña'),
