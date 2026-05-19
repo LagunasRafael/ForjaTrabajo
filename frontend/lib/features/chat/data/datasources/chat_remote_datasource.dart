@@ -151,13 +151,14 @@ class ChatRemoteDataSource {
     }
   }
 
-  Future<void> openDispute(String conversationId, String reason) async {
+  Future<Map<String, dynamic>> openDispute(String conversationId, String reason) async {
     try {
-      await _apiClient.dio.post(
+      final response = await _apiClient.dio.post(
         '/services/chat/$conversationId/dispute',
         data: {"reason": reason},
       );
       print("✅ Disputa abierta exitosamente para la conversación: $conversationId");
+      return response.data as Map<String, dynamic>;
     } catch (e) {
       print("🚨 ERROR EN DATASOURCE (OPEN DISPUTE): $e");
       rethrow;

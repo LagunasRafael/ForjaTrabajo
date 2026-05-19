@@ -52,6 +52,7 @@ class ChatNotifier extends StateNotifier<List<MessageModel>> {
   WebSocketChannel? _channel;
   bool _isReconnecting = false;
   bool _isLoadingMore = false;
+  Timer? _pollingTimer;
   
   int _currentLimit = 15;
   bool _isDisposed = false;
@@ -74,6 +75,7 @@ class ChatNotifier extends StateNotifier<List<MessageModel>> {
   @override
   void dispose() {
     _isDisposed = true;
+    _pollingTimer?.cancel();
     _channel?.sink.close();
     super.dispose();
   }
@@ -100,10 +102,37 @@ class ChatNotifier extends StateNotifier<List<MessageModel>> {
       
       // 3. Conectar WebSocket
       _connect();
+
+      // 4. Polling de seguridad cada 6 segundos para no perder mensajes
+      _pollingTimer?.cancel();
+      _pollingTimer = Timer.periodic(const Duration(seconds: 6), (_) async {
+        if (_isDisposed || !mounted) return;
+        // Solo hacer polling si el WS no está conectado
+        if (_channel == null || _isReconnecting) {
+          await _pollNewMessages();
+        }
+      });
     } catch (e) {
       print("🚨 [Chat] Error crítico cargando historial: $e");
-      // Intentamos conectar el WS de todos modos para ver si llegan mensajes nuevos
       _connect(); 
+    }
+  }
+
+  /// Pide al servidor los mensajes más recientes y los fusiona sin duplicados
+  Future<void> _pollNewMessages() async {
+    try {
+      final history = await _repository.getChatHistory(conversationId, skip: 0, limit: _currentLimit);
+      if (!mounted || _isDisposed) return;
+      final fresh = history.map((m) => MessageModel.fromEntity(m)).toList();
+      // Solo agregar mensajes que no tengamos ya (evitar regresar temp messages)
+      final existingIds = state.where((m) => !m.id.startsWith('temp_')).map((m) => m.id).toSet();
+      final newOnes = fresh.where((m) => !existingIds.contains(m.id)).toList();
+      if (newOnes.isNotEmpty) {
+        print("🔄 [Poll] ${newOnes.length} mensajes nuevos recuperados");
+        state = [...newOnes, ...state];
+      }
+    } catch (e) {
+      print("⚠️ [Poll] Error en polling: $e");
     }
   }
 
@@ -164,10 +193,18 @@ class ChatNotifier extends StateNotifier<List<MessageModel>> {
       }
 
       final newMessage = MessageModel.fromJson(decoded);
-      print("📥 [WS] Mensaje procesado: id=${newMessage.id} sender=${newMessage.senderId} yo=$userId content=${newMessage.content}");
+      print("📥 [WS] Mensaje procesado: id=${newMessage.id} sender=${newMessage.senderId} tipo=${newMessage.messageType}");
 
       if (state.any((m) => m.id == newMessage.id)) {
         print("⏭️ Ignorando mensaje duplicado: ${newMessage.id}");
+        return;
+      }
+
+      // Mensajes de sistema (disputas, resoluciones del admin) siempre se agregan directo
+      if (newMessage.messageType == 'system') {
+        state = [newMessage, ...state];
+        ref.read(chatListProvider.notifier).loadRealChats();
+        _repository.markAsRead(conversationId);
         return;
       }
 
@@ -336,7 +373,14 @@ class ChatNotifier extends StateNotifier<List<MessageModel>> {
 
   Future<void> openDispute(String reason) async {
     try {
-      await _repository.openDispute(conversationId, reason);
+      final systemMessage = await _repository.openDispute(conversationId, reason);
+      // Insertar el mensaje de sistema INMEDIATAMENTE en el estado
+      final model = MessageModel.fromEntity(systemMessage);
+      // Evitar duplicados si el WS ya lo trajo
+      if (!state.any((m) => m.id == model.id)) {
+        if (mounted) state = [model, ...state];
+      }
+      ref.read(chatListProvider.notifier).loadRealChats();
     } catch (e) {
       print("🚨 Error abriendo disputa: $e");
       rethrow;

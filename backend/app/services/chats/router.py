@@ -480,7 +480,19 @@ async def open_dispute_endpoint(
     except Exception as e:
         print(f"Error enviando Push de Inicio de Disputa: {e}")
         
-    return {"status": "success", "message": "Disputa iniciada correctamente"}
+    return {
+        "status": "success",
+        "message": "Disputa iniciada correctamente",
+        "system_message": {
+            "id": str(response["system_message"].id),
+            "conversation_id": conversation_id,
+            "sender_id": str(response["system_message"].sender_id),
+            "content": response["system_message"].content,
+            "message_type": response["system_message"].message_type,
+            "created_at": response["system_message"].created_at.isoformat(),
+            "status": "sent"
+        }
+    }
 
 # =================================================================
 # ADMIN DISPUTES

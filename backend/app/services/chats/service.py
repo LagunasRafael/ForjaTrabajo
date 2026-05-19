@@ -137,6 +137,8 @@ def get_user_chats(db: Session, user_id: str):
                 urls = [u.strip() for u in last_msg.content.split(",") if u.strip()]
                 n = len(urls)
                 last_message_text = f"ha enviado {n} imagen" if n == 1 else f"ha enviado {n} imágenes"
+            elif last_msg.message_type == "system":
+                last_message_text = "🛡️ " + (last_msg.content[:40] + "..." if len(last_msg.content) > 40 else last_msg.content)
             else:
                 last_message_text = last_msg.content
             

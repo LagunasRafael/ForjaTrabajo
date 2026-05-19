@@ -24,7 +24,7 @@ from app.payments.routes import router as payments_router
 
 
 # Crear tablas
-print("📋 Tablas listas para crear:", Base.metadata.tables.keys())
+print("[DB] Tablas listas para crear:", list(Base.metadata.tables.keys()))
 Base.metadata.create_all(bind=engine)
 
 

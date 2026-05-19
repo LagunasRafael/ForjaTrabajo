@@ -185,7 +185,8 @@ class _SharedChatScreenState extends ConsumerState<SharedChatScreen> {
     final isClosed = thisChat?.status == 'CLOSED' || thisChat?.status == 'CERRADO';
     
     // ¿El servicio ya está en proceso con alguien? (MATCHED, etc)
-    final isMatched = thisChat?.serviceStatus != 'OPEN' && thisChat?.serviceStatus != 'JobStatus.open';
+    final sStatus = (thisChat?.serviceStatus ?? 'open').toLowerCase();
+    final isMatched = sStatus != 'open' && sStatus != 'jobstatus.open';
 
     // Las ofertas se bloquean si el chat está cerrado, si ya hay trato aceptado aquí,
     // o si el servicio ya está en proceso (MATCHED)
