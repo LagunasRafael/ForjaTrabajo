@@ -24,36 +24,27 @@ from app.payments.routes import router as payments_router
 
 
 # Crear tablas
-print("📋 Tablas listas para crear:", Base.metadata.tables.keys())
+print("📋 Tablas listas para crear:", Base.metadata.tables.keys(), flush=True)
 Base.metadata.create_all(bind=engine)
+print("Tablas creadas/verificadas con create_all.", flush=True)
 
 from sqlalchemy import text
 def _migrate():
     migs = [
         ("is_banned en users", "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_banned BOOLEAN DEFAULT FALSE"),
-        ("tabla reports", "CREATE TABLE IF NOT EXISTS reports ("
-         " id VARCHAR(36) PRIMARY KEY,"
-         " reporter_id VARCHAR(36) NOT NULL,"
-         " reported_user_id VARCHAR(36),"
-         " reported_service_id VARCHAR(36),"
-         " reason VARCHAR(30) NOT NULL,"
-         " description TEXT,"
-         " status VARCHAR(30) DEFAULT 'pending',"
-         " admin_id VARCHAR(36),"
-         " admin_note TEXT,"
-         " created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,"
-         " resolved_at TIMESTAMP"
-         ")"),
     ]
-    with engine.connect() as conn:
-        for name, sql in migs:
-            try:
-                conn.execute(text(sql))
-                conn.commit()
-                print(f"Migracion ok: {name}")
-            except Exception as e:
-                conn.rollback()
-                print(f"Migracion fallo ({name}): {e}")
+    try:
+        with engine.connect() as conn:
+            for name, sql in migs:
+                try:
+                    conn.execute(text(sql))
+                    conn.commit()
+                    print(f"Migracion ok: {name}", flush=True)
+                except Exception as e:
+                    conn.rollback()
+                    print(f"Migracion fallo ({name}): {e}", flush=True)
+    except Exception as e:
+        print(f"Error conectando para migracion: {e}", flush=True)
 _migrate()
 
 app = FastAPI(
