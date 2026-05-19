@@ -48,7 +48,24 @@ class _Step2LocationState extends ConsumerState<Step2Location> {
         }
 
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("📍 Ubicación y dirección capturadas"), backgroundColor: Color(0xFF10B981)),
+          SnackBar(
+            content: const Text(
+              "📍 Ubicación y dirección capturadas",
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Color(0xFF4F46E5)),
+            ),
+            backgroundColor: const Color(0xFFF0F0F0).withOpacity(1),
+            behavior: SnackBarBehavior.floating,
+            margin: EdgeInsets.only(
+              bottom: MediaQuery.of(context).size.height - 120,
+              left: 24,
+              right: 24,
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            duration: const Duration(seconds: 2),
+          ),
         );
       }
     } catch (e) {

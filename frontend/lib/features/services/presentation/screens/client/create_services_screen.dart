@@ -128,10 +128,27 @@ class _CreateServiceScreenState extends ConsumerState<CreateServiceScreen> {
         ref.read(clientNavProvider.notifier).state = 0; 
         
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('✅ ¡Servicio publicado con éxito!'), 
-          backgroundColor: Color(0xFF10B981)
-        ));
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              '¡Servicio publicado con éxito!',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Color(0xFF4F46E5)),
+            ),
+            backgroundColor: const Color(0xFFF0F0F0).withOpacity(1),
+            behavior: SnackBarBehavior.floating,
+            margin: EdgeInsets.only(
+              bottom: MediaQuery.of(context).size.height - 260,
+              left: 24,
+              right: 24,
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            duration: const Duration(seconds: 2),
+          ),
+        );
       }
     });
 
