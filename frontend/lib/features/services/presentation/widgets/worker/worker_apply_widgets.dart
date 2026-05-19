@@ -106,7 +106,7 @@ class WorkerSubmitButton extends StatelessWidget {
 InputDecoration workerInputStyle(String hint) => InputDecoration(
   hintText: hint, 
   hintStyle: const TextStyle(color: Color(0xFF9CA3AF), fontSize: 14), 
-  filled: true, fillColor: Colors.white, contentPadding: const EdgeInsets.all(16), 
+  filled: true, contentPadding: const EdgeInsets.all(16), 
   border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
   enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
   focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Color(0xFF2563EB), width: 1.5)) 

@@ -38,6 +38,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
     final isLoading = authState.status == 'loading';
+    final theme = Theme.of(context);
 
     ref.listen<AuthState>(authProvider, (previous, next) {
       if (next.status == 'error') {
@@ -67,7 +68,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     });
 
     return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text('Recuperar Contraseña',
             style: GoogleFonts.inter(
@@ -128,7 +129,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                             style: GoogleFonts.inter(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
-                                color: Colors.grey.shade700),
+                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
                           ),
                           const SizedBox(height: 8),
                           TextFormField(
@@ -141,7 +142,6 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                               prefixIcon: const Icon(Icons.email_outlined,
                                   color: AppTheme.primaryColor),
                               filled: true,
-                              fillColor: Colors.white,
                               border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(16),
                                   borderSide:

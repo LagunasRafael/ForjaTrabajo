@@ -49,6 +49,7 @@ forja-admin/node_modules/
 forja-admin/dist/
 forja-admin/.env
 forja-admin/docs/credenciales.txt
+documento_residencias 
 
 # ========================
 # FLUTTER DESKTOP BUILDS

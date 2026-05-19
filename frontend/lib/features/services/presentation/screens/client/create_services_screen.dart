@@ -135,12 +135,13 @@ class _CreateServiceScreenState extends ConsumerState<CreateServiceScreen> {
       }
     });
 
+    final theme = Theme.of(context);
     final formState = ref.watch(createServiceFormProvider);
     final creationState = ref.watch(serviceControllerProvider);
     final categoriesAsync = ref.watch(categoryListProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB),
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: _buildAppBar(formState.step),
       body: Form(
         key: _formKey,
@@ -182,10 +183,11 @@ class _CreateServiceScreenState extends ConsumerState<CreateServiceScreen> {
   }
 
   PreferredSizeWidget _buildAppBar(int currentStep) {
+    final theme = Theme.of(context);
     return AppBar(
-      backgroundColor: Colors.white, elevation: 0, centerTitle: true,
+      backgroundColor: theme.colorScheme.surface, elevation: 0, centerTitle: true,
       leading: IconButton(
-        icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black, size: 20),
+        icon: Icon(Icons.arrow_back_ios_new, color: theme.colorScheme.onSurface, size: 20),
         onPressed: () {
           if (currentStep > 0) {
             _pageController.previousPage(duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
@@ -193,7 +195,7 @@ class _CreateServiceScreenState extends ConsumerState<CreateServiceScreen> {
           } else { Navigator.pop(context); }
         },
       ),
-      title: Text(_isEditing ? "Editar Servicio" : "Publicar Servicio", style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 18)),
+      title: Text(_isEditing ? "Editar Servicio" : "Publicar Servicio", style: TextStyle(color: theme.colorScheme.onSurface, fontWeight: FontWeight.bold, fontSize: 18)),
     );
   }
 }

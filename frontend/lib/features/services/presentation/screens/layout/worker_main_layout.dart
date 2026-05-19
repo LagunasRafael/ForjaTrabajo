@@ -18,7 +18,6 @@ class WorkerMainLayout extends ConsumerWidget {
     final unreadChatCount = ref.watch(unreadCountProvider);
     final unreadNotifCount = ref.watch(unreadNotificationCountProvider);
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
 
     final List<Widget> screens = [
       const MarketplaceScreen(), // 0
@@ -39,11 +38,9 @@ class WorkerMainLayout extends ConsumerWidget {
         onDestinationSelected: (index) {
           ref.read(workerNavProvider.notifier).state = index;
         },
-        backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+        backgroundColor: theme.colorScheme.surface,
         elevation: 3,
-        indicatorColor: isDark
-            ? const Color(0xFF4F46E5).withValues(alpha: 0.2)
-            : const Color(0xFF1E1B4B).withValues(alpha: 0.1),
+        indicatorColor: theme.colorScheme.primary.withOpacity(0.15),
         destinations: [
           const NavigationDestination(
             icon: Icon(Icons.search),

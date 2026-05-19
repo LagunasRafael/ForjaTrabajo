@@ -58,6 +58,7 @@ class _NegotiationCardState extends ConsumerState<NegotiationCard> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     // La lógica universal: si YO lo mandé, es mi tarjeta (derecha/clara), 
     // si lo recibí, es la tarjeta del otro (izquierda/oscura).
     return widget.isMe 
@@ -95,13 +96,13 @@ class _NegotiationCardState extends ConsumerState<NegotiationCard> {
                 const SizedBox(height: 8),
                 Text(
                   "\$$amount MXN", 
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 28, 
                     fontWeight: FontWeight.w900, 
-                    color: Colors.black87,
+                    color: Theme.of(context).colorScheme.onSurface,
                   )
-                ),
-                const SizedBox(height: 12),
+            ),
+            const SizedBox(height: 12),
                 _buildClientStatusRow(), 
               ],
             ),

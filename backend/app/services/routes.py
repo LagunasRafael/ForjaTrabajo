@@ -70,16 +70,16 @@ async def create_service(
         image_urls=[]
     )
 
-    new_service = service.create_service(db, service_data, client_id=current_user.id)
+    new_service = service.create_service(db, service_data, client_id=current_user.id) # type: ignore
 
     if files and len(files) > 0:
         image_urls = []
         for file in files:
-            url = await upload_service_evidence_to_s3(file, new_service.id)
+            url = await upload_service_evidence_to_s3(file, new_service.id) # type: ignore
             if url:
                 image_urls.append(url)
         
-        new_service = service.update_service_images(db, new_service.id, image_urls)
+        new_service = service.update_service_images(db, new_service.id, image_urls) # type: ignore
 
     return new_service
 
@@ -121,7 +121,7 @@ def create_service_request(
     db: Session = Depends(get_db),
     current_user: auth_models.User = Depends(check_role([Role.WORKER]))
 ):
-    return service.create_service_request(db, request_data, worker_id=current_user.id)
+    return service.create_service_request(db, request_data, worker_id=current_user.id) # type: ignore
 
 @router.put("/service-requests/{request_id}")
 def update_postulation(
@@ -138,8 +138,8 @@ def update_postulation(
     if str(db_request.worker_id) != str(current_user_id):
         raise HTTPException(status_code=403, detail="No tienes permiso para editar esto")
 
-    db_request.description = payload.description
-    db_request.proposed_price = payload.proposed_price
+    db_request.description = payload.description # type: ignore
+    db_request.proposed_price = payload.proposed_price # type: ignore
 
     db.commit()
     db.refresh(db_request)
@@ -167,7 +167,7 @@ def accept_worker_postulation(
     db: Session = Depends(get_db),
     current_user: auth_models.User = Depends(get_current_user)
 ):
-    service.accept_postulation(db, request_id, current_user.id)
+    service.accept_postulation(db, request_id, current_user.id) # type: ignore
     return JSONResponse(status_code=200, content={"status": "success", "message": "Trabajo aceptado"})
 
 @router.put("/jobs/{job_id}/complete", response_model=schemas.Job)
@@ -328,8 +328,8 @@ def update_service(
         db,
         service_id,
         service_data,
-        current_user.id,
-        current_user.role,
+        current_user.id, # type: ignore
+        current_user.role, # type: ignore
     )
 
 @router.put("/{service_id}/cancel")
@@ -338,7 +338,7 @@ def cancel_service(
     db: Session = Depends(get_db),
     current_user: auth_models.User = Depends(get_current_user)
 ):
-    return service.cancel_service(db, service_id, current_user.id, current_user.role)
+    return service.cancel_service(db, service_id, current_user.id, current_user.role) # type: ignore
 
 @router.delete("/{service_id}", status_code=status.HTTP_200_OK)
 def delete_service(
@@ -360,7 +360,7 @@ def toggle_service_visibility(
     if not db_service:
         raise HTTPException(status_code=404, detail="Servicio no encontrado")
     
-    db_service.is_active = payload.is_active
+    db_service.is_active = payload.is_active # type: ignore
     db.commit()
     db.refresh(db_service)
     

@@ -270,9 +270,9 @@ def handle_offer_action(db: Session, message_id: str, action: str, user_id: str)
     notif_service.notify_offer_responded(
         db=db,
         conversation_id=str(convo.id),
-        receiver_id=offer_msg.sender_id,
+        receiver_id=offer_msg.sender_id, # type: ignore
         sender_id=str(user_id),
-        amount=offer_msg.content,
+        amount=offer_msg.content, # type: ignore
         action=action
     )
 
