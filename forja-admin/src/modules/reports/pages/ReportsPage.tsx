@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { getReportsApi, getReportDetailApi, resolveReportApi } from '../services/reports.service';
 import type { Report } from '../types/report.types';
+import { ConfirmModal } from '../../../components/ConfirmModal';
 
 const reasonLabels: Record<string, string> = {
   spam: 'Spam',
@@ -34,6 +35,7 @@ export const ReportsPage = () => {
   const [selected, setSelected] = useState<Report | null>(null);
   const [adminNote, setAdminNote] = useState('');
   const [isResolving, setIsResolving] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<'ban_user' | 'ban_service' | 'dismiss' | null>(null);
 
   useEffect(() => { loadReports(); }, [filter]);
 
@@ -60,25 +62,18 @@ export const ReportsPage = () => {
     }
   };
 
-  const handleResolve = async (action: 'ban_user' | 'ban_service' | 'dismiss') => {
-    if (!selected) return;
-
-    const confirmMessages: Record<string, string> = {
-      ban_user: '¿BANEAR al usuario reportado? Se desactivará su cuenta.',
-      ban_service: '¿DESACTIVAR el servicio reportado?',
-      dismiss: '¿DESESTIMAR este reporte?',
-    };
-
-    if (!window.confirm(confirmMessages[action])) return;
+  const handleResolve = async () => {
+    if (!selected || !confirmAction) return;
 
     setIsResolving(true);
     try {
       await resolveReportApi(selected.id, {
-        action,
+        action: confirmAction,
         admin_note: adminNote || undefined,
       });
       toast.success('Reporte resuelto');
       setSelected(null);
+      setConfirmAction(null);
       loadReports();
     } catch {
       toast.error('Error al resolver reporte');
@@ -221,7 +216,7 @@ export const ReportsPage = () => {
                 <div className="flex gap-3 flex-wrap">
                   <button
                     disabled={isResolving}
-                    onClick={() => handleResolve('ban_user')}
+                    onClick={() => setConfirmAction('ban_user')}
                     className="px-4 py-2 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors"
                   >
                     Banear usuario
@@ -229,7 +224,7 @@ export const ReportsPage = () => {
                   {selected.reported_service_id && (
                     <button
                       disabled={isResolving}
-                      onClick={() => handleResolve('ban_service')}
+                      onClick={() => setConfirmAction('ban_service')}
                       className="px-4 py-2 bg-orange-600 hover:bg-orange-500 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors"
                     >
                       Desactivar servicio
@@ -237,7 +232,7 @@ export const ReportsPage = () => {
                   )}
                   <button
                     disabled={isResolving}
-                    onClick={() => handleResolve('dismiss')}
+                    onClick={() => setConfirmAction('dismiss')}
                     className="px-4 py-2 bg-slate-600 hover:bg-slate-500 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors"
                   >
                     Desestimar
@@ -254,6 +249,33 @@ export const ReportsPage = () => {
             )}
           </div>
         )}
+
+        <ConfirmModal
+          isOpen={confirmAction !== null}
+          onClose={() => setConfirmAction(null)}
+          onConfirm={handleResolve}
+          title={
+            confirmAction === 'ban_user' ? 'Banear usuario' :
+            confirmAction === 'ban_service' ? 'Desactivar servicio' :
+            'Desestimar reporte'
+          }
+          message={
+            confirmAction === 'ban_user' ? '¿BANEAR al usuario reportado? Se desactivará su cuenta de forma permanente.' :
+            confirmAction === 'ban_service' ? '¿DESACTIVAR el servicio reportado? Dejará de ser visible en la plataforma.' :
+            '¿DESESTIMAR este reporte? No se tomará ninguna acción.'
+          }
+          confirmLabel={
+            confirmAction === 'ban_user' ? 'Banear' :
+            confirmAction === 'ban_service' ? 'Desactivar' :
+            'Desestimar'
+          }
+          confirmClass={
+            confirmAction === 'ban_user' ? 'bg-red-600 hover:bg-red-500' :
+            confirmAction === 'ban_service' ? 'bg-orange-600 hover:bg-orange-500' :
+            'bg-slate-600 hover:bg-slate-500'
+          }
+          isLoading={isResolving}
+        />
       </div>
     </div>
   );

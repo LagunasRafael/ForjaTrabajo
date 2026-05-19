@@ -66,8 +66,9 @@ class TokenRefresh(BaseModel):
 
 class UserUpdate(BaseModel):
     full_name: Optional[str] = None
-    role: Optional[str] = None # Cambia 'str' por tu enum 'Role' si lo tienes así
+    role: Optional[str] = None
     is_active: Optional[bool] = None
+    is_banned: Optional[bool] = None
     phone: Optional[str] = None
 
 class LocationUpdate(BaseModel):

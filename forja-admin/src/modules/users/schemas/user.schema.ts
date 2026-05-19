@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 const ROLES = ['admin', 'client', 'worker'] as const;
-const STATUS = ['active', 'inactive', 'pending'] as const;
+const STATUS = ['active', 'inactive', 'pending', 'banned'] as const;
 
 export const userSchema = z.object({
   name: z.string().min(3).max(50),
