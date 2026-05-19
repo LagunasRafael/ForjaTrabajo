@@ -4,6 +4,7 @@ import '../providers/chat_list_provider.dart';
 import '../../domain/entities/chat_summary_entity.dart';
 import 'package:forja_trabajo/core/network/api_client.dart';
 
+
 class ChatContextMenu {
   static Future<void> show(BuildContext context, WidgetRef ref, {required Offset position, required ChatSummaryEntity chat}) async {
     final RenderBox overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
@@ -57,15 +58,13 @@ class ChatContextMenu {
 
     if (value != null && context.mounted) {
       if (value == 'archive' || value == 'unarchive') {
-        // Ejecutamos la función de archivar o desarchivar
         ref.read(chatListProvider.notifier).toggleArchiveStatus(chat.id, value == 'archive');
       } else if (value == 'delete') {
-        // Confirmación antes de eliminar
         final confirm = await showDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(
             title: const Text('Eliminar chat'),
-            content: const Text('¿Deseas eliminar esta conversación para ti?'),
+            content: const Text('Deseas eliminar esta conversacion para ti?'),
             actions: [
               TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
               TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Eliminar', style: TextStyle(color: Colors.red))),
@@ -77,25 +76,25 @@ class ChatContextMenu {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Chat eliminado'),
-              behavior: SnackBarBehavior.floating, 
+              behavior: SnackBarBehavior.floating,
               backgroundColor: Colors.red,
               duration: Duration(seconds: 2),
             ),
           );
+        }
+        return;
       } else if (value == 'report') {
         _showReportDialog(context, chat);
         return;
-      }
-        return; // Salir para no mostrar el snackbar genérico debajo
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            value == 'archive' ? 'Conversación archivada' :
-            value == 'unarchive' ? 'Conversación movida a Activos' : ''
+            value == 'archive' ? 'Conversacion archivada' :
+            value == 'unarchive' ? 'Conversacion movida a Activos' : ''
           ),
-          behavior: SnackBarBehavior.floating, 
+          behavior: SnackBarBehavior.floating,
           backgroundColor: const Color(0xFF4F46E5),
           duration: const Duration(seconds: 2),
         ),
