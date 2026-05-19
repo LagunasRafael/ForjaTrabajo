@@ -19,6 +19,14 @@ class CandidateCard extends ConsumerStatefulWidget {
 
 class _CandidateCardState extends ConsumerState<CandidateCard> {
   bool _showInput = false;
+  bool _isSendingOffer = false;
+  final TextEditingController _offerController = TextEditingController();
+
+  @override
+  void dispose() {
+    _offerController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -146,18 +154,12 @@ class _CandidateCardState extends ConsumerState<CandidateCard> {
     );
   }
 
-  // --- Lógica separada para abrir el chat ---
   Future<void> _handleOpenChat() async {
     try {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Abriendo chat... 💬"), duration: Duration(seconds: 1)),
-      );
-
       final targetId = widget.offer.id;
       final chatId = await ref.read(chatDatasourceProvider).startOrGetChat(targetId);
 
       if (mounted) {
-        // Refrescar inmediatamente para que aparezca en la lista
         ref.invalidate(chatListProvider);
         
         await Navigator.push(
@@ -201,6 +203,7 @@ class _CandidateCardState extends ConsumerState<CandidateCard> {
     return Padding(
       padding: const EdgeInsets.only(top: 16),
       child: TextFormField(
+        controller: _offerController,
         keyboardType: TextInputType.number,
         inputFormatters: [FilteringTextInputFormatter.digitsOnly], 
         decoration: InputDecoration(
@@ -208,10 +211,19 @@ class _CandidateCardState extends ConsumerState<CandidateCard> {
           hintText: "00.00", 
           filled: true, 
           fillColor: Colors.white,
-          suffixIcon: IconButton(
-            icon: const Icon(Icons.send, color: Color(0xFF4F46E5)), 
-            onPressed: () => setState(() => _showInput = false)
-          ),
+          suffixIcon: _isSendingOffer
+            ? const Padding(
+                padding: EdgeInsets.all(12.0),
+                child: SizedBox(
+                  width: 20, 
+                  height: 20, 
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF4F46E5))
+                ),
+              )
+            : IconButton(
+                icon: const Icon(Icons.send, color: Color(0xFF4F46E5)), 
+                onPressed: _handleSendCounterOffer
+              ),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12), 
             borderSide: BorderSide(color: Colors.grey.shade200)
@@ -219,6 +231,79 @@ class _CandidateCardState extends ConsumerState<CandidateCard> {
         ),
       ),
     );
+  }
+
+  Future<void> _handleSendCounterOffer() async {
+    final amountText = _offerController.text.trim();
+    if (amountText.isEmpty) return;
+    
+    final amount = double.tryParse(amountText);
+    if (amount == null || amount <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("⚠️ Ingresa un monto válido"), backgroundColor: Colors.orange),
+      );
+      return;
+    }
+
+    setState(() => _isSendingOffer = true);
+    
+    try {
+      final targetId = widget.offer.id;
+      final chatId = await ref.read(chatDatasourceProvider).startOrGetChat(targetId);
+      
+      await ref.read(chatDatasourceProvider).sendOffer(chatId, amount);
+      
+      if (mounted) {
+        setState(() {
+          _isSendingOffer = false;
+          _showInput = false;
+        });
+        _offerController.clear();
+        
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text(
+                "Contraoferta enviada",
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Color(0xFF4F46E5)),
+              ),
+              backgroundColor: const Color(0xFFF0F0F0).withOpacity(1),
+              behavior: SnackBarBehavior.floating,
+              margin: EdgeInsets.only(
+                bottom: MediaQuery.of(context).size.height - 180,
+                left: 24,
+                right: 24,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        
+        ref.invalidate(chatListProvider);
+        
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => SharedChatScreen(
+              conversationId: chatId,
+              otherUserName: widget.offer.workerName, 
+              otherUserAvatarUrl: widget.offer.authorImageUrl, 
+              service: {'title': 'Propuesta de trabajo'}, 
+            ),
+          ),
+        );
+        ref.invalidate(chatListProvider);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isSendingOffer = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error al enviar oferta: $e"), backgroundColor: Colors.red),
+        );
+      }
+    }
   }
 
   Future<void> _handleAccept() async {
@@ -247,7 +332,7 @@ class _CandidateCardState extends ConsumerState<CandidateCard> {
     if (success && mounted) {
       Navigator.pop(context); 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("✅ Contratado"), backgroundColor: Color(0xFF10B981))
+        const SnackBar(content: Text("Contratado"), backgroundColor: Color(0xFF10B981))
       );
     }
   }

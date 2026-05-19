@@ -157,10 +157,10 @@ class ChatRemoteDataSource {
         '/services/chat/$conversationId/dispute',
         data: {"reason": reason},
       );
-      print("✅ Disputa abierta exitosamente para la conversación: $conversationId");
+      print("Disputa abierta exitosamente para la conversación: $conversationId");
       return response.data as Map<String, dynamic>;
     } catch (e) {
-      print("🚨 ERROR EN DATASOURCE (OPEN DISPUTE): $e");
+      print("ERROR EN DATASOURCE (OPEN DISPUTE): $e");
       rethrow;
     }
   }
@@ -173,7 +173,7 @@ class ChatRemoteDataSource {
         "message_type": messageType,
       },
     );
-    print("✅ Mensaje enviado por REST: ${response.data['id']}");
+    print("Mensaje enviado por REST: ${response.data['id']}");
     return response.data;
   }
 

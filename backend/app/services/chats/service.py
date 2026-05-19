@@ -118,21 +118,21 @@ def get_user_chats(db: Session, user_id: str):
                 offer_status = getattr(last_msg, 'status', 'pending')
                 is_mine = str(last_msg.sender_id) == str(user_id)
                 if offer_status == "accepted":
-                    last_message_text = "✅ Contraoferta aceptada"
+                    last_message_text = "Contraoferta aceptada"
                 elif offer_status == "rejected":
-                    last_message_text = "❌ Contraoferta rechazada"
+                    last_message_text = "Contraoferta rechazada"
                 elif offer_status == "withdrawn":
-                    last_message_text = "↩️ Contraoferta retirada"
+                    last_message_text = "Contraoferta retirada"
                 else:
-                    last_message_text = "📋 Contraoferta enviada" if is_mine else "📋 Contraoferta recibida"
+                    last_message_text = "Contraoferta enviada" if is_mine else "Contraoferta recibida"
             elif last_msg.message_type == "image":
                 last_message_text = "ha enviado 1 imagen"
             elif last_msg.message_type == "video":
                 last_message_text = "ha enviado 1 video"
             elif last_msg.message_type == "audio":
-                last_message_text = "🎵 Audio"
+                last_message_text = "Audio"
             elif last_msg.message_type == "location":
-                last_message_text = "📍 Ubicación compartida"
+                last_message_text = "Ubicación compartida"
             elif last_msg.message_type == "gallery":
                 urls = [u.strip() for u in last_msg.content.split(",") if u.strip()]
                 n = len(urls)

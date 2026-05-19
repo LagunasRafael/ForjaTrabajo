@@ -352,12 +352,12 @@ async def create_counter_offer(
                 amount=new_offer.content
             )
     except Exception as notify_err:
-        logger.warning(f"⚠️ Error notificando contraoferta: {notify_err}")
+        logger.warning(f"Error notificando contraoferta: {notify_err}")
 
     return new_offer
 
-@router.post("/chat/offer/{message_id}/action")
-def respond_to_offer(
+@router.post("/chat/offer/{message_id}/action", response_model=schemas.MessageResponse)
+async def respond_to_offer(
     message_id: str,
     action_data: schemas.OfferAction,
     db: Session = Depends(get_db),
@@ -367,12 +367,26 @@ def respond_to_offer(
     if action_data.action not in ["accept", "reject"]:
         raise HTTPException(status_code=400, detail="Acción no válida")
         
-    return service.handle_offer_action(
+    updated_offer = service.handle_offer_action(
         db, 
         message_id=message_id, 
         action=action_data.action,
         user_id=str(current_user.id)
     )
+
+    # Broadcast updated offer state to WS
+    message_to_send = {
+        "id": str(updated_offer.id),
+        "conversation_id": str(updated_offer.conversation_id),
+        "sender_id": str(updated_offer.sender_id),
+        "content": str(updated_offer.content),
+        "message_type": str(updated_offer.message_type),
+        "created_at": updated_offer.created_at.isoformat(),
+        "status": str(updated_offer.status)
+    }
+    await manager.broadcast(str(updated_offer.conversation_id), message_to_send)
+
+    return updated_offer
 
 
 class ArchiveToggleRequest(BaseModel):

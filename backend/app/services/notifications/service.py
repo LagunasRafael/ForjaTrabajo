@@ -202,7 +202,7 @@ def notify_offer_responded(db: Session, conversation_id: str, receiver_id: str, 
         logger.warning(f"⚠️ Error en notify_offer_responded: {e}")
 
 def notify_new_offer(db: Session, conversation_id: str, receiver_id: str, sender_id: str, amount: str):
-    """Notifica al usuario que recibió una nueva contraoferta en el chat."""
+    """Notifica al usuario que recibió una nueva contraoferta en el chat. Agrupa notificaciones pendientes."""
     try:
         receiver = db.query(auth_models.User).filter(auth_models.User.id == receiver_id).first()
         sender = db.query(auth_models.User).filter(auth_models.User.id == sender_id).first()
@@ -211,10 +211,24 @@ def notify_new_offer(db: Session, conversation_id: str, receiver_id: str, sender
             title = "Nueva contraoferta"
             body = f"{sender_name} ha realizado una contraoferta de ${amount}"
             
-            create_in_app_notification(
-                db=db, user_id=str(receiver.id), title=title, body=body,
-                notification_type="new_offer", reference_id=str(conversation_id)
-            )
+            existing_notif = db.query(models.Notification).filter(
+                models.Notification.user_id == str(receiver.id),
+                models.Notification.notification_type == "new_offer",
+                models.Notification.reference_id == str(conversation_id),
+                models.Notification.is_read == False
+            ).first()
+
+            if existing_notif:
+                from datetime import datetime
+                existing_notif.title = title
+                existing_notif.body = body
+                existing_notif.created_at = datetime.utcnow()
+                db.commit()
+            else:
+                create_in_app_notification(
+                    db=db, user_id=str(receiver.id), title=title, body=body,
+                    notification_type="new_offer", reference_id=str(conversation_id)
+                )
             
             if receiver.fcm_token:
                 send_push_notification(

@@ -106,25 +106,58 @@ class _SharedChatScreenState extends ConsumerState<SharedChatScreen> {
                 final reason = reasonController.text.trim();
                 if (reason.isEmpty) return;
                 
-                // Capturamos el ScaffoldMessenger ANTES del await y usando el context de la pantalla principal
                 final scaffoldMessenger = ScaffoldMessenger.of(parentContext);
                 
                 Navigator.pop(dialogContext); // Cerrar diálogo
                 
                 try {
-                  await ref.read(chatProvider(widget.conversationId).notifier).openDispute(reason);
+                  await ref
+                      .read(chatProvider(widget.conversationId).notifier)
+                      .openDispute(reason);
+
                   if (mounted) {
                     scaffoldMessenger.showSnackBar(
-                      const SnackBar(
-                        content: Text('Disputa abierta. Un administrador se pondrá en contacto pronto.'),
-                        backgroundColor: Colors.red,
+                      SnackBar(
+                        content: const Text(
+                          'Disputa abierta. Un administrador se pondrá en contacto pronto.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: Color(0xFF4F46E5)),
+                        ),
+                        backgroundColor: const Color(0xFFF0F0F0).withOpacity(1),
+                        behavior: SnackBarBehavior.floating,
+                        margin: EdgeInsets.only(
+                          bottom: MediaQuery.of(context).size.height - 180,
+                          left: 24,
+                          right: 24,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        duration: const Duration(seconds: 2),
                       ),
                     );
                   }
                 } catch (e) {
                   if (mounted) {
                     scaffoldMessenger.showSnackBar(
-                      const SnackBar(content: Text('Error al abrir la disputa. Intenta de nuevo.')),
+                      SnackBar(
+                        content: const Text(
+                          'Error al abrir la disputa. Intenta de nuevo.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: Color(0xFF4F46E5)),
+                        ),
+                        backgroundColor: const Color(0xFFF0F0F0).withOpacity(1),
+                        behavior: SnackBarBehavior.floating,
+                        margin: EdgeInsets.only(
+                          bottom: MediaQuery.of(context).size.height - 180,
+                          left: 24,
+                          right: 24,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        duration: const Duration(seconds: 2),
+                      ),
                     );
                   }
                 }
@@ -214,11 +247,7 @@ class _SharedChatScreenState extends ConsumerState<SharedChatScreen> {
               ? const Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      CircularProgressIndicator(color: Color(0xFF4F46E5)),
-                      SizedBox(height: 16),
-                      Text("Abriendo chat...", style: TextStyle(color: Colors.grey)),
-                    ],
+
                   ),
                 )
               : messages.isEmpty

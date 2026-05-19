@@ -195,8 +195,14 @@ class ChatNotifier extends StateNotifier<List<MessageModel>> {
       final newMessage = MessageModel.fromJson(decoded);
       print("📥 [WS] Mensaje procesado: id=${newMessage.id} sender=${newMessage.senderId} tipo=${newMessage.messageType}");
 
-      if (state.any((m) => m.id == newMessage.id)) {
-        print("⏭️ Ignorando mensaje duplicado: ${newMessage.id}");
+      final existingIdx = state.indexWhere((m) => m.id == newMessage.id);
+      if (existingIdx != -1) {
+        print("🔄 [WS] Actualizando mensaje existente: ${newMessage.id}");
+        state = [
+          for (int i = 0; i < state.length; i++)
+            if (i == existingIdx) newMessage else state[i],
+        ];
+        ref.read(chatListProvider.notifier).loadRealChats();
         return;
       }
 
@@ -382,7 +388,7 @@ class ChatNotifier extends StateNotifier<List<MessageModel>> {
       }
       ref.read(chatListProvider.notifier).loadRealChats();
     } catch (e) {
-      print("🚨 Error abriendo disputa: $e");
+      print("Error abriendo disputa: $e");
       rethrow;
     }
   }
@@ -400,6 +406,26 @@ class ChatNotifier extends StateNotifier<List<MessageModel>> {
   Future<void> respondOffer(String messageId, String action) async {
     try {
       await _repository.respondOffer(messageId, action);
+      
+      // Actualizar estado local inmediatamente
+      if (mounted) {
+        state = [
+          for (final m in state)
+            if (m.id == messageId)
+              MessageModel(
+                id: m.id,
+                conversationId: m.conversationId,
+                senderId: m.senderId,
+                content: m.content,
+                messageType: m.messageType,
+                createdAt: m.createdAt,
+                status: action == 'accept' ? 'accepted' : 'rejected',
+              )
+            else
+              m
+        ];
+      }
+      
       ref.read(chatListProvider.notifier).loadRealChats();
     } catch (e) {
       print("🚨 Error respondiendo oferta: $e");
