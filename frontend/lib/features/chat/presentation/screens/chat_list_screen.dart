@@ -9,18 +9,19 @@ class ChatListScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final chatState = ref.watch(chatListProvider);
+    final theme = Theme.of(context);
 
     return DefaultTabController(
       length: 2,
       child: Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: theme.scaffoldBackgroundColor,
         appBar: AppBar(
-          backgroundColor: Colors.white,
+          backgroundColor: theme.colorScheme.surface,
           elevation: 0,
-          title: const Text("Mensajes", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 22)),
+          title: Text("Mensajes", style: TextStyle(color: theme.colorScheme.onSurface, fontWeight: FontWeight.bold, fontSize: 22)),
           actions: [
-            IconButton(icon: const Icon(Icons.search, color: Colors.black), onPressed: () {}),
-            IconButton(icon: const Icon(Icons.more_vert, color: Colors.black), onPressed: () {}),
+            IconButton(icon: Icon(Icons.search, color: theme.colorScheme.onSurface), onPressed: () {}),
+            IconButton(icon: Icon(Icons.more_vert, color: theme.colorScheme.onSurface), onPressed: () {}),
           ],
           bottom: const TabBar(
             labelColor: Color(0xFF4F46E5),

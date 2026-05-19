@@ -142,7 +142,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       fontWeight: FontWeight.bold,
                       fontSize: 16)),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red.shade50, // Rojito claro de fondo
+                backgroundColor: theme.colorScheme.errorContainer,
                 elevation: 0,
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(
@@ -166,7 +166,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         style: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.bold,
-          color: Colors.grey.shade600,
+          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
           letterSpacing: 1.2,
         ),
       ),
@@ -245,9 +245,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
             ],
           ),
-          content: const Text(
+          content: Text(
             "¿Estás seguro de que deseas salir de tu cuenta? Tendrás que volver a ingresar tus credenciales la próxima vez.",
-            style: TextStyle(color: Colors.black87),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
           ),
           actions: [
             // Botón de Cancelar

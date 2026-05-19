@@ -349,7 +349,7 @@ async def create_counter_offer(
                 conversation_id=offer_data.conversation_id,
                 receiver_id=receiver_id,
                 sender_id=str(current_user.id),
-                amount=new_offer.content
+                amount=new_offer.content # type: ignore
             )
     except Exception as notify_err:
         logger.warning(f"⚠️ Error notificando contraoferta: {notify_err}")
@@ -669,9 +669,9 @@ async def resolve_dispute(
         
     # 🏁 ACTUALIZAR EL SERVICIO PRINCIPAL: Reflejar el fin de la labor en el Marketplace
     if request_entry and request_entry.service:
-        request_entry.service.status = job.status
+        request_entry.service.status = job.status # type: ignore
         if job.status == service_models.JobStatus.COMPLETED or job.status == service_models.JobStatus.CANCELLED:
-            request_entry.service.is_active = False
+            request_entry.service.is_active = False # type: ignore
         
     # Cerrar la conversación
     convo.status = service_models.ConversationStatus.CLOSED.value # type: ignore

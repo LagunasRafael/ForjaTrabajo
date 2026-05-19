@@ -177,9 +177,9 @@ class _IdentityVerificationScreenState extends ConsumerState<IdentityVerificatio
       child: Container(
         height: 120,
         decoration: BoxDecoration(
-          color: Colors.grey.shade100,
+          color: Theme.of(context).colorScheme.surfaceVariant,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey.shade300),
+          border: Border.all(color: Theme.of(context).colorScheme.outline),
         ),
         child: image != null
             ? ClipRRect(

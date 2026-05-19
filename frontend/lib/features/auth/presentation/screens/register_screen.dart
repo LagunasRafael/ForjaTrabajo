@@ -184,7 +184,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       child: RichText(
                         text: TextSpan(
                           style: GoogleFonts.inter(
-                              color: Colors.grey.shade600,
+                              color: theme.colorScheme.onSurface.withOpacity(0.6),
                               fontSize: 13,
                               height: 1.4),
                           children: const [
@@ -218,7 +218,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: _acceptTerms
                           ? AppTheme.primaryColor
-                          : Colors.grey.shade300,
+                          : theme.colorScheme.onSurface.withOpacity(0.38),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
                       ),
@@ -238,7 +238,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                               fontWeight: FontWeight.bold,
                               color: _acceptTerms
                                   ? Colors.white // Letras blancas
-                                  : Colors.grey.shade500,
+                                  : theme.colorScheme.onSurface.withOpacity(0.5),
                             ),
                           ),
                   ),
@@ -252,7 +252,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     Text(
                       '¿Ya tienes una cuenta? ',
                       style: GoogleFonts.inter(
-                          color: Colors.grey.shade600, fontSize: 14),
+                          color: theme.colorScheme.onSurface.withOpacity(0.6), fontSize: 14),
                     ),
                     GestureDetector(
                       onTap: () => Navigator.pop(context),
@@ -280,12 +280,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   Widget _buildRoleToggle() {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
 
     return Container(
       height: 50,
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E293B) : Colors.grey.shade100,
+        color: theme.colorScheme.surfaceVariant,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -314,7 +313,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     fontWeight: FontWeight.bold,
                     color: !_isWorker
                         ? AppTheme.primaryColor
-                        : Colors.grey.shade500,
+                        : theme.colorScheme.onSurface.withOpacity(0.5),
                   ),
                 ),
               ),
@@ -344,7 +343,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     fontWeight: FontWeight.bold,
                     color: _isWorker
                         ? AppTheme.primaryColor
-                        : Colors.grey.shade500,
+                        : theme.colorScheme.onSurface.withOpacity(0.5),
                   ),
                 ),
               ),
@@ -365,7 +364,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     String? Function(String?)? validator,
   }) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -375,7 +373,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           style: GoogleFonts.inter(
               fontSize: 14,
               fontWeight: FontWeight.w600,
-              color: isDark ? Colors.grey.shade300 : Colors.grey.shade700),
+              color: theme.colorScheme.onSurface.withOpacity(0.6)),
         ),
         const SizedBox(height: 8),
         TextFormField(
@@ -386,15 +384,15 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           validator: validator,
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: TextStyle(color: Colors.grey.shade500),
+            hintStyle: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.5)),
             filled: true,
             fillColor: theme.cardColor,
-            prefixIcon: Icon(icon, color: Colors.grey.shade400),
+            prefixIcon: Icon(icon, color: theme.colorScheme.onSurface.withOpacity(0.38)),
             suffixIcon: isPassword
                 ? IconButton(
                     icon: Icon(
                         _showPassword ? Icons.visibility_off : Icons.visibility,
-                        color: Colors.grey.shade400),
+                        color: theme.colorScheme.onSurface.withOpacity(0.38)),
                     onPressed: () =>
                         setState(() => _showPassword = !_showPassword),
                   )
@@ -405,12 +403,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 borderRadius: BorderRadius.circular(16),
                 borderSide: BorderSide(
                     color:
-                        isDark ? Colors.grey.shade700 : Colors.grey.shade200)),
+                        theme.colorScheme.outline)),
             enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
                 borderSide: BorderSide(
                     color:
-                        isDark ? Colors.grey.shade700 : Colors.grey.shade200)),
+                        theme.colorScheme.outline)),
             focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
                 borderSide:

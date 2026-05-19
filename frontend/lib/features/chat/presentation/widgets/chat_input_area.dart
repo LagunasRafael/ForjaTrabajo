@@ -334,6 +334,7 @@ class _ChatInputAreaState extends ConsumerState<ChatInputArea> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     bool hasInput = _messageController.text.isNotEmpty || _selectedMedia.isNotEmpty;
 
     return Column(
@@ -354,7 +355,7 @@ class _ChatInputAreaState extends ConsumerState<ChatInputArea> {
            ),
         Container(
           padding: const EdgeInsets.all(12),
-          color: Colors.white,
+          color: theme.colorScheme.surface,
           child: SafeArea(
         child: Row(
           children: [
@@ -435,7 +436,7 @@ class _ChatInputAreaState extends ConsumerState<ChatInputArea> {
                   decoration: InputDecoration(
                     hintText: widget.isEnabled ? "Escribe un mensaje..." : "Chat finalizado",
                     filled: true,
-                    fillColor: const Color(0xFFF3F4F6),
+                    fillColor: theme.colorScheme.surfaceVariant,
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   ),
