@@ -254,9 +254,14 @@ def update_user(
         db_user.role = user_data.role # type: ignore
     if user_data.phone is not None:
         db_user.phone = user_data.phone # type: ignore
-    
-    # Si estás manejando is_active, descomenta esta línea:
-    # db_user.is_active = user_data.is_active 
+    if user_data.is_active is not None:
+        db_user.is_active = user_data.is_active
+        if user_data.is_active:
+            db_user.is_banned = False
+    if user_data.is_banned is not None:
+        db_user.is_banned = user_data.is_banned
+        if user_data.is_banned:
+            db_user.is_active = False
 
     # 3. Guardamos los cambios
     db.commit()

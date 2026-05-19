@@ -218,6 +218,7 @@ export const UserFormSlideOver = ({ isOpen, onClose, onSubmit, initialData }: Us
                 <option value="active">Activo</option>
                 <option value="pending">Pendiente</option>
                 <option value="inactive">Inactivo</option>
+                <option value="banned">Baneado</option>
               </select>
             </div>
           </div>
