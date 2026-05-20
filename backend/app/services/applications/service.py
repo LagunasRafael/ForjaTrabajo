@@ -38,6 +38,7 @@ def create_service_request(db: Session, request_data: schemas.ServiceRequestCrea
 
 def get_offers_by_service(db: Session, service_id: str, client_id: str, is_admin: bool = False):
     from sqlalchemy.orm import joinedload
+    from datetime import datetime
     db_service = db.query(models.Service)\
         .options(joinedload(models.Service.requests).joinedload(models.ServiceRequest.worker))\
         .filter(models.Service.id == service_id).first()
@@ -45,13 +46,13 @@ def get_offers_by_service(db: Session, service_id: str, client_id: str, is_admin
         raise HTTPException(status_code=404, detail="Servicio no encontrado")
 
     if is_admin or str(db_service.client_id) == str(client_id):
-        return db_service.requests
+        return sorted(db_service.requests, key=lambda x: x.created_at or datetime.min, reverse=True)
 
     my_requests = [
         req for req in db_service.requests 
         if str(req.worker_id) == str(client_id)
     ]
-    return my_requests
+    return sorted(my_requests, key=lambda x: x.created_at or datetime.min, reverse=True)
 
 def update_service_request(db: Session, request_id: str, description: str, proposed_price: float):
     postulation = db.query(models.ServiceRequest).filter(
@@ -158,7 +159,10 @@ def get_worker_applications(db: Session, worker_id: str):
                     "author_image_url": author_image_url,
                 }
                 
-        return list(unique_results.values())
+        # 🏁 ORDENAR POR FECHA DE CREACIÓN DESCENDENTE (Del más reciente al más antiguo)
+        final_list = list(unique_results.values())
+        final_list.sort(key=lambda x: x.get("created_at") or "", reverse=True)
+        return final_list
         
     except Exception as e:
         logger.error(f"🚨 Error en get_worker_applications: {e}")

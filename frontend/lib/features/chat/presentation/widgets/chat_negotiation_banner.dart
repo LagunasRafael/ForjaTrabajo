@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja_trabajo/core/utils/formatters.dart';
 
 class ChatNegotiationBanner extends StatelessWidget {
   final String amount;
@@ -35,7 +36,7 @@ class ChatNegotiationBanner extends StatelessWidget {
                 ),
               ),
               Text(
-                "Oferta actual: \$$amount MXN",
+                "Oferta actual: \$${Formatters.formatCurrency(amount)} MXN",
                 style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
               ),
             ],

@@ -5,6 +5,8 @@ import '../../providers/service_offers_provider.dart';
 import '../../providers/service_list_provider.dart';
 import '../../providers/nav_providers.dart';
 import 'package:forja_trabajo/features/services/presentation/widgets/client/candidate_card.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:forja_trabajo/core/network/notification_service.dart';
 
 class OffersReceivedScreen extends ConsumerWidget {
   final ServiceEntity? service;
@@ -16,6 +18,18 @@ class OffersReceivedScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final effectiveId = service?.id ?? serviceId;
     if (effectiveId == null) return const Scaffold(body: Center(child: Text("Error: ID faltante")));
+
+    // 🔔 Escuchar eventos de notificación para refrescar en tiempo real
+    ref.listen<AsyncValue<RemoteMessage>>(notificationEventProvider, (previous, next) {
+      next.whenData((message) {
+        final type = message.data['type'] ?? '';
+        if (type == 'new_application' || type == 'offer_responded' || type.toString().contains('job_')) {
+          debugPrint('🔄 [OffersReceivedScreen] Refrescando por notificación: $type');
+          ref.invalidate(offersListProvider(effectiveId));
+          ref.invalidate(serviceDetailProvider(effectiveId));
+        }
+      });
+    });
 
     final serviceAsync = service != null 
         ? AsyncValue.data(service!) 
@@ -57,7 +71,7 @@ class OffersReceivedScreen extends ConsumerWidget {
             ),
             title: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               const Text("Postulaciones", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: Colors.black)),
-              Text(serviceData.title.toUpperCase(), style: const TextStyle(fontSize: 10, color: Color(0xFF4F46E5), fontWeight: FontWeight.bold)),
+              Text(serviceData.title, style: const TextStyle(fontSize: 10, color: Color(0xFF4F46E5), fontWeight: FontWeight.bold)),
             ]),
           ),
           body: RefreshIndicator(
@@ -80,7 +94,8 @@ class OffersReceivedScreen extends ConsumerWidget {
                 itemCount: offers.length,
                 itemBuilder: (context, index) => CandidateCard(
                   offer: offers[index], 
-                  serviceId: effectiveId
+                  serviceId: effectiveId,
+                  serviceTitle: serviceData.title,
                 ),
               );
             },

@@ -7,11 +7,13 @@ import 'package:forja_trabajo/features/chat/presentation/screens/shared_chat_scr
 import 'package:forja_trabajo/features/services/presentation/providers/service_request_provider.dart';
 import 'package:forja_trabajo/features/services/presentation/providers/nav_providers.dart';
 import 'package:forja_trabajo/features/profile/presentation/screens/user_profile_screen.dart';
+import 'package:forja_trabajo/features/services/presentation/providers/service_list_provider.dart';
 
 class CandidateCard extends ConsumerStatefulWidget {
   final dynamic offer;
   final String serviceId;
-  const CandidateCard({super.key, required this.offer, required this.serviceId});
+  final String? serviceTitle;
+  const CandidateCard({super.key, required this.offer, required this.serviceId, this.serviceTitle});
   
   @override
   ConsumerState<CandidateCard> createState() => _CandidateCardState();
@@ -32,6 +34,30 @@ class _CandidateCardState extends ConsumerState<CandidateCard> {
   Widget build(BuildContext context) {
     final isAccepting = ref.watch(isAcceptingProvider(widget.offer.id));
 
+    // Resolve service details dynamically and robustly!
+    final serviceAsync = ref.watch(serviceDetailProvider(widget.serviceId));
+    final myRequestsAsync = ref.watch(myRequestsProvider);
+    final serviceListAsync = ref.watch(serviceListProvider);
+    
+    final resolvedTitle = widget.serviceTitle ?? myRequestsAsync.maybeWhen(
+      data: (list) {
+        final match = list.where((s) => s.id == widget.serviceId);
+        return match.isNotEmpty ? match.first.title : null;
+      },
+      orElse: () => null,
+    ) ?? serviceListAsync.maybeWhen(
+      data: (list) {
+        final match = list.where((s) => s.id == widget.serviceId);
+        return match.isNotEmpty ? match.first.title : null;
+      },
+      orElse: () => null,
+    ) ?? serviceAsync.maybeWhen(
+      data: (service) => service.title,
+      orElse: () => null,
+    );
+
+    debugPrint('🔍 [CandidateCard] widget.serviceTitle: ${widget.serviceTitle} | widget.serviceId: ${widget.serviceId} | resolvedTitle: $resolvedTitle');
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
@@ -51,8 +77,8 @@ class _CandidateCardState extends ConsumerState<CandidateCard> {
         children: [
           _buildHeader(),
           _buildMessage(),
-          _buildActions(isAccepting),
-          if (_showInput) _buildCounterOfferInput(),
+          _buildActions(isAccepting, resolvedTitle),
+          if (_showInput) _buildCounterOfferInput(resolvedTitle),
         ]
       ),
     );
@@ -91,7 +117,7 @@ class _CandidateCardState extends ConsumerState<CandidateCard> {
             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16), 
             maxLines: 1, 
             overflow: TextOverflow.ellipsis
-          )
+          ),
         ),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -119,7 +145,7 @@ class _CandidateCardState extends ConsumerState<CandidateCard> {
     );
   }
 
-  Widget _buildActions(bool isAccepting) {
+  Widget _buildActions(bool isAccepting, String? resolvedTitle) {
     return Row(
       children: [
         // 💬 BOTÓN DE CHAT
@@ -127,7 +153,7 @@ class _CandidateCardState extends ConsumerState<CandidateCard> {
           decoration: BoxDecoration(color: const Color(0xFFF3F4F6), borderRadius: BorderRadius.circular(10)), 
           child: IconButton(
             icon: const Icon(Icons.chat_bubble_outline, size: 20),
-            onPressed: isAccepting ? null : _handleOpenChat,
+            onPressed: isAccepting ? null : () => _handleOpenChat(resolvedTitle),
           ),
         ),
         const SizedBox(width: 8),
@@ -154,7 +180,7 @@ class _CandidateCardState extends ConsumerState<CandidateCard> {
     );
   }
 
-  Future<void> _handleOpenChat() async {
+  Future<void> _handleOpenChat(String? resolvedTitle) async {
     try {
       final targetId = widget.offer.id;
       final chatId = await ref.read(chatDatasourceProvider).startOrGetChat(targetId);
@@ -171,7 +197,7 @@ class _CandidateCardState extends ConsumerState<CandidateCard> {
               otherUserAvatarUrl: widget.offer.authorImageUrl, 
               service: {
                 'id': widget.serviceId,
-                'title': 'Propuesta de trabajo',
+                'title': resolvedTitle ?? 'Propuesta de trabajo',
               }, 
             ),
           ),
@@ -202,7 +228,7 @@ class _CandidateCardState extends ConsumerState<CandidateCard> {
     );
   }
 
-  Widget _buildCounterOfferInput() {
+  Widget _buildCounterOfferInput(String? resolvedTitle) {
     return Padding(
       padding: const EdgeInsets.only(top: 16),
       child: TextFormField(
@@ -225,7 +251,7 @@ class _CandidateCardState extends ConsumerState<CandidateCard> {
               )
             : IconButton(
                 icon: const Icon(Icons.send, color: Color(0xFF4F46E5)), 
-                onPressed: _handleSendCounterOffer
+                onPressed: () => _handleSendCounterOffer(resolvedTitle),
               ),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12), 
@@ -236,7 +262,7 @@ class _CandidateCardState extends ConsumerState<CandidateCard> {
     );
   }
 
-  Future<void> _handleSendCounterOffer() async {
+  Future<void> _handleSendCounterOffer(String? resolvedTitle) async {
     final amountText = _offerController.text.trim();
     if (amountText.isEmpty) return;
     
@@ -273,7 +299,7 @@ class _CandidateCardState extends ConsumerState<CandidateCard> {
               backgroundColor: const Color(0xFFF0F0F0).withOpacity(1),
               behavior: SnackBarBehavior.floating,
               margin: EdgeInsets.only(
-                bottom: MediaQuery.of(context).size.height - 180,
+                bottom: MediaQuery.of(context).size.height - 750,
                 left: 24,
                 right: 24,
               ),
@@ -295,7 +321,7 @@ class _CandidateCardState extends ConsumerState<CandidateCard> {
               otherUserAvatarUrl: widget.offer.authorImageUrl, 
               service: {
                 'id': widget.serviceId,
-                'title': 'Propuesta de trabajo',
+                'title': resolvedTitle ?? 'Propuesta de trabajo',
               }, 
             ),
           ),

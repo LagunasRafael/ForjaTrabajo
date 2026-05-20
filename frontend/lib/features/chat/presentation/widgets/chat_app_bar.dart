@@ -6,6 +6,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String? otherUserName;
   final String? otherUserAvatarUrl;
   final String? otherUserId;
+  final String subtitlePrefix;
   final VoidCallback? onOpenDispute;
   final VoidCallback? onTapService;
 
@@ -15,6 +16,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.otherUserName,
     this.otherUserAvatarUrl,
     this.otherUserId,
+    this.subtitlePrefix = 'Postulante a',
     this.onOpenDispute,
     this.onTapService,
   });
@@ -95,7 +97,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
                     children: [
                       Flexible(
                         child: Text(
-                          serviceTitle,
+                          "$subtitlePrefix \"$serviceTitle\"",
                           style: const TextStyle(
                             color: Color(0xFF4F46E5), 
                             fontSize: 13, 

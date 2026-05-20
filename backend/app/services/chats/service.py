@@ -94,10 +94,17 @@ def get_user_chats(db: Session, user_id: str):
         # Por ahora, mantendremos este query pero con el user_id ya conocido es rápido (especialmente con el índice nuevo).
         other_user = db.query(auth_models.User).filter(auth_models.User.id == str(other_user_id)).first()
         
-        # 3. Obtener el último mensaje (Sigue siendo un query extra por chat, pero mejoramos el resto)
+        # 3. Obtener el último mensaje
         last_msg = db.query(models.Message).filter(
             models.Message.conversation_id == convo.id
         ).order_by(models.Message.created_at.desc()).first()
+
+        # ⚠️ FILTRADO DE POSTULACIONES PENDIENTES SIN MENSAJES:
+        # No inundar la bandeja del chat si solo son postulados y nadie ha hablado.
+        # Solo mostrar el chat si ya comenzó/se aceptó (status != pending) O si el cliente ya inició conversación (hay al menos 1 mensaje).
+        request_status = str(request.status).lower().strip() if (request and request.status) else "pending"
+        if request_status == "pending" and not last_msg:
+            continue
         
         # ✅ AQUÍ ESTÁ LA MAGIA CORREGIDA: Usamos full_name
         other_name = other_user.full_name if other_user and other_user.full_name else "Usuario"
@@ -268,14 +275,27 @@ def handle_offer_action(db: Session, message_id: str, action: str, user_id: str)
 
     elif action == "reject":
         offer_msg.status = "rejected" # type: ignore
+    elif action == "withdraw":
+        offer_msg.status = "withdrawn" # type: ignore
+
+    # 🧹 LIMPIEZA DE NEGOCIACIÓN: Si no queda ninguna oferta 'pending', restaurar status de conversación a 'open'
+    pending_offers_count = db.query(models.Message).filter(
+        models.Message.conversation_id == convo.id,
+        models.Message.message_type == models.MessageType.OFFER.value,
+        models.Message.status == "pending"
+    ).count()
+
+    if pending_offers_count == 0:
+        convo.status = models.ConversationStatus.OPEN.value # type: ignore
 
     db.commit()
 
     # 🔔 Notificar al otro usuario sobre la respuesta a la oferta (Migrado)
+    receiver_id = offer_msg.sender_id if action != "withdraw" else (str(convo.worker_id) if str(convo.client_id) == str(user_id) else str(convo.client_id))
     notif_service.notify_offer_responded(
         db=db,
         conversation_id=str(convo.id),
-        receiver_id=offer_msg.sender_id,
+        receiver_id=receiver_id,
         sender_id=str(user_id),
         amount=offer_msg.content,
         action=action

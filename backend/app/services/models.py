@@ -91,14 +91,14 @@ class Service(Base):
     def request_id(self):
         """Devuelve el request_id del Job activo asociado si lo hay."""
         for request in self.requests:
-            if request.job and request.job.status != JobStatus.CANCELLED:
+            if request.job:
                 return str(request.id)
         return None
 
     @property
     def worker_name(self):
         for request in self.requests:
-            if request.job and request.job.status != JobStatus.CANCELLED:
+            if request.job:
                 if request.worker and request.worker.full_name:
                     return request.worker.full_name
         return None
@@ -106,7 +106,7 @@ class Service(Base):
     @property
     def worker_image_url(self):
         for request in self.requests:
-            if request.job and request.job.status != JobStatus.CANCELLED:
+            if request.job:
                 if request.worker and request.worker.profile_picture_url:
                     return request.worker.profile_picture_url
         return None
@@ -114,7 +114,7 @@ class Service(Base):
     @property
     def worker_id(self):
         for request in self.requests:
-            if request.job and request.job.status != JobStatus.CANCELLED:
+            if request.job:
                 return str(request.worker_id)
         return None
 # -----------------------------

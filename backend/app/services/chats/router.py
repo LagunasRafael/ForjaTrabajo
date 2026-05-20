@@ -364,7 +364,7 @@ async def respond_to_offer(
     current_user: auth_models.User = Depends(get_current_user)
 ):
     """El trabajador acepta o rechaza la oferta."""
-    if action_data.action not in ["accept", "reject"]:
+    if action_data.action not in ["accept", "reject", "withdraw"]:
         raise HTTPException(status_code=400, detail="Acción no válida")
         
     updated_offer = service.handle_offer_action(

@@ -66,6 +66,29 @@ class _CreateServiceScreenState extends ConsumerState<CreateServiceScreen> {
     
     final formState = ref.read(createServiceFormProvider);
 
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          message,
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: Color(0xFF4F46E5)),
+        ),
+        backgroundColor: const Color(0xFFF0F0F0).withOpacity(1),
+        behavior: SnackBarBehavior.floating,
+        margin: EdgeInsets.only(
+          bottom: MediaQuery.of(context).size.height - 210,
+          left: 24,
+          right: 24,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
     if (formState.step == 0 && formState.categoryId == null) {
       _showError('Selecciona una categoría'); return;
     } 

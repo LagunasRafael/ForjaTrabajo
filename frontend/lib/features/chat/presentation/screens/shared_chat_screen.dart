@@ -13,6 +13,7 @@ import 'package:forja_trabajo/core/network/notification_service.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:forja_trabajo/features/services/presentation/screens/shared/service_detail_screen.dart';
 import 'package:forja_trabajo/features/services/domain/entities/service_entity.dart';
+import 'package:forja_trabajo/core/utils/formatters.dart';
 
 class SharedChatScreen extends ConsumerStatefulWidget {
   final String conversationId;
@@ -231,11 +232,21 @@ class _SharedChatScreenState extends ConsumerState<SharedChatScreen> {
     final hasActiveOffer = lastOffer != null && canSendOffer;
     final messageCount = messages.length;
 
-
+    // Calcular el prefijo dinámico para el subtítulo del Chat
+    final subtitlePrefix = (thisChat?.status == 'EN DISPUTA')
+        ? "En disputa por"
+        : sStatus.contains('cancelled')
+            ? "Cancelado:"
+            : sStatus.contains('matched') 
+                ? "Trabaja en" 
+                : sStatus.contains('completed') 
+                    ? "Trabajó en" 
+                    : "Postulante a";
 
     return Scaffold(
       backgroundColor: const Color(0xFFF3F4F6),
       appBar: ChatAppBar(
+        subtitlePrefix: subtitlePrefix,
         service: {
           'id': (widget.service is Map && widget.service['id'] != null) ? widget.service['id'] : thisChat?.serviceId,
           'title': (widget.service is Map && widget.service['title'] != null) ? widget.service['title'] : (thisChat?.serviceName ?? 'Servicio'),
@@ -482,7 +493,7 @@ class _SharedChatScreenState extends ConsumerState<SharedChatScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
                 const Text("ESTADO DE NEGOCIACIÓN", style: TextStyle(color: Color(0xFF4F46E5), fontSize: 9, fontWeight: FontWeight.w900)),
-                Text("Oferta actual: \$$amount MXN", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                Text("Oferta actual: \$${Formatters.formatCurrency(amount)} MXN", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
             ],
           ),
           ElevatedButton.icon(
