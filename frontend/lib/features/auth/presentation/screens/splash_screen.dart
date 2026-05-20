@@ -6,7 +6,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 
 import 'package:forja_trabajo/core/theme/app_theme.dart';
 import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart';
-import 'package:forja_trabajo/features/auth/presentation/screens/role_selection_screen.dart';
+import 'package:forja_trabajo/features/auth/presentation/screens/login_screen.dart';
 
 import 'package:forja_trabajo/features/services/presentation/screens/layout/client_main_layout.dart';
 import 'package:forja_trabajo/features/services/presentation/screens/layout/worker_main_layout.dart';
@@ -92,8 +92,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       } else if (role.contains('client') || role.contains('cliente')) {
         nextScreen = const ClientMainLayout();
       } else {
-        // Admins y otros roles van al flujo normal (panel web)
-        nextScreen = const RoleSelectionScreen();
+        nextScreen = const LoginScreen();
       }
 
       Navigator.of(context).pushReplacement(
@@ -109,7 +108,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       Navigator.of(context).pushReplacement(
         PageRouteBuilder(
           pageBuilder: (context, animation, secondaryAnimation) =>
-              const RoleSelectionScreen(),
+              const LoginScreen(),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return FadeTransition(opacity: animation, child: child);
           },
