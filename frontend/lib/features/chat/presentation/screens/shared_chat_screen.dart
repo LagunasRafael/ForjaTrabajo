@@ -175,6 +175,7 @@ class _SharedChatScreenState extends ConsumerState<SharedChatScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     // 🔔 Escuchar eventos de notificación para refrescar en tiempo real (Resolución de Admin o Fin de Trabajo)
     ref.listen<AsyncValue<RemoteMessage>>(notificationEventProvider, (previous, next) {
       next.whenData((message) {
@@ -246,7 +247,7 @@ class _SharedChatScreenState extends ConsumerState<SharedChatScreen> {
                     : "Postulante a";
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF3F4F6),
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: ChatAppBar(
         subtitlePrefix: subtitlePrefix,
         service: {
@@ -303,7 +304,7 @@ class _SharedChatScreenState extends ConsumerState<SharedChatScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey.shade300),
+                        Icon(Icons.chat_bubble_outline, size: 64, color: theme.colorScheme.onSurface.withOpacity(0.3)),
                         const SizedBox(height: 16),
                         const Text("No hay mensajes todavía", style: TextStyle(color: Colors.grey, fontSize: 16)),
                         const SizedBox(height: 8),
@@ -480,11 +481,12 @@ class _SharedChatScreenState extends ConsumerState<SharedChatScreen> {
   }
 
   Widget _buildNegotiationBanner(String amount, BuildContext context) {
+    final theme = Theme.of(context);
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF5F3FF),
+        color: theme.colorScheme.primaryContainer,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFFC4B5FD)),
       ),

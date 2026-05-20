@@ -32,6 +32,7 @@ class _CandidateCardState extends ConsumerState<CandidateCard> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final isAccepting = ref.watch(isAcceptingProvider(widget.offer.id));
 
     // Resolve service details dynamically and robustly!
@@ -104,7 +105,7 @@ class _CandidateCardState extends ConsumerState<CandidateCard> {
       children: [
         CircleAvatar(
           radius: 24, 
-          backgroundColor: const Color(0xFFF3F4F6),
+          backgroundColor: Theme.of(context).colorScheme.surfaceVariant,
           backgroundImage: (imgUrl != null && imgUrl.isNotEmpty) ? NetworkImage(imgUrl) : null,
           child: (imgUrl == null || imgUrl.isEmpty) 
               ? Text(initial, style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF4F46E5), fontSize: 18)) 
@@ -137,7 +138,7 @@ class _CandidateCardState extends ConsumerState<CandidateCard> {
       margin: const EdgeInsets.symmetric(vertical: 12), 
       padding: const EdgeInsets.all(12), 
       width: double.infinity,
-      decoration: BoxDecoration(color: const Color(0xFFF9FAFB), borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(color: Theme.of(context).colorScheme.surfaceVariant, borderRadius: BorderRadius.circular(12)),
       child: Text(
         "\"${widget.offer.description ?? 'Sin mensaje'}\"", 
         style: const TextStyle(fontStyle: FontStyle.italic, color: Colors.black87, fontSize: 13)
@@ -150,7 +151,7 @@ class _CandidateCardState extends ConsumerState<CandidateCard> {
       children: [
         // 💬 BOTÓN DE CHAT
         Container(
-          decoration: BoxDecoration(color: const Color(0xFFF3F4F6), borderRadius: BorderRadius.circular(10)), 
+          decoration: BoxDecoration(color: Theme.of(context).colorScheme.surfaceVariant, borderRadius: BorderRadius.circular(10)), 
           child: IconButton(
             icon: const Icon(Icons.chat_bubble_outline, size: 20),
             onPressed: isAccepting ? null : () => _handleOpenChat(resolvedTitle),
@@ -239,6 +240,7 @@ class _CandidateCardState extends ConsumerState<CandidateCard> {
           prefixText: "\$ ", 
           hintText: "00.00", 
           filled: true, 
+<<<<<<< HEAD
           fillColor: Colors.white,
           suffixIcon: _isSendingOffer
             ? const Padding(
@@ -253,6 +255,12 @@ class _CandidateCardState extends ConsumerState<CandidateCard> {
                 icon: const Icon(Icons.send, color: Color(0xFF4F46E5)), 
                 onPressed: () => _handleSendCounterOffer(resolvedTitle),
               ),
+=======
+          suffixIcon: IconButton(
+            icon: const Icon(Icons.send, color: Color(0xFF4F46E5)), 
+            onPressed: () => setState(() => _showInput = false)
+          ),
+>>>>>>> develop
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12), 
             borderSide: BorderSide(color: Colors.grey.shade200)

@@ -96,9 +96,9 @@ class ClientOpenJobCard extends ConsumerWidget {
         // 🗑️ Botón de Cancelar con tu diseño de X roja
         Container(
           decoration: BoxDecoration(
-            color: const Color(0xFFFEF2F2), 
+            color: Theme.of(context).colorScheme.errorContainer, 
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFFEE2E2)),
+            border: Border.all(color: Theme.of(context).colorScheme.errorContainer),
           ),
           child: IconButton(
             icon: const Icon(Icons.close, color: Color(0xFFEF4444)),

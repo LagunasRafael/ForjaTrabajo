@@ -298,7 +298,7 @@ def handle_offer_action(db: Session, message_id: str, action: str, user_id: str)
         conversation_id=str(convo.id),
         receiver_id=receiver_id,
         sender_id=str(user_id),
-        amount=offer_msg.content,
+        amount=offer_msg.content, # type: ignore
         action=action
     )
 

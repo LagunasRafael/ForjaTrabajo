@@ -50,13 +50,14 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
     final serviceTitle = service is Map ? service['title'] : 'Servicio';
     final userName = otherUserName ?? 'Usuario';
     final String avatarUrl = otherUserAvatarUrl?.trim() ?? '';
+    final theme = Theme.of(context);
 
     return AppBar(
-      backgroundColor: Colors.white,
+      backgroundColor: theme.colorScheme.surface,
       elevation: 1,
       centerTitle: false,
       leading: IconButton(
-        icon: const Icon(Icons.arrow_back, color: Colors.black),
+        icon: Icon(Icons.arrow_back, color: theme.colorScheme.onSurface),
         onPressed: () => Navigator.pop(context),
       ),
       title: GestureDetector(
@@ -86,7 +87,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
               children: [
                 Text(
                   userName,
-                  style: const TextStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.bold),
+                  style: TextStyle(color: theme.colorScheme.onSurface, fontSize: 16, fontWeight: FontWeight.bold),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -124,7 +125,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
       actions: [
         if (onOpenDispute != null)
           PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert, color: Colors.black),
+            icon: Icon(Icons.more_vert, color: theme.colorScheme.onSurface),
             onSelected: (value) {
               if (value == 'dispute') {
                 onOpenDispute!();

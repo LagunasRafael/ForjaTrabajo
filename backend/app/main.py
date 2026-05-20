@@ -24,9 +24,37 @@ from app.payments.routes import router as payments_router
 
 
 # Crear tablas
-print("[DB] Tablas listas para crear:", list(Base.metadata.tables.keys()))
-Base.metadata.create_all(bind=engine)
+print("📋 Tablas listas para crear:", Base.metadata.tables.keys(), flush=True)
 
+from sqlalchemy import text
+try:
+    with engine.connect() as conn:
+        conn.execute(text("DROP TABLE IF EXISTS reports CASCADE"))
+        conn.commit()
+        print("Tabla reports eliminada para recrear desde modelo.", flush=True)
+except Exception as e:
+    print(f"Aviso (no critico): {e}", flush=True)
+
+Base.metadata.create_all(bind=engine)
+print("Tablas creadas/verificadas con create_all.", flush=True)
+
+def _migrate():
+    migs = [
+        ("is_banned en users", "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_banned BOOLEAN DEFAULT FALSE"),
+    ]
+    try:
+        with engine.connect() as conn:
+            for name, sql in migs:
+                try:
+                    conn.execute(text(sql))
+                    conn.commit()
+                    print(f"Migracion ok: {name}", flush=True)
+                except Exception as e:
+                    conn.rollback()
+                    print(f"Migracion fallo ({name}): {e}", flush=True)
+    except Exception as e:
+        print(f"Error conectando para migracion: {e}", flush=True)
+_migrate()
 
 app = FastAPI(
     title="Forja Trabajo API",
@@ -47,7 +75,7 @@ from app.core.rate_limit import limiter
 
 # 🚦 Rate Limiting (Protección contra fuerza bruta y SPAM)
 app.state.limiter = limiter # type: ignore
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
 app.add_middleware(SlowAPIMiddleware)
 
 # Configuración del Logger
