@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Check, X, User, AlertTriangle } from 'lucide-react';
+import { useAutoRefresh } from '../../../hooks/useAutoRefresh';
 import api from '../../../api/client';
 
 interface Verification {
@@ -38,6 +39,8 @@ export const VerificationsPage = () => {
   useEffect(() => {
     loadVerifications();
   }, []);
+
+  useAutoRefresh(() => loadVerifications(), 30000);
 
   const handleApprove = async (id: string) => {
     try {

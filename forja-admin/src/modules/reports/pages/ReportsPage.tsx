@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { getReportsApi, getReportDetailApi, resolveReportApi } from '../services/reports.service';
 import type { Report } from '../types/report.types';
+import { useAutoRefresh } from '../../../hooks/useAutoRefresh';
 import { ConfirmModal } from '../../../components/ConfirmModal';
 
 const reasonLabels: Record<string, string> = {
@@ -38,6 +39,8 @@ export const ReportsPage = () => {
   const [confirmAction, setConfirmAction] = useState<'ban_user' | 'ban_service' | 'dismiss' | null>(null);
 
   useEffect(() => { loadReports(); }, [filter]);
+
+  useAutoRefresh(() => loadReports(), 30000);
 
   const loadReports = async () => {
     setIsLoading(true);

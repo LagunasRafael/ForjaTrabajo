@@ -5,6 +5,7 @@ import { Eye, PlusCircle, Search, RefreshCw } from 'lucide-react';
 import { getServices, createService } from '../services/service.service';
 import { getCategories } from '../services/category.service';
 import { getUsersApi } from '../../users/services/user.service';
+import { useAutoRefresh } from '../../../hooks/useAutoRefresh';
 
 export const ServicesPage = () => {
   const navigate = useNavigate();
@@ -42,6 +43,8 @@ export const ServicesPage = () => {
   useEffect(() => {
     fetchAllData();
   }, [location.pathname]);
+
+  useAutoRefresh(() => fetchAllData());
 
   // 🟢 LÓGICA COMBINADA: Pestañas + Buscador
   const filteredServices = useMemo(() => {

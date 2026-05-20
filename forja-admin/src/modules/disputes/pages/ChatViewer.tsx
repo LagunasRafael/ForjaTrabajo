@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { getConversationMessagesApi, sendAdminMessageApi, resolveDisputeApi } from '../services/disputes.service';
+import { useAutoRefresh } from '../../../hooks/useAutoRefresh';
 import type { Message } from '../types/dispute.types';
 
 export const ChatViewer = () => {
@@ -19,6 +20,8 @@ export const ChatViewer = () => {
       loadMessages(id);
     }
   }, [id]);
+
+  useAutoRefresh(() => loadMessages(id!), 10000);
 
   const loadMessages = async (conversationId: string) => {
     try {
