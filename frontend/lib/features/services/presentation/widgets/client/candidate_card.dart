@@ -240,7 +240,6 @@ class _CandidateCardState extends ConsumerState<CandidateCard> {
           prefixText: "\$ ", 
           hintText: "00.00", 
           filled: true, 
-<<<<<<< HEAD
           fillColor: Colors.white,
           suffixIcon: _isSendingOffer
             ? const Padding(
@@ -255,12 +254,6 @@ class _CandidateCardState extends ConsumerState<CandidateCard> {
                 icon: const Icon(Icons.send, color: Color(0xFF4F46E5)), 
                 onPressed: () => _handleSendCounterOffer(resolvedTitle),
               ),
-=======
-          suffixIcon: IconButton(
-            icon: const Icon(Icons.send, color: Color(0xFF4F46E5)), 
-            onPressed: () => setState(() => _showInput = false)
-          ),
->>>>>>> develop
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12), 
             borderSide: BorderSide(color: Colors.grey.shade200)

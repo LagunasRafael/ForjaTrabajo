@@ -71,13 +71,8 @@ class OffersReceivedScreen extends ConsumerWidget {
               onPressed: () => Navigator.pop(context)
             ),
             title: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-<<<<<<< HEAD
-              const Text("Postulaciones", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: Colors.black)),
-              Text(serviceData.title, style: const TextStyle(fontSize: 10, color: Color(0xFF4F46E5), fontWeight: FontWeight.bold)),
-=======
               Text("Postulaciones", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: theme.colorScheme.onSurface)),
               Text(serviceData.title.toUpperCase(), style: const TextStyle(fontSize: 10, color: Color(0xFF4F46E5), fontWeight: FontWeight.bold)),
->>>>>>> develop
             ]),
           ),
           body: RefreshIndicator(

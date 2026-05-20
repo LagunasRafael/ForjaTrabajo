@@ -158,8 +158,11 @@ def get_user_chats(db: Session, user_id: str):
         # 6. Calcular si hay mensajes no leídos usando el nuevo sistema de timestamps
         last_read = convo.last_read_at_client if str(convo.client_id) == str(user_id) else convo.last_read_at_worker
         has_unread = False
-        if last_msg and last_msg.created_at > last_read:
-            has_unread = True
+        if last_msg:
+            # Si el último mensaje es de otra persona y no lo hemos leído o last_read es None, es unread
+            if str(last_msg.sender_id) != str(user_id):
+                if not last_read or last_msg.created_at > last_read:
+                    has_unread = True
 
         # 7. Traducir status para la UI
         status_db = str(convo.status).lower()

@@ -172,14 +172,14 @@ class _CreateServiceScreenState extends ConsumerState<CreateServiceScreen> {
       }
     });
 
-<<<<<<< HEAD
+    final theme = Theme.of(context);
     final formState       = ref.watch(createServiceFormProvider);
     final creationState   = ref.watch(serviceControllerProvider);
     final categoriesAsync = ref.watch(categoryListProvider);
 
     return PopScope(
       canPop: formState.step == 0,
-      onPopInvoked: (didPop) {
+      onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
         if (formState.step > 0) {
           _pageController.previousPage(
@@ -190,7 +190,7 @@ class _CreateServiceScreenState extends ConsumerState<CreateServiceScreen> {
         }
       },
       child: Scaffold(
-        backgroundColor: const Color(0xFFF9FAFB),
+        backgroundColor: theme.scaffoldBackgroundColor,
         appBar: _buildAppBar(formState.step),
         body: Form(
           key: _formKey,
@@ -230,47 +230,6 @@ class _CreateServiceScreenState extends ConsumerState<CreateServiceScreen> {
                     ),
                   ],
                 ),
-=======
-    final theme = Theme.of(context);
-    final formState = ref.watch(createServiceFormProvider);
-    final creationState = ref.watch(serviceControllerProvider);
-    final categoriesAsync = ref.watch(categoryListProvider);
-
-    return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: _buildAppBar(formState.step),
-      body: Form(
-        key: _formKey,
-        child: Column(
-          children: [
-            CreateServiceHeader(currentStep: formState.step),
-            Expanded(
-              child: PageView(
-                controller: _pageController, 
-                physics: const NeverScrollableScrollPhysics(),
-                children: [
-                  Step1Details(
-                    titleCtrl: _titleCtrl, descCtrl: _descCtrl, 
-                    selectedCategoryId: formState.categoryId, categoriesAsync: categoriesAsync, 
-                    onCategoryChanged: (id) => ref.read(createServiceFormProvider.notifier).setCategory(id), 
-                    onNext: _nextStep
-                  ),
-                  Step2Location(
-                    addressCtrl: _addressCtrl, priceCtrl: _priceCtrl, lat: formState.latitude, lng: formState.longitude,
-                    onLocationCaptured: (lat, lng) => ref.read(createServiceFormProvider.notifier).setLocation(lat, lng), 
-                    onNext: _nextStep
-                  ),
-                  Step3Summary(
-                    title: _titleCtrl.text, desc: _descCtrl.text, address: _addressCtrl.text, price: _priceCtrl.text, 
-                    categoryId: formState.categoryId, categoriesAsync: categoriesAsync, 
-                    isLoading: creationState.isLoading, images: formState.images,
-                    onAddImage: _pickImage,
-                    onRemoveImage: (i) => ref.read(createServiceFormProvider.notifier).removeImage(i), 
-                    onSubmit: _submitFinal, 
-                    onEdit: () { _pageController.jumpToPage(0); ref.read(createServiceFormProvider.notifier).setStep(0); }
-                  ),
-                ],
->>>>>>> develop
               ),
             ],
           ),
@@ -297,14 +256,7 @@ class _CreateServiceScreenState extends ConsumerState<CreateServiceScreen> {
           }
         },
       ),
-<<<<<<< HEAD
-      title: Text(
-        _isEditing ? "Editar Servicio" : "Publicar Servicio",
-        style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 18),
-      ),
-=======
       title: Text(_isEditing ? "Editar Servicio" : "Publicar Servicio", style: TextStyle(color: theme.colorScheme.onSurface, fontWeight: FontWeight.bold, fontSize: 18)),
->>>>>>> develop
     );
   }
 }

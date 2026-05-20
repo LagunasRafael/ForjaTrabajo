@@ -178,22 +178,13 @@ class ChatBubble extends StatelessWidget {
     if (messageType == 'gallery' || messageType == 'image' || messageType == 'video') {
        final urls = text.split(',');
        if (urls.length > 1) {
-<<<<<<< HEAD
           return _buildGalleryGrid(urls, context);
-=======
-          return _buildGalleryGrid(urls, theme);
->>>>>>> develop
        } else {
           final singleUrl = urls.first;
           final ext = singleUrl.split('?').first.toLowerCase();
           final isVideo = messageType == 'video' || ext.endsWith('.mp4') || ext.endsWith('.mov') || ext.endsWith('.mkv');
-<<<<<<< HEAD
           if (isVideo) return _buildVideoPlaceholder();
           return _buildImagePlaceholder(overrideUrl: singleUrl, context: context);
-=======
-          if (isVideo) return _buildVideoPlaceholder(theme: theme);
-          return _buildImagePlaceholder(overrideUrl: singleUrl, theme: theme);
->>>>>>> develop
        }
     } else if (messageType == 'audio') {
       return _buildAudioPlaceholder();
@@ -211,7 +202,6 @@ class ChatBubble extends StatelessWidget {
     }
   }
 
-<<<<<<< HEAD
   void _openGallery(BuildContext context, List<String> urls, int initialIndex) {
     Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => _GalleryViewerScreen(urls: urls, initialIndex: initialIndex),
@@ -418,25 +408,7 @@ class ChatBubble extends StatelessWidget {
   }
 
   Widget _buildImagePlaceholder({String? overrideUrl, double size = 200, required BuildContext context}) {
-=======
-  Widget _buildGalleryGrid(List<String> urls, ThemeData theme) {
-    return Wrap(
-      spacing: 4,
-      runSpacing: 4,
-      children: urls.map((url) {
-         final ext = url.split('?').first.toLowerCase();
-         final isVideo = ext.endsWith('.mp4') || ext.endsWith('.mov') || ext.endsWith('.mkv');
-         if (isVideo) {
-            return _buildVideoPlaceholder(size: 100, theme: theme);
-         } else {
-            return _buildImagePlaceholder(overrideUrl: url, size: 100, theme: theme);
-         }
-      }).toList(),
-    );
-  }
-
-  Widget _buildImagePlaceholder({String? overrideUrl, double size = 200, required ThemeData theme}) {
->>>>>>> develop
+    final theme = Theme.of(context);
     final url = overrideUrl ?? text;
     bool isUrl = url.startsWith('http');
     bool isLocal = url.startsWith('/') || url.startsWith('C:') || url.startsWith('var/') || url.startsWith('file://');
@@ -463,7 +435,6 @@ class ChatBubble extends StatelessWidget {
       imageWidget = Center(child: Icon(Icons.image, size: 40, color: isMe ? Colors.white : Colors.grey));
     }
 
-<<<<<<< HEAD
     return GestureDetector(
       onTap: () {
         if (status == 'sending') return;
@@ -474,7 +445,7 @@ class ChatBubble extends StatelessWidget {
         width: size,
         height: size,
         decoration: BoxDecoration(
-          color: isMe ? const Color(0xFF6366F1) : Colors.grey.shade300,
+          color: isMe ? const Color(0xFF6366F1) : theme.colorScheme.surfaceVariant,
           borderRadius: BorderRadius.circular(12),
         ),
         clipBehavior: Clip.hardEdge,
@@ -512,14 +483,6 @@ class ChatBubble extends StatelessWidget {
               ),
           ],
         ),
-=======
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: isMe ? const Color(0xFF6366F1) : theme.colorScheme.surfaceVariant,
-        borderRadius: BorderRadius.circular(12),
->>>>>>> develop
       ),
     );
   }
@@ -528,12 +491,8 @@ class ChatBubble extends StatelessWidget {
     return _AudioPlayerWidget(url: text, isMe: isMe);
   }
 
-<<<<<<< HEAD
   Widget _buildVideoPlaceholder({String? overrideUrl, double size = 200}) {
     final url = overrideUrl ?? text.split(',').first.trim();
-=======
-  Widget _buildVideoPlaceholder({double size = 200, required ThemeData theme}) {
->>>>>>> develop
     return GestureDetector(
       onTap: () async {
         if (status == 'sending') return;
