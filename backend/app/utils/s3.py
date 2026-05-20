@@ -150,12 +150,21 @@ async def upload_chat_media_to_s3(file: UploadFile, conversation_id: str) -> Opt
         
         filename = file.filename or "file"
         ext = os.path.splitext(filename)[1].lower()
+        content_type = (file.content_type or "").lower()
         if not ext:
             # Fallback based on content type
-            if "image" in file.content_type: ext = ".jpg"
-            elif "video" in file.content_type: ext = ".mp4"
-            elif "audio" in file.content_type: ext = ".m4a"
-            else: ext = ".bin"
+            if "image" in content_type: ext = ".jpg"
+            elif "video" in content_type: ext = ".mp4"
+            elif "audio" in content_type: ext = ".m4a"
+            elif "octet-stream" in content_type: ext = ".m4a"  # Fallback común de iOS/Android
+            else: ext = ".m4a"  # Para audios grabados sin extensión conocida
+
+        # Aseguramos que archivos de audio con extensiones conocidas tengan el content_type correcto
+        audio_exts = [".m4a", ".mp3", ".ogg", ".wav", ".aac", ".opus"]
+        if not content_type or content_type == "application/octet-stream":
+            if ext in [".jpg", ".jpeg", ".png", ".webp"]: content_type = "image/jpeg"
+            elif ext in [".mp4", ".mov", ".mkv"]: content_type = "video/mp4"
+            elif ext in audio_exts: content_type = f"audio/{ext.lstrip('.')}"
 
         s3_key = f"chats/{conversation_id}/media_{uuid.uuid4()}{ext}"
         
@@ -179,13 +188,13 @@ async def upload_chat_media_to_s3(file: UploadFile, conversation_id: str) -> Opt
             )
         else:
             # 🔵 TRATAMIENTO PARA AUDIO/VIDEO (Subida directa)
-            # Asegurarse de volver al inicio si se leyó algo (aunque UploadFile suele estar al inicio)
             await file.seek(0)
+            upload_content_type = content_type if content_type else "application/octet-stream"
             s3_client.upload_fileobj(
                 file.file, 
                 bucket_name,
                 s3_key,
-                ExtraArgs={"ContentType": file.content_type}
+                ExtraArgs={"ContentType": upload_content_type}
             )
 
         return f"https://{bucket_name}.s3.amazonaws.com/{s3_key}"

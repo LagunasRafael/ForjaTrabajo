@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:carousel_slider/carousel_slider.dart';
+import 'full_screen_image_viewer.dart';
 
 class ServiceImageCarousel extends StatefulWidget {
   final List<String> imageUrls;
@@ -28,26 +29,35 @@ class _ServiceImageCarouselState extends State<ServiceImageCarousel> {
             enableInfiniteScroll: false,
             onPageChanged: (i, _) => setState(() => _currentIdx = i)
           ),
-          items: displayImages.map((url) {
-            return Image.network(
-              url, 
-              fit: BoxFit.cover, 
-              width: double.infinity,
-              errorBuilder: (context, error, stackTrace) {
-                return Container(
-                  color: Colors.grey.shade200,
-                  child: const Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.broken_image, color: Colors.grey, size: 40),
-                        SizedBox(height: 8),
-                        Text("Imagen no disponible", style: TextStyle(color: Colors.grey)),
-                      ],
-                    ),
-                  ),
-                );
-              },
+          items: displayImages.asMap().entries.map((entry) {
+            final index = entry.key;
+            final url = entry.value;
+
+            return GestureDetector(
+              onTap: () => FullScreenImageViewer.open(context, displayImages, index),
+              child: Hero(
+                tag: url,
+                child: Image.network(
+                  url, 
+                  fit: BoxFit.cover, 
+                  width: double.infinity,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      color: Colors.grey.shade200,
+                      child: const Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.broken_image, color: Colors.grey, size: 40),
+                            SizedBox(height: 8),
+                            Text("Imagen no disponible", style: TextStyle(color: Colors.grey)),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
             );
           }).toList(),
         ),

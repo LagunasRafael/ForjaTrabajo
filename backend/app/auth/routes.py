@@ -179,7 +179,7 @@ def login(request: Request, data: schemas.UserLogin, db: Session = Depends(get_d
         # Usamos la constante de FastAPI para mayor claridad
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, 
-            detail="Credenciales inválidas",
+            detail="Correo electrónico o contraseña incorrectos",
             headers={"WWW-Authenticate": "Bearer"},
         )
 

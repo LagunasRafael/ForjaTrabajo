@@ -24,7 +24,9 @@ def accept_postulation(db: Session, request_id: str, current_user_id: str):
         raise HTTPException(status_code=400, detail="Servicio no disponible")
 
     try:
+        final_price = postulation.proposed_price if postulation.proposed_price else service_entry.base_price
         service_entry.status = models.JobStatus.MATCHED
+        service_entry.base_price = final_price  # 👈 Sincronizar precio pactado en el Servicio
         postulation.status = "accepted"
         
         new_job = models.Job(
@@ -32,7 +34,7 @@ def accept_postulation(db: Session, request_id: str, current_user_id: str):
             provider_id=postulation.worker_id,
             client_id=service_entry.client_id,
             status=models.JobStatus.MATCHED,
-            final_price=postulation.proposed_price if postulation.proposed_price else service_entry.base_price,
+            final_price=final_price,
             started_at=datetime.utcnow()
         )
         

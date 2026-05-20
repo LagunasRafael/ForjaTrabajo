@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+
 class ChatBubble extends StatelessWidget {
   final String text;
   final bool isMe;
@@ -168,7 +169,7 @@ class ChatBubble extends StatelessWidget {
     } else if (status == 'error') {
       return const Icon(Icons.refresh, size: 14, color: Colors.orangeAccent);
     } else {
-      return const Icon(Icons.check, size: 14, color: Colors.white54);
+      return const SizedBox.shrink();
     }
   }
 
@@ -177,13 +178,13 @@ class ChatBubble extends StatelessWidget {
     if (messageType == 'gallery' || messageType == 'image' || messageType == 'video') {
        final urls = text.split(',');
        if (urls.length > 1) {
-          return _buildGalleryGrid(urls, theme);
+          return _buildGalleryGrid(urls, context);
        } else {
           final singleUrl = urls.first;
           final ext = singleUrl.split('?').first.toLowerCase();
           final isVideo = messageType == 'video' || ext.endsWith('.mp4') || ext.endsWith('.mov') || ext.endsWith('.mkv');
-          if (isVideo) return _buildVideoPlaceholder(theme: theme);
-          return _buildImagePlaceholder(overrideUrl: singleUrl, theme: theme);
+          if (isVideo) return _buildVideoPlaceholder();
+          return _buildImagePlaceholder(overrideUrl: singleUrl, context: context);
        }
     } else if (messageType == 'audio') {
       return _buildAudioPlaceholder();
@@ -201,23 +202,213 @@ class ChatBubble extends StatelessWidget {
     }
   }
 
-  Widget _buildGalleryGrid(List<String> urls, ThemeData theme) {
-    return Wrap(
-      spacing: 4,
-      runSpacing: 4,
-      children: urls.map((url) {
-         final ext = url.split('?').first.toLowerCase();
-         final isVideo = ext.endsWith('.mp4') || ext.endsWith('.mov') || ext.endsWith('.mkv');
-         if (isVideo) {
-            return _buildVideoPlaceholder(size: 100, theme: theme);
-         } else {
-            return _buildImagePlaceholder(overrideUrl: url, size: 100, theme: theme);
-         }
-      }).toList(),
+  void _openGallery(BuildContext context, List<String> urls, int initialIndex) {
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => _GalleryViewerScreen(urls: urls, initialIndex: initialIndex),
+    ));
+  }
+
+  Widget _buildGalleryGrid(List<String> urls, BuildContext context) {
+    final int count = urls.length;
+    
+    if (count == 1) {
+      final url = urls.first;
+      final ext = url.split('?').first.toLowerCase();
+      final isVideo = ext.endsWith('.mp4') || ext.endsWith('.mov') || ext.endsWith('.mkv');
+      if (isVideo) return _buildVideoPlaceholder();
+      return _buildImagePlaceholder(overrideUrl: url, size: 200, context: context);
+    }
+    
+    const double spacing = 4.0;
+    const double sizeBig = 244.0;
+    const double sizeSmall = 120.0;
+    
+    if (count == 2) {
+      return SizedBox(
+        width: sizeBig,
+        height: sizeSmall,
+        child: Row(
+          children: [
+            Expanded(child: _buildGridThumbnail(urls[0], 0, urls, context)),
+            const SizedBox(width: spacing),
+            Expanded(child: _buildGridThumbnail(urls[1], 1, urls, context)),
+          ],
+        ),
+      );
+    }
+    
+    if (count == 3) {
+      return SizedBox(
+        width: sizeBig,
+        height: sizeBig,
+        child: Row(
+          children: [
+            // Left item: tall
+            Expanded(
+              child: _buildGridThumbnail(urls[0], 0, urls, context, height: sizeBig),
+            ),
+            const SizedBox(width: spacing),
+            // Right items: 2 stacked
+            Expanded(
+              child: Column(
+                children: [
+                  Expanded(child: _buildGridThumbnail(urls[1], 1, urls, context)),
+                  const SizedBox(height: spacing),
+                  Expanded(child: _buildGridThumbnail(urls[2], 2, urls, context)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    
+    // 4 or more items (2x2 grid)
+    return SizedBox(
+      width: sizeBig,
+      height: sizeBig,
+      child: Column(
+        children: [
+          Expanded(
+            child: Row(
+              children: [
+                Expanded(child: _buildGridThumbnail(urls[0], 0, urls, context)),
+                const SizedBox(width: spacing),
+                Expanded(child: _buildGridThumbnail(urls[1], 1, urls, context)),
+              ],
+            ),
+          ),
+          const SizedBox(height: spacing),
+          Expanded(
+            child: Row(
+              children: [
+                Expanded(child: _buildGridThumbnail(urls[2], 2, urls, context)),
+                const SizedBox(width: spacing),
+                Expanded(
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      _buildGridThumbnail(urls[3], 3, urls, context),
+                      if (count > 4)
+                        GestureDetector(
+                          onTap: () => _openGallery(context, urls, 3),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.black54,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Center(
+                              child: Text(
+                                "+${count - 3}",
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildImagePlaceholder({String? overrideUrl, double size = 200, required ThemeData theme}) {
+  Widget _buildGridThumbnail(
+    String url, 
+    int index, 
+    List<String> urls, 
+    BuildContext context, 
+    {double? height}
+  ) {
+    final ext = url.split('?').first.toLowerCase();
+    final isVideo = ext.endsWith('.mp4') || ext.endsWith('.mov') || ext.endsWith('.mkv');
+    
+    return GestureDetector(
+      onTap: () {
+        if (status == 'sending') return;
+        _openGallery(context, urls, index);
+      },
+      child: Container(
+        height: height,
+        clipBehavior: Clip.hardEdge,
+        decoration: BoxDecoration(
+          color: isMe ? const Color(0xFF6366F1) : Colors.grey.shade300,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            isVideo 
+                ? _buildVideoThumbnail()
+                : _buildImageThumbnail(url),
+            if (status == 'sending')
+              Container(
+                color: Colors.black45,
+                child: const Center(
+                  child: SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.0,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVideoThumbnail() {
+    return Container(
+      color: Colors.black87,
+      child: const Center(
+        child: Icon(Icons.play_circle_outline, size: 36, color: Colors.white70),
+      ),
+    );
+  }
+
+  Widget _buildImageThumbnail(String url) {
+    bool isUrl = url.startsWith('http');
+    bool isLocal = url.startsWith('/') || url.startsWith('C:') || url.startsWith('var/') || url.startsWith('file://');
+    
+    if (isUrl) {
+      return Image.network(
+        url,
+        fit: BoxFit.cover,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return Center(child: CircularProgressIndicator(color: isMe ? Colors.white : const Color(0xFF4F46E5)));
+        },
+        errorBuilder: (context, error, stackTrace) => const Center(
+          child: Icon(Icons.broken_image, size: 24, color: Colors.grey),
+        ),
+      );
+    } else if (isLocal) {
+      final path = url.replaceFirst('file://', '');
+      return Image.file(
+        File(path),
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => const Center(
+          child: Icon(Icons.broken_image, size: 24, color: Colors.grey),
+        ),
+      );
+    } else {
+      return const Center(child: Icon(Icons.image, size: 24, color: Colors.grey));
+    }
+  }
+
+  Widget _buildImagePlaceholder({String? overrideUrl, double size = 200, required BuildContext context}) {
+    final theme = Theme.of(context);
     final url = overrideUrl ?? text;
     bool isUrl = url.startsWith('http');
     bool isLocal = url.startsWith('/') || url.startsWith('C:') || url.startsWith('var/') || url.startsWith('file://');
@@ -244,15 +435,55 @@ class ChatBubble extends StatelessWidget {
       imageWidget = Center(child: Icon(Icons.image, size: 40, color: isMe ? Colors.white : Colors.grey));
     }
 
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: isMe ? const Color(0xFF6366F1) : theme.colorScheme.surfaceVariant,
-        borderRadius: BorderRadius.circular(12),
+    return GestureDetector(
+      onTap: () {
+        if (status == 'sending') return;
+        if (!isUrl && !isLocal) return;
+        _openGallery(context, [url], 0);
+      },
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: isMe ? const Color(0xFF6366F1) : theme.colorScheme.surfaceVariant,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        clipBehavior: Clip.hardEdge,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            imageWidget,
+            if (status == 'sending')
+              Container(
+                color: Colors.black45,
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const SizedBox(
+                        width: 28,
+                        height: 28,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        "Enviando...",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
-      clipBehavior: Clip.hardEdge,
-      child: imageWidget,
     );
   }
 
@@ -260,10 +491,11 @@ class ChatBubble extends StatelessWidget {
     return _AudioPlayerWidget(url: text, isMe: isMe);
   }
 
-  Widget _buildVideoPlaceholder({double size = 200, required ThemeData theme}) {
+  Widget _buildVideoPlaceholder({String? overrideUrl, double size = 200}) {
+    final url = overrideUrl ?? text.split(',').first.trim();
     return GestureDetector(
       onTap: () async {
-        final url = text.split(',').first.trim();
+        if (status == 'sending') return;
         if (url.startsWith('http')) {
           final uri = Uri.parse(url);
           if (await canLaunchUrl(uri)) {
@@ -278,15 +510,49 @@ class ChatBubble extends StatelessWidget {
           color: Colors.black87,
           borderRadius: BorderRadius.circular(12),
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+        clipBehavior: Clip.hardEdge,
+        child: Stack(
+          fit: StackFit.expand,
           children: [
-            const Icon(Icons.play_circle_outline, size: 50, color: Colors.white),
-            const SizedBox(height: 4),
-            Text(
-              'Toca para reproducir',
-              style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 11),
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.play_circle_outline, size: 50, color: Colors.white),
+                const SizedBox(height: 4),
+                Text(
+                  'Toca para reproducir',
+                  style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 11),
+                ),
+              ],
             ),
+            if (status == 'sending')
+              Container(
+                color: Colors.black54,
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const SizedBox(
+                        width: 28,
+                        height: 28,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        "Enviando...",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
           ],
         ),
       ),
@@ -479,6 +745,92 @@ class _AudioPlayerWidgetState extends State<_AudioPlayerWidget> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _GalleryViewerScreen extends StatefulWidget {
+  final List<String> urls;
+  final int initialIndex;
+
+  const _GalleryViewerScreen({required this.urls, required this.initialIndex});
+
+  @override
+  State<_GalleryViewerScreen> createState() => _GalleryViewerScreenState();
+}
+
+class _GalleryViewerScreenState extends State<_GalleryViewerScreen> {
+  late PageController _pageController;
+  late int _currentIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.initialIndex;
+    _pageController = PageController(initialPage: widget.initialIndex);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        iconTheme: const IconThemeData(color: Colors.white),
+        elevation: 0,
+        title: Text(
+          "${_currentIndex + 1} de ${widget.urls.length}",
+          style: const TextStyle(color: Colors.white, fontSize: 16),
+        ),
+      ),
+      body: PageView.builder(
+        controller: _pageController,
+        itemCount: widget.urls.length,
+        onPageChanged: (index) {
+          setState(() {
+            _currentIndex = index;
+          });
+        },
+        itemBuilder: (context, index) {
+          final url = widget.urls[index];
+          final ext = url.split('?').first.toLowerCase();
+          final isVideo = ext.endsWith('.mp4') || ext.endsWith('.mov') || ext.endsWith('.mkv');
+          
+          if (isVideo) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.play_circle_outline, size: 80, color: Colors.white),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Video - Toca para reproducir', 
+                    style: TextStyle(color: Colors.white70, fontSize: 14),
+                  ),
+                ],
+              ),
+            );
+          } else {
+            final isUrl = url.startsWith('http');
+            return InteractiveViewer(
+              panEnabled: true,
+              minScale: 0.5,
+              maxScale: 4.0,
+              child: Center(
+                child: isUrl
+                    ? Image.network(url, fit: BoxFit.contain)
+                    : Image.file(File(url.replaceFirst('file://', '')), fit: BoxFit.contain),
+              ),
+            );
+          }
+        },
       ),
     );
   }

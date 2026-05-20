@@ -3,6 +3,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 // ✅ IMPORTA LA ENTIDAD Y EL REPOSITORIO
 import 'package:forja_trabajo/features/services/domain/entities/service_request_entity.dart';
 import 'package:forja_trabajo/features/services/data/repositories/service_repository_impl.dart';
+import 'service_list_provider.dart';
+import 'job_management_provider.dart';
+import 'package:forja_trabajo/features/chat/presentation/providers/chat_list_provider.dart';
 
 // 1. Provider de la lista (Usa ServiceRequestEntity)
 final offersListProvider = FutureProvider.family<List<ServiceRequestEntity>, String>((ref, serviceId) async {
@@ -33,6 +36,11 @@ class AcceptOfferController extends StateNotifier<AsyncValue<void>> {
 
       // Llamada al repositorio
       await repository.acceptPostulation(requestId, token);
+      
+      ref.invalidate(myRequestsProvider);
+      ref.invalidate(workerJobsProvider);
+      ref.invalidate(serviceListProvider);
+      ref.invalidate(chatListProvider);
       
       state = const AsyncValue.data(null);
       return true;

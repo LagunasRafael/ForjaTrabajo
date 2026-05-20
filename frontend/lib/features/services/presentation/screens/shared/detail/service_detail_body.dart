@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:forja_trabajo/features/services/domain/entities/service_entity.dart';
 import 'package:forja_trabajo/features/services/presentation/screens/shared/utils/category_icon_helper.dart';
 import 'package:forja_trabajo/features/services/presentation/screens/shared/detail/service_image_carousel.dart';
 import 'package:forja_trabajo/features/services/presentation/screens/shared/detail/service_map_section.dart';
-import 'package:forja_trabajo/features/profile/presentation/screens/user_profile_screen.dart';
+import 'package:forja_trabajo/features/services/presentation/screens/shared/detail/widgets/service_profile_tiles.dart';
 
 class ServiceDetailBody extends StatelessWidget {
   final ServiceEntity service;
@@ -33,7 +34,7 @@ class ServiceDetailBody extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 1. EL CARRUSEL
+          // 1. EL CARRUSEL DE IMÁGENES
           ServiceImageCarousel(imageUrls: service.imageUrls),
           
           Padding(
@@ -56,7 +57,7 @@ class ServiceDetailBody extends StatelessWidget {
                 
                 const SizedBox(height: 8),
                 
-                // 💰 El precio se queda verde porque es "dinero", pero brilla más en oscuro
+                // 💰 El precio
                 Text(
                   "\$${service.basePrice.toStringAsFixed(0)} MXN", 
                   style: TextStyle(
@@ -65,11 +66,47 @@ class ServiceDetailBody extends StatelessWidget {
                     color: isDark ? const Color(0xFF34D399) : const Color(0xFF10B981)
                   )
                 ),
+                const SizedBox(height: 8),
 
-                // 🎨 Divisores adaptables
+                // 📅 Fecha de publicación
+                Row(
+                  children: [
+                    Icon(Icons.calendar_today_outlined, size: 14, color: isDark ? Colors.white60 : Colors.black54),
+                    const SizedBox(width: 6),
+                    Text(
+                      "Publicado el ${DateFormat('dd MMM yyyy, hh:mm a').format(service.createdAt.toLocal())}",
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: isDark ? Colors.white60 : Colors.black54,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+
+                // 🎨 Divisores y perfiles
                 Divider(height: 40, color: isDark ? Colors.white10 : const Color(0xFFF3F4F6)),
                 
-                _buildAuthorTile(context, mainColor, isDark),
+                // Perfil del publicador
+                ServiceAuthorTile(
+                  authorName: authorName,
+                  authorImageUrl: authorImageUrl,
+                  authorId: authorId,
+                  isOwner: isOwner,
+                  themeColor: mainColor,
+                  isDark: isDark,
+                ),
+
+                // Perfil del trabajador (si está asignado)
+                if (service.workerName != null && service.workerName!.isNotEmpty) ...[
+                  Divider(height: 30, color: isDark ? Colors.white10 : const Color(0xFFF3F4F6)),
+                  ServiceWorkerTile(
+                    workerName: service.workerName!,
+                    workerImageUrl: service.workerImageUrl,
+                    workerId: service.workerId,
+                    isDark: isDark,
+                  ),
+                ],
                 
                 Divider(height: 40, color: isDark ? Colors.white10 : const Color(0xFFF3F4F6)),
                 
@@ -85,9 +122,8 @@ class ServiceDetailBody extends StatelessWidget {
                 
                 const SizedBox(height: 14),
                 
-                // 🎨 Texto de descripción adaptable
                 Text(
-                  service.description ?? "Sin descripción.", 
+                  service.description, 
                   style: TextStyle(
                     fontSize: 15, 
                     height: 1.6, 
@@ -97,7 +133,7 @@ class ServiceDetailBody extends StatelessWidget {
                 
                 const SizedBox(height: 30),
                 
-                // 2. EL MAPA
+                // 2. EL MAPA DE UBICACIÓN
                 ServiceMapSection(
                   latitude: service.latitude,
                   longitude: service.longitude,
@@ -116,80 +152,13 @@ class ServiceDetailBody extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), 
       decoration: BoxDecoration(
-        color: color.withOpacity(0.15), // Un poco más de opacidad para que resalte
+        color: color.withOpacity(0.15),
         borderRadius: BorderRadius.circular(8)
       ), 
       child: Text(
         categoryName.toUpperCase(), 
         style: TextStyle(color: color, fontWeight: FontWeight.w900, fontSize: 11)
       )
-    );
-  }
-
-  Widget _buildAuthorTile(BuildContext context, Color color, bool isDark) {
-    final initial = authorName.isNotEmpty ? authorName[0].toUpperCase() : 'U';
-
-    return GestureDetector(
-      onTap: () {
-        if (authorId != null && !isOwner) {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => UserProfileScreen(userId: authorId!),
-            ),
-          );
-        }
-      },
-      child: Row(
-      children: [
-        Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: color.withOpacity(0.2), // Fondo de color por si no hay foto
-          ),
-          child: ClipOval(
-            child: (authorImageUrl != null && authorImageUrl!.isNotEmpty)
-                ? Image.network(
-                    authorImageUrl!,
-                    fit: BoxFit.cover,
-                    // Si el servidor falla o la imagen está corrupta, mostramos la letra
-                    errorBuilder: (context, error, stackTrace) {
-                      return Center(
-                        child: Text(
-                          initial, 
-                          style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 18)
-                        ),
-                      );
-                    },
-                  )
-                : Center(
-                    child: Text(
-                      initial, 
-                      style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 18)
-                    ),
-                  ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text("Publicado por:", style: TextStyle(fontSize: 11, color: Colors.grey)),
-              Text(
-                authorName, 
-                style: TextStyle(
-                  fontWeight: FontWeight.bold, 
-                  fontSize: 15,
-                  color: isDark ? Colors.white : Colors.black87
-                )
-              ),
-            ],
-          ),
-        ),
-      ],
-      ),
     );
   }
 }
