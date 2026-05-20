@@ -94,10 +94,17 @@ def get_user_chats(db: Session, user_id: str):
         # Por ahora, mantendremos este query pero con el user_id ya conocido es rápido (especialmente con el índice nuevo).
         other_user = db.query(auth_models.User).filter(auth_models.User.id == str(other_user_id)).first()
         
-        # 3. Obtener el último mensaje (Sigue siendo un query extra por chat, pero mejoramos el resto)
+        # 3. Obtener el último mensaje
         last_msg = db.query(models.Message).filter(
             models.Message.conversation_id == convo.id
         ).order_by(models.Message.created_at.desc()).first()
+
+        # ⚠️ FILTRADO DE POSTULACIONES PENDIENTES SIN MENSAJES:
+        # No inundar la bandeja del chat si solo son postulados y nadie ha hablado.
+        # Solo mostrar el chat si ya comenzó/se aceptó (status != pending) O si el cliente ya inició conversación (hay al menos 1 mensaje).
+        request_status = str(request.status).lower().strip() if (request and request.status) else "pending"
+        if request_status == "pending" and not last_msg:
+            continue
         
         # ✅ AQUÍ ESTÁ LA MAGIA CORREGIDA: Usamos full_name
         other_name = other_user.full_name if other_user and other_user.full_name else "Usuario"
@@ -118,23 +125,27 @@ def get_user_chats(db: Session, user_id: str):
                 offer_status = getattr(last_msg, 'status', 'pending')
                 is_mine = str(last_msg.sender_id) == str(user_id)
                 if offer_status == "accepted":
-                    last_message_text = "✅ Contraoferta aceptada"
+                    last_message_text = "Contraoferta aceptada"
                 elif offer_status == "rejected":
-                    last_message_text = "❌ Contraoferta rechazada"
+                    last_message_text = "Contraoferta rechazada"
                 elif offer_status == "withdrawn":
-                    last_message_text = "↩️ Contraoferta retirada"
+                    last_message_text = "Contraoferta retirada"
                 else:
-                    last_message_text = "📋 Contraoferta enviada" if is_mine else "📋 Contraoferta recibida"
+                    last_message_text = "Contraoferta enviada" if is_mine else "Contraoferta recibida"
             elif last_msg.message_type == "image":
-                last_message_text = "📷 Foto"
+                last_message_text = "ha enviado 1 imagen"
             elif last_msg.message_type == "video":
-                last_message_text = "🎬 Video"
+                last_message_text = "ha enviado 1 video"
             elif last_msg.message_type == "audio":
-                last_message_text = "🎵 Audio"
+                last_message_text = "Audio"
             elif last_msg.message_type == "location":
-                last_message_text = "📍 Ubicación compartida"
+                last_message_text = "Ubicación compartida"
             elif last_msg.message_type == "gallery":
-                last_message_text = "🖼️ Galería multimedia"
+                urls = [u.strip() for u in last_msg.content.split(",") if u.strip()]
+                n = len(urls)
+                last_message_text = f"ha enviado {n} imagen" if n == 1 else f"ha enviado {n} imágenes"
+            elif last_msg.message_type == "system":
+                last_message_text = "🛡️ " + (last_msg.content[:40] + "..." if len(last_msg.content) > 40 else last_msg.content)
             else:
                 last_message_text = last_msg.content
             
@@ -147,8 +158,11 @@ def get_user_chats(db: Session, user_id: str):
         # 6. Calcular si hay mensajes no leídos usando el nuevo sistema de timestamps
         last_read = convo.last_read_at_client if str(convo.client_id) == str(user_id) else convo.last_read_at_worker
         has_unread = False
-        if last_msg and last_msg.created_at > last_read:
-            has_unread = True
+        if last_msg:
+            # Si el último mensaje es de otra persona y no lo hemos leído o last_read es None, es unread
+            if str(last_msg.sender_id) != str(user_id):
+                if not last_read or last_msg.created_at > last_read:
+                    has_unread = True
 
         # 7. Traducir status para la UI
         status_db = str(convo.status).lower()
@@ -176,7 +190,8 @@ def get_user_chats(db: Session, user_id: str):
             "isOnline": False,
             "hasUnread": has_unread,
             "isArchived": is_archived or False,
-            "serviceStatus": str(request.service.status) if request and request.service else "OPEN"
+            "serviceStatus": str(request.service.status) if request and request.service else "OPEN",
+            "serviceId": str(request.service.id) if request and request.service else ""
         })
 
     return chat_list
@@ -244,6 +259,7 @@ def handle_offer_action(db: Session, message_id: str, action: str, user_id: str)
 
         # 3. Actualizar status del servicio y la postulación
         service_entry.status = models.JobStatus.MATCHED # type: ignore
+        service_entry.base_price = float(str(offer_msg.content))  # 👈 Sincronizar precio pactado en el Servicio original
         request.status = "accepted" # type: ignore
         request.proposed_price = float(str(offer_msg.content))  # type: ignore
 
@@ -263,14 +279,27 @@ def handle_offer_action(db: Session, message_id: str, action: str, user_id: str)
 
     elif action == "reject":
         offer_msg.status = "rejected" # type: ignore
+    elif action == "withdraw":
+        offer_msg.status = "withdrawn" # type: ignore
+
+    # 🧹 LIMPIEZA DE NEGOCIACIÓN: Si no queda ninguna oferta 'pending', restaurar status de conversación a 'open'
+    pending_offers_count = db.query(models.Message).filter(
+        models.Message.conversation_id == convo.id,
+        models.Message.message_type == models.MessageType.OFFER.value,
+        models.Message.status == "pending"
+    ).count()
+
+    if pending_offers_count == 0:
+        convo.status = models.ConversationStatus.OPEN.value # type: ignore
 
     db.commit()
 
     # 🔔 Notificar al otro usuario sobre la respuesta a la oferta (Migrado)
+    receiver_id = offer_msg.sender_id if action != "withdraw" else (str(convo.worker_id) if str(convo.client_id) == str(user_id) else str(convo.client_id))
     notif_service.notify_offer_responded(
         db=db,
         conversation_id=str(convo.id),
-        receiver_id=offer_msg.sender_id, # type: ignore
+        receiver_id=receiver_id,
         sender_id=str(user_id),
         amount=offer_msg.content, # type: ignore
         action=action

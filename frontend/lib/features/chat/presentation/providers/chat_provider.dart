@@ -52,6 +52,7 @@ class ChatNotifier extends StateNotifier<List<MessageModel>> {
   WebSocketChannel? _channel;
   bool _isReconnecting = false;
   bool _isLoadingMore = false;
+  Timer? _pollingTimer;
   
   int _currentLimit = 15;
   bool _isDisposed = false;
@@ -74,6 +75,7 @@ class ChatNotifier extends StateNotifier<List<MessageModel>> {
   @override
   void dispose() {
     _isDisposed = true;
+    _pollingTimer?.cancel();
     _channel?.sink.close();
     super.dispose();
   }
@@ -100,10 +102,37 @@ class ChatNotifier extends StateNotifier<List<MessageModel>> {
       
       // 3. Conectar WebSocket
       _connect();
+
+      // 4. Polling de seguridad cada 6 segundos para no perder mensajes
+      _pollingTimer?.cancel();
+      _pollingTimer = Timer.periodic(const Duration(seconds: 6), (_) async {
+        if (_isDisposed || !mounted) return;
+        // Solo hacer polling si el WS no está conectado
+        if (_channel == null || _isReconnecting) {
+          await _pollNewMessages();
+        }
+      });
     } catch (e) {
       print("🚨 [Chat] Error crítico cargando historial: $e");
-      // Intentamos conectar el WS de todos modos para ver si llegan mensajes nuevos
       _connect(); 
+    }
+  }
+
+  /// Pide al servidor los mensajes más recientes y los fusiona sin duplicados
+  Future<void> _pollNewMessages() async {
+    try {
+      final history = await _repository.getChatHistory(conversationId, skip: 0, limit: _currentLimit);
+      if (!mounted || _isDisposed) return;
+      final fresh = history.map((m) => MessageModel.fromEntity(m)).toList();
+      // Solo agregar mensajes que no tengamos ya (evitar regresar temp messages)
+      final existingIds = state.where((m) => !m.id.startsWith('temp_')).map((m) => m.id).toSet();
+      final newOnes = fresh.where((m) => !existingIds.contains(m.id)).toList();
+      if (newOnes.isNotEmpty) {
+        print("🔄 [Poll] ${newOnes.length} mensajes nuevos recuperados");
+        state = [...newOnes, ...state];
+      }
+    } catch (e) {
+      print("⚠️ [Poll] Error en polling: $e");
     }
   }
 
@@ -164,15 +193,44 @@ class ChatNotifier extends StateNotifier<List<MessageModel>> {
       }
 
       final newMessage = MessageModel.fromJson(decoded);
-      print("📥 [WS] Mensaje procesado: id=${newMessage.id} sender=${newMessage.senderId} yo=$userId content=${newMessage.content}");
+      print("📥 [WS] Mensaje procesado: id=${newMessage.id} sender=${newMessage.senderId} tipo=${newMessage.messageType}");
 
-      if (state.any((m) => m.id == newMessage.id)) {
-        print("⏭️ Ignorando mensaje duplicado: ${newMessage.id}");
+      final existingIdx = state.indexWhere((m) => m.id == newMessage.id);
+      if (existingIdx != -1) {
+        print("🔄 [WS] Actualizando mensaje existente: ${newMessage.id}");
+        state = [
+          for (int i = 0; i < state.length; i++)
+            if (i == existingIdx) newMessage else state[i],
+        ];
+        ref.read(chatListProvider.notifier).loadRealChats();
+        return;
+      }
+
+      // Mensajes de sistema (disputas, resoluciones del admin) siempre se agregan directo
+      if (newMessage.messageType == 'system') {
+        state = [newMessage, ...state];
+        ref.read(chatListProvider.notifier).loadRealChats();
+        _repository.markAsRead(conversationId);
         return;
       }
 
       if (newMessage.senderId == userId) {
-        final tempIdx = state.indexWhere((m) => m.id.startsWith('temp_') && m.content == newMessage.content);
+        // 1. Intentar buscar coincidencia exacta de ID (si ya fue reemplazado por la respuesta REST)
+        int tempIdx = state.indexWhere((m) => m.id == newMessage.id);
+        
+        // 2. Si no coincide el ID, intentar por contenido (para texto)
+        if (tempIdx == -1) {
+          tempIdx = state.indexWhere((m) => m.id.startsWith('temp_') && m.content == newMessage.content);
+        }
+        
+        // 3. Si es multimedia, buscar por tipo compatible (ya que el temporal tiene rutas locales y el real tiene URLs)
+        if (tempIdx == -1 && ['image', 'gallery', 'audio'].contains(newMessage.messageType)) {
+          tempIdx = state.indexWhere((m) => m.id.startsWith('temp_') && 
+            (m.messageType == newMessage.messageType || 
+             (newMessage.messageType == 'gallery' && m.messageType == 'image') ||
+             (newMessage.messageType == 'image' && m.messageType == 'gallery')));
+        }
+
         if (tempIdx != -1) {
           print("🔄 [WS] Reemplazando temp id=${state[tempIdx].id} con real id=${newMessage.id}");
           state = [
@@ -336,9 +394,16 @@ class ChatNotifier extends StateNotifier<List<MessageModel>> {
 
   Future<void> openDispute(String reason) async {
     try {
-      await _repository.openDispute(conversationId, reason);
+      final systemMessage = await _repository.openDispute(conversationId, reason);
+      // Insertar el mensaje de sistema INMEDIATAMENTE en el estado
+      final model = MessageModel.fromEntity(systemMessage);
+      // Evitar duplicados si el WS ya lo trajo
+      if (!state.any((m) => m.id == model.id)) {
+        if (mounted) state = [model, ...state];
+      }
+      ref.read(chatListProvider.notifier).loadRealChats();
     } catch (e) {
-      print("🚨 Error abriendo disputa: $e");
+      print("Error abriendo disputa: $e");
       rethrow;
     }
   }
@@ -356,6 +421,26 @@ class ChatNotifier extends StateNotifier<List<MessageModel>> {
   Future<void> respondOffer(String messageId, String action) async {
     try {
       await _repository.respondOffer(messageId, action);
+      
+      // Actualizar estado local inmediatamente
+      if (mounted) {
+        state = [
+          for (final m in state)
+            if (m.id == messageId)
+              MessageModel(
+                id: m.id,
+                conversationId: m.conversationId,
+                senderId: m.senderId,
+                content: m.content,
+                messageType: m.messageType,
+                createdAt: m.createdAt,
+                status: action == 'accept' ? 'accepted' : 'rejected',
+              )
+            else
+              m
+        ];
+      }
+      
       ref.read(chatListProvider.notifier).loadRealChats();
     } catch (e) {
       print("🚨 Error respondiendo oferta: $e");
@@ -363,24 +448,179 @@ class ChatNotifier extends StateNotifier<List<MessageModel>> {
     }
   }
 
-  Future<void> sendMediaBatch(List<String> paths, String? text) async {
+  Future<void> sendMediaBatch(List<String> paths, String? caption) async {
     if (paths.isEmpty) return;
-    try {
-      List<String> uploadedUrls = [];
-      for (var path in paths) {
-        final url = await _repository.uploadChatMedia(conversationId, path);
-        if (url != null) uploadedUrls.add(url);
-      }
-      
-      if (uploadedUrls.isNotEmpty) {
-        final content = uploadedUrls.join(',');
-        await sendMessage(content, uploadedUrls.length > 1 ? 'gallery' : 'image');
-        if (text != null && text.isNotEmpty) {
-          await sendMessage(text, 'text');
+
+    // Separar audios de imágenes/videos por extensión
+    final audioPaths = paths.where((p) {
+      final ext = p.split('.').last.toLowerCase();
+      return ['m4a', 'mp3', 'ogg', 'wav', 'aac', 'opus'].contains(ext);
+    }).toList();
+
+    final imagePaths = paths.where((p) {
+      final ext = p.split('.').last.toLowerCase();
+      return !['m4a', 'mp3', 'ogg', 'wav', 'aac', 'opus'].contains(ext);
+    }).toList();
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // 1. OPTIMISTA: insertar burbuja(s) de IMÁGENES de inmediato (local paths)
+    // ──────────────────────────────────────────────────────────────────────────
+    String? imageTempId;
+    if (imagePaths.isNotEmpty) {
+      imageTempId = 'temp_media_${DateTime.now().millisecondsSinceEpoch}';
+      final localContent = imagePaths.join(',');
+      final optimistic = MessageModel(
+        id: imageTempId,
+        conversationId: conversationId,
+        senderId: userId,
+        content: localContent,
+        messageType: imagePaths.length > 1 ? 'gallery' : 'image',
+        createdAt: DateTime.now().toUtc(),
+        status: 'sending',
+      );
+      state = [optimistic, ...state];
+      ref.read(chatListProvider.notifier).loadRealChats();
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // 2. OPTIMISTA: insertar burbuja(s) de AUDIO de inmediato (local paths)
+    // ──────────────────────────────────────────────────────────────────────────
+    final audioTempIds = <String, String>{}; // tempId -> localPath
+    for (final path in audioPaths) {
+      final tempId = 'temp_audio_${DateTime.now().millisecondsSinceEpoch}_${path.hashCode}';
+      final optimistic = MessageModel(
+        id: tempId,
+        conversationId: conversationId,
+        senderId: userId,
+        content: path,
+        messageType: 'audio',
+        createdAt: DateTime.now().toUtc(),
+        status: 'sending',
+      );
+      state = [optimistic, ...state];
+      audioTempIds[tempId] = path;
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // 3. SUBIDA REAL: imágenes
+    // ──────────────────────────────────────────────────────────────────────────
+    if (imagePaths.isNotEmpty && imageTempId != null) {
+      try {
+        List<String> uploadedUrls = [];
+        for (final path in imagePaths) {
+          final url = await _repository.uploadChatMedia(conversationId, path);
+          if (url != null) uploadedUrls.add(url);
         }
+
+        if (uploadedUrls.isNotEmpty) {
+          // Enviar al servidor y obtener ID real
+          final content = uploadedUrls.join(',');
+          final type = uploadedUrls.length > 1 ? 'gallery' : 'image';
+          
+          try {
+            final saved = await _repository.sendMessageRest(conversationId, content, type);
+            // Reemplazar el optimista con el real (URL de S3)
+            final idx = state.indexWhere((m) => m.id == imageTempId);
+            if (idx != -1 && mounted) {
+              state = [
+                for (int i = 0; i < state.length; i++)
+                  if (i == idx)
+                    MessageModel(
+                      id: saved.id,
+                      conversationId: conversationId,
+                      senderId: userId,
+                      content: content,
+                      messageType: type,
+                      createdAt: saved.createdAt,
+                      status: 'sent',
+                    )
+                  else
+                    state[i],
+              ];
+            }
+          } catch (e) {
+            _setMediaError(imageTempId!);
+          }
+        } else {
+          _setMediaError(imageTempId!);
+        }
+      } catch (e) {
+        print("🚨 Error subiendo imágenes: $e");
+        _setMediaError(imageTempId!);
       }
-    } catch (e) {
-      print("🚨 Error subiendo archivos: $e");
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // 4. SUBIDA REAL: audios (uno por uno)
+    // ──────────────────────────────────────────────────────────────────────────
+    for (final entry in audioTempIds.entries) {
+      final tempId = entry.key;
+      final path = entry.value;
+      try {
+        final url = await _repository.uploadChatMedia(conversationId, path);
+        if (url != null) {
+          try {
+            final saved = await _repository.sendMessageRest(conversationId, url, 'audio');
+            final idx = state.indexWhere((m) => m.id == tempId);
+            if (idx != -1 && mounted) {
+              state = [
+                for (int i = 0; i < state.length; i++)
+                  if (i == idx)
+                    MessageModel(
+                      id: saved.id,
+                      conversationId: conversationId,
+                      senderId: userId,
+                      content: url,
+                      messageType: 'audio',
+                      createdAt: saved.createdAt,
+                      status: 'sent',
+                    )
+                  else
+                    state[i],
+              ];
+            }
+          } catch (e) {
+            _setMediaError(tempId);
+          }
+        } else {
+          _setMediaError(tempId);
+        }
+      } catch (e) {
+        print("🚨 Error subiendo audio: $e");
+        _setMediaError(tempId);
+      }
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // 5. Caption (texto extra si se añadió)
+    // ──────────────────────────────────────────────────────────────────────────
+    if (caption != null && caption.isNotEmpty) {
+      await sendMessage(caption, 'text');
+    }
+
+    ref.read(chatListProvider.notifier).loadRealChats();
+  }
+
+  /// Marca un mensaje optimista como 'error' para que el usuario pueda reintentar
+  void _setMediaError(String tempId) {
+    final idx = state.indexWhere((m) => m.id == tempId);
+    if (idx != -1 && mounted) {
+      final old = state[idx];
+      state = [
+        for (int i = 0; i < state.length; i++)
+          if (i == idx)
+            MessageModel(
+              id: old.id,
+              conversationId: old.conversationId,
+              senderId: old.senderId,
+              content: old.content,
+              messageType: old.messageType,
+              createdAt: old.createdAt,
+              status: 'error',
+            )
+          else
+            state[i],
+      ];
     }
   }
 

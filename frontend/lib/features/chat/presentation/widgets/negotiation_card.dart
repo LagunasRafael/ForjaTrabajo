@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja_trabajo/features/chat/domain/entities/message_entity.dart';
 import 'package:forja_trabajo/features/chat/presentation/providers/chat_provider.dart';
 import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart'; 
+import 'package:forja_trabajo/core/utils/formatters.dart';
 
 class NegotiationCard extends ConsumerStatefulWidget {
   final MessageEntity message; // 👈 Entidad correcta
@@ -68,7 +69,12 @@ class _NegotiationCardState extends ConsumerState<NegotiationCard> {
 
   // Anterior _buildClientCard (ahora genérico para MI mensaje)
   Widget _buildMyCard() {
-    final amount = widget.message.content; // 👈 Ahora usa .content
+    final amount = Formatters.formatCurrency(widget.message.content);
+    final String status = widget.message.status.toLowerCase();
+    String finalStatus = _localAction ?? status;
+    if (widget.isProcessed && finalStatus == 'pending') {
+      finalStatus = 'withdrawn';
+    }
 
     return Align(
       alignment: Alignment.centerRight,
@@ -104,6 +110,27 @@ class _NegotiationCardState extends ConsumerState<NegotiationCard> {
             ),
             const SizedBox(height: 12),
                 _buildClientStatusRow(), 
+                if (finalStatus == 'pending') ...[
+                  const SizedBox(height: 12),
+                  const Divider(height: 1),
+                  const SizedBox(height: 8),
+                  GestureDetector(
+                    onTap: _isLoading ? null : () => _handleResponse('withdraw'),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _isLoading 
+                            ? const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.red))
+                            : const Icon(Icons.remove_circle_outline, size: 14, color: Colors.red),
+                        const SizedBox(width: 4),
+                        const Text(
+                          "Retirar oferta",
+                          style: TextStyle(color: Colors.red, fontSize: 12, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -150,11 +177,7 @@ class _NegotiationCardState extends ConsumerState<NegotiationCard> {
       color = const Color(0xFF10B981); 
       text = "Aceptada";
       icon = Icons.check_circle_outline;
-    } else if (finalStatus == 'reject' || finalStatus == 'rejected') {
-      color = const Color(0xFFEF4444); 
-      text = "Rechazada";
-      icon = Icons.cancel_outlined;
-    } else if (finalStatus == 'withdrawn') {
+    } else if (finalStatus == 'reject' || finalStatus == 'rejected' || finalStatus == 'withdrawn') {
       color = Colors.grey.shade500; 
       text = "Retirada";
       icon = Icons.history;
@@ -209,7 +232,7 @@ class _NegotiationCardState extends ConsumerState<NegotiationCard> {
   }
 
   Widget _buildWorkerImageHeader() {
-    final amount = widget.message.content;
+    final amount = Formatters.formatCurrency(widget.message.content);
 
     return Container(
       width: double.infinity,
@@ -367,11 +390,6 @@ class _NegotiationCardState extends ConsumerState<NegotiationCard> {
       contentColor = const Color(0xFF065F46);
       label = "OFERTA ACEPTADA";
       icon = Icons.check_circle;
-    } else if (finalStatus == 'reject' || finalStatus == 'rejected') {
-      bgColor = const Color(0xFFFEE2E2);
-      contentColor = const Color(0xFF991B1B);
-      label = "OFERTA RECHAZADA";
-      icon = Icons.cancel;
     } else {
       bgColor = Colors.grey.shade200;
       contentColor = Colors.grey.shade600;

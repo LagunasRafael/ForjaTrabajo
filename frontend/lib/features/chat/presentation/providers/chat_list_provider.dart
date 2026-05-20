@@ -15,10 +15,19 @@ class ChatListNotifier extends StateNotifier<AsyncValue<List<ChatSummaryEntity>>
   final ChatRepository repository;
 
   StreamSubscription? _notifSubscription;
+  Timer? _pollingTimer;
 
   ChatListNotifier(this.repository) : super(const AsyncValue.loading()) {
     loadRealChats();
     _listenToNotifications();
+    _startPolling();
+  }
+
+  void _startPolling() {
+    _pollingTimer?.cancel();
+    _pollingTimer = Timer.periodic(const Duration(seconds: 8), (_) {
+      if (mounted) loadRealChats();
+    });
   }
 
   void _listenToNotifications() {
@@ -36,6 +45,7 @@ class ChatListNotifier extends StateNotifier<AsyncValue<List<ChatSummaryEntity>>
   @override
   void dispose() {
     _notifSubscription?.cancel();
+    _pollingTimer?.cancel();
     super.dispose();
   }
 
@@ -111,4 +121,4 @@ class ChatListNotifier extends StateNotifier<AsyncValue<List<ChatSummaryEntity>>
 
     state = AsyncValue.data(updatedChats);
   }
-}
+}

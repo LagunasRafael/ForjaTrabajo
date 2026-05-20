@@ -148,7 +148,6 @@ class NotificationService {
     }
   }
 
-  /// Muestra un banner elegante en la parte superior cuando la app está en foreground.
   void _showForegroundBanner(RemoteMessage message) {
     try {
       final context = navigatorKey.currentContext;
@@ -160,67 +159,92 @@ class NotificationService {
 
       final IconData notifIcon = _iconForType(type);
 
-      final scaffoldMessenger = ScaffoldMessenger.maybeOf(context);
-      if (scaffoldMessenger == null) return;
+      final overlayState = Overlay.of(context);
+      late OverlayEntry overlayEntry;
 
-      scaffoldMessenger.showSnackBar(
-        SnackBar(
-          backgroundColor: const Color(0xFF1E1B4B),
-          duration: const Duration(seconds: 4),
-          behavior: SnackBarBehavior.floating,
-          margin: const EdgeInsets.all(16),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          content: GestureDetector(
-            onTap: () {
-              scaffoldMessenger.hideCurrentSnackBar();
-              _handleNotificationNavigation(message);
-            },
-            child: Row(
-              children: [
-                Container(
-                  width: 42,
-                  height: 42,
+      overlayEntry = OverlayEntry(
+        builder: (context) => Positioned(
+          top: MediaQuery.of(context).padding.top + 16,
+          left: 16,
+          right: 16,
+          child: Material(
+            color: Colors.transparent,
+            child: Dismissible(
+              key: UniqueKey(),
+              direction: DismissDirection.up,
+              onDismissed: (_) {
+                if (overlayEntry.mounted) overlayEntry.remove();
+              },
+              child: GestureDetector(
+                onTap: () {
+                  if (overlayEntry.mounted) overlayEntry.remove();
+                  _handleNotificationNavigation(message);
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF4F46E5),
+                    color: const Color(0xFF1E1B4B),
                     borderRadius: BorderRadius.circular(12),
+                    boxShadow: const [
+                      BoxShadow(color: Colors.black26, blurRadius: 10, offset: Offset(0, 4)),
+                    ],
                   ),
-                  child: Icon(notifIcon, color: Colors.white, size: 20),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
+                  child: Row(
                     children: [
-                      Text(
-                        title,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
+                      Container(
+                        width: 42,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF4F46E5),
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                        child: Icon(notifIcon, color: Colors.white, size: 20),
                       ),
-                      if (body.isNotEmpty)
-                        Text(
-                          body,
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.8),
-                            fontSize: 13,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              title,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            if (body.isNotEmpty)
+                              Text(
+                                body,
+                                style: TextStyle(
+                                  color: Colors.white.withOpacity(0.8),
+                                  fontSize: 13,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                          ],
                         ),
+                      ),
                     ],
                   ),
                 ),
-                const Icon(Icons.chevron_right_rounded, color: Colors.white54, size: 20),
-              ],
+              ),
             ),
           ),
         ),
       );
+
+      overlayState.insert(overlayEntry);
+
+      Future.delayed(const Duration(seconds: 4), () {
+        if (overlayEntry.mounted) {
+          overlayEntry.remove();
+        }
+      });
     } catch (e) {
       debugPrint('❌ [FCM] Error en _showForegroundBanner: $e');
     }

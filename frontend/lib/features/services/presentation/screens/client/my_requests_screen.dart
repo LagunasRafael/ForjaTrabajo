@@ -46,7 +46,11 @@ class _MyRequestsScreenState extends ConsumerState<MyRequestsScreen>
     ref.listen<AsyncValue<RemoteMessage>>(notificationEventProvider, (previous, next) {
       next.whenData((message) {
         final type = message.data['type'] ?? '';
-        if (type.toString().contains('job_') || type == 'in_progress' || type == 'new_application') {
+        if (type.toString().contains('job_') || 
+            type == 'in_progress' || 
+            type == 'new_application' || 
+            type == 'offer_responded' || 
+            type == 'new_offer') {
           debugPrint('🔄 [MyRequestsScreen] Refrescando por notificación: $type');
           ref.invalidate(myRequestsProvider);
           ref.invalidate(workerJobsProvider);
@@ -106,6 +110,9 @@ class _MyRequestsScreenState extends ConsumerState<MyRequestsScreen>
           final filtered = services.where((s) {
             if (status == JobStatus.matched) {
               return s.status == JobStatus.matched || s.status == JobStatus.waiting_confirmation;
+            }
+            if (status == JobStatus.completed) {
+              return s.status == JobStatus.completed || s.status == JobStatus.cancelled;
             }
             return s.status == status;
           }).toList();

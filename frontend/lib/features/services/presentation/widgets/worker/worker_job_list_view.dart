@@ -20,7 +20,11 @@ class WorkerJobListView extends ConsumerWidget {
     ref.listen<AsyncValue<RemoteMessage>>(notificationEventProvider, (previous, next) {
       next.whenData((message) {
         final type = message.data['type'] ?? '';
-        if (type.toString().contains('job_') || type == 'in_progress' || type == 'new_application') {
+        if (type.toString().contains('job_') || 
+            type == 'in_progress' || 
+            type == 'new_application' || 
+            type == 'offer_responded' || 
+            type == 'new_offer') {
           debugPrint('🔄 [WorkerJobListView] Refrescando por notificación: $type');
           ref.invalidate(workerJobsProvider);
         }
@@ -35,6 +39,9 @@ class WorkerJobListView extends ConsumerWidget {
         final filtered = jobs.where((j) {
           if (status == JobStatus.matched) {
             return j.status == JobStatus.matched || j.status == JobStatus.waiting_confirmation;
+          }
+          if (status == JobStatus.completed) {
+            return j.status == JobStatus.completed || j.status == JobStatus.cancelled;
           }
           return j.status == status;
         }).toList();

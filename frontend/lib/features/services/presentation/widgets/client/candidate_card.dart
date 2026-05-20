@@ -7,11 +7,13 @@ import 'package:forja_trabajo/features/chat/presentation/screens/shared_chat_scr
 import 'package:forja_trabajo/features/services/presentation/providers/service_request_provider.dart';
 import 'package:forja_trabajo/features/services/presentation/providers/nav_providers.dart';
 import 'package:forja_trabajo/features/profile/presentation/screens/user_profile_screen.dart';
+import 'package:forja_trabajo/features/services/presentation/providers/service_list_provider.dart';
 
 class CandidateCard extends ConsumerStatefulWidget {
   final dynamic offer;
   final String serviceId;
-  const CandidateCard({super.key, required this.offer, required this.serviceId});
+  final String? serviceTitle;
+  const CandidateCard({super.key, required this.offer, required this.serviceId, this.serviceTitle});
   
   @override
   ConsumerState<CandidateCard> createState() => _CandidateCardState();
@@ -19,11 +21,43 @@ class CandidateCard extends ConsumerStatefulWidget {
 
 class _CandidateCardState extends ConsumerState<CandidateCard> {
   bool _showInput = false;
+  bool _isSendingOffer = false;
+  final TextEditingController _offerController = TextEditingController();
+
+  @override
+  void dispose() {
+    _offerController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isAccepting = ref.watch(isAcceptingProvider(widget.offer.id));
+
+    // Resolve service details dynamically and robustly!
+    final serviceAsync = ref.watch(serviceDetailProvider(widget.serviceId));
+    final myRequestsAsync = ref.watch(myRequestsProvider);
+    final serviceListAsync = ref.watch(serviceListProvider);
+    
+    final resolvedTitle = widget.serviceTitle ?? myRequestsAsync.maybeWhen(
+      data: (list) {
+        final match = list.where((s) => s.id == widget.serviceId);
+        return match.isNotEmpty ? match.first.title : null;
+      },
+      orElse: () => null,
+    ) ?? serviceListAsync.maybeWhen(
+      data: (list) {
+        final match = list.where((s) => s.id == widget.serviceId);
+        return match.isNotEmpty ? match.first.title : null;
+      },
+      orElse: () => null,
+    ) ?? serviceAsync.maybeWhen(
+      data: (service) => service.title,
+      orElse: () => null,
+    );
+
+    debugPrint('🔍 [CandidateCard] widget.serviceTitle: ${widget.serviceTitle} | widget.serviceId: ${widget.serviceId} | resolvedTitle: $resolvedTitle');
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -44,8 +78,8 @@ class _CandidateCardState extends ConsumerState<CandidateCard> {
         children: [
           _buildHeader(),
           _buildMessage(),
-          _buildActions(isAccepting),
-          if (_showInput) _buildCounterOfferInput(),
+          _buildActions(isAccepting, resolvedTitle),
+          if (_showInput) _buildCounterOfferInput(resolvedTitle),
         ]
       ),
     );
@@ -84,7 +118,7 @@ class _CandidateCardState extends ConsumerState<CandidateCard> {
             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16), 
             maxLines: 1, 
             overflow: TextOverflow.ellipsis
-          )
+          ),
         ),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -112,7 +146,7 @@ class _CandidateCardState extends ConsumerState<CandidateCard> {
     );
   }
 
-  Widget _buildActions(bool isAccepting) {
+  Widget _buildActions(bool isAccepting, String? resolvedTitle) {
     return Row(
       children: [
         // 💬 BOTÓN DE CHAT
@@ -120,7 +154,7 @@ class _CandidateCardState extends ConsumerState<CandidateCard> {
           decoration: BoxDecoration(color: Theme.of(context).colorScheme.surfaceVariant, borderRadius: BorderRadius.circular(10)), 
           child: IconButton(
             icon: const Icon(Icons.chat_bubble_outline, size: 20),
-            onPressed: isAccepting ? null : _handleOpenChat,
+            onPressed: isAccepting ? null : () => _handleOpenChat(resolvedTitle),
           ),
         ),
         const SizedBox(width: 8),
@@ -147,18 +181,12 @@ class _CandidateCardState extends ConsumerState<CandidateCard> {
     );
   }
 
-  // --- Lógica separada para abrir el chat ---
-  Future<void> _handleOpenChat() async {
+  Future<void> _handleOpenChat(String? resolvedTitle) async {
     try {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Abriendo chat... 💬"), duration: Duration(seconds: 1)),
-      );
-
       final targetId = widget.offer.id;
       final chatId = await ref.read(chatDatasourceProvider).startOrGetChat(targetId);
 
       if (mounted) {
-        // Refrescar inmediatamente para que aparezca en la lista
         ref.invalidate(chatListProvider);
         
         await Navigator.push(
@@ -168,7 +196,10 @@ class _CandidateCardState extends ConsumerState<CandidateCard> {
               conversationId: chatId,
               otherUserName: widget.offer.workerName, 
               otherUserAvatarUrl: widget.offer.authorImageUrl, 
-              service: {'title': 'Propuesta de trabajo'}, 
+              service: {
+                'id': widget.serviceId,
+                'title': resolvedTitle ?? 'Propuesta de trabajo',
+              }, 
             ),
           ),
         );
@@ -198,20 +229,31 @@ class _CandidateCardState extends ConsumerState<CandidateCard> {
     );
   }
 
-  Widget _buildCounterOfferInput() {
+  Widget _buildCounterOfferInput(String? resolvedTitle) {
     return Padding(
       padding: const EdgeInsets.only(top: 16),
       child: TextFormField(
+        controller: _offerController,
         keyboardType: TextInputType.number,
         inputFormatters: [FilteringTextInputFormatter.digitsOnly], 
         decoration: InputDecoration(
           prefixText: "\$ ", 
           hintText: "00.00", 
           filled: true, 
-          suffixIcon: IconButton(
-            icon: const Icon(Icons.send, color: Color(0xFF4F46E5)), 
-            onPressed: () => setState(() => _showInput = false)
-          ),
+          fillColor: Colors.white,
+          suffixIcon: _isSendingOffer
+            ? const Padding(
+                padding: EdgeInsets.all(12.0),
+                child: SizedBox(
+                  width: 20, 
+                  height: 20, 
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF4F46E5))
+                ),
+              )
+            : IconButton(
+                icon: const Icon(Icons.send, color: Color(0xFF4F46E5)), 
+                onPressed: () => _handleSendCounterOffer(resolvedTitle),
+              ),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12), 
             borderSide: BorderSide(color: Colors.grey.shade200)
@@ -219,6 +261,82 @@ class _CandidateCardState extends ConsumerState<CandidateCard> {
         ),
       ),
     );
+  }
+
+  Future<void> _handleSendCounterOffer(String? resolvedTitle) async {
+    final amountText = _offerController.text.trim();
+    if (amountText.isEmpty) return;
+    
+    final amount = double.tryParse(amountText);
+    if (amount == null || amount <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("⚠️ Ingresa un monto válido"), backgroundColor: Colors.orange),
+      );
+      return;
+    }
+
+    setState(() => _isSendingOffer = true);
+    
+    try {
+      final targetId = widget.offer.id;
+      final chatId = await ref.read(chatDatasourceProvider).startOrGetChat(targetId);
+      
+      await ref.read(chatDatasourceProvider).sendOffer(chatId, amount);
+      
+      if (mounted) {
+        setState(() {
+          _isSendingOffer = false;
+          _showInput = false;
+        });
+        _offerController.clear();
+        
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text(
+                "Contraoferta enviada",
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Color(0xFF4F46E5)),
+              ),
+              backgroundColor: const Color(0xFFF0F0F0).withOpacity(1),
+              behavior: SnackBarBehavior.floating,
+              margin: EdgeInsets.only(
+                bottom: MediaQuery.of(context).size.height - 750,
+                left: 24,
+                right: 24,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        
+        ref.invalidate(chatListProvider);
+        
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => SharedChatScreen(
+              conversationId: chatId,
+              otherUserName: widget.offer.workerName, 
+              otherUserAvatarUrl: widget.offer.authorImageUrl, 
+              service: {
+                'id': widget.serviceId,
+                'title': resolvedTitle ?? 'Propuesta de trabajo',
+              }, 
+            ),
+          ),
+        );
+        ref.invalidate(chatListProvider);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isSendingOffer = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error al enviar oferta: $e"), backgroundColor: Colors.red),
+        );
+      }
+    }
   }
 
   Future<void> _handleAccept() async {
@@ -247,7 +365,7 @@ class _CandidateCardState extends ConsumerState<CandidateCard> {
     if (success && mounted) {
       Navigator.pop(context); 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("✅ Contratado"), backgroundColor: Color(0xFF10B981))
+        const SnackBar(content: Text("Contratado"), backgroundColor: Color(0xFF10B981))
       );
     }
   }

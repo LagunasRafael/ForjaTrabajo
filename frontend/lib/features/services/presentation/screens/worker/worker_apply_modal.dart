@@ -71,9 +71,33 @@ class _WorkerApplyModalWidgetState extends ConsumerState<_WorkerApplyModalWidget
     }
 
     if (mounted && success) {
-        ref.invalidate(workerJobsProvider); 
-        Navigator.pop(context); 
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_isEditing ? "✅ Propuesta actualizada" : "✅ Postulación enviada"), backgroundColor: const Color(0xFF10B981), behavior: SnackBarBehavior.floating));
+      ref.invalidate(workerJobsProvider);
+
+      final scaffoldMessenger = ScaffoldMessenger.of(context);
+      final screenHeight = MediaQuery.of(context).size.height;
+
+      Navigator.pop(context);
+
+      scaffoldMessenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            _isEditing ? "Propuesta actualizada" : "Postulación enviada",
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Color(0xFF4F46E5)),
+          ),
+          backgroundColor: const Color(0xFFF0F0F0).withOpacity(1),
+          behavior: SnackBarBehavior.floating,
+          margin: EdgeInsets.only(
+            bottom: screenHeight - 900,
+            left: 24,
+            right: 24,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          duration: const Duration(seconds: 2),
+        ),
+      );
     }
   }
 

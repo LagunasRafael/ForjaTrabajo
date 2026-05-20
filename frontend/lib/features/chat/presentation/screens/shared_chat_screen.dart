@@ -11,6 +11,9 @@ import 'package:forja_trabajo/features/chat/presentation/widgets/chat_input_area
 import 'package:forja_trabajo/features/chat/presentation/widgets/offer_bottom_sheet.dart';
 import 'package:forja_trabajo/core/network/notification_service.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:forja_trabajo/features/services/presentation/screens/shared/service_detail_screen.dart';
+import 'package:forja_trabajo/features/services/domain/entities/service_entity.dart';
+import 'package:forja_trabajo/core/utils/formatters.dart';
 
 class SharedChatScreen extends ConsumerStatefulWidget {
   final String conversationId;
@@ -106,25 +109,58 @@ class _SharedChatScreenState extends ConsumerState<SharedChatScreen> {
                 final reason = reasonController.text.trim();
                 if (reason.isEmpty) return;
                 
-                // Capturamos el ScaffoldMessenger ANTES del await y usando el context de la pantalla principal
                 final scaffoldMessenger = ScaffoldMessenger.of(parentContext);
                 
                 Navigator.pop(dialogContext); // Cerrar diálogo
                 
                 try {
-                  await ref.read(chatProvider(widget.conversationId).notifier).openDispute(reason);
+                  await ref
+                      .read(chatProvider(widget.conversationId).notifier)
+                      .openDispute(reason);
+
                   if (mounted) {
                     scaffoldMessenger.showSnackBar(
-                      const SnackBar(
-                        content: Text('Disputa abierta. Un administrador se pondrá en contacto pronto.'),
-                        backgroundColor: Colors.red,
+                      SnackBar(
+                        content: const Text(
+                          'Disputa abierta. Un administrador se pondrá en contacto pronto.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: Color(0xFF4F46E5)),
+                        ),
+                        backgroundColor: const Color(0xFFF0F0F0).withOpacity(1),
+                        behavior: SnackBarBehavior.floating,
+                        margin: EdgeInsets.only(
+                          bottom: MediaQuery.of(context).size.height - 180,
+                          left: 24,
+                          right: 24,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        duration: const Duration(seconds: 2),
                       ),
                     );
                   }
                 } catch (e) {
                   if (mounted) {
                     scaffoldMessenger.showSnackBar(
-                      const SnackBar(content: Text('Error al abrir la disputa. Intenta de nuevo.')),
+                      SnackBar(
+                        content: const Text(
+                          'Error al abrir la disputa. Intenta de nuevo.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: Color(0xFF4F46E5)),
+                        ),
+                        backgroundColor: const Color(0xFFF0F0F0).withOpacity(1),
+                        behavior: SnackBarBehavior.floating,
+                        margin: EdgeInsets.only(
+                          bottom: MediaQuery.of(context).size.height - 180,
+                          left: 24,
+                          right: 24,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        duration: const Duration(seconds: 2),
+                      ),
                     );
                   }
                 }
@@ -186,26 +222,72 @@ class _SharedChatScreenState extends ConsumerState<SharedChatScreen> {
     final isClosed = thisChat?.status == 'CLOSED' || thisChat?.status == 'CERRADO';
     
     // ¿El servicio ya está en proceso con alguien? (MATCHED, etc)
-    final isMatched = thisChat?.serviceStatus != 'OPEN' && thisChat?.serviceStatus != 'JobStatus.open';
+    final sStatus = (thisChat?.serviceStatus ?? 'open').toLowerCase();
+    final isMatched = sStatus != 'open' && sStatus != 'jobstatus.open';
 
     // Las ofertas se bloquean si el chat está cerrado, si ya hay trato aceptado aquí,
     // o si el servicio ya está en proceso (MATCHED)
     final canSendOffer = !isClosed && !isOfferAccepted && !isMatched;
     
-    // El banner de negociación solo se muestra si podemos enviar ofertas
-    final hasActiveOffer = lastOffer != null && canSendOffer;
+    // El banner de negociación solo se muestra si hay una oferta pendiente y activa
+    final hasActiveOffer = lastOffer != null && 
+        lastOffer.status.toLowerCase() == 'pending' && 
+        canSendOffer;
     final messageCount = messages.length;
 
-
+    // Calcular el prefijo dinámico para el subtítulo del Chat
+    final subtitlePrefix = (thisChat?.status == 'EN DISPUTA')
+        ? "En disputa por"
+        : sStatus.contains('cancelled')
+            ? "Cancelado:"
+            : sStatus.contains('matched') 
+                ? "Trabaja en" 
+                : sStatus.contains('completed') 
+                    ? "Trabajó en" 
+                    : "Postulante a";
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: ChatAppBar(
-        service: widget.service,
+        subtitlePrefix: subtitlePrefix,
+        service: {
+          'id': (widget.service is Map && widget.service['id'] != null) ? widget.service['id'] : thisChat?.serviceId,
+          'title': (widget.service is Map && widget.service['title'] != null) ? widget.service['title'] : (thisChat?.serviceName ?? 'Servicio'),
+        },
         otherUserName: widget.otherUserName,
         otherUserAvatarUrl: widget.otherUserAvatarUrl,
         otherUserId: widget.otherUserId,
         onOpenDispute: () => _showDisputeDialog(context),
+        onTapService: () {
+          final sId = (widget.service is Map && widget.service['id'] != null) ? widget.service['id'] : thisChat?.serviceId;
+          final sTitle = (widget.service is Map && widget.service['title'] != null) ? widget.service['title'] : (thisChat?.serviceName ?? 'Servicio');
+          
+          if (sId != null && sId.isNotEmpty) {
+            final currentUser = ref.read(authProvider).user;
+            if (currentUser != null) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ServiceDetailScreen(
+                    service: ServiceEntity(
+                      id: sId,
+                      title: sTitle,
+                      description: '',
+                      basePrice: 0.0,
+                      categoryId: '',
+                      clientId: '',
+                      status: JobStatus.open,
+                      isActive: true,
+                      createdAt: DateTime.now(),
+                    ),
+                    currentUser: currentUser,
+                    categoryName: 'Servicio',
+                  ),
+                ),
+              );
+            }
+          }
+        },
       ),
       body: Column(
         children: [
@@ -214,11 +296,7 @@ class _SharedChatScreenState extends ConsumerState<SharedChatScreen> {
               ? const Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      CircularProgressIndicator(color: Color(0xFF4F46E5)),
-                      SizedBox(height: 16),
-                      Text("Abriendo chat...", style: TextStyle(color: Colors.grey)),
-                    ],
+
                   ),
                 )
               : messages.isEmpty
@@ -293,9 +371,11 @@ class _SharedChatScreenState extends ConsumerState<SharedChatScreen> {
                     displayTime = "--:--";
                   }
 
+                  Widget messageWidget;
+
                   if (m.messageType == 'offer') {
                     final isCurrentOffer = lastOffer != null && lastOffer.id == m.id;
-                    return NegotiationCard(
+                    messageWidget = NegotiationCard(
                       key: ValueKey("offer_${m.id}_${m.status}"),
                       message: m,
                       isMe: isMyMessage,
@@ -305,20 +385,57 @@ class _SharedChatScreenState extends ConsumerState<SharedChatScreen> {
                       isProcessed: !isCurrentOffer,
                       time: displayTime,
                     );
+                  } else {
+                    messageWidget = ChatBubble(
+                      key: ValueKey("bubble_${m.id}"),
+                      text: m.content,
+                      isMe: isMyMessage,
+                      time: displayTime,
+                      messageType: m.messageType,
+                      status: m.status,
+                      senderAvatarUrl: isMyMessage ? null : widget.otherUserAvatarUrl,
+                      onRetry: () {
+                        ref.read(chatProvider(widget.conversationId).notifier).resendMessage(m.id);
+                      },
+                    );
                   }
-                  
-                  return ChatBubble(
-                    key: ValueKey("bubble_${m.id}"),
-                    text: m.content,
-                    isMe: isMyMessage,
-                    time: displayTime,
-                    messageType: m.messageType,
-                    status: m.status,
-                    senderAvatarUrl: isMyMessage ? null : widget.otherUserAvatarUrl,
-                    onRetry: () {
-                      ref.read(chatProvider(widget.conversationId).notifier).resendMessage(m.id);
-                    },
-                  );
+
+                  // Si es el último mensaje enviado y es mío, mostramos el estado abajo
+                  if (index == 0 && isMyMessage) {
+                    String statusText = "Enviado";
+                    Color statusColor = Colors.grey.shade600;
+
+                    if (m.status == 'sending') {
+                      statusText = "Enviando...";
+                      statusColor = const Color(0xFF4F46E5);
+                    } else if (m.status == 'error') {
+                      statusText = "Error al enviar";
+                      statusColor = Colors.red;
+                    } else if (m.status == 'pending') {
+                      statusText = "Pendiente";
+                      statusColor = Colors.orange;
+                    }
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        messageWidget,
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4, right: 12, bottom: 4),
+                          child: Text(
+                            statusText,
+                            style: TextStyle(
+                              color: statusColor,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  }
+
+                  return messageWidget;
                 },
               ),
             ),
@@ -380,7 +497,7 @@ class _SharedChatScreenState extends ConsumerState<SharedChatScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
                 const Text("ESTADO DE NEGOCIACIÓN", style: TextStyle(color: Color(0xFF4F46E5), fontSize: 9, fontWeight: FontWeight.w900)),
-                Text("Oferta actual: \$$amount MXN", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                Text("Oferta actual: \$${Formatters.formatCurrency(amount)} MXN", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
             ],
           ),
           ElevatedButton.icon(

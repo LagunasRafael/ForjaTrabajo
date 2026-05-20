@@ -352,27 +352,41 @@ async def create_counter_offer(
                 amount=new_offer.content # type: ignore
             )
     except Exception as notify_err:
-        logger.warning(f"⚠️ Error notificando contraoferta: {notify_err}")
+        logger.warning(f"Error notificando contraoferta: {notify_err}")
 
     return new_offer
 
-@router.post("/chat/offer/{message_id}/action")
-def respond_to_offer(
+@router.post("/chat/offer/{message_id}/action", response_model=schemas.MessageResponse)
+async def respond_to_offer(
     message_id: str,
     action_data: schemas.OfferAction,
     db: Session = Depends(get_db),
     current_user: auth_models.User = Depends(get_current_user)
 ):
     """El trabajador acepta o rechaza la oferta."""
-    if action_data.action not in ["accept", "reject"]:
+    if action_data.action not in ["accept", "reject", "withdraw"]:
         raise HTTPException(status_code=400, detail="Acción no válida")
         
-    return service.handle_offer_action(
+    updated_offer = service.handle_offer_action(
         db, 
         message_id=message_id, 
         action=action_data.action,
         user_id=str(current_user.id)
     )
+
+    # Broadcast updated offer state to WS
+    message_to_send = {
+        "id": str(updated_offer.id),
+        "conversation_id": str(updated_offer.conversation_id),
+        "sender_id": str(updated_offer.sender_id),
+        "content": str(updated_offer.content),
+        "message_type": str(updated_offer.message_type),
+        "created_at": updated_offer.created_at.isoformat(),
+        "status": str(updated_offer.status)
+    }
+    await manager.broadcast(str(updated_offer.conversation_id), message_to_send)
+
+    return updated_offer
 
 
 class ArchiveToggleRequest(BaseModel):
@@ -480,7 +494,19 @@ async def open_dispute_endpoint(
     except Exception as e:
         print(f"Error enviando Push de Inicio de Disputa: {e}")
         
-    return {"status": "success", "message": "Disputa iniciada correctamente"}
+    return {
+        "status": "success",
+        "message": "Disputa iniciada correctamente",
+        "system_message": {
+            "id": str(response["system_message"].id),
+            "conversation_id": conversation_id,
+            "sender_id": str(response["system_message"].sender_id),
+            "content": response["system_message"].content,
+            "message_type": response["system_message"].message_type,
+            "created_at": response["system_message"].created_at.isoformat(),
+            "status": "sent"
+        }
+    }
 
 # =================================================================
 # ADMIN DISPUTES

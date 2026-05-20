@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja_trabajo/features/services/domain/entities/service_entity.dart';
 import 'package:forja_trabajo/features/services/presentation/widgets/service_status_chip.dart';
 import 'package:forja_trabajo/features/profile/presentation/widgets/review_dialog.dart' as forja_review;
+import 'package:forja_trabajo/features/profile/presentation/screens/user_profile_screen.dart';
 
 class WorkerCompletedJobCard extends StatelessWidget {
   final ServiceEntity job;
@@ -44,7 +45,9 @@ class WorkerCompletedJobCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        "Finalizado el ${_formatDate(job.createdAt)}",
+                        job.status == JobStatus.cancelled
+                            ? "Cancelado el ${_formatDate(job.createdAt)}"
+                            : "Finalizado el ${_formatDate(job.createdAt)}",
                         style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
                       ),
                     ],
@@ -54,6 +57,8 @@ class WorkerCompletedJobCard extends StatelessWidget {
                 ServiceStatusChip(status: job.status.toString().split('.').last),
               ],
             ),
+            
+            _buildClientInfo(context),
             
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 12),
@@ -68,7 +73,9 @@ class WorkerCompletedJobCard extends StatelessWidget {
                     const Icon(Icons.payments_outlined, size: 18, color: Colors.grey),
                     const SizedBox(width: 8),
                     Text(
-                      "Ganancia: \$${job.basePrice.toStringAsFixed(0)}",
+                      job.status == JobStatus.cancelled
+                          ? "Precio pactado: \$${job.basePrice.toStringAsFixed(0)}"
+                          : "Ganancia: \$${job.basePrice.toStringAsFixed(0)}",
                       style: const TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
@@ -77,45 +84,46 @@ class WorkerCompletedJobCard extends StatelessWidget {
                     ),
                   ],
                 ),
-                job.alreadyReviewed
-                    ? Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).brightness == Brightness.dark
-                              ? const Color(0xFF1E293B)
-                              : Colors.grey.shade100,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          "Ya calificaste",
-                          style: TextStyle(
+                if (job.status != JobStatus.cancelled)
+                  job.alreadyReviewed
+                      ? Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
                             color: Theme.of(context).brightness == Brightness.dark
-                                ? Colors.grey.shade400
-                                : Colors.grey,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
+                                ? const Color(0xFF1E293B)
+                                : Colors.grey.shade100,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            "Ya calificaste",
+                            style: TextStyle(
+                              color: Theme.of(context).brightness == Brightness.dark
+                                  ? Colors.grey.shade400
+                                  : Colors.grey,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        )
+                      : TextButton.icon(
+                          onPressed: () {
+                            showDialog(
+                              context: context,
+                              builder: (dialogContext) => ProviderScope(
+                                parent: ProviderScope.containerOf(context),
+                                child: forja_review.ReviewDialog(
+                                  jobId: job.id,
+                                  revieweeName: job.authorName ?? 'el cliente',
+                                ),
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.star_outline, size: 16, color: Color(0xFF6366F1)),
+                          label: const Text(
+                            "Calificar",
+                            style: TextStyle(color: Color(0xFF6366F1), fontWeight: FontWeight.bold)
                           ),
                         ),
-                      )
-                    : TextButton.icon(
-                        onPressed: () {
-                          showDialog(
-                            context: context,
-                            builder: (dialogContext) => ProviderScope(
-                              parent: ProviderScope.containerOf(context),
-                              child: forja_review.ReviewDialog(
-                                jobId: job.id,
-                                revieweeName: job.authorName ?? 'el cliente',
-                              ),
-                            ),
-                          );
-                        },
-                        icon: const Icon(Icons.star_outline, size: 16, color: Color(0xFF6366F1)),
-                        label: const Text(
-                          "Calificar",
-                          style: TextStyle(color: Color(0xFF6366F1), fontWeight: FontWeight.bold)
-                        ),
-                      ),
               ],
             ),
           ],
@@ -126,5 +134,42 @@ class WorkerCompletedJobCard extends StatelessWidget {
 
   String _formatDate(DateTime date) {
     return "${date.day}/${date.month}/${date.year}";
+  }
+
+  Widget _buildClientInfo(BuildContext context) {
+    final clientName = job.authorName ?? "Cliente";
+    final clientId = job.clientId;
+    return GestureDetector(
+      onTap: () {
+        if (clientId != null && clientId.isNotEmpty) {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => UserProfileScreen(userId: clientId),
+            ),
+          );
+        }
+      },
+      child: Padding(
+        padding: const EdgeInsets.only(top: 8),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 12,
+              backgroundImage: job.profilePictureUrl != null && job.profilePictureUrl!.isNotEmpty
+                  ? NetworkImage(job.profilePictureUrl!)
+                  : null,
+              child: job.profilePictureUrl == null || job.profilePictureUrl!.isEmpty
+                  ? const Icon(Icons.person, size: 12)
+                  : null,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              "Cliente: $clientName",
+              style: const TextStyle(color: Colors.grey, fontSize: 13),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
