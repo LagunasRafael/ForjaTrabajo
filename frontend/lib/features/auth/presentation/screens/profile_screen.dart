@@ -5,7 +5,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../providers/auth_provider.dart';
-import 'role_selection_screen.dart';
+import 'login_screen.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -188,7 +188,7 @@ class ProfileScreen extends ConsumerWidget {
                     Navigator.pushAndRemoveUntil(
                       context,
                       MaterialPageRoute(
-                          builder: (context) => const RoleSelectionScreen()),
+                          builder: (context) => const LoginScreen()),
                       (route) => false,
                     );
                   },
