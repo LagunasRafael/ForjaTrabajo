@@ -96,28 +96,15 @@ class ClientCompletedJobCard extends ConsumerWidget {
   }
 
   Widget _buildTitleAndStars(bool isDark) {
-    final isCancelled = service.status == JobStatus.cancelled;
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Expanded(
-          child: Text(
-            service.title,
-            style: TextStyle(
-              fontWeight: FontWeight.bold, 
-              fontSize: 16, 
-              color: isDark ? Colors.white : Colors.black87 // 🎨 Color adaptable
-            ),
-            maxLines: 1, overflow: TextOverflow.ellipsis,
-          ),
-        ),
-        if (!isCancelled)
-          Row(
-            children: List.generate(
-              5, (index) => const Icon(Icons.star, color: Color(0xFFFBBF24), size: 16),
-            ),
-          ),
-      ],
+    return Text(
+      service.title,
+      style: TextStyle(
+        fontWeight: FontWeight.bold,
+        fontSize: 16,
+        color: isDark ? Colors.white : Colors.black87,
+      ),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
     );
   }
 

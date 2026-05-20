@@ -15,11 +15,10 @@ class ApiClient {
 
   factory ApiClient() => _instance;
 
-  // Constructor interno privado
   ApiClient._internal() : storage = const FlutterSecureStorage() {
     dio = Dio(
       BaseOptions(
-        baseUrl: baseUrl, // 👈 Ahora usa el getter dinámico
+        baseUrl: baseUrl,
         connectTimeout: const Duration(seconds: 10),
         receiveTimeout: const Duration(seconds: 10),
         headers: {

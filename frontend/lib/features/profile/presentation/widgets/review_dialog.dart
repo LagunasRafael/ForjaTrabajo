@@ -20,7 +20,7 @@ class ReviewDialog extends ConsumerStatefulWidget {
 }
 
 class _ReviewDialogState extends ConsumerState<ReviewDialog> {
-  int _rating = 5;
+  int _rating = 0;
   final _commentController = TextEditingController();
   bool _isSubmitting = false;
 
