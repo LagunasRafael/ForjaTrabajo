@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 import { toast } from 'sonner';
 import { 
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, 
@@ -23,43 +24,45 @@ export const DashboardPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [categories, setCategories] = useState<any[]>([]);
 
+  const loadDashboardData = async () => {
+    try {
+      setIsLoading(true);
+      const [usersData, categoriesData, servicesData] = await Promise.all([
+        getUsersApi(),
+        getCategories(),
+        getServices()
+      ]);
+
+      // 📊 Cálculos de métricas reales
+      const matched = servicesData.filter(s => (s.status || '').toUpperCase() === 'MATCHED').length;
+      
+      setStats({
+        users: usersData.length,
+        categories: categoriesData.length,
+        services: servicesData.length,
+        activeRequests: matched 
+      });
+
+      setServices(servicesData);
+      setCategories(categoriesData);
+      
+      // Últimos 5 usuarios registrados
+      const lastFiveUsers = [...usersData].reverse().slice(0, 5);
+      setRecentUsers(lastFiveUsers);
+
+    } catch (error) {
+      console.error("Error cargando métricas:", error);
+      toast.error('Error al sincronizar datos del servidor');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const loadDashboardData = async () => {
-      try {
-        setIsLoading(true);
-        const [usersData, categoriesData, servicesData] = await Promise.all([
-          getUsersApi(),
-          getCategories(),
-          getServices()
-        ]);
-
-        // 📊 Cálculos de métricas reales
-        const matched = servicesData.filter(s => (s.status || '').toUpperCase() === 'MATCHED').length;
-        
-        setStats({
-          users: usersData.length,
-          categories: categoriesData.length,
-          services: servicesData.length,
-          activeRequests: matched 
-        });
-
-        setServices(servicesData);
-        setCategories(categoriesData);
-        
-        // Últimos 5 usuarios registrados
-        const lastFiveUsers = [...usersData].reverse().slice(0, 5);
-        setRecentUsers(lastFiveUsers);
-
-      } catch (error) {
-        console.error("Error cargando métricas:", error);
-        toast.error('Error al sincronizar datos del servidor');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     loadDashboardData();
   }, []);
+
+  useAutoRefresh(() => loadDashboardData(), 30000);
 
   // 📈 Preparación de datos para la gráfica circular
   const chartData = useMemo(() => [
