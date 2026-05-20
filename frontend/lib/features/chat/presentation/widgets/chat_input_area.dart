@@ -499,18 +499,16 @@ class _ChatInputAreaState extends ConsumerState<ChatInputArea> {
                 onLongPressEnd: widget.isEnabled && !hasInput && !_isLockedRecording ? (details) => _stopRecording() : null,
                 onPanUpdate: (!hasInput && _isRecording && !_isLockedRecording) 
                      ? (details) {
-                         if (details.localPosition.dx < -30) {
-                             _cancelRecording();
-                         } else if (details.localPosition.dy < -50) {
-                             setState(() { _isLockedRecording = true; });
-                         }
+                          if (details.localPosition.dx < -30) {
+                              _cancelRecording();
+                          } else if (details.localPosition.dy < -50) {
+                              setState(() { _isLockedRecording = true; });
+                          }
                        }
                      : null,
                 onTap: _isLockedRecording 
                      ? () => _stopRecording() 
-                     : hasInput ? _onSend : () { 
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Mantén presionado para enviar voz')));
-                },
+                     : hasInput ? _onSend : null,
                 child: Padding(
                   padding: const EdgeInsets.all(12),
                   child: Icon(

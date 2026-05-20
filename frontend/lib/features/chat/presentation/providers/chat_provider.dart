@@ -215,7 +215,22 @@ class ChatNotifier extends StateNotifier<List<MessageModel>> {
       }
 
       if (newMessage.senderId == userId) {
-        final tempIdx = state.indexWhere((m) => m.id.startsWith('temp_') && m.content == newMessage.content);
+        // 1. Intentar buscar coincidencia exacta de ID (si ya fue reemplazado por la respuesta REST)
+        int tempIdx = state.indexWhere((m) => m.id == newMessage.id);
+        
+        // 2. Si no coincide el ID, intentar por contenido (para texto)
+        if (tempIdx == -1) {
+          tempIdx = state.indexWhere((m) => m.id.startsWith('temp_') && m.content == newMessage.content);
+        }
+        
+        // 3. Si es multimedia, buscar por tipo compatible (ya que el temporal tiene rutas locales y el real tiene URLs)
+        if (tempIdx == -1 && ['image', 'gallery', 'audio'].contains(newMessage.messageType)) {
+          tempIdx = state.indexWhere((m) => m.id.startsWith('temp_') && 
+            (m.messageType == newMessage.messageType || 
+             (newMessage.messageType == 'gallery' && m.messageType == 'image') ||
+             (newMessage.messageType == 'image' && m.messageType == 'gallery')));
+        }
+
         if (tempIdx != -1) {
           print("🔄 [WS] Reemplazando temp id=${state[tempIdx].id} con real id=${newMessage.id}");
           state = [

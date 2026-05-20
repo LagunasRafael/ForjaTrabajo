@@ -228,8 +228,10 @@ class _SharedChatScreenState extends ConsumerState<SharedChatScreen> {
     // o si el servicio ya está en proceso (MATCHED)
     final canSendOffer = !isClosed && !isOfferAccepted && !isMatched;
     
-    // El banner de negociación solo se muestra si podemos enviar ofertas
-    final hasActiveOffer = lastOffer != null && canSendOffer;
+    // El banner de negociación solo se muestra si hay una oferta pendiente y activa
+    final hasActiveOffer = lastOffer != null && 
+        lastOffer.status.toLowerCase() == 'pending' && 
+        canSendOffer;
     final messageCount = messages.length;
 
     // Calcular el prefijo dinámico para el subtítulo del Chat

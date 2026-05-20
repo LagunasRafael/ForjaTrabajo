@@ -89,7 +89,10 @@ def get_worker_applications(db: Session, worker_id: str):
             ).first()
             already_reviewed = existing_review is not None
 
-            fecha_buscada = job.started_at.isoformat() if job.started_at else None
+            if job.status in [models.JobStatus.COMPLETED, models.JobStatus.CANCELLED] and job.completed_at:
+                fecha_buscada = job.completed_at.isoformat()
+            else:
+                fecha_buscada = job.started_at.isoformat() if job.started_at else None
             precio_mosca = req.proposed_price if req else srv.base_price
             service_id_str = str(srv.id)
 

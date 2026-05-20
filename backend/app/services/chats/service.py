@@ -256,6 +256,7 @@ def handle_offer_action(db: Session, message_id: str, action: str, user_id: str)
 
         # 3. Actualizar status del servicio y la postulación
         service_entry.status = models.JobStatus.MATCHED # type: ignore
+        service_entry.base_price = float(str(offer_msg.content))  # 👈 Sincronizar precio pactado en el Servicio original
         request.status = "accepted" # type: ignore
         request.proposed_price = float(str(offer_msg.content))  # type: ignore
 
