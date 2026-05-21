@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Form, File, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, status, Form, File, UploadFile, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
@@ -47,8 +47,18 @@ async def create_service(
     return new_service
 
 @router.get("/", response_model=List[schemas.Service])
-def list_services(skip: int = 0, limit: int = 100, include_inactive: bool = False, db: Session = Depends(get_db)):
-    return service.get_services(db, skip=skip, limit=limit, include_inactive=include_inactive)
+def list_services(
+    skip: int = 0,
+    limit: int = 100,
+    include_inactive: bool = False,
+    category_id: Optional[str] = Query(None, description="Filtrar por categoría"),
+    query: Optional[str] = Query(None, description="Buscar por texto en título o descripción"),
+    db: Session = Depends(get_db),
+):
+    return service.get_services(
+        db, skip=skip, limit=limit, include_inactive=include_inactive,
+        category_id=category_id, query=query,
+    )
 
 @router.get("/search", response_model=List[schemas.Service])
 def search_services_route(query: str, db: Session = Depends(get_db)):

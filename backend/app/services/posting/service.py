@@ -1,3 +1,4 @@
+from typing import Optional
 from sqlalchemy.orm import Session, joinedload
 from app.services import models, schemas
 from uuid import UUID
@@ -31,19 +32,36 @@ def get_services(
     db: Session,
     skip: int = 0,
     limit: int = 100,
-    include_inactive: bool = False
+    include_inactive: bool = False,
+    category_id: Optional[str] = None,
+    query: Optional[str] = None,
 ):
-    """Devuelve servicios para el marketplace o el panel de administración."""
-    query = db.query(models.Service).options(joinedload(models.Service.owner))
+    """Devuelve servicios para el marketplace.
+    
+    Filtros opcionales:
+    - category_id: filtra por categoría.
+    - query: búsqueda por texto en title y description.
+    """
+    q = db.query(models.Service).options(joinedload(models.Service.owner))
 
     if not include_inactive:
-        query = query.filter(
+        q = q.filter(
             models.Service.is_active == True,
             models.Service.status == models.JobStatus.OPEN
         )
 
+    if category_id is not None:
+        q = q.filter(models.Service.category_id == category_id)
+
+    if query is not None and query.strip():
+        search_term = f"%{query.strip().lower()}%"
+        q = q.filter(
+            (models.Service.title.ilike(search_term)) |
+            (models.Service.description.ilike(search_term))
+        )
+
     return (
-        query
+        q
         .order_by(models.Service.created_at.desc())
         .offset(skip)
         .limit(limit)

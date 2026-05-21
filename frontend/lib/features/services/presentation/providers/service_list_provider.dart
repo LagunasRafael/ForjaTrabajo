@@ -32,6 +32,9 @@ final serviceListProvider = FutureProvider<List<ServiceEntity>>((ref) async {
   final categoryId = ref.watch(selectedCategoryProvider);
   final query = ref.watch(searchQueryProvider);
 
+  if (query.isNotEmpty && categoryId != null) {
+    return await repository.getServices(categoryId: categoryId, query: query);
+  }
   if (query.isNotEmpty) return await repository.searchServices(query);
   if (categoryId != null) return await repository.getServicesByCategory(categoryId);
 

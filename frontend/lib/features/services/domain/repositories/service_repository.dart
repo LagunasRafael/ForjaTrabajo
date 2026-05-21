@@ -6,7 +6,7 @@ import '../entities/job_entity.dart';
 
 abstract class ServiceRepository {
   // --- SERVICIOS (SERVICES) ---
-  Future<List<ServiceEntity>> getServices();
+  Future<List<ServiceEntity>> getServices({String? categoryId, String? query});
   Future<List<ServiceEntity>> getServicesByCategory(String categoryId);
   Future<ServiceEntity> getServiceById(String id);
   Future<List<ServiceEntity>> searchServices(String query);

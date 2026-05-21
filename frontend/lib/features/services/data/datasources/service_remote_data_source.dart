@@ -22,9 +22,19 @@ class ServiceRemoteDataSource {
 
   // --- MÉTODOS DE CONSULTA (GET) ---
 
-  Future<List<ServiceModel>> getServices() async {
+  Future<List<ServiceModel>> getServices({String? categoryId, String? query}) async {
     try {
-      final response = await _dio.get('$_path/');
+      final queryParams = <String, dynamic>{};
+      if (categoryId != null && categoryId.isNotEmpty) {
+        queryParams['category_id'] = categoryId;
+      }
+      if (query != null && query.trim().isNotEmpty) {
+        queryParams['query'] = query.trim();
+      }
+      final response = await _dio.get(
+        '$_path/',
+        queryParameters: queryParams.isNotEmpty ? queryParams : null,
+      );
       return (response.data as List).map((e) => ServiceModel.fromJson(e)).toList();
     } catch (e) {
       throw Exception('Error al cargar servicios: $e');
