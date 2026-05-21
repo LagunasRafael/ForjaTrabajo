@@ -59,8 +59,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
         throw Exception("Faltan datos para procesar el pago.");
       }
 
-      // 2. Crear el PaymentIntent con Destination Charge
-      final intentData = await paymentNotifier.createIntent(amount, workerId!);
+      // 2. Crear el PaymentIntent con escrow (no requiere Stripe Connect)
+      final intentData = await paymentNotifier.createIntent(amount, workerId!, jobId);
       final clientSecret = intentData['client_secret'];
       final paymentIntentId = intentData['payment_intent_id'];
 
@@ -76,13 +76,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       // 4. Mostrar el Payment Sheet
       await Stripe.instance.presentPaymentSheet();
 
-      // 5. Confirmar pago en backend + notificar al trabajador
-      await paymentNotifier.confirmPayment(
-        paymentIntentId: paymentIntentId,
-        workerId: workerId,
-        amountMxn: amount,
-        jobId: jobId,
-      );
+      // 5. Confirmar retención (escrow) en backend
+      await paymentNotifier.confirmEscrow(paymentIntentId);
 
       // 6. Éxito total
       if (mounted) {

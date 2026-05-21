@@ -45,6 +45,7 @@ class PaymentResponse(BaseModel):
 class CreateIntentRequest(BaseModel):
     amount_mxn: float
     worker_id: str
+    job_id: str
 
 class CreateIntentResponse(BaseModel):
     client_secret: str
