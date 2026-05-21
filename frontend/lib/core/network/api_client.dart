@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart'; // Para kDebugMode
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'dart:io' show Platform;
+import 'package:forja_trabajo/core/network/notification_service.dart';
 
 class ApiClient {
   static final ApiClient _instance = ApiClient._internal();
@@ -97,8 +98,8 @@ class ApiClient {
             await storage.delete(key: 'jwt_token');
             await storage.delete(key: 'refresh_token');
 
-            // TODO: Aquí luego pondremos código para mandar al usuario a la pantalla de Login
-            print('🚨 Sesión totalmente expirada. Limpiando tokens...');
+            print('🚨 Sesión totalmente expirada. Redirigiendo a login...');
+            navigatorKey.currentState?.pushNamedAndRemoveUntil('/login', (route) => false);
           }
             return handler.next(e);
         },
