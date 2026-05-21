@@ -21,7 +21,15 @@ def accept_postulation(db: Session, request_id: str, current_user_id: str):
         raise HTTPException(status_code=403, detail="No tienes permiso")
 
     if service_entry.status != models.JobStatus.OPEN:
-        raise HTTPException(status_code=400, detail="Servicio no disponible")
+        # Si ya está MATCHED, verificar si es por esta misma postulación
+        existing_job = db.query(models.Job).filter(models.Job.request_id == request_id).first()
+        if existing_job:
+            return {
+                "status": "success", 
+                "message": "Ya aceptado previamente",
+                "job_id": str(existing_job.id)
+            }
+        raise HTTPException(status_code=400, detail="Este servicio ya ha sido asignado a otro trabajador.")
 
     try:
         final_price = postulation.proposed_price if postulation.proposed_price else service_entry.base_price
@@ -44,7 +52,11 @@ def accept_postulation(db: Session, request_id: str, current_user_id: str):
         # 🔔 Notificar al trabajador que fue aceptado (Migrado)
         notif_service.notify_job_accepted(db, new_job, service_entry.title)
         
-        return {"status": "success", "message": "Aceptado correctamente"}
+        return {
+            "status": "success", 
+            "message": "Aceptado correctamente",
+            "job_id": str(new_job.id)
+        }
 
     except Exception as e:
         db.rollback()

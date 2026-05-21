@@ -84,16 +84,17 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     _navigated = true;
 
     if (authState.status == 'authenticated' && authState.user != null) {
-      final role = authState.user!.role.toLowerCase();
+      final user = authState.user!;
       Widget nextScreen;
 
-      if (role.contains('worker') || role.contains('trabajador')) {
+      if (user.isWorker) {
         nextScreen = const WorkerMainLayout();
-      } else if (role.contains('client') || role.contains('cliente')) {
+      } else if (user.isClient) {
         nextScreen = const ClientMainLayout();
       } else {
         nextScreen = const LoginScreen();
       }
+
 
       Navigator.of(context).pushReplacement(
         PageRouteBuilder(

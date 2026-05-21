@@ -21,8 +21,8 @@ class WorkerMainLayout extends ConsumerWidget {
 
     final List<Widget> screens = [
       const MarketplaceScreen(), // 0
-      const ChatListScreen(), // 1
-      const MyJobsScreen(), // 2
+      const MyJobsScreen(), // 1
+      const ChatListScreen(), // 2
       const WorkerProfileScreen(), // 3
     ];
 
@@ -32,7 +32,6 @@ class WorkerMainLayout extends ConsumerWidget {
         children: screens,
       ),
 
-      // ✅ BARRA SÓLIDA ESTÁNDAR con badge de no leídos
       bottomNavigationBar: NavigationBar(
         selectedIndex: currentIndex,
         onDestinationSelected: (index) {
@@ -47,7 +46,11 @@ class WorkerMainLayout extends ConsumerWidget {
             selectedIcon: Icon(Icons.search, color: Color(0xFF1E1B4B)),
             label: 'Explorar',
           ),
-
+          const NavigationDestination(
+            icon: Icon(Icons.work_history_outlined),
+            selectedIcon: Icon(Icons.work_history, color: Color(0xFF1E1B4B)),
+            label: 'Mis Trabajos',
+          ),
           NavigationDestination(
             icon: Badge(
               isLabelVisible: unreadChatCount > 0,
@@ -68,11 +71,6 @@ class WorkerMainLayout extends ConsumerWidget {
               child: const Icon(Icons.chat_bubble, color: Color(0xFF1E1B4B)),
             ),
             label: 'Mensajes',
-          ),
-          const NavigationDestination(
-            icon: Icon(Icons.work_history_outlined),
-            selectedIcon: Icon(Icons.work_history, color: Color(0xFF1E1B4B)),
-            label: 'Mis Trabajos',
           ),
           const NavigationDestination(
             icon: Icon(Icons.person_outline),

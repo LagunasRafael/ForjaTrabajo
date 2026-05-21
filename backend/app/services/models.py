@@ -246,7 +246,9 @@ class Notification(Base):
     body = Column(Text, nullable=True)
     notification_type = Column(String(50), nullable=False) # e.g., 'new_application', 'job_accepted'
     reference_id = Column(String(36), nullable=True) # e.g., service_id, job_id, conversation_id
+    target_role = Column(String(20), nullable=True) # 'client' or 'worker'
     is_read = Column(Boolean, default=False)
+
     created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User")

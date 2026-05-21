@@ -7,9 +7,12 @@ class NotificationRemoteDataSource {
 
   NotificationRemoteDataSource(this._apiClient);
 
-  Future<List<NotificationModel>> getNotifications() async {
+  Future<List<NotificationModel>> getNotifications({String? role}) async {
     try {
-      final response = await _apiClient.dio.get('/services/notifications/');
+      final response = await _apiClient.dio.get(
+        '/services/notifications/',
+        queryParameters: role != null ? {'role': role} : null,
+      );
       if (response.statusCode == 200) {
         return (response.data as List)
             .map((e) => NotificationModel.fromJson(e))
@@ -20,6 +23,7 @@ class NotificationRemoteDataSource {
       throw Exception('Error fetching notifications: $e');
     }
   }
+
 
   Future<void> markAsRead(String notificationId) async {
     try {

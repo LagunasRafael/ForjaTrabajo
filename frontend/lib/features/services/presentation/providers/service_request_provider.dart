@@ -72,12 +72,12 @@ class ServiceRequestController extends StateNotifier<AsyncValue<void>> {
     }
   }
 
-  Future<bool> acceptWorker(String requestId) async {
+  Future<Map<String, dynamic>?> acceptWorker(String requestId) async {
     state = const AsyncValue.loading();
     try {
       final token = await _getToken(); 
       
-      await ref.read(acceptPostulationProvider).call(requestId, token);
+      final result = await ref.read(acceptPostulationProvider).call(requestId, token);
       
       ref.invalidate(myRequestsProvider);
       ref.invalidate(workerJobsProvider);
@@ -85,10 +85,10 @@ class ServiceRequestController extends StateNotifier<AsyncValue<void>> {
       ref.invalidate(chatListProvider);
       
       state = const AsyncValue.data(null);
-      return true;
+      return result;
     } catch (e, st) {
       state = AsyncValue.error(e, st);
-      return false;
+      return null;
     }
   }
 

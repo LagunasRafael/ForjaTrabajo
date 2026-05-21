@@ -7,6 +7,7 @@ class NotificationEntity {
   final String? referenceId;
   final bool isRead;
   final DateTime createdAt;
+  final String? targetRole;
 
   NotificationEntity({
     required this.id,
@@ -17,6 +18,7 @@ class NotificationEntity {
     this.referenceId,
     required this.isRead,
     required this.createdAt,
+    this.targetRole,
   });
 
   NotificationEntity copyWith({
@@ -28,6 +30,7 @@ class NotificationEntity {
     String? referenceId,
     bool? isRead,
     DateTime? createdAt,
+    String? targetRole,
   }) {
     return NotificationEntity(
       id: id ?? this.id,
@@ -38,6 +41,8 @@ class NotificationEntity {
       referenceId: referenceId ?? this.referenceId,
       isRead: isRead ?? this.isRead,
       createdAt: createdAt ?? this.createdAt,
+      targetRole: targetRole ?? this.targetRole,
     );
   }
 }
+

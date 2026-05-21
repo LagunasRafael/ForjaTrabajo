@@ -55,11 +55,28 @@ class _WorkerApplyModalWidgetState extends ConsumerState<_WorkerApplyModalWidget
   Future<void> _submitAction() async {
     final cleanPrice = double.tryParse(_priceCtrl.text.replaceAll(',', '')) ?? 0.0;
                       
-    if (_descCtrl.text.trim().isEmpty || cleanPrice <= 0) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("⚠️ Indica un precio y un mensaje"), backgroundColor: Colors.orange));
+    if (_descCtrl.text.trim().isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("⚠️ Por favor escribe un mensaje de propuesta"), backgroundColor: Colors.orange));
         return;
     }
+    if (cleanPrice <= 0) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("⚠️ El precio debe ser mayor a 0"), backgroundColor: Colors.orange));
+        return;
+    }
+
+    // 🛡️ VALIDACIÓN: El precio del trabajador NO puede ser MENOR al del cliente
+    if (cleanPrice < widget.service.basePrice) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text("⚠️ Tu oferta no puede ser menor al presupuesto del cliente (\$${widget.service.basePrice.toStringAsFixed(0)})"), 
+        backgroundColor: Colors.orange,
+        behavior: SnackBarBehavior.floating,
+      ));
+      return;
+    }
+
+
     FocusScope.of(context).unfocus();
+
 
     bool success = false;
     final notifier = ref.read(serviceRequestProvider.notifier);

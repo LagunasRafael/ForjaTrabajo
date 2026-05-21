@@ -4,6 +4,7 @@ import 'package:forja_trabajo/features/services/domain/entities/service_entity.d
 import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart';
 import 'package:forja_trabajo/features/services/presentation/screens/shared/service_detail_screen.dart';
 import 'package:forja_trabajo/features/profile/presentation/widgets/review_dialog.dart' as forja_review;
+import 'package:forja_trabajo/features/payments/presentation/screens/invoices_screen.dart';
 
 // 🚀 Legos universales
 import 'package:forja_trabajo/features/services/presentation/screens/shared/widgets/shared_job_widgets.dart';
@@ -221,8 +222,9 @@ class _ClientCompletedActions extends ConsumerWidget {
   }
 
   Future<void> _handleRequestInvoice(BuildContext context, WidgetRef ref) async {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Funcionalidad de factura en desarrollo..."))
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const InvoicesScreen()),
     );
   }
 

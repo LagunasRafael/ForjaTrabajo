@@ -410,7 +410,13 @@ class ChatNotifier extends StateNotifier<List<MessageModel>> {
 
   Future<void> sendOffer(double amount) async {
     try {
-      await _repository.sendOffer(conversationId, amount);
+      final response = await _repository.sendOffer(conversationId, amount);
+      if (response is Map<String, dynamic>) {
+        final newOffer = MessageModel.fromJson(response);
+        if (!state.any((m) => m.id == newOffer.id)) {
+          state = [newOffer, ...state];
+        }
+      }
       ref.read(chatListProvider.notifier).loadRealChats();
     } catch (e) {
       print("🚨 Error enviando oferta: $e");

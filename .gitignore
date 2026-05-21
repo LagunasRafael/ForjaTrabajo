@@ -1,7 +1,8 @@
 # ========================
-# GLOBAL
+# GLOBAL & SYSTEM
 # ========================
 .DS_Store
+Thumbs.db
 *.log
 *.tmp
 *.swp
@@ -11,6 +12,9 @@ coverage/
 dist/
 build/
 
+*.db
+forja.db
+
 # ========================
 # EDITORS
 # ========================
@@ -18,19 +22,19 @@ build/
 .idea/
 
 # ========================
-# NODE
+# PYTHON / BACKEND
 # ========================
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# ========================
-# BACKEND
-# ========================
+.venv/
+env/
+venv/
+ENV/
+__pycache__/
+*.py[cod]
+*$py.class
 backend/node_modules/
 backend/dist/
 backend/.env
+backend/forja-trabajo-firebase-adminsdk-fbsvc-42c96dd495.json
 
 # ========================
 # FRONTEND (Flutter)
@@ -41,19 +45,32 @@ frontend/.flutter-plugins-dependencies
 frontend/.pub-cache/
 frontend/.pub/
 frontend/build/
+.dart_tool/
+build/
+generated/
 
 # ========================
-# ADMIN
+# ADMIN (React/Node)
 # ========================
 forja-admin/node_modules/
 forja-admin/dist/
 forja-admin/.env
 forja-admin/docs/credenciales.txt
+node_modules/
 documento_residencias 
 
 # ========================
-# FLUTTER DESKTOP BUILDS
+# MOBILE & DESKTOP BUILDS
 # ========================
+**/android/.gradle/
+**/android/local.properties
+**/android/app/build/
+**/ios/Flutter/GeneratedPluginRegistrant.*
+**/ios/.symlinks/
+**/ios/Pods/
+**/windows/flutter/ephemeral/
+**/windows/flutter/generated_plugins.cmake
+
+=======
 **/linux/flutter/ephemeral/
 **/macos/Flutter/ephemeral/
-**/windows/flutter/ephemeral/

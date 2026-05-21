@@ -6,6 +6,7 @@ class ServiceEntity {
   final String? summary;
   final String description;
   final double basePrice;
+  final double? finalPrice;
   final String categoryId;
   final String clientId;
   final double? latitude;
@@ -29,6 +30,7 @@ class ServiceEntity {
     this.summary,
     required this.description,
     required this.basePrice,
+    this.finalPrice,
     required this.categoryId,
     required this.clientId,
     this.latitude,
@@ -53,6 +55,7 @@ class ServiceEntity {
     String? summary,
     String? description,
     double? basePrice,
+    double? finalPrice,
     String? categoryId,
     String? clientId,
     double? latitude,
@@ -76,6 +79,7 @@ class ServiceEntity {
       summary: summary ?? this.summary,
       description: description ?? this.description,
       basePrice: basePrice ?? this.basePrice,
+      finalPrice: finalPrice ?? this.finalPrice,
       categoryId: categoryId ?? this.categoryId,
       clientId: clientId ?? this.clientId,
       latitude: latitude ?? this.latitude,

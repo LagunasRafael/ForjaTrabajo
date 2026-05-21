@@ -9,8 +9,9 @@ class ApiClient {
   late Dio dio;
   final FlutterSecureStorage storage;
 
-  //static final String _baseUrl = 'http://10.0.2.2:8000'; // LOCAL (Android Emulator)
-  static final String _baseUrl = 'https://forja-api-rw0r.onrender.com'; // PRODUCCIÓN
+  // 🌐 DIRECCIÓN IP DE TU PC PARA PROBAR EN CELULAR FÍSICO (Ej. Android/iOS)
+  // Reemplaza si cambia tu IP local
+  static final String _baseUrl = 'http://192.168.0.22:8000'; 
 
   static String get baseUrl => _baseUrl;
 
@@ -21,11 +22,10 @@ class ApiClient {
       BaseOptions(
         baseUrl: baseUrl,
         connectTimeout: const Duration(seconds: 10),
-        receiveTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 30),
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-
         },
       ),
     );
