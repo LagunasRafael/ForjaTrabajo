@@ -183,6 +183,12 @@ def login(request: Request, data: schemas.UserLogin, db: Session = Depends(get_d
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    if not user.is_active or getattr(user, "is_banned", False):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Tu cuenta ha sido desactivada o baneada por moderación.",
+        )
+
     # El 'sub' (subject) del JWT debe ser el identificador único
     token = create_access_token({"sub": str(user.id)})
     refresh_token = create_refresh_token({"sub": str(user.id)})
