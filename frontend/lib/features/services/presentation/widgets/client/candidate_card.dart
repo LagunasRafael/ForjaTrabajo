@@ -5,8 +5,11 @@ import 'package:forja_trabajo/features/chat/presentation/providers/chat_provider
 import 'package:forja_trabajo/features/chat/presentation/providers/chat_list_provider.dart';
 import 'package:forja_trabajo/features/chat/presentation/screens/shared_chat_screen.dart';
 import 'package:forja_trabajo/features/services/presentation/providers/service_request_provider.dart';
+import 'package:forja_trabajo/features/services/presentation/providers/service_list_provider.dart';
+import 'package:forja_trabajo/features/services/presentation/providers/service_offers_provider.dart';
 import 'package:forja_trabajo/features/services/presentation/providers/nav_providers.dart';
-import '../../screens/client/checkout_screen.dart';
+import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart';
+import 'package:forja_trabajo/features/notifications/presentation/providers/notification_provider.dart';
 import 'package:forja_trabajo/features/profile/presentation/screens/user_profile_screen.dart';
 
 class CandidateCard extends ConsumerStatefulWidget {
@@ -20,6 +23,7 @@ class CandidateCard extends ConsumerStatefulWidget {
 
 class _CandidateCardState extends ConsumerState<CandidateCard> {
   bool _showInput = false;
+  final TextEditingController _counterOfferController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
@@ -202,6 +206,7 @@ class _CandidateCardState extends ConsumerState<CandidateCard> {
     return Padding(
       padding: const EdgeInsets.only(top: 16),
       child: TextFormField(
+        controller: _counterOfferController,
         keyboardType: TextInputType.number,
         inputFormatters: [FilteringTextInputFormatter.digitsOnly], 
         decoration: InputDecoration(
@@ -211,7 +216,7 @@ class _CandidateCardState extends ConsumerState<CandidateCard> {
           fillColor: Colors.white,
           suffixIcon: IconButton(
             icon: const Icon(Icons.send, color: Color(0xFF4F46E5)), 
-            onPressed: () => setState(() => _showInput = false)
+            onPressed: _handleSendCounterOffer,
           ),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12), 
@@ -222,16 +227,136 @@ class _CandidateCardState extends ConsumerState<CandidateCard> {
     );
   }
 
+  Future<void> _handleSendCounterOffer() async {
+    final amountText = _counterOfferController.text.trim();
+    if (amountText.isEmpty) return;
+    final amount = double.tryParse(amountText);
+    if (amount == null || amount <= 0) return;
+
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Enviando contraoferta... 💬"), duration: Duration(seconds: 1)),
+      );
+
+      final chatId = await ref.read(chatDatasourceProvider).startOrGetChat(widget.offer.id);
+      await ref.read(chatDatasourceProvider).sendOffer(chatId, amount);
+
+      if (mounted) {
+        setState(() {
+          _showInput = false;
+          _counterOfferController.clear();
+        });
+        ref.invalidate(chatListProvider);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("✅ Contraoferta de \$${amount.toStringAsFixed(0)} enviada"),
+            backgroundColor: const Color(0xFF10B981),
+          ),
+        );
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => SharedChatScreen(
+              conversationId: chatId,
+              otherUserName: widget.offer.workerName, 
+              otherUserAvatarUrl: widget.offer.authorImageUrl, 
+              service: {'title': 'Propuesta de trabajo'}, 
+            ),
+          ),
+        );
+        ref.invalidate(chatListProvider);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("🚨 Error: $e"), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
   Future<void> _handleAccept() async {
-    // En lugar de aceptar aquí, navegamos al Checkout
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => CheckoutScreen(
-          offer: widget.offer,
-          serviceId: widget.serviceId,
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.info_outline, color: Color(0xFF6366F1), size: 24),
+            SizedBox(width: 10),
+            Text('¿Aceptar propuesta?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          ],
         ),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Al aceptar esta propuesta:',
+              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+            SizedBox(height: 12),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.chat_outlined, size: 18, color: Color(0xFF6366F1)),
+                SizedBox(width: 8),
+                Expanded(child: Text(
+                  'Tendrás un chat disponible para acordar los detalles del servicio con el trabajador.',
+                  style: TextStyle(fontSize: 13))),
+              ],
+            ),
+            SizedBox(height: 10),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.payments_outlined, size: 18, color: Color(0xFFF59E0B)),
+                SizedBox(width: 8),
+                Expanded(child: Text(
+                  'Deberás ir a "Mis Trabajos" y realizar el pago para iniciar formalmente el trabajo.',
+                  style: TextStyle(fontSize: 13))),
+              ],
+            ),
+            SizedBox(height: 14),
+            Text('¿Deseas continuar?',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF10B981),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text('Aceptar', style: TextStyle(color: Colors.white)),
+          ),
+        ],
       ),
     );
+
+    if (confirmed == true) {
+      ref.read(isAcceptingProvider(widget.offer.id).notifier).state = true;
+      try {
+        await ref.read(serviceRequestProvider.notifier).acceptWorker(widget.offer.id);
+
+        ref.invalidate(myRequestsProvider);
+        ref.invalidate(offersListProvider(widget.serviceId));
+        ref.invalidate(serviceDetailProvider(widget.serviceId));
+      } catch (_) {}
+      ref.read(isAcceptingProvider(widget.offer.id).notifier).state = false;
+
+      ref.read(clientNavProvider.notifier).state = 3;
+      ref.read(myRequestsTabProvider.notifier).state = 1;
+      Navigator.pushNamedAndRemoveUntil(context, '/client_home', (route) => false);
+    }
+  }
+
+  @override
+  void dispose() {
+    _counterOfferController.dispose();
+    super.dispose();
   }
 }

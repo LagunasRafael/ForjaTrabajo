@@ -22,7 +22,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
   // Inicializar Stripe con la clave pública
-  Stripe.publishableKey = 'pk_test_51TJMelEEBDNiDvB2T001jsfxYvutidQ8BQqrJCQutevL29fBc1IDFdo2Yfvdmf8H0UHWKw8y98kl9ABuFYRMLneC00e16IS4Qy';
+  Stripe.publishableKey = 'pk_test_51TYWIIE3IouDCLunLGxz0gBIg4cOga8dhqaxRdzogAStieRclSPx82y0FFFdYWAIcCIaMZ3snWQ4yZEy3xIceJOK00G7voWt0u';
   
   // Inicializar servicios de inyección de dependencias
   await di.init(); 

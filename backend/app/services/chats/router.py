@@ -13,6 +13,8 @@ from app.auth import models as auth_models
 from app.services.chats import schemas
 from app.services.chats import service 
 from app.services import models as service_models
+from app.payments import models as payment_models
+from app.payments.services import refund_payment, capture_payment
 from app.utils.s3 import upload_chat_media_to_s3
 from app.services.notifications import service as notif_service
 from fastapi import UploadFile, File, BackgroundTasks
@@ -286,7 +288,7 @@ async def create_counter_offer(
     return new_offer
 
 @router.post("/chat/offer/{message_id}/action")
-def respond_to_offer(
+async def respond_to_offer(
     message_id: str,
     action_data: schemas.OfferAction,
     db: Session = Depends(get_db),
@@ -296,12 +298,26 @@ def respond_to_offer(
     if action_data.action not in ["accept", "reject"]:
         raise HTTPException(status_code=400, detail="Acción no válida")
         
-    return service.handle_offer_action(
+    updated_offer = service.handle_offer_action(
         db, 
         message_id=message_id, 
         action=action_data.action,
         user_id=str(current_user.id)
     )
+
+    # Broadcast por WebSocket para que ambos vean el cambio en tiempo real
+    message_to_send = {
+        "id": updated_offer.id,
+        "conversation_id": updated_offer.conversation_id,
+        "sender_id": updated_offer.sender_id,
+        "content": updated_offer.content,
+        "message_type": updated_offer.message_type,
+        "created_at": updated_offer.created_at.isoformat(),
+        "status": updated_offer.status
+    }
+    await manager.broadcast(updated_offer.conversation_id, message_to_send)
+
+    return updated_offer
 
 
 class ArchiveToggleRequest(BaseModel):
@@ -574,6 +590,17 @@ async def resolve_dispute(
     
     import datetime
     if resolve_data.winner_role == "client":
+        # Reembolsar en Stripe antes de cambiar estados
+        contract = db.query(payment_models.Contract).filter(
+            payment_models.Contract.job_id == job.id
+        ).first()
+        if contract:
+            payment = db.query(payment_models.Payment).filter(
+                payment_models.Payment.contract_id == contract.id
+            ).first()
+            if payment and payment.stripe_payment_intent_id:
+                refund_payment(db, payment.id)
+
         job.status = service_models.JobStatus.CANCELLED # type: ignore
         resolution_msg = "RESOLUCION FINAL: La disputa se ha resuelto a favor del CLIENTE. Se procedera al reembolso del dinero congelado."
         
@@ -584,6 +611,9 @@ async def resolve_dispute(
             background_tasks.add_task(send_dispute_resolved_email, worker.email, False, "worker") # type: ignore
             
     elif resolve_data.winner_role == "worker":
+        # Capturar pago en Stripe antes de cambiar estados
+        capture_payment(db, job.id)
+
         job.status = service_models.JobStatus.COMPLETED # type: ignore
         job.completed_at = datetime.datetime.utcnow() # type: ignore
         resolution_msg = "RESOLUCION FINAL: La disputa se ha resuelto a favor del TRABAJADOR. El pago ha sido autorizado y liberado."

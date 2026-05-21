@@ -8,6 +8,7 @@ import '../worker/my_jobs_screen.dart';
 import 'package:forja_trabajo/features/chat/presentation/screens/chat_list_screen.dart';
 import 'package:forja_trabajo/features/notifications/presentation/screens/notifications_screen.dart';
 import '../worker/worker_profile_screen.dart';
+import 'package:forja_trabajo/features/payments/presentation/screens/wallet_screen.dart';
 
 class WorkerMainLayout extends ConsumerWidget {
   const WorkerMainLayout({super.key});
@@ -23,8 +24,9 @@ class WorkerMainLayout extends ConsumerWidget {
     final List<Widget> screens = [
       const MarketplaceScreen(), // 0
       const MyJobsScreen(), // 1
-      const ChatListScreen(), // 2
-      const WorkerProfileScreen(), // 3
+      const WalletScreen(), // 2
+      const ChatListScreen(), // 3
+      const WorkerProfileScreen(), // 4
     ];
 
     return Scaffold(
@@ -33,7 +35,6 @@ class WorkerMainLayout extends ConsumerWidget {
         children: screens,
       ),
 
-      // ✅ BARRA SÓLIDA ESTÁNDAR con badge de no leídos
       bottomNavigationBar: NavigationBar(
         selectedIndex: currentIndex,
         onDestinationSelected: (index) {
@@ -54,6 +55,11 @@ class WorkerMainLayout extends ConsumerWidget {
             icon: Icon(Icons.work_history_outlined),
             selectedIcon: Icon(Icons.work_history, color: Color(0xFF1E1B4B)),
             label: 'Mis Trabajos',
+          ),
+          const NavigationDestination(
+            icon: Icon(Icons.wallet_outlined),
+            selectedIcon: Icon(Icons.wallet, color: Color(0xFF1E1B4B)),
+            label: 'Billetera',
           ),
           NavigationDestination(
             icon: Badge(

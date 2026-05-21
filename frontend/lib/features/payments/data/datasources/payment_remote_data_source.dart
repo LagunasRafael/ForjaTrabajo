@@ -5,7 +5,13 @@ import '../models/payment_model.dart';
 abstract class PaymentRemoteDataSource {
   Future<PaymentModel> processPayment(PaymentModel payment);
   Future<List<PaymentModel>> getPaymentHistory();
-  Future<Map<String, dynamic>> createPaymentIntent(String jobId, double amount);
+  Future<Map<String, dynamic>> createPaymentIntent(double amountMxn, String workerId);
+  Future<void> confirmPayment({
+    required String paymentIntentId,
+    required String workerId,
+    required double amountMxn,
+    required String jobId,
+  });
   Future<PaymentModel> confirmEscrow(String paymentIntentId);
 }
 
@@ -47,11 +53,10 @@ class PaymentRemoteDataSourceImpl implements PaymentRemoteDataSource {
   Future<PaymentModel> processPayment(PaymentModel payment) async {
     try {
       final token = await _getToken();
-      // Modificado para usar /payments/create-intent como solicitaste
       final response = await dio.post(
         '/payments/create-intent',
         data: {
-          'job_id': payment.contractId, // Usamos contractId como jobId
+          'job_id': payment.contractId,
           'amount': payment.amount,
         },
         options: Options(
@@ -62,12 +67,11 @@ class PaymentRemoteDataSourceImpl implements PaymentRemoteDataSource {
       );
 
       if (response.statusCode == 201 || response.statusCode == 200) {
-        // Como /create-intent devuelve un client_secret y no un Payment completo,
-        // devolvemos un PaymentModel temporal o reconstruido para que la UI no crashee
         return PaymentModel(
           id: response.data['payment_intent_id'] ?? '',
           contractId: payment.contractId,
           amount: payment.amount,
+          amountCents: (payment.amount * 100).toInt(),
           status: 'pending_escrow',
           date: DateTime.now(),
           paymentMethod: payment.paymentMethod,
@@ -82,14 +86,14 @@ class PaymentRemoteDataSourceImpl implements PaymentRemoteDataSource {
   }
 
   @override
-  Future<Map<String, dynamic>> createPaymentIntent(String jobId, double amount) async {
+  Future<Map<String, dynamic>> createPaymentIntent(double amountMxn, String workerId) async {
     try {
       final token = await _getToken();
       final response = await dio.post(
         '/payments/create-intent',
         data: {
-          'job_id': jobId,
-          'amount': amount,
+          'amount_mxn': amountMxn,
+          'worker_id': workerId,
         },
         options: Options(
           headers: {
@@ -105,6 +109,34 @@ class PaymentRemoteDataSourceImpl implements PaymentRemoteDataSource {
       }
     } on DioException catch (e) {
       throw Exception('Error al crear intent de pago: ${e.response?.data ?? e.message}');
+    }
+  }
+
+  @override
+  Future<void> confirmPayment({
+    required String paymentIntentId,
+    required String workerId,
+    required double amountMxn,
+    required String jobId,
+  }) async {
+    try {
+      final token = await _getToken();
+      await dio.post(
+        '/payments/confirm-payment',
+        data: {
+          'payment_intent_id': paymentIntentId,
+          'worker_id': workerId,
+          'amount_mxn': amountMxn,
+          'job_id': jobId,
+        },
+        options: Options(
+          headers: {
+            if (token != null) 'Authorization': 'Bearer $token',
+          },
+        ),
+      );
+    } on DioException catch (e) {
+      throw Exception('Error al confirmar pago: ${e.response?.data ?? e.message}');
     }
   }
 

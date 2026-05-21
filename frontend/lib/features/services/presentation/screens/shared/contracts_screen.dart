@@ -115,7 +115,7 @@ class _ContractsScreenState extends ConsumerState<ContractsScreen> {
               child: ContractCard(
                 title: service.title,
                 subtitle: "Trabajador: ${service.authorName ?? 'Asignado'}",
-                price: "\$${service.basePrice.toStringAsFixed(2)}",
+                price: "\$${(service.finalPrice ?? service.basePrice).toStringAsFixed(2)}",
                 date: "Fecha: ${service.createdAt.day}/${service.createdAt.month}/${service.createdAt.year}",
                 status: isFinished ? ContractStatus.finished : ContractStatus.active,
                 bottomContent: const AvatarStack(),
@@ -126,7 +126,8 @@ class _ContractsScreenState extends ConsumerState<ContractsScreen> {
                       MaterialPageRoute(
                         builder: (context) => CheckoutScreen(
                           jobId: service.id,
-                          amount: service.basePrice.toDouble(),
+                          workerId: service.workerId,
+                          amount: (service.finalPrice ?? service.basePrice).toDouble(),
                         ),
                       ),
                     );

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/notification_provider.dart';
 import '../widgets/notification_card.dart';
 
@@ -8,7 +9,9 @@ class NotificationsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final notificationState = ref.watch(notificationListProvider);
+    final authState = ref.watch(authProvider);
+    final role = authState.user?.role;
+    final notificationState = ref.watch(notificationListProvider(role));
 
     return Scaffold(
       backgroundColor: const Color(0xFFF3F4F6),
@@ -21,7 +24,7 @@ class NotificationsScreen extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.done_all),
             tooltip: 'Marcar todo como leído',
-            onPressed: () => ref.read(notificationListProvider.notifier).markAllAsRead(),
+            onPressed: () => ref.read(notificationListProvider(role).notifier).markAllAsRead(),
           )
         ],
       ),
@@ -41,7 +44,7 @@ class NotificationsScreen extends ConsumerWidget {
           }
 
           return RefreshIndicator(
-            onRefresh: () => ref.read(notificationListProvider.notifier).fetchNotifications(),
+            onRefresh: () => ref.read(notificationListProvider(role).notifier).fetchNotifications(),
             child: ListView.separated(
               physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
               padding: const EdgeInsets.all(12),
@@ -60,7 +63,7 @@ class NotificationsScreen extends ConsumerWidget {
               const SizedBox(height: 16),
               Text('Error: $err'),
               TextButton(
-                onPressed: () => ref.read(notificationListProvider.notifier).fetchNotifications(),
+                onPressed: () => ref.read(notificationListProvider(role).notifier).fetchNotifications(),
                 child: const Text('Reintentar'),
               )
             ],

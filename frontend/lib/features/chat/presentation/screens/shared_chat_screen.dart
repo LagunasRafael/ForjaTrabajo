@@ -353,13 +353,30 @@ class _SharedChatScreenState extends ConsumerState<SharedChatScreen> {
           ),
           ElevatedButton.icon(
             onPressed: () {
+              final scaffoldContext = context;
                showModalBottomSheet(
                  context: context,
                  isScrollControlled: true,
                  backgroundColor: Colors.transparent,
                  builder: (context) => OfferBottomSheet(
-                   onSendOffer: (newAmount) {
-                     ref.read(chatProvider(widget.conversationId).notifier).sendOffer(newAmount);
+                   onSendOffer: (newAmount) async {
+                     try {
+                       await ref.read(chatProvider(widget.conversationId).notifier).sendOffer(newAmount);
+                       if (scaffoldContext.mounted) {
+                         ScaffoldMessenger.of(scaffoldContext).showSnackBar(
+                           SnackBar(
+                             content: Text("✅ Contraoferta de \$${newAmount.toStringAsFixed(0)} enviada"),
+                             backgroundColor: const Color(0xFF10B981),
+                           ),
+                         );
+                       }
+                     } catch (e) {
+                       if (scaffoldContext.mounted) {
+                         ScaffoldMessenger.of(scaffoldContext).showSnackBar(
+                           SnackBar(content: Text("🚨 Error: $e"), backgroundColor: Colors.red),
+                         );
+                       }
+                     }
                    },
                  ),
                );

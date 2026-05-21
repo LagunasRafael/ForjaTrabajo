@@ -32,11 +32,30 @@ class PaymentNotifier extends StateNotifier<PaymentState> {
     }
   }
 
-  Future<Map<String, dynamic>> createIntent(String jobId, double amount) async {
+  Future<Map<String, dynamic>> createIntent(double amountMxn, String workerId) async {
     state = PaymentLoading();
     try {
-      final result = await repository.createPaymentIntent(jobId, amount);
+      final result = await repository.createPaymentIntent(amountMxn, workerId);
       return result;
+    } catch (e) {
+      state = PaymentError(e.toString());
+      rethrow;
+    }
+  }
+
+  Future<void> confirmPayment({
+    required String paymentIntentId,
+    required String workerId,
+    required double amountMxn,
+    required String jobId,
+  }) async {
+    try {
+      await repository.confirmPayment(
+        paymentIntentId: paymentIntentId,
+        workerId: workerId,
+        amountMxn: amountMxn,
+        jobId: jobId,
+      );
     } catch (e) {
       state = PaymentError(e.toString());
       rethrow;

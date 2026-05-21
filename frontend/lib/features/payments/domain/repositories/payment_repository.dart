@@ -4,6 +4,12 @@ import '../../data/models/payment_model.dart';
 abstract class PaymentRepository {
   Future<Payment> processPayment(PaymentModel payment);
   Future<List<Payment>> getPaymentHistory();
-  Future<Map<String, dynamic>> createPaymentIntent(String jobId, double amount);
+  Future<Map<String, dynamic>> createPaymentIntent(double amountMxn, String workerId);
+  Future<void> confirmPayment({
+    required String paymentIntentId,
+    required String workerId,
+    required double amountMxn,
+    required String jobId,
+  });
   Future<Payment> confirmEscrow(String paymentIntentId);
 }

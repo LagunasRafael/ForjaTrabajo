@@ -17,6 +17,9 @@ from jose import jwt, JWTError
 from fastapi import APIRouter, Request, BackgroundTasks
 
 from app.core.rate_limit import limiter
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 

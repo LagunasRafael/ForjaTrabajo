@@ -128,9 +128,9 @@ class ServiceRepositoryImpl implements ServiceRepository {
   }
 
   @override
-  Future<List<ServiceEntity>> getMyApplications(String token) async {
+  Future<List<ServiceEntity>> getMyApplications() async {
     try {
-      final List<dynamic> data = await requestDS.getMyApplications(token);
+      final List<dynamic> data = await requestDS.getMyApplications();
       return data.map<ServiceEntity>((json) {
         final serviceMap = json as Map<String, dynamic>;
         debugPrint("🔍 Worker app JSON: $serviceMap");

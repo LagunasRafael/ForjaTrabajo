@@ -66,7 +66,7 @@ class ClientMatchedJobCard extends ConsumerWidget {
                 children: [
                   SharedJobInfo(
                     title: service.title, 
-                    price: service.basePrice, 
+                    price: service.finalPrice ?? service.basePrice, 
                     location: service.exactAddress ?? 'Ubicación remota'
                   ),
                   _ClientMatchedActions(service: service, isWaiting: isWaiting),
@@ -179,7 +179,8 @@ class _ClientMatchedActionsState extends ConsumerState<_ClientMatchedActions> {
       MaterialPageRoute(
         builder: (_) => CheckoutScreen(
           jobId: widget.service.id,
-          amount: widget.service.basePrice.toDouble(),
+          workerId: widget.service.workerId,
+          amount: (widget.service.finalPrice ?? widget.service.basePrice).toDouble(),
         ),
       ),
     );

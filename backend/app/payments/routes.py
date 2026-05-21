@@ -1,13 +1,19 @@
+import stripe
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.auth.security import get_current_user
 from app.auth import models as auth_models
+from app.services import models as services_models
+from app.services.notifications import service as notification_service
 from . import schemas, models
 import app.payments.services as services
+from .invoice_pdf import generate_invoice_pdf
 
 router = APIRouter()
+workers_router = APIRouter()
 
 
 # --- CONTRATOS ---
@@ -53,7 +59,7 @@ def get_payments(
     return services.get_payments_by_role(db=db, current_user=current_user)
 
 
-# --- STRIPE ESCROW ---
+# --- STRIPE DESTINATION CHARGE ---
 
 @router.post("/create-intent", response_model=schemas.CreateIntentResponse)
 def create_payment_intent(
@@ -62,16 +68,121 @@ def create_payment_intent(
     current_user: auth_models.User = Depends(get_current_user)
 ):
     """
-    Crea un PaymentIntent en Stripe con capture_method='manual'.
-    Retiene los fondos sin cobrar definitivamente.
-    
-    Retorna el client_secret para que Flutter confirme con el SDK de Stripe.
+    Crea un PaymentIntent con Destination Charge.
+    Stripe cobra al cliente y transfiere automaticamente
+    el total menos la comision a la cuenta del trabajador.
     """
-    return services.create_payment_intent(
-        db=db,
-        job_id=data.job_id,
-        amount=data.amount
+    worker = db.query(auth_models.User).filter(
+        auth_models.User.id == data.worker_id
+    ).first()
+
+    if not worker:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Trabajador no encontrado"
+        )
+
+    if not worker.stripe_account_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="El trabajador no tiene una cuenta de Stripe Connect configurada"
+        )
+
+    amount_cents = int(data.amount_mxn * 100)
+    fee_cents = int(amount_cents * 0.15)
+
+    try:
+        intent = stripe.PaymentIntent.create(
+            amount=amount_cents,
+            currency="mxn",
+            application_fee_amount=fee_cents,
+            transfer_data={"destination": worker.stripe_account_id},
+        )
+        return schemas.CreateIntentResponse(
+            client_secret=intent.client_secret,
+            payment_intent_id=intent.id
+        )
+    except stripe.error.StripeError as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Error al crear PaymentIntent: {str(e)}"
+        )
+
+
+@router.post("/confirm-payment")
+def confirm_payment(
+    data: schemas.ConfirmPaymentRequest,
+    db: Session = Depends(get_db),
+    current_user: auth_models.User = Depends(get_current_user)
+):
+    """
+    Confirma un pago exitoso (llamado desde Flutter tras el PaymentSheet).
+    Crea el registro de pago en BD y notifica al trabajador.
+    """
+    worker = db.query(auth_models.User).filter(
+        auth_models.User.id == data.worker_id
+    ).first()
+    if not worker:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Trabajador no encontrado"
+        )
+
+    job = db.query(services_models.Job).filter(
+        services_models.Job.id == data.job_id
+    ).first()
+    if not job:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Trabajo no encontrado"
+        )
+
+    contract = db.query(models.Contract).filter(
+        models.Contract.job_id == job.id
+    ).first()
+
+    if not contract:
+        contract = models.Contract(
+            job_id=job.id,
+            client_id=str(job.client_id),
+            status="in_progress"
+        )
+        db.add(contract)
+        db.flush()
+
+    try:
+        stripe.PaymentIntent.retrieve(data.payment_intent_id)
+    except stripe.error.StripeError as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Error al verificar pago en Stripe: {str(e)}"
+        )
+
+    amount_cents = int(data.amount_mxn * 100)
+    payment = models.Payment(
+        contract_id=contract.id,
+        amount=data.amount_mxn,
+        amount_cents=amount_cents,
+        status=models.PaymentStatus.COMPLETED,
+        stripe_payment_intent_id=data.payment_intent_id,
     )
+    db.add(payment)
+    db.commit()
+    db.refresh(payment)
+
+    service_title = ""
+    if job.request and job.request.service:
+        service_title = job.request.service.title or ""
+
+    notification_service.notify_payment_made(
+        db=db,
+        worker_id=data.worker_id,
+        amount=data.amount_mxn,
+        service_title=service_title,
+        job_id=data.job_id
+    )
+
+    return {"status": "success", "payment_id": payment.id}
 
 
 @router.post("/confirm-escrow", response_model=schemas.PaymentResponse)
@@ -116,3 +227,101 @@ def resolve_dispute(
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="No tienes permiso")
     return services.resolve_dispute(db=db, conversation_id=conversation_id, resolution=resolution)
+
+
+@router.get("/invoice/{payment_id}/pdf")
+def download_invoice_pdf(
+    payment_id: str,
+    db: Session = Depends(get_db),
+    current_user: auth_models.User = Depends(get_current_user)
+):
+    """Genera y descarga el PDF de una factura."""
+    payment = db.query(models.Payment).filter(models.Payment.id == payment_id).first()
+    if not payment:
+        raise HTTPException(status_code=404, detail="Pago no encontrado")
+
+    contract = payment.contract
+    if not contract:
+        raise HTTPException(status_code=404, detail="Contrato no encontrado")
+
+    svc = None
+    if contract.job and contract.job.request and contract.job.request.service:
+        svc = contract.job.request.service
+
+    payment_data = {
+        "id": payment.id,
+        "contract_id": payment.contract_id,
+        "amount": payment.amount,
+        "status": payment.status.value if hasattr(payment.status, 'value') else payment.status,
+        "service_title": svc.title if svc else "Servicio",
+        "service_description": svc.description if svc else "",
+        "service_category": svc.category.name if svc and svc.category else "",
+    }
+
+    pdf_path = generate_invoice_pdf(payment_data)
+    filename = f"factura_{payment.id[:8].upper()}.pdf"
+
+    return FileResponse(
+        pdf_path,
+        media_type="application/pdf",
+        filename=filename,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+    )
+
+
+# --- WORKER STRIPE CONNECT ---
+
+@workers_router.post("/stripe-setup", response_model=schemas.StripeSetupResponse)
+def setup_worker_stripe(data: schemas.StripeSetupRequest, db: Session = Depends(get_db)):
+    user = db.query(auth_models.User).filter(auth_models.User.id == data.user_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Trabajador no encontrado"
+        )
+
+    stripe_account_id = user.stripe_account_id
+
+    if not stripe_account_id:
+        try:
+            names = (user.full_name or "").strip().split(maxsplit=1)
+            first_name = names[0] if names else ""
+            last_name = names[1] if len(names) > 1 else ""
+
+            account = stripe.Account.create(
+                type="express",
+                country="MX",
+                email=user.email,
+                business_type="individual",
+                business_profile={
+                    "url": "https://miapp.com",
+                    "product_description": "Proveedor de servicios independientes en la plataforma.",
+                    "mcc": "7299"
+                },
+                individual={
+                    "first_name": first_name,
+                    "last_name": last_name,
+                }
+            )
+            stripe_account_id = account.id
+            user.stripe_account_id = stripe_account_id
+            db.commit()
+        except stripe.error.StripeError as e:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=f"Error al crear cuenta de Stripe: {str(e)}"
+            )
+
+    try:
+        account_link = stripe.AccountLink.create(
+            account=stripe_account_id,
+            type="account_onboarding",
+            refresh_url="https://example.com/reintentar",
+            return_url="https://example.com/exito"
+        )
+        return schemas.StripeSetupResponse(url=account_link.url)
+    except stripe.error.StripeError as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Error al crear enlace de onboarding: {str(e)}"
+        )

@@ -34,6 +34,8 @@ class NotificationService {
   // 🔌 Local Notifications Plugin
   final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
 
+  String? _currentUserRole;
+
   // 📺 Canal de alta importancia para Android (EL POP)
   static const AndroidNotificationChannel _channel = AndroidNotificationChannel(
     'forja_high_priority', // 🚀 ID NUEVO para forzar el banner flotante
@@ -48,7 +50,9 @@ class NotificationService {
   static final StreamController<RemoteMessage> _onNotificationController = StreamController<RemoteMessage>.broadcast();
   static Stream<RemoteMessage> get onNotification => _onNotificationController.stream;
 
-  Future<void> initNotifications() async {
+  Future<void> initNotifications({String? userRole}) async {
+    _currentUserRole = userRole;
+    
     // 1. Solicitar permisos (FCM)
     final settings = await _messaging.requestPermission(
       alert: true,
@@ -71,6 +75,8 @@ class NotificationService {
 
     // 3. Foreground: mostrar banner visual y REFRESCAR PROVIDERS
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      if (!_shouldHandleMessage(message)) return;
+      
       debugPrint('🚀 [FCM] ¡NOTIFICACIÓN RECIBIDA EN FOREGROUND!');
       debugPrint('🚀 Tipo: ${message.data['type']} | ID: ${message.messageId}');
       
@@ -83,6 +89,8 @@ class NotificationService {
 
     // 4. Background tap: app abierta desde segundo plano
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+      if (!_shouldHandleMessage(message)) return;
+      
       debugPrint('📲 [FCM] APP ABIERTA DESDE NOTIFICACIÓN');
       _onNotificationController.add(message); // 🔄 Refresca ChatList también aquí
       _handleNotificationNavigation(message);
@@ -90,6 +98,14 @@ class NotificationService {
 
     // 5. Registrar handler de background
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  }
+
+  /// Verifica si la notificación debe manejarse según el rol del usuario.
+  bool _shouldHandleMessage(RemoteMessage message) {
+    final targetRole = message.data['target_role'];
+    if (targetRole == null || targetRole.isEmpty) return true;
+    if (_currentUserRole == null) return true;
+    return targetRole == _currentUserRole;
   }
 
   void _showLocalNotification(RemoteMessage message) {
@@ -116,7 +132,7 @@ class NotificationService {
   /// Llamar desde main() para manejar tap cuando la app estaba terminada.
   Future<void> handleInitialMessage() async {
     final message = await _messaging.getInitialMessage();
-    if (message != null) {
+    if (message != null && _shouldHandleMessage(message)) {
       debugPrint('🚀 App iniciada desde notificación terminada');
       await Future.delayed(const Duration(milliseconds: 1200));
       _handleNotificationNavigation(message);

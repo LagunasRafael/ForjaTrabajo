@@ -10,6 +10,11 @@ class User {
   final double? longitude;
   final bool isEmailVerified;
   final bool isIdentityVerified;
+  
+  // 🛡️ Ayudantes de verificación de rol
+  bool get isWorker => role.toLowerCase().contains('worker') || role.toLowerCase().contains('trabajador');
+  bool get isClient => role.toLowerCase().contains('client') || role.toLowerCase().contains('cliente');
+
 
   User({
     required this.id,

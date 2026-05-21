@@ -26,7 +26,7 @@ abstract class ServiceRepository {
   Future<ServiceRequestEntity> createRequest(ServiceRequestEntity request, String token);
   Future<List<ServiceRequestEntity>> getOffers(String serviceId, String token);
   Future<Map<String, dynamic>> acceptPostulation(String requestId, String token);
-  Future<List<ServiceEntity>> getMyApplications(String token);
+  Future<List<ServiceEntity>> getMyApplications();
   Future<bool> updatePostulation(String requestId, String description, double proposedPrice, String token);
   Future<bool> deletePostulation(String requestId, String token);
 

@@ -4,18 +4,24 @@ class Payment {
   final int amountCents;
   final String contractId;
   final String status;
-  final DateTime date; 
+  final DateTime date;
   final String paymentMethod;
   final String? stripePaymentIntentId;
+  final String? serviceTitle;
+  final String? serviceDescription;
+  final String? serviceCategory;
 
-  Payment({
+  const Payment({
     required this.id,
     required this.amount,
-    this.amountCents = 0,
+    required this.amountCents,
     required this.contractId,
     required this.status,
     required this.date,
     required this.paymentMethod,
     this.stripePaymentIntentId,
+    this.serviceTitle,
+    this.serviceDescription,
+    this.serviceCategory,
   });
 }

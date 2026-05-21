@@ -5,7 +5,7 @@ class SendOfferUseCase {
 
   SendOfferUseCase(this.repository);
 
-  Future<void> call(String conversationId, double amount) async {
+  Future<Map<String, dynamic>> call(String conversationId, double amount) async {
     return await repository.sendOffer(conversationId, amount);
   }
 }

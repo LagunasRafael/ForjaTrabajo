@@ -194,8 +194,10 @@ def approve_verification_admin(db: Session, verification_id: str, admin_id: str)
         title="Identidad Verificada",
         body="Tu verificación de identidad ha sido aprobada. Ya apareces como usuario verificado.",
         notification_type="verification_approved",
-        reference_id=verification.id
+        reference_id=verification.id,
+        target_role="client"
     )
+
 
     return {"message": "Verificación aprobada", "status": "approved"}
 
@@ -223,7 +225,9 @@ def reject_verification_admin(db: Session, verification_id: str, admin_id: str, 
         title="Verificación Rechazada",
         body=f"Tu verificación fue rechazada. Motivo: {reason}. Puedes intentarlo de nuevo desde tu perfil.",
         notification_type="verification_rejected",
-        reference_id=verification.id
+        reference_id=verification.id,
+        target_role="client"
     )
+
 
     return {"message": "Verificación rechazada", "status": "rejected"}

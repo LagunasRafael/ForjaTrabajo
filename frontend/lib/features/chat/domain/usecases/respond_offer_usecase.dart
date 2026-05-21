@@ -5,7 +5,7 @@ class RespondOfferUseCase {
 
   RespondOfferUseCase(this.repository);
 
-  Future<void> call(String messageId, String action) async {
+  Future<Map<String, dynamic>> call(String messageId, String action) async {
     return await repository.respondOffer(messageId, action);
   }
 }

@@ -139,9 +139,16 @@ class ChatNotifier extends StateNotifier<List<MessageModel>> {
 
       final newMessage = MessageModel.fromJson(decoded);
 
-      // 2. Evitar duplicados (por ID)
-      if (state.any((m) => m.id == newMessage.id)) {
-        print("⏭️ Ignorando mensaje duplicado: ${newMessage.id}");
+      // 2. Actualizar si ya existe (cambio de estado como offer accept/reject)
+      final existingIndex = state.indexWhere((m) => m.id == newMessage.id);
+      if (existingIndex >= 0) {
+        if (state[existingIndex].status != newMessage.status) {
+          state = [
+            newMessage,
+            ...state.sublist(0, existingIndex),
+            ...state.sublist(existingIndex + 1),
+          ];
+        }
         return;
       }
 
@@ -218,7 +225,13 @@ class ChatNotifier extends StateNotifier<List<MessageModel>> {
 
   Future<void> sendOffer(double amount) async {
     try {
-      await _repository.sendOffer(conversationId, amount);
+      final response = await _repository.sendOffer(conversationId, amount);
+      if (response is Map<String, dynamic>) {
+        final newOffer = MessageModel.fromJson(response);
+        if (!state.any((m) => m.id == newOffer.id)) {
+          state = [newOffer, ...state];
+        }
+      }
       ref.read(chatListProvider.notifier).loadRealChats();
     } catch (e) {
       print("🚨 Error enviando oferta: $e");
@@ -228,7 +241,21 @@ class ChatNotifier extends StateNotifier<List<MessageModel>> {
 
   Future<void> respondOffer(String messageId, String action) async {
     try {
-      await _repository.respondOffer(messageId, action);
+      final response = await _repository.respondOffer(messageId, action);
+      if (response is Map<String, dynamic>) {
+        final updatedStatus = response['status']?.toString() ?? action;
+        state = state.map((m) {
+          if (m.id == messageId) {
+            final merged = <String, dynamic>{
+              ...response,
+              ...m.toJson(),
+              'status': updatedStatus,
+            };
+            return MessageModel.fromJson(merged);
+          }
+          return m;
+        }).toList();
+      }
       ref.read(chatListProvider.notifier).loadRealChats();
     } catch (e) {
       print("🚨 Error respondiendo oferta: $e");

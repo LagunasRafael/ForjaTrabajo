@@ -5,11 +5,14 @@ class PaymentModel extends Payment {
     required super.id,
     required super.contractId,
     required super.amount,
-    super.amountCents,
+    required super.amountCents,
     required super.status,
     required super.date,
     required super.paymentMethod,
     super.stripePaymentIntentId,
+    super.serviceTitle,
+    super.serviceDescription,
+    super.serviceCategory,
   });
 
   factory PaymentModel.fromJson(Map<String, dynamic> json) {
@@ -24,6 +27,9 @@ class PaymentModel extends Payment {
           : (json['date'] != null ? DateTime.parse(json['date']) : DateTime.now()),
       paymentMethod: json['payment_method'] ?? '',
       stripePaymentIntentId: json['stripe_payment_intent_id'],
+      serviceTitle: json['service_title']?.toString(),
+      serviceDescription: json['service_description']?.toString(),
+      serviceCategory: json['service_category']?.toString(),
     );
   }
 

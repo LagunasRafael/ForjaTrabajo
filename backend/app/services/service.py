@@ -133,12 +133,21 @@ def get_my_services(db: Session, user_id: str):
     """Devuelve todos los servicios creados por el usuario logueado."""
     return (
         db.query(models.Service)
+        .options(
+            joinedload(models.Service.requests)
+            .joinedload(models.ServiceRequest.job)
+        )
+        .options(
+            joinedload(models.Service.requests)
+            .joinedload(models.ServiceRequest.worker)
+        )
         .filter(
             models.Service.client_id == user_id,
         )
         .order_by(models.Service.created_at.desc())
         .all()
     )
+
 
 def get_services_by_category(db: Session, category_id: str):
     return (
@@ -298,25 +307,32 @@ def get_worker_applications(db: Session, worker_id: str):
     try:
         unique_results = {}
 
-        # 1. BUSCAMOS LOS JOBS ACTIVOS (Los que ya te aceptaron)
-        jobs = db.query(models.Job).filter(models.Job.provider_id == worker_id).all()
+        # 1. JOBS ACTIVOS: cargamos todo en UNA sola query con joinedload
+        jobs = (
+            db.query(models.Job)
+            .options(
+                joinedload(models.Job.request).joinedload(models.ServiceRequest.service)
+            )
+            .filter(models.Job.provider_id == worker_id)
+            .all()
+        )
 
         for job in jobs:
             req = job.request
             srv = req.service if req else None
-            
-            if not srv: continue
-            
+
+            if not srv:
+                continue
+
             fecha_buscada = job.started_at.isoformat() if job.started_at else None
             precio_mosca = req.proposed_price if req else srv.base_price
+            service_id_str = str(srv.id)
 
-            service_id_str = str(srv.id) 
-            
             unique_results[service_id_str] = {
-                "id": service_id_str, 
-                "request_id": str(req.id) if req else None, 
+                "id": service_id_str,
+                "request_id": str(req.id) if req else None,
                 "title": srv.title,
-                "description": srv.description, 
+                "description": srv.description,
                 "base_price": float(precio_mosca) if precio_mosca else 0.0,
                 "category_id": str(srv.category_id),
                 "client_id": str(job.client_id),
@@ -325,45 +341,49 @@ def get_worker_applications(db: Session, worker_id: str):
                 "exact_address": srv.exact_address,
                 "status": job.status.value if hasattr(job.status, 'value') else str(job.status),
                 "is_active": srv.is_active,
-                "created_at": fecha_buscada, 
-                "image_urls": srv.image_urls if srv.image_urls else [], 
+                "created_at": fecha_buscada,
+                "image_urls": srv.image_urls if srv.image_urls else [],
             }
 
-        # 2. BUSCAMOS LAS POSTULACIONES PENDIENTES
-        postulations = db.query(models.ServiceRequest, models.Service).join(
-            models.Service, models.ServiceRequest.service_id == models.Service.id
-        ).filter(
-            models.ServiceRequest.worker_id == worker_id,
-            models.ServiceRequest.status == "pending",
-            models.Service.is_active == True
-        ).all()
+        # 2. POSTULACIONES PENDIENTES: una sola query con JOIN (ya estaba bien)
+        postulations = (
+            db.query(models.ServiceRequest, models.Service)
+            .join(models.Service, models.ServiceRequest.service_id == models.Service.id)
+            .filter(
+                models.ServiceRequest.worker_id == worker_id,
+                models.ServiceRequest.status == "pending",
+                models.Service.is_active == True,
+            )
+            .all()
+        )
 
         for req, srv in postulations:
-            service_id_str = str(srv.id) 
-            
+            service_id_str = str(srv.id)
+
             if service_id_str not in unique_results:
                 unique_results[service_id_str] = {
-                    "id": service_id_str, 
-                    "request_id": str(req.id), 
+                    "id": service_id_str,
+                    "request_id": str(req.id),
                     "title": srv.title,
-                    "description": req.description, 
+                    "description": req.description,
                     "base_price": float(req.proposed_price) if req.proposed_price else 0.0,
                     "category_id": str(srv.category_id),
                     "client_id": str(srv.client_id),
                     "latitude": srv.latitude,
                     "longitude": srv.longitude,
                     "exact_address": srv.exact_address,
-                    "status": "open", 
+                    "status": "open",
                     "is_active": srv.is_active,
                     "created_at": req.created_at.isoformat() if req.created_at else None,
-                    "image_urls": srv.image_urls if srv.image_urls else [], 
+                    "image_urls": srv.image_urls if srv.image_urls else [],
                 }
-                
+
         return list(unique_results.values())
-        
+
     except Exception as e:
         print(f"🚨 Error real en get_worker_applications: {e}")
         raise e
+
 
 def withdraw_postulation(db: Session, request_id: str, user_id: str):
     postulation = db.query(models.ServiceRequest).filter(
@@ -480,7 +500,9 @@ def complete_job(db: Session, job_id: str, user_id: str):
         if job.status == models.JobStatus.COMPLETED:
             return job
 
+        # pyrefly: ignore [bad-assignment]
         job.status = models.JobStatus.COMPLETED
+        # pyrefly: ignore [bad-assignment, deprecated]
         job.completed_at = datetime.utcnow()
         
         if job.request and job.request.service:

@@ -33,21 +33,35 @@ class PaymentResponse(BaseModel):
     payment_method: str
     stripe_payment_intent_id: Optional[str] = None
     created_at: datetime
+    service_title: Optional[str] = None
+    service_description: Optional[str] = None
+    service_category: Optional[str] = None
 
     class Config:
         from_attributes = True
 
-# --- Stripe Escrow Schemas ---
+# --- Stripe Destination Charge ---
 
 class CreateIntentRequest(BaseModel):
-    job_id: str
-    amount: float  # Monto en pesos/dólares (ej. 250.00)
+    amount_mxn: float
+    worker_id: str
 
 class CreateIntentResponse(BaseModel):
     client_secret: str
     payment_intent_id: str
-    amount_cents: int
-    payment_id: str  # ID del Payment en nuestra BD
 
-class ConfirmEscrowRequest(BaseModel):
+
+class ConfirmPaymentRequest(BaseModel):
     payment_intent_id: str
+    worker_id: str
+    amount_mxn: float
+    job_id: str
+
+
+# --- Worker Stripe Connect Schemas ---
+
+class StripeSetupRequest(BaseModel):
+    user_id: str
+
+class StripeSetupResponse(BaseModel):
+    url: str

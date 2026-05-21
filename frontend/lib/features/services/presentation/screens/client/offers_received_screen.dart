@@ -28,7 +28,60 @@ class OffersReceivedScreen extends ConsumerWidget {
       error: (e, s) => Scaffold(body: Center(child: Text("Error cargando servicio: $e"))),
       data: (serviceData) {
         final status = serviceData.status.toString().toLowerCase();
-        if (!status.contains('open') && !status.contains('matched')) {
+
+        if (status.contains('matched') || status.contains('waiting')) {
+          return Scaffold(
+            backgroundColor: const Color(0xFFF3F4F6),
+            appBar: AppBar(
+              backgroundColor: Colors.white,
+              elevation: 0,
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black, size: 20),
+                onPressed: () => Navigator.pop(context),
+              ),
+              title: const Text("Postulaciones", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: Colors.black)),
+            ),
+            body: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(32),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.check_circle, color: Color(0xFF10B981), size: 72),
+                    const SizedBox(height: 20),
+                    const Text(
+                      "Ya aceptaste una postulación para este servicio",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1A1C1E)),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Ve al apartado de "Mis Trabajos" para gestionarlo y realizar el pago.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 14, color: Color(0xFF8A8D94)),
+                    ),
+                    const SizedBox(height: 24),
+                    ElevatedButton(
+                      onPressed: () {
+                        ref.read(clientNavProvider.notifier).state = 3;
+                        ref.read(myRequestsTabProvider.notifier).state = 1;
+                        Navigator.pushNamedAndRemoveUntil(context, '/client_home', (route) => false);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF10B981),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+                      ),
+                      child: const Text('Ir a Mis Trabajos', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }
+
+        if (!status.contains('open')) {
           // El servicio ya no acepta postulaciones. Redirigir a "Mis Trabajos".
           Future.microtask(() {
             if (context.mounted) {

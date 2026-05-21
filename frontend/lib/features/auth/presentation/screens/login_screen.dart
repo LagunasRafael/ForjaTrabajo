@@ -67,13 +67,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
         // 3. DIRIGIR AL USUARIO
         Widget nextScreen;
-        final role = next.user!.role.toLowerCase().trim();
-
-        if (role.contains('worker') || role.contains('trabajador')) {
+        
+        if (next.user!.isWorker) {
           nextScreen = const WorkerMainLayout();
         } else {
           nextScreen = const ClientMainLayout();
         }
+
 
         // 🛡️ BARRERA DE SEGURIDAD: Si no ha verificado el correo, no pasa al Home
         if (!next.user!.isEmailVerified) {

@@ -6,6 +6,7 @@ import 'package:forja_trabajo/features/services/presentation/screens/client/offe
 import '../../domain/entities/notification_entity.dart';
 import '../providers/notification_provider.dart';
 import 'package:forja_trabajo/features/services/presentation/providers/nav_providers.dart';
+import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart';
 
 class NotificationCard extends ConsumerWidget {
   final NotificationEntity notification;
@@ -104,7 +105,8 @@ class NotificationCard extends ConsumerWidget {
   void _handleTap(BuildContext context, WidgetRef ref) {
     // Marcar como leída
     if (!notification.isRead) {
-      ref.read(notificationListProvider.notifier).markAsRead(notification.id);
+      final role = ref.read(authProvider).user?.role;
+      ref.read(notificationListProvider(role).notifier).markAsRead(notification.id);
     }
     
     // NAVEGACIÓN SEGÚN EL TIPO
@@ -113,8 +115,28 @@ class NotificationCard extends ConsumerWidget {
 
     if (type == 'new_message' || type == 'new_offer' || type == 'offer_responded') {
       if (refId != null) {
+        // Extraer nombre del remitente desde el body/title de la notificación
+        String otherName = 'Usuario';
+        final body = notification.body ?? '';
+        final title = notification.title;
+        if (type == 'new_offer' || type == 'offer_responded') {
+          // body: "Juan ha realizado una contraoferta..." o "Juan aceptó tu contraoferta..."
+          final namePart = body.split(RegExp(r'\s+(ha realizado|aceptó|rechazó)\s+'));
+          if (namePart.length >= 2) {
+            otherName = namePart[0].trim();
+          }
+        } else if (type == 'new_message') {
+          // title: "Nuevo mensaje de Juan"
+          final namePart = title.split(' de ');
+          if (namePart.length >= 2) {
+            otherName = namePart.sublist(1).join(' de ').trim();
+          }
+        }
         Navigator.push(context, MaterialPageRoute(
-          builder: (_) => SharedChatScreen(conversationId: refId, otherUserName: 'Chat'),
+          builder: (_) => SharedChatScreen(
+            conversationId: refId,
+            otherUserName: otherName,
+          ),
         ));
       }
     } else if (type == 'new_application') {
@@ -144,6 +166,9 @@ class NotificationCard extends ConsumerWidget {
       } else {
         Navigator.pushNamedAndRemoveUntil(context, '/worker_home', (route) => false);
       }
+    } else if (type == 'payment_released') {
+      ref.read(workerNavProvider.notifier).state = 2;
+      Navigator.pushNamedAndRemoveUntil(context, '/worker_home', (route) => false);
     }
   }
 
@@ -157,6 +182,7 @@ class NotificationCard extends ConsumerWidget {
       case 'new_message': return Icons.chat_bubble;
       case 'new_offer': return Icons.local_offer;
       case 'offer_responded': return Icons.handshake;
+      case 'payment_released': return Icons.account_balance_wallet;
       default: return Icons.notifications;
     }
   }
@@ -171,6 +197,7 @@ class NotificationCard extends ConsumerWidget {
       case 'new_message': return Colors.indigo;
       case 'new_offer': return Colors.amber;
       case 'offer_responded': return Colors.deepPurple;
+      case 'payment_released': return const Color(0xFF7F13EC);
       default: return Colors.grey;
     }
   }

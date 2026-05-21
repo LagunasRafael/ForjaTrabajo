@@ -64,17 +64,7 @@ class ClientProfileScreen extends ConsumerWidget {
                     onTap: () {
                       ref.read(clientNavProvider.notifier).state = 3;
                     }),
-                ProfileMenuOption(
-                    icon: LucideIcons.creditCard,
-                    title: 'Métodos de Pago',
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Métodos de pago en desarrollo'),
-                        ),
-                      );
-                    }),
-                ProfileMenuOption(
+ProfileMenuOption(
                     icon: LucideIcons.fileText,
                     title: 'Mis Facturas',
                     onTap: () {

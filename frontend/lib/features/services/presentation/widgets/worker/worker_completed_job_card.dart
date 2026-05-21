@@ -67,7 +67,7 @@ class WorkerCompletedJobCard extends StatelessWidget {
                     const Icon(Icons.payments_outlined, size: 18, color: Colors.grey),
                     const SizedBox(width: 8),
                     Text(
-                      "Ganancia: \$${job.basePrice.toStringAsFixed(0)}",
+                      "Ganancia: \$${(job.finalPrice ?? job.basePrice).toStringAsFixed(0)}",
                       style: const TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,

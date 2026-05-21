@@ -29,11 +29,30 @@ class PaymentRepositoryImpl implements PaymentRepository {
   }
 
   @override
-  Future<Map<String, dynamic>> createPaymentIntent(String jobId, double amount) async {
+  Future<Map<String, dynamic>> createPaymentIntent(double amountMxn, String workerId) async {
     try {
-      return await remoteDataSource.createPaymentIntent(jobId, amount);
+      return await remoteDataSource.createPaymentIntent(amountMxn, workerId);
     } catch (e) {
       throw Exception('Error al crear intent de pago: $e');
+    }
+  }
+
+  @override
+  Future<void> confirmPayment({
+    required String paymentIntentId,
+    required String workerId,
+    required double amountMxn,
+    required String jobId,
+  }) async {
+    try {
+      await remoteDataSource.confirmPayment(
+        paymentIntentId: paymentIntentId,
+        workerId: workerId,
+        amountMxn: amountMxn,
+        jobId: jobId,
+      );
+    } catch (e) {
+      throw Exception('Error al confirmar pago: $e');
     }
   }
 

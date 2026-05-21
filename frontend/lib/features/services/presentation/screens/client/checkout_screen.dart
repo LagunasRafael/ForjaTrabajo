@@ -13,6 +13,7 @@ class CheckoutScreen extends ConsumerStatefulWidget {
   final dynamic offer;
   final String? serviceId;
   final String? jobId;
+  final String? workerId;
   final double? amount;
 
   const CheckoutScreen({
@@ -20,6 +21,7 @@ class CheckoutScreen extends ConsumerStatefulWidget {
     this.offer,
     this.serviceId,
     this.jobId,
+    this.workerId,
     this.amount,
   });
 
@@ -32,18 +34,21 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
 
   Future<void> _handlePayment() async {
     setState(() => _isProcessing = true);
-    
+
     try {
       final paymentNotifier = ref.read(paymentProvider.notifier);
       final serviceNotifier = ref.read(serviceRequestProvider.notifier);
-      
+
       String? jobId = widget.jobId;
+      String? workerId = widget.workerId;
       double? amount = widget.amount;
 
       // Si no tenemos jobId, significa que estamos contratando en este momento
       if (jobId == null && widget.offer != null) {
-        amount = (widget.offer.proposedPrice as num?)?.toDouble() ?? 0.0;
-        final acceptResult = await serviceNotifier.acceptWorker(widget.offer.id);
+        amount = (widget.offer?.proposedPrice as num?)?.toDouble() ?? 0.0;
+        workerId = widget.offer?.workerId;
+        final acceptResult = await serviceNotifier.acceptWorker(widget.offer!.id);
+
         if (acceptResult == null || acceptResult['job_id'] == null) {
           throw Exception("Error al procesar la contratación.");
         }
@@ -54,8 +59,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
         throw Exception("Faltan datos para procesar el pago.");
       }
 
-      // 2. Crear el PaymentIntent en el backend
-      final intentData = await paymentNotifier.createIntent(jobId, amount);
+      // 2. Crear el PaymentIntent con Destination Charge
+      final intentData = await paymentNotifier.createIntent(amount, workerId!);
       final clientSecret = intentData['client_secret'];
       final paymentIntentId = intentData['payment_intent_id'];
 
@@ -71,19 +76,24 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       // 4. Mostrar el Payment Sheet
       await Stripe.instance.presentPaymentSheet();
 
-      // 5. Confirmar en el backend que el pago fue autorizado (Escrow)
-      await paymentNotifier.confirmEscrow(paymentIntentId);
+      // 5. Confirmar pago en backend + notificar al trabajador
+      await paymentNotifier.confirmPayment(
+        paymentIntentId: paymentIntentId,
+        workerId: workerId,
+        amountMxn: amount,
+        jobId: jobId,
+      );
 
       // 6. Éxito total
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('✅ Pago en garantía retenido con éxito'), backgroundColor: Colors.green),
+          const SnackBar(content: Text('✅ Pago realizado con éxito'), backgroundColor: Colors.green),
         );
-        
+
         // Redirigir a la pestaña de "Mis Trabajos - En Curso"
         ref.read(clientNavProvider.notifier).state = 3;
         ref.read(myRequestsTabProvider.notifier).state = 1; // 1 = "En curso"
-        
+
         Navigator.pushNamedAndRemoveUntil(context, '/client_home', (route) => false);
       }
     } catch (e) {
@@ -105,7 +115,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   @override
   Widget build(BuildContext context) {
     final selectedMethod = ref.watch(selectedMethodProvider);
-    final amount = widget.amount ?? (widget.offer != null ? (widget.offer.proposedPrice as num).toDouble() : 0.0);
+    final amount = widget.amount ?? (widget.offer != null ? (widget.offer?.proposedPrice as num).toDouble() : 0.0);
+
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -149,8 +160,9 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    Text("OFERTA DE: ${widget.offer.workerName?.toUpperCase() ?? "TRABAJADOR"}", 
+                    Text("OFERTA DE: ${widget.offer?.workerName?.toUpperCase() ?? "TRABAJADOR"}", 
                       style: const TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1)),
+
                     const SizedBox(height: 4),
                     const Text("Contratación de\nServicio Profesional", 
                       style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold, height: 1.1)),

@@ -304,7 +304,7 @@ class AuthNotifier extends Notifier<AuthState> {
 
   Future<void> _syncFcmToken() async {
     final notificationService = NotificationService();
-    await notificationService.initNotifications();
+    await notificationService.initNotifications(userRole: state.user?.role);
     final String? fcmToken = await notificationService.getToken();
     debugPrint('📢 DEBUG SYNC: Token obtenido = ${fcmToken != null ? 'SI' : 'NO (NULL)'}');
     if (fcmToken != null) {

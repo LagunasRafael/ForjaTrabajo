@@ -6,6 +6,7 @@ from sqlalchemy import or_, and_
 from sqlalchemy.orm import joinedload
 from app.auth import models as auth_models 
 from app.services.notifications import service as notif_service
+from app.payments import models as payment_models
 import logging
 
 def get_or_create_conversation(db: Session, request_id: str, user_id: str):
@@ -343,6 +344,29 @@ def open_dispute(db: Session, conversation_id: str, user_id: str, reason: str):
 
     if str(convo.status) == models.ConversationStatus.DISPUTE.value:
         raise HTTPException(status_code=400, detail="Esta conversación ya está en disputa")
+
+    # Verificar que el pago esté autorizado o capturado
+    is_paid = False
+    service_request = convo.request
+    if service_request and service_request.job:
+        contract = db.query(payment_models.Contract).filter(
+            payment_models.Contract.job_id == service_request.job.id
+        ).first()
+        if contract:
+            payment = db.query(payment_models.Payment).filter(
+                payment_models.Payment.contract_id == contract.id
+            ).order_by(payment_models.Payment.created_at.desc()).first()
+            if payment and payment.status in [
+                payment_models.PaymentStatus.HELD_IN_ESCROW,
+                payment_models.PaymentStatus.RELEASED
+            ]:
+                is_paid = True
+
+    if not is_paid:
+        raise HTTPException(
+            status_code=400,
+            detail="No se puede abrir una disputa para un servicio que no ha sido pagado"
+        )
 
     user = db.query(auth_models.User).filter(auth_models.User.id == user_id).first()
     user_name = user.full_name if user and user.full_name else "Un usuario"

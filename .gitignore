@@ -34,6 +34,7 @@ __pycache__/
 backend/node_modules/
 backend/dist/
 backend/.env
+backend/forja-trabajo-firebase-adminsdk-fbsvc-42c96dd495.json
 
 # ========================
 # FRONTEND (Flutter)
