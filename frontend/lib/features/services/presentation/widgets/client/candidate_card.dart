@@ -5,7 +5,11 @@ import 'package:forja_trabajo/features/chat/presentation/providers/chat_provider
 import 'package:forja_trabajo/features/chat/presentation/providers/chat_list_provider.dart';
 import 'package:forja_trabajo/features/chat/presentation/screens/shared_chat_screen.dart';
 import 'package:forja_trabajo/features/services/presentation/providers/service_request_provider.dart';
+import 'package:forja_trabajo/features/services/presentation/providers/service_list_provider.dart';
+import 'package:forja_trabajo/features/services/presentation/providers/service_offers_provider.dart';
 import 'package:forja_trabajo/features/services/presentation/providers/nav_providers.dart';
+import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart';
+import 'package:forja_trabajo/features/notifications/presentation/providers/notification_provider.dart';
 import 'package:forja_trabajo/features/profile/presentation/screens/user_profile_screen.dart';
 import 'package:forja_trabajo/features/services/presentation/providers/service_list_provider.dart';
 
@@ -174,7 +178,7 @@ class _CandidateCardState extends ConsumerState<CandidateCard> {
             onPressed: isAccepting ? null : _handleAccept, 
             child: isAccepting 
                 ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) 
-                : const Text("Aceptar", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))
+                : Text(widget.offer.status == "accepted" ? "Pagar ahora" : "Aceptar", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12))
           )
         ),
       ]
@@ -340,33 +344,84 @@ class _CandidateCardState extends ConsumerState<CandidateCard> {
   }
 
   Future<void> _handleAccept() async {
-    final confirm = await showDialog<bool>(
+    final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text("¿Contratar?"), 
-        content: const Text("Al aceptar, el trabajo pasará a 'En Curso'."),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.info_outline, color: Color(0xFF6366F1), size: 24),
+            SizedBox(width: 10),
+            Text('¿Aceptar propuesta?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Al aceptar esta propuesta:',
+              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+            SizedBox(height: 12),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.chat_outlined, size: 18, color: Color(0xFF6366F1)),
+                SizedBox(width: 8),
+                Expanded(child: Text(
+                  'Tendrás un chat disponible para acordar los detalles del servicio con el trabajador.',
+                  style: TextStyle(fontSize: 13))),
+              ],
+            ),
+            SizedBox(height: 10),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.payments_outlined, size: 18, color: Color(0xFFF59E0B)),
+                SizedBox(width: 8),
+                Expanded(child: Text(
+                  'Deberás ir a "Mis Trabajos" y realizar el pago para iniciar formalmente el trabajo.',
+                  style: TextStyle(fontSize: 13))),
+              ],
+            ),
+            SizedBox(height: 14),
+            Text('¿Deseas continuar?',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+          ],
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Volver")),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
           ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, true), 
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF10B981)), 
-            child: const Text("Contratar", style: TextStyle(color: Colors.white))
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF10B981),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text('Aceptar', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
     );
 
-    if (confirm != true) return;
+    if (confirmed == true) {
+      ref.read(isAcceptingProvider(widget.offer.id).notifier).state = true;
+      try {
+        await ref.read(serviceRequestProvider.notifier).acceptWorker(widget.offer.id);
 
-    ref.read(isAcceptingProvider(widget.offer.id).notifier).state = true;
-    final success = await ref.read(serviceRequestProvider.notifier).acceptWorker(widget.offer.id);
-    ref.read(isAcceptingProvider(widget.offer.id).notifier).state = false;
+        ref.invalidate(myRequestsProvider);
+        ref.invalidate(offersListProvider(widget.serviceId));
+        ref.invalidate(serviceDetailProvider(widget.serviceId));
+      } catch (_) {}
+      ref.read(isAcceptingProvider(widget.offer.id).notifier).state = false;
 
-    if (success && mounted) {
+    if (mounted) {
       Navigator.pop(context); 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Contratado"), backgroundColor: Color(0xFF10B981))
       );
     }
+  }
   }
 }

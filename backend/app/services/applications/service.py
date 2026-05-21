@@ -17,6 +17,19 @@ def create_service_request(db: Session, request_data: schemas.ServiceRequestCrea
     if existing_request:
         raise HTTPException(status_code=400, detail="Ya enviaste una propuesta a este trabajo.")
 
+    # 🔍 VALIDACIÓN DE PRECIO: No puede ser mayor al presupuesto del cliente
+    service_entry = db.query(models.Service).filter(models.Service.id == str(request_data.service_id)).first()
+    if not service_entry:
+        raise HTTPException(status_code=404, detail="El servicio no existe.")
+
+    if service_entry.base_price and request_data.proposed_price < float(service_entry.base_price):
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Tu oferta (${request_data.proposed_price}) no puede ser menor al presupuesto del cliente (${service_entry.base_price})."
+        )
+
+
+
     db_request = models.ServiceRequest(
         service_id=str(request_data.service_id),
         description=request_data.description,
@@ -62,7 +75,17 @@ def update_service_request(db: Session, request_id: str, description: str, propo
     if not postulation:
         raise HTTPException(status_code=404, detail="Postulación no encontrada")
 
+    # 🔍 VALIDACIÓN DE PRECIO EN ACTUALIZACIÓN
+    service_entry = postulation.service
+    if service_entry and service_entry.base_price and proposed_price < float(service_entry.base_price):
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Tu oferta (${proposed_price}) no puede ser menor al presupuesto del cliente (${service_entry.base_price})."
+        )
+
+
     postulation.description = description
+
     postulation.proposed_price = proposed_price
 
     db.commit()
@@ -109,6 +132,7 @@ def get_worker_applications(db: Session, worker_id: str):
                 "title": srv.title,
                 "description": srv.description,
                 "base_price": float(precio_mosca) if precio_mosca else 0.0,
+                "final_price": float(job.final_price) if job.final_price else None,
                 "category_id": str(srv.category_id),
                 "client_id": str(job.client_id),
                 "latitude": srv.latitude,

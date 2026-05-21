@@ -6,13 +6,14 @@ import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider
 
 final serviceRequestRemoteDataSourceProvider = Provider<ServiceRequestRemoteDataSource>((ref) {
   final apiClient = ref.watch(apiClientProvider);
-  return ServiceRequestRemoteDataSource(apiClient.dio);
+  return ServiceRequestRemoteDataSource(apiClient);
 });
 
 class ServiceRequestRemoteDataSource {
-  final Dio _dio;
+  final ApiClient _apiClient;
+  Dio get _dio => _apiClient.dio;
 
-  ServiceRequestRemoteDataSource(this._dio);
+  ServiceRequestRemoteDataSource(this._apiClient);
 
   String get _path => '/services';
 
@@ -56,23 +57,32 @@ class ServiceRequestRemoteDataSource {
     }
   }
 
-  Future<List<Map<String, dynamic>>> getMyApplications(String token) async {
+  Future<List<Map<String, dynamic>>> getMyApplications() async {
     try {
-      // 💡 RUTA OPCIÓN 1: Con prefijo
-      String rutaAProbar = '/services/worker/my-applications';
+      const String ruta = '/services/worker/my-applications';
 
-      debugPrint("🔍 Intentando conectar a: ${_dio.options.baseUrl}$rutaAProbar");
+      // Leer el token directamente de FlutterSecureStorage (misma fuente que el interceptor)
+      final token = await _apiClient.storage.read(key: 'jwt_token');
+      debugPrint("🔍 Intentando conectar a: ${_dio.options.baseUrl}$ruta");
+      debugPrint("🔑 Token disponible: ${token != null ? 'SÍ (${token.length} chars)' : 'NO (null)'}");
+
+      if (token == null || token.isEmpty) {
+        throw Exception('No hay sesión activa. Por favor inicia sesión de nuevo.');
+      }
 
       final response = await _dio.get(
-        rutaAProbar,
+        ruta,
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
       
       return List<Map<String, dynamic>>.from(response.data);
     } on DioException catch (e) {
-      debugPrint("🚨 Error Dio en getMyApplications: Código ${e.response?.statusCode}");
-      debugPrint("🚨 Detalles del error: ${e.response?.data}");
-      throw Exception('Error al cargar mis postulaciones (${e.response?.statusCode})');
+      debugPrint("🚨 Error Dio en getMyApplications:");
+      debugPrint("   Tipo: ${e.type}");
+      debugPrint("   Código HTTP: ${e.response?.statusCode}");
+      debugPrint("   Mensaje: ${e.message}");
+      debugPrint("   Datos: ${e.response?.data}");
+      throw Exception('Error al cargar mis postulaciones (${e.response?.statusCode ?? e.type.name})');
     }
   }
 

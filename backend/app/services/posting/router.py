@@ -59,12 +59,19 @@ def read_my_requests(db: Session = Depends(get_db), current_user: auth_models.Us
     services = service.get_my_services(db, user_id=str(current_user.id))
     result = []
     for svc in services:
+        final_price = None
+        for request in svc.requests:
+            if request.job and request.job.final_price:
+                final_price = float(request.job.final_price)
+                break
+
         svc_dict = {
             "id": svc.id,
             "title": svc.title,
             "summary": svc.summary,
             "description": svc.description,
             "base_price": float(svc.base_price) if svc.base_price else 0.0,
+            "final_price": final_price,
             "category_id": svc.category_id,
             "client_id": svc.client_id,
             "latitude": svc.latitude,

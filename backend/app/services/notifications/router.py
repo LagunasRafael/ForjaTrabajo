@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 
 from app.db.database import get_db
 from app.auth.security import get_current_user
@@ -10,9 +10,14 @@ from app.services.notifications import service, schemas
 router = APIRouter(prefix="/notifications")
 
 @router.get("/", response_model=List[schemas.NotificationResponse])
-def get_notifications(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def get_notifications(
+    role: Optional[str] = None,
+    db: Session = Depends(get_db), 
+    current_user: User = Depends(get_current_user)
+):
     """Obtiene el historial de notificaciones del usuario actual."""
-    return service.get_user_notifications(db=db, user_id=str(current_user.id))
+    return service.get_user_notifications(db=db, user_id=str(current_user.id), role=role)
+
 
 @router.put("/{notification_id}/read", response_model=schemas.NotificationResponse)
 def mark_read(notification_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):

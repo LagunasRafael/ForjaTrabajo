@@ -6,6 +6,7 @@ import '../../domain/entities/notification_entity.dart';
 import '../../domain/repositories/notification_repository.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/network/notification_service.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 
 // --- DEPENDENCY INJECTION ---
 
@@ -24,10 +25,12 @@ final notificationRepositoryProvider = Provider<NotificationRepository>((ref) {
 
 class NotificationNotifier extends StateNotifier<AsyncValue<List<NotificationEntity>>> {
   final NotificationRepository _repository;
+  final String? role;
   StreamSubscription? _pushSubscription;
 
-  NotificationNotifier(this._repository) : super(const AsyncValue.loading()) {
+  NotificationNotifier(this._repository, this.role) : super(const AsyncValue.loading()) {
     fetchNotifications();
+
     // 🔔 Escuchar push notifications en foreground para refrescar la lista
     _pushSubscription = NotificationService.onNotification.listen((_) {
       // Cada vez que llega una push, re-fetch desde el servidor
@@ -44,8 +47,9 @@ class NotificationNotifier extends StateNotifier<AsyncValue<List<NotificationEnt
   Future<void> fetchNotifications() async {
     try {
       state = const AsyncValue.loading();
-      final notifications = await _repository.getNotifications();
+      final notifications = await _repository.getNotifications(role: role);
       state = AsyncValue.data(notifications);
+
     } catch (e, st) {
       state = AsyncValue.error(e, st);
     }
@@ -87,14 +91,16 @@ class NotificationNotifier extends StateNotifier<AsyncValue<List<NotificationEnt
   }
 }
 
-final notificationListProvider = StateNotifierProvider<NotificationNotifier, AsyncValue<List<NotificationEntity>>>((ref) {
+final notificationListProvider = StateNotifierProvider.family<NotificationNotifier, AsyncValue<List<NotificationEntity>>, String?>((ref, role) {
   final repository = ref.watch(notificationRepositoryProvider);
-  return NotificationNotifier(repository);
+  return NotificationNotifier(repository, role);
 });
+
 
 // --- UNREAD COUNT FOR NOTIFICATIONS ---
 final unreadNotificationCountProvider = Provider<int>((ref) {
-  final notificationState = ref.watch(notificationListProvider);
+  final authState = ref.watch(authProvider);
+  final notificationState = ref.watch(notificationListProvider(authState.user?.role));
   return notificationState.maybeWhen(
     data: (notifications) => notifications.where((n) => !n.isRead).length,
     orElse: () => 0,

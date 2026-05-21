@@ -9,18 +9,18 @@ from slowapi.errors import RateLimitExceeded
 import logging
 import os
 from dotenv import load_dotenv
+from pathlib import Path
 
-# Cargar variables de entorno desde .env
-load_dotenv()
+# Cargar variables de entorno desde .env (ruta absoluta)
+load_dotenv(dotenv_path=Path(__file__).resolve().parent.parent / ".env")
+
+from app.routers import router
 
 from app.db.database import Base, engine
 from app.auth.models import User
 from app.services.models import Service
 from app.payments.models import Payment
 from app.settings.models import SiteConfig
-
-from app.routers import router
-from app.payments.routes import router as payments_router
 
 
 # Crear tablas
@@ -94,11 +94,13 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 @app.exception_handler(SQLAlchemyError)
 async def sqlalchemy_exception_handler(request: Request, exc: SQLAlchemyError):
-    logger.error(f"🛢️ Error de Base de Datos: {exc}", exc_info=True)
+    error_msg = str(exc)
+    logger.error(f"🛢️ Error de Base de Datos: {error_msg}", exc_info=True)
     return JSONResponse(
         status_code=500,
-        content={"detail": "Error en la operación de base de datos."},
+        content={"detail": f"Error en la operación de base de datos: {error_msg}"},
     )
+
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
@@ -112,7 +114,6 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
 # Routers
 app.include_router(router)
-app.include_router(payments_router)
 
 
 @app.get("/")

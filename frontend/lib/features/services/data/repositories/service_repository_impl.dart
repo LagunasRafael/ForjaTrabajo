@@ -111,7 +111,7 @@ class ServiceRepositoryImpl implements ServiceRepository {
   }
 
   @override
-  Future<void> acceptPostulation(String requestId, String token) async {
+  Future<Map<String, dynamic>> acceptPostulation(String requestId, String token) async {
     try {
       final response = await _dio.post(
         '/services/accept-postulation/$requestId',
@@ -120,6 +120,7 @@ class ServiceRepositoryImpl implements ServiceRepository {
       if (response.statusCode != 200 && response.statusCode != 201) {
         throw Exception('Error al aceptar postulación');
       }
+      return response.data;
     } on DioException catch (e) {
       debugPrint("🚨 Error Dio en acceptPostulation: ${e.response?.data}");
       throw Exception('Fallo al aceptar la postulación en el servidor.');
@@ -127,9 +128,9 @@ class ServiceRepositoryImpl implements ServiceRepository {
   }
 
   @override
-  Future<List<ServiceEntity>> getMyApplications(String token) async {
+  Future<List<ServiceEntity>> getMyApplications() async {
     try {
-      final List<dynamic> data = await requestDS.getMyApplications(token);
+      final List<dynamic> data = await requestDS.getMyApplications();
       return data.map<ServiceEntity>((json) {
         final serviceMap = json as Map<String, dynamic>;
         debugPrint("🔍 Worker app JSON: $serviceMap");

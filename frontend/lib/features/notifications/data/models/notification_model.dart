@@ -10,6 +10,7 @@ class NotificationModel extends NotificationEntity {
     super.referenceId,
     required super.isRead,
     required super.createdAt,
+    super.targetRole,
   });
 
   factory NotificationModel.fromJson(Map<String, dynamic> json) {
@@ -24,6 +25,8 @@ class NotificationModel extends NotificationEntity {
       createdAt: json['created_at'] != null 
           ? DateTime.parse(json['created_at']) 
           : DateTime.now(),
+      targetRole: json['target_role'],
     );
   }
 }
+

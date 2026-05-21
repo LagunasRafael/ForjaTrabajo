@@ -15,8 +15,8 @@ router = APIRouter()
 
 @router.post("/accept-postulation/{request_id}")
 def accept_worker_postulation(request_id: str, db: Session = Depends(get_db), current_user: auth_models.User = Depends(get_current_user)):
-    service.accept_postulation(db, request_id, str(current_user.id))
-    return JSONResponse(status_code=200, content={"status": "success", "message": "Trabajo aceptado"})
+    result = service.accept_postulation(db, request_id, str(current_user.id))
+    return result
 
 @router.put("/jobs/{job_id}/complete", response_model=schemas.Job)
 def complete_job_status(job_id: str, db: Session = Depends(get_db), current_user: auth_models.User = Depends(check_role([Role.CLIENT, Role.WORKER, Role.ADMIN]))):

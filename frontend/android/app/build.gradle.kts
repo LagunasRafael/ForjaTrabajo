@@ -7,9 +7,8 @@ plugins {
 }
 android {
     namespace = "com.example.forja_trabajo"
-    
-    compileSdk = 36 
-    ndkVersion = flutter.ndkVersion
+    compileSdk = 36
+    ndkVersion = "27.0.12077973"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -24,9 +23,8 @@ android {
     defaultConfig {
         applicationId = "com.example.forja_trabajo"
         
-        // 🔴 2. NO USES flutter.minSdkVersion. 
-        // Forzalo a 21 para que Firebase y Geolocator no den errores de compatibilidad.
-        minSdk = flutter.minSdkVersion 
+        // 🔴 1. CAMBIA ESTO: Fija el SDK mínimo a 23 (Requerido por el plugin 'record')
+        minSdk = 23
         
         // 🟡 3. TRUCO DE ESTABILIDAD:
         // Compilamos con la 36 (para que Gradle no llore), 

@@ -9,8 +9,10 @@ class NotificationResponse(BaseModel):
     body: Optional[str] = None
     notification_type: str
     reference_id: Optional[str] = None
+    target_role: Optional[str] = None
     is_read: bool
     created_at: datetime
+
 
     class Config:
         from_attributes = True

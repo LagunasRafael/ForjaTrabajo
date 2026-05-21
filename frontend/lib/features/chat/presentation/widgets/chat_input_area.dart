@@ -99,14 +99,31 @@ class _ChatInputAreaState extends ConsumerState<ChatInputArea> {
   }
 
   void _showOfferDialog() {
+    final scaffoldContext = context;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => OfferBottomSheet(
-        onSendOffer: (amount) {
-          ref.read(chatProvider(widget.conversationId).notifier).sendOffer(amount);
-          widget.onMessageSent?.call();
+        onSendOffer: (amount) async {
+          try {
+            await ref.read(chatProvider(widget.conversationId).notifier).sendOffer(amount);
+            widget.onMessageSent?.call();
+            if (scaffoldContext.mounted) {
+              ScaffoldMessenger.of(scaffoldContext).showSnackBar(
+                SnackBar(
+                  content: Text("✅ Contraoferta de \$${amount.toStringAsFixed(0)} enviada"),
+                  backgroundColor: const Color(0xFF10B981),
+                ),
+              );
+            }
+          } catch (e) {
+            if (scaffoldContext.mounted) {
+              ScaffoldMessenger.of(scaffoldContext).showSnackBar(
+                SnackBar(content: Text("🚨 Error: $e"), backgroundColor: Colors.red),
+              );
+            }
+          }
         },
       ),
     );

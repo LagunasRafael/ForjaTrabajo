@@ -13,6 +13,8 @@ from app.auth import models as auth_models
 from app.services.chats import schemas
 from app.services.chats import service 
 from app.services import models as service_models
+from app.payments import models as payment_models
+from app.payments.services import refund_payment, capture_payment
 from app.utils.s3 import upload_chat_media_to_s3
 from app.services.notifications import service as notif_service
 from fastapi import UploadFile, File, BackgroundTasks
@@ -671,6 +673,17 @@ async def resolve_dispute(
     
     import datetime
     if resolve_data.winner_role == "client":
+        # Reembolsar en Stripe antes de cambiar estados
+        contract = db.query(payment_models.Contract).filter(
+            payment_models.Contract.job_id == job.id
+        ).first()
+        if contract:
+            payment = db.query(payment_models.Payment).filter(
+                payment_models.Payment.contract_id == contract.id
+            ).first()
+            if payment and payment.stripe_payment_intent_id:
+                refund_payment(db, payment.id)
+
         job.status = service_models.JobStatus.CANCELLED # type: ignore
         resolution_msg = "RESOLUCION FINAL: La disputa se ha resuelto a favor del CLIENTE. Se procedera al reembolso del dinero congelado."
         
@@ -681,6 +694,9 @@ async def resolve_dispute(
             background_tasks.add_task(send_dispute_resolved_email, worker.email, False, "worker") # type: ignore
             
     elif resolve_data.winner_role == "worker":
+        # Capturar pago en Stripe antes de cambiar estados
+        capture_payment(db, job.id)
+
         job.status = service_models.JobStatus.COMPLETED # type: ignore
         job.completed_at = datetime.datetime.utcnow() # type: ignore
         resolution_msg = "RESOLUCION FINAL: La disputa se ha resuelto a favor del TRABAJADOR. El pago ha sido autorizado y liberado."

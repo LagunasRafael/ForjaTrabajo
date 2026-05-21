@@ -34,13 +34,13 @@ class ChatRepositoryImpl implements ChatRepository {
   }
 
   @override
-  Future<void> sendOffer(String conversationId, double amount) async {
-    await remoteDataSource.sendOffer(conversationId, amount);
+  Future<Map<String, dynamic>> sendOffer(String conversationId, double amount) async {
+    return await remoteDataSource.sendOffer(conversationId, amount);
   }
   
   @override
-  Future<void> respondOffer(String messageId, String action) async {
-    await remoteDataSource.respondToOffer(messageId, action);
+  Future<Map<String, dynamic>> respondOffer(String messageId, String action) async {
+    return await remoteDataSource.respondToOffer(messageId, action);
   }
 
   @override

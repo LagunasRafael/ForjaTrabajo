@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+from typing import Optional
 from app.services import models
 from app.auth import models as auth_models
 from app.utils.notifications import send_push_notification
@@ -17,7 +18,8 @@ def create_in_app_notification(
     title: str, 
     body: str, 
     notification_type: str, 
-    reference_id: str = None
+    reference_id: str = None,
+    target_role: str = None
 ):
     """Guarda una notificación en la base de datos para el historial in-app."""
     try:
@@ -26,8 +28,10 @@ def create_in_app_notification(
             title=title,
             body=body,
             notification_type=notification_type,
-            reference_id=reference_id
+            reference_id=reference_id,
+            target_role=target_role
         )
+
         db.add(new_notification)
         db.commit()
         db.refresh(new_notification)
@@ -75,8 +79,10 @@ def notify_new_application(db: Session, service_entry: models.Service, worker: a
             else:
                 create_in_app_notification(
                     db=db, user_id=str(client.id), title=title, body=body,
-                    notification_type="new_application", reference_id=str(service_entry.id)
+                    notification_type="new_application", reference_id=str(service_entry.id),
+                    target_role="client"
                 )
+
             
             if client.fcm_token:
                 send_push_notification(
@@ -86,7 +92,8 @@ def notify_new_application(db: Session, service_entry: models.Service, worker: a
                     data={
                         "type": "new_application", 
                         "service_id": str(service_entry.id),
-                        "service_title": service_entry.title
+                        "service_title": service_entry.title,
+                        "target_role": "client"
                     }
                 )
     except Exception as e:
@@ -102,15 +109,18 @@ def notify_job_accepted(db: Session, job: models.Job, service_title: str, conver
             
             create_in_app_notification(
                 db=db, user_id=str(worker.id), title=title, body=body,
-                notification_type="job_accepted", reference_id=str(job.id)
+                notification_type="job_accepted", reference_id=str(job.id),
+                target_role="worker"
             )
+
             
             if worker.fcm_token:
                 # Data para navegación
                 data = {
                     "type": "job_accepted", 
                     "job_id": str(job.id),
-                    "service_title": service_title
+                    "service_title": service_title,
+                    "target_role": "worker"
                 }
                 if conversation_id:
                     data["conversation_id"] = str(conversation_id)
@@ -134,15 +144,21 @@ def notify_job_completed(db: Session, job: models.Job):
             
             create_in_app_notification(
                 db=db, user_id=str(worker.id), title=title, body=body,
-                notification_type="job_completed", reference_id=str(job.id)
+                notification_type="job_completed", reference_id=str(job.id),
+                target_role="worker"
             )
+
             
             if worker.fcm_token:
                 send_push_notification(
                     fcm_token=str(worker.fcm_token),
                     title=title,
                     body=body,
-                    data={"type": "job_completed", "job_id": str(job.id)}
+                    data={
+                        "type": "job_completed",
+                        "job_id": str(job.id),
+                        "target_role": "worker"
+                    }
                 )
     except Exception as e:
         logger.warning(f"⚠️ Error en notify_job_completed: {e}")
@@ -157,15 +173,21 @@ def notify_job_waiting_confirmation(db: Session, job: models.Job):
             
             create_in_app_notification(
                 db=db, user_id=str(client.id), title=title, body=body,
-                notification_type="job_waiting_confirmation", reference_id=str(job.id)
+                notification_type="job_waiting_confirmation", reference_id=str(job.id),
+                target_role="client"
             )
+
             
             if client.fcm_token:
                 send_push_notification(
                     fcm_token=str(client.fcm_token),
                     title=title,
                     body=body,
-                    data={"type": "job_waiting_confirmation", "job_id": str(job.id)}
+                    data={
+                        "type": "job_waiting_confirmation",
+                        "job_id": str(job.id),
+                        "target_role": "client"
+                    }
                 )
     except Exception as e:
         logger.warning(f"⚠️ Error en notify_job_waiting_confirmation: {e}")
@@ -199,10 +221,16 @@ def notify_offer_responded(db: Session, conversation_id: str, receiver_id: str, 
                 title = "Oferta retirada"
                 body = f"{sender_name} retiró la contraoferta de ${amount}."
             
+            # Determinar el rol del receptor
+            convo = db.query(models.Conversation).filter(models.Conversation.id == conversation_id).first()
+            role = "client" if convo and str(convo.client_id) == str(receiver.id) else "worker"
+
             create_in_app_notification(
                 db=db, user_id=str(receiver.id), title=title, body=body,
-                notification_type="offer_responded", reference_id=str(conversation_id)
+                notification_type="offer_responded", reference_id=str(conversation_id),
+                target_role=role
             )
+
             
             if receiver.fcm_token:
                 send_push_notification(
@@ -213,7 +241,8 @@ def notify_offer_responded(db: Session, conversation_id: str, receiver_id: str, 
                         "type": "offer_responded", 
                         "action": action, 
                         "conversation_id": str(conversation_id),
-                        "sender_name": sender_name
+                        "sender_name": sender_name,
+                        "target_role": role
                     }
                 )
     except Exception as e:
@@ -265,7 +294,8 @@ def notify_new_offer(db: Session, conversation_id: str, receiver_id: str, sender
                     data={
                         "type": "new_offer", 
                         "conversation_id": str(conversation_id),
-                        "sender_name": sender_name
+                        "sender_name": sender_name,
+                        "target_role": role
                     }
                 )
     except Exception as e:
@@ -278,6 +308,7 @@ def notify_new_message(db: Session, conversation_id: str, sender_id: str, conten
         if not convo: return
         
         receiver_id = str(convo.worker_id) if str(convo.client_id) == str(sender_id) else str(convo.client_id)
+        receiver_role = "client" if str(convo.client_id) == receiver_id else "worker"
         sender = db.query(auth_models.User).filter(auth_models.User.id == str(sender_id)).first()
         receiver = db.query(auth_models.User).filter(auth_models.User.id == receiver_id).first()
         
@@ -292,13 +323,45 @@ def notify_new_message(db: Session, conversation_id: str, sender_id: str, conten
                 data={
                     "type": "new_message", 
                     "conversation_id": str(conversation_id),
-                    "sender_name": sender.full_name if sender else "Chat"
+                    "sender_name": sender.full_name if sender else "Chat",
+                    "target_role": receiver_role
                 }
             )
             # No guardamos mensaje en historial in-app de notificaciones para no saturar,
             # ya que el chat tiene su propia persistencia. Pero se podría si se desea.
     except Exception as e:
         logger.warning(f"⚠️ Error en notify_new_message: {e}")
+
+def notify_payment_made(db: Session, worker_id: str, amount: float, service_title: str, job_id: str = None):
+    """Notifica al trabajador que recibió un pago."""
+    try:
+        worker = db.query(auth_models.User).filter(auth_models.User.id == worker_id).first()
+        if worker:
+            title = "¡Pago recibido! 💰"
+            body = f"Recibiste ${amount:.2f} por: {service_title}"
+
+            create_in_app_notification(
+                db=db, user_id=str(worker.id), title=title, body=body,
+                notification_type="payment_released", reference_id=job_id or str(worker.id),
+                target_role="worker"
+            )
+
+            if worker.fcm_token:
+                send_push_notification(
+                    fcm_token=str(worker.fcm_token),
+                    title=title,
+                    body=body,
+                    data={
+                        "type": "payment_released",
+                        "job_id": job_id or "",
+                        "amount": str(amount),
+                        "service_title": service_title,
+                        "target_role": "worker"
+                    }
+                )
+    except Exception as e:
+        logger.warning(f"⚠️ Error en notify_payment_made: {e}")
+
 
 def notify_job_cancelled(db: Session, job: models.Job, cancelled_by_id: str):
     """Notifica a la otra parte que el trabajo fue cancelado."""
@@ -318,15 +381,22 @@ def notify_job_cancelled(db: Session, job: models.Job, cancelled_by_id: str):
             
             create_in_app_notification(
                 db=db, user_id=receiver_id, title=title, body=body,
-                notification_type="job_cancelled", reference_id=str(job.id)
+                notification_type="job_cancelled", reference_id=str(job.id),
+                target_role="client" if role_canceller == "El trabajador" else "worker"
             )
+
             
             if receiver.fcm_token:
+                receiver_role_push = "client" if role_canceller == "El trabajador" else "worker"
                 send_push_notification(
                     fcm_token=str(receiver.fcm_token),
                     title=title,
                     body=body,
-                    data={"type": "job_cancelled", "job_id": str(job.id)}
+                    data={
+                        "type": "job_cancelled",
+                        "job_id": str(job.id),
+                        "target_role": receiver_role_push
+                    }
                 )
     except Exception as e:
         logger.warning(f"⚠️ Error en notify_job_cancelled: {e}")
@@ -335,10 +405,16 @@ def notify_job_cancelled(db: Session, job: models.Job, cancelled_by_id: str):
 # OTROS MÉTODOS EXISTENTES
 # ---------------------------------------------------------
 
-def get_user_notifications(db: Session, user_id: str, limit: int = 50):
-    return db.query(models.Notification).filter(
-        models.Notification.user_id == user_id
-    ).order_by(models.Notification.created_at.desc()).limit(limit).all()
+def get_user_notifications(db: Session, user_id: str, role: Optional[str] = None, limit: int = 50):
+    query = db.query(models.Notification).filter(models.Notification.user_id == user_id)
+
+    if role:
+        query = query.filter(
+            (models.Notification.target_role == role) | (models.Notification.target_role.is_(None))
+        )
+
+    return query.order_by(models.Notification.created_at.desc()).limit(limit).all()
+
 
 def mark_notification_as_read(db: Session, notification_id: str, user_id: str):
     notification = db.query(models.Notification).filter(

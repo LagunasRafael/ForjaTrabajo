@@ -36,6 +36,7 @@ class User(Base):
     
     is_active = Column(Boolean, default=True)
     is_identity_verified = Column(Boolean, default=False)
+    stripe_account_id = Column(String, nullable=True)
     is_banned = Column(Boolean, default=False, nullable=False)
 
     services = relationship("Service", back_populates="owner")

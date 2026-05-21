@@ -121,4 +121,4 @@ class ChatListNotifier extends StateNotifier<AsyncValue<List<ChatSummaryEntity>>
 
     state = AsyncValue.data(updatedChats);
   }
-}
+}

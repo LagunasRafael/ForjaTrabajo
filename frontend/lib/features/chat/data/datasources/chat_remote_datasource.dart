@@ -58,9 +58,9 @@ class ChatRemoteDataSource {
     }
   }
 
-  Future<void> sendOffer(String conversationId, double amount) async {
+  Future<Map<String, dynamic>> sendOffer(String conversationId, double amount) async {
     try {
-      await _apiClient.dio.post(
+      final response = await _apiClient.dio.post(
         '/services/chat/offer',
         data: {
           "conversation_id": conversationId,
@@ -68,19 +68,21 @@ class ChatRemoteDataSource {
         },
       );
       print("✅ Oferta enviada con éxito: \$$amount");
+      return response.data;
     } catch (e) {
       print("🚨 ERROR EN DATASOURCE (SEND OFFER): $e");
       rethrow;
     }
   }
 
-  Future<void> respondToOffer(String messageId, String action) async {
+  Future<Map<String, dynamic>> respondToOffer(String messageId, String action) async {
     try {
-      await _apiClient.dio.post(
+      final response = await _apiClient.dio.post(
         '/services/chat/offer/$messageId/action',
         data: {"action": action}, // "accept" o "reject"
       );
       print("✅ Oferta respondida: $action");
+      return response.data;
     } catch (e) {
       print("🚨 ERROR EN DATASOURCE (RESPOND OFFER): $e");
       rethrow;
