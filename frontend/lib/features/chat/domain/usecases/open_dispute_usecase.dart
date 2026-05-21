@@ -1,3 +1,4 @@
+import '../entities/message_entity.dart';
 import '../repositories/chat_repository.dart';
 
 class OpenDisputeUseCase {
@@ -5,7 +6,7 @@ class OpenDisputeUseCase {
 
   OpenDisputeUseCase(this.repository);
 
-  Future<void> call(String conversationId, String reason) async {
+  Future<MessageEntity> call(String conversationId, String reason) async {
     return await repository.openDispute(conversationId, reason);
   }
 }

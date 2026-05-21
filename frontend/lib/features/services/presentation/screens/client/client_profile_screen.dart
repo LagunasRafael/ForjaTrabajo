@@ -9,6 +9,7 @@ import 'package:forja_trabajo/features/profile/presentation/settings_screen.dart
 import 'package:forja_trabajo/features/profile/presentation/screens/user_profile_screen.dart';
 import 'package:forja_trabajo/features/profile/presentation/screens/identity_verification_screen.dart';
 import 'package:forja_trabajo/features/profile/presentation/providers/public_profile_provider.dart';
+import 'package:forja_trabajo/features/services/presentation/providers/nav_providers.dart';
 
 class ClientProfileScreen extends ConsumerWidget {
   const ClientProfileScreen({super.key});
@@ -61,13 +62,17 @@ class ClientProfileScreen extends ConsumerWidget {
                     onTap: () {
                       ref.read(clientNavProvider.notifier).state = 3;
                     }),
-ProfileMenuOption(
+                ProfileMenuOption(
                     icon: LucideIcons.fileText,
                     title: 'Mis Facturas',
+                    onTap: () {
+                      Navigator.pushNamed(context, '/client/invoices');
+                    }),
+                ProfileMenuOption(
                     icon: LucideIcons.creditCard,
                     title: 'Métodos de Pago',
                     onTap: () {
-                      Navigator.pushNamed(context, '/client/invoices');
+                      Navigator.pushNamed(context, '/client/payment-methods');
                     }),
                 if (user?.isIdentityVerified != true &&
                     verificationAsync.valueOrNull?['has_pending_verification'] != true)

@@ -15,6 +15,8 @@ import 'package:forja_trabajo/features/services/presentation/screens/worker/my_j
 import 'package:forja_trabajo/features/services/presentation/providers/nav_providers.dart';
 import 'package:forja_trabajo/features/profile/presentation/screens/identity_verification_screen.dart';
 import 'package:forja_trabajo/features/profile/presentation/providers/public_profile_provider.dart';
+import 'package:forja_trabajo/features/payments/presentation/providers/wallet_status_provider.dart';
+import 'package:forja_trabajo/features/payments/presentation/screens/wallet_screen.dart';
 
 class WorkerProfileScreen extends ConsumerStatefulWidget {
   const WorkerProfileScreen({super.key});
@@ -190,22 +192,9 @@ class _WorkerProfileScreenState extends ConsumerState<WorkerProfileScreen> {
                         );
                       }
                     }),
-                ListTile(
-                  leading: Icon(LucideIcons.wallet,
-                      color: AppTheme.primaryColor, size: 20),
-                  title: Text(
-                    'Configurar mi Billetera',
-                    style: GoogleFonts.inter(
-                        fontSize: 15, fontWeight: FontWeight.w500),
-                  ),
-                  trailing: _isSettingUpWallet
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(LucideIcons.chevronRight, size: 20),
-                  onTap: _isSettingUpWallet ? null : _setupWallet,
+                _WalletOption(
+                  isSettingUp: _isSettingUpWallet,
+                  onSetup: _setupWallet,
                 ),
                 ProfileMenuOption(
                     icon: LucideIcons.history,
@@ -258,6 +247,88 @@ class _WorkerProfileScreenState extends ConsumerState<WorkerProfileScreen> {
             const SizedBox(height: 24),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _WalletOption extends ConsumerWidget {
+  final bool isSettingUp;
+  final VoidCallback onSetup;
+
+  const _WalletOption({
+    required this.isSettingUp,
+    required this.onSetup,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final statusAsync = ref.watch(walletStatusProvider);
+
+    return statusAsync.when(
+      data: (status) {
+        if (status.isReady) {
+          return ProfileMenuOption(
+            icon: LucideIcons.wallet,
+            title: 'Mi Billetera',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const WalletScreen(),
+                ),
+              );
+            },
+          );
+        }
+        return ListTile(
+          leading: Icon(LucideIcons.wallet,
+              color: AppTheme.primaryColor, size: 20),
+          title: Text(
+            'Configurar mi Billetera',
+            style: GoogleFonts.inter(
+                fontSize: 15, fontWeight: FontWeight.w500),
+          ),
+          trailing: isSettingUp
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(LucideIcons.chevronRight, size: 20),
+          onTap: isSettingUp ? null : onSetup,
+        );
+      },
+      loading: () => ListTile(
+        leading: Icon(LucideIcons.wallet,
+            color: AppTheme.primaryColor, size: 20),
+        title: Text(
+          'Configurar mi Billetera',
+          style: GoogleFonts.inter(
+              fontSize: 15, fontWeight: FontWeight.w500),
+        ),
+        trailing: const SizedBox(
+          width: 20,
+          height: 20,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      ),
+      error: (_, __) => ListTile(
+        leading: Icon(LucideIcons.wallet,
+            color: AppTheme.primaryColor, size: 20),
+        title: Text(
+          'Configurar mi Billetera',
+          style: GoogleFonts.inter(
+              fontSize: 15, fontWeight: FontWeight.w500),
+        ),
+        trailing: isSettingUp
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Icon(LucideIcons.chevronRight, size: 20),
+        onTap: isSettingUp ? null : onSetup,
       ),
     );
   }

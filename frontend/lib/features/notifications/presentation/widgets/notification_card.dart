@@ -7,6 +7,7 @@ import '../../domain/entities/notification_entity.dart';
 import '../providers/notification_provider.dart';
 import 'package:forja_trabajo/features/services/presentation/providers/nav_providers.dart';
 import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart';
+import 'package:forja_trabajo/features/payments/presentation/screens/wallet_screen.dart';
 
 class NotificationCard extends ConsumerWidget {
   final NotificationEntity notification;
@@ -167,8 +168,13 @@ class NotificationCard extends ConsumerWidget {
         Navigator.pushNamedAndRemoveUntil(context, '/worker_home', (route) => false);
       }
     } else if (type == 'payment_released') {
-      ref.read(workerNavProvider.notifier).state = 2;
       Navigator.pushNamedAndRemoveUntil(context, '/worker_home', (route) => false);
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const WalletScreen(),
+        ),
+      );
     }
   }
 

@@ -416,17 +416,12 @@ class _CandidateCardState extends ConsumerState<CandidateCard> {
       } catch (_) {}
       ref.read(isAcceptingProvider(widget.offer.id).notifier).state = false;
 
-    if (success && mounted) {
+    if (mounted) {
       Navigator.pop(context); 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Contratado"), backgroundColor: Color(0xFF10B981))
       );
     }
   }
-
-  @override
-  void dispose() {
-    _counterOfferController.dispose();
-    super.dispose();
   }
 }

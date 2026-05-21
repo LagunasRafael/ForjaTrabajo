@@ -271,6 +271,33 @@ def download_invoice_pdf(
 
 # --- WORKER STRIPE CONNECT ---
 
+@workers_router.get("/stripe-status", response_model=schemas.StripeStatusResponse)
+def get_worker_stripe_status(
+    db: Session = Depends(get_db),
+    current_user: auth_models.User = Depends(get_current_user)
+):
+    """
+    Devuelve el estado de la cuenta Stripe Connect del trabajador.
+    """
+    user = db.query(auth_models.User).filter(
+        auth_models.User.id == current_user.id
+    ).first()
+
+    if not user or not user.stripe_account_id:
+        return schemas.StripeStatusResponse()
+
+    try:
+        account = stripe.Account.retrieve(user.stripe_account_id)
+        return schemas.StripeStatusResponse(
+            has_stripe_account=True,
+            onboarding_completed=account.charges_enabled,
+            charges_enabled=account.charges_enabled,
+            payouts_enabled=account.payouts_enabled,
+        )
+    except stripe.error.StripeError:
+        return schemas.StripeStatusResponse(has_stripe_account=True)
+
+
 @workers_router.post("/stripe-setup", response_model=schemas.StripeSetupResponse)
 def setup_worker_stripe(data: schemas.StripeSetupRequest, db: Session = Depends(get_db)):
     user = db.query(auth_models.User).filter(auth_models.User.id == data.user_id).first()
@@ -311,6 +338,14 @@ def setup_worker_stripe(data: schemas.StripeSetupRequest, db: Session = Depends(
                 status_code=status.HTTP_502_BAD_GATEWAY,
                 detail=f"Error al crear cuenta de Stripe: {str(e)}"
             )
+
+    # Verificar si ya completó el onboarding
+    try:
+        account = stripe.Account.retrieve(stripe_account_id)
+        if account.charges_enabled and account.payouts_enabled:
+            return schemas.StripeSetupResponse(url="__ALREADY_COMPLETED__")
+    except stripe.error.StripeError:
+        pass
 
     try:
         account_link = stripe.AccountLink.create(

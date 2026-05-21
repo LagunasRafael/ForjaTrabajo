@@ -57,6 +57,9 @@ class ConfirmPaymentRequest(BaseModel):
     amount_mxn: float
     job_id: str
 
+class ConfirmEscrowRequest(BaseModel):
+    payment_intent_id: str
+
 
 # --- Worker Stripe Connect Schemas ---
 
@@ -65,3 +68,9 @@ class StripeSetupRequest(BaseModel):
 
 class StripeSetupResponse(BaseModel):
     url: str
+
+class StripeStatusResponse(BaseModel):
+    has_stripe_account: bool = False
+    onboarding_completed: bool = False
+    charges_enabled: bool = False
+    payouts_enabled: bool = False

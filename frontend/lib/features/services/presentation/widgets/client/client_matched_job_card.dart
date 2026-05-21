@@ -11,6 +11,7 @@ import 'package:forja_trabajo/features/chat/presentation/screens/shared_chat_scr
 import 'package:forja_trabajo/features/profile/presentation/widgets/review_dialog.dart' as forja_review;
 import 'package:forja_trabajo/features/services/presentation/providers/job_management_provider.dart';
 import 'package:forja_trabajo/features/chat/presentation/providers/chat_list_provider.dart';
+import 'package:forja_trabajo/features/services/presentation/screens/client/checkout_screen.dart';
 
 class ClientMatchedJobCard extends ConsumerWidget {
   final ServiceEntity service;

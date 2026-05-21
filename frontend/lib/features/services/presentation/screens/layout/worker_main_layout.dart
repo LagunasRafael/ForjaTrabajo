@@ -8,7 +8,6 @@ import '../worker/my_jobs_screen.dart';
 import 'package:forja_trabajo/features/chat/presentation/screens/chat_list_screen.dart';
 import 'package:forja_trabajo/features/notifications/presentation/screens/notifications_screen.dart';
 import '../worker/worker_profile_screen.dart';
-import 'package:forja_trabajo/features/payments/presentation/screens/wallet_screen.dart';
 
 class WorkerMainLayout extends ConsumerWidget {
   const WorkerMainLayout({super.key});
@@ -23,9 +22,8 @@ class WorkerMainLayout extends ConsumerWidget {
     final List<Widget> screens = [
       const MarketplaceScreen(), // 0
       const MyJobsScreen(), // 1
-      const WalletScreen(), // 2
-      const ChatListScreen(), // 3
-      const WorkerProfileScreen(), // 4
+      const ChatListScreen(), // 2
+      const WorkerProfileScreen(), // 3
     ];
 
     return Scaffold(
@@ -48,6 +46,11 @@ class WorkerMainLayout extends ConsumerWidget {
             selectedIcon: Icon(Icons.search, color: Color(0xFF1E1B4B)),
             label: 'Explorar',
           ),
+          const NavigationDestination(
+            icon: Icon(Icons.work_history_outlined),
+            selectedIcon: Icon(Icons.work_history, color: Color(0xFF1E1B4B)),
+            label: 'Mis Trabajos',
+          ),
           NavigationDestination(
             icon: Badge(
               isLabelVisible: unreadChatCount > 0,
@@ -68,11 +71,6 @@ class WorkerMainLayout extends ConsumerWidget {
               child: const Icon(Icons.chat_bubble, color: Color(0xFF1E1B4B)),
             ),
             label: 'Mensajes',
-          ),
-          const NavigationDestination(
-            icon: Icon(Icons.work_history_outlined),
-            selectedIcon: Icon(Icons.work_history, color: Color(0xFF1E1B4B)),
-            label: 'Mis Trabajos',
           ),
           const NavigationDestination(
             icon: Icon(Icons.person_outline),
