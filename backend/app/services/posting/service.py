@@ -74,13 +74,13 @@ def get_my_services(db: Session, user_id: str):
         .filter(
             models.Service.client_id == user_id,
         )
-        .order_by(models.Service.created_at.desc())
         .all()
     )
 
     result = []
     for service_obj in services:
         already_reviewed = False
+        relevant_date = service_obj.created_at
 
         for request in service_obj.requests:
             if request.job and request.job.status != models.JobStatus.CANCELLED:
@@ -90,11 +90,20 @@ def get_my_services(db: Session, user_id: str):
                 ).first()
                 if existing_review:
                     already_reviewed = True
-                break
+                
+            # Determinar fecha relevante para ordenamiento cruzado (Abierto, En Proceso, Finalizado)
+            if request.job:
+                if request.job.status in [models.JobStatus.COMPLETED, models.JobStatus.CANCELLED] and request.job.completed_at:
+                    relevant_date = request.job.completed_at
+                elif request.job.started_at:
+                    relevant_date = request.job.started_at
 
         setattr(service_obj, 'already_reviewed', already_reviewed)
+        setattr(service_obj, 'relevant_date', relevant_date)
         result.append(service_obj)
 
+    # Ordenar por relevant_date desc
+    result.sort(key=lambda x: getattr(x, 'relevant_date', x.created_at) or x.created_at, reverse=True)
     return result
 
 def get_services_by_category(db: Session, category_id: str):

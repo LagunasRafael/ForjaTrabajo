@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { JobTable } from '../components/JobTable';
 import { getJobsApi } from '../services/job.services';
+import { useAutoRefresh } from '../../../hooks/useAutoRefresh';
 import type { JobPost } from '../types/job.types';
 
 export const JobsPage = () => {
@@ -11,6 +12,8 @@ export const JobsPage = () => {
   useEffect(() => {
     loadJobs();
   }, []);
+
+  useAutoRefresh(() => loadJobs(), 30000);
 
   const loadJobs = async () => {
     try {

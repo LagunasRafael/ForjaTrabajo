@@ -11,9 +11,9 @@ import 'package:timeago/timeago.dart' as timeago;
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_provider.dart';
 import 'core/network/notification_service.dart';
-import 'features/auth/presentation/screens/role_selection_screen.dart';
 import 'features/auth/presentation/screens/login_screen.dart';
 import 'features/auth/presentation/screens/splash_screen.dart';
+import 'features/auth/presentation/screens/role_selection_screen.dart';
 
 import 'features/services/presentation/screens/layout/client_main_layout.dart';
 import 'features/services/presentation/screens/layout/worker_main_layout.dart';
@@ -59,7 +59,7 @@ class ForjaTrabajoApp extends ConsumerWidget {
       home: const SplashScreen(),
 
       routes: {
-        '/login':       (context) => const LoginScreen(),
+        '/login': (context) => const LoginScreen(),
         '/roles':       (context) => const RoleSelectionScreen(),
         '/client_home': (context) => const ClientMainLayout(),
         '/worker_home': (context) => const WorkerMainLayout(),

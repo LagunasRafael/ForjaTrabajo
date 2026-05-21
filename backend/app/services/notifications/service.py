@@ -193,15 +193,33 @@ def notify_job_waiting_confirmation(db: Session, job: models.Job):
         logger.warning(f"⚠️ Error en notify_job_waiting_confirmation: {e}")
 
 def notify_offer_responded(db: Session, conversation_id: str, receiver_id: str, sender_id: str, amount: str, action: str):
-    """Notifica a un usuario que su contraoferta fue aceptada o rechazada."""
+    """Notifica a un usuario que su contraoferta fue aceptada, rechazada o retirada."""
     try:
+        try:
+            val = float(amount)
+            if val.is_integer():
+                amount = str(int(val))
+            else:
+                amount = f"{val:.2f}"
+        except (ValueError, TypeError):
+            pass
+
         receiver = db.query(auth_models.User).filter(auth_models.User.id == receiver_id).first()
         sender = db.query(auth_models.User).filter(auth_models.User.id == sender_id).first()
         if receiver:
-            action_text = "acepto" if action == "accept" else "rechazo"
             sender_name = sender.full_name if sender else "La otra parte"
-            title = f"Oferta {action_text}"
-            body = f"{sender_name} {action_text} tu contraoferta de ${amount}."
+            if action == "accept":
+                action_text = "aceptó"
+                title = "Oferta aceptada"
+                body = f"{sender_name} aceptó tu contraoferta de ${amount}."
+            elif action == "reject":
+                action_text = "rechazó"
+                title = "Oferta rechazada"
+                body = f"{sender_name} rechazó tu contraoferta de ${amount}."
+            else:
+                action_text = "retiró"
+                title = "Oferta retirada"
+                body = f"{sender_name} retiró la contraoferta de ${amount}."
             
             # Determinar el rol del receptor
             convo = db.query(models.Conversation).filter(models.Conversation.id == conversation_id).first()
@@ -231,8 +249,17 @@ def notify_offer_responded(db: Session, conversation_id: str, receiver_id: str, 
         logger.warning(f"⚠️ Error en notify_offer_responded: {e}")
 
 def notify_new_offer(db: Session, conversation_id: str, receiver_id: str, sender_id: str, amount: str):
-    """Notifica al usuario que recibió una nueva contraoferta en el chat."""
+    """Notifica al usuario que recibió una nueva contraoferta en el chat. Agrupa notificaciones pendientes."""
     try:
+        try:
+            val = float(amount)
+            if val.is_integer():
+                amount = str(int(val))
+            else:
+                amount = f"{val:.2f}"
+        except (ValueError, TypeError):
+            pass
+
         receiver = db.query(auth_models.User).filter(auth_models.User.id == receiver_id).first()
         sender = db.query(auth_models.User).filter(auth_models.User.id == sender_id).first()
         if receiver:
@@ -240,16 +267,24 @@ def notify_new_offer(db: Session, conversation_id: str, receiver_id: str, sender
             title = "Nueva contraoferta"
             body = f"{sender_name} ha realizado una contraoferta de ${amount}"
             
-            # Determinar el rol del receptor
-            convo = db.query(models.Conversation).filter(models.Conversation.id == conversation_id).first()
-            role = "client" if convo and str(convo.client_id) == str(receiver.id) else "worker"
+            existing_notif = db.query(models.Notification).filter(
+                models.Notification.user_id == str(receiver.id),
+                models.Notification.notification_type == "new_offer",
+                models.Notification.reference_id == str(conversation_id),
+                models.Notification.is_read == False
+            ).first()
 
-            create_in_app_notification(
-                db=db, user_id=str(receiver.id), title=title, body=body,
-                notification_type="new_offer", reference_id=str(conversation_id),
-                target_role=role
-            )
-
+            if existing_notif:
+                from datetime import datetime
+                existing_notif.title = title
+                existing_notif.body = body
+                existing_notif.created_at = datetime.utcnow()
+                db.commit()
+            else:
+                create_in_app_notification(
+                    db=db, user_id=str(receiver.id), title=title, body=body,
+                    notification_type="new_offer", reference_id=str(conversation_id)
+                )
             
             if receiver.fcm_token:
                 send_push_notification(

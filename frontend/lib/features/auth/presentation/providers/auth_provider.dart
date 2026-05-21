@@ -303,18 +303,22 @@ class AuthNotifier extends Notifier<AuthState> {
   }
 
   Future<void> _syncFcmToken() async {
-    final notificationService = NotificationService();
-    await notificationService.initNotifications(userRole: state.user?.role);
-    final String? fcmToken = await notificationService.getToken();
-    debugPrint('📢 DEBUG SYNC: Token obtenido = ${fcmToken != null ? 'SI' : 'NO (NULL)'}');
-    if (fcmToken != null) {
-      debugPrint('📢 DEBUG SYNC: Enviando token al servidor...');
-      final dataSource = ref.read(authDataSourceProvider);
-      await dataSource.updateFcmToken(fcmToken);
-      notificationService.listenToTokenChanges((newToken) {
-        debugPrint('📢 DEBUG SYNC: Token refrescado, enviando nuevo...');
-        dataSource.updateFcmToken(newToken);
-      });
+    try {
+      final notificationService = NotificationService();
+      await notificationService.initNotifications();
+      final String? fcmToken = await notificationService.getToken();
+      debugPrint('📢 DEBUG SYNC: Token obtenido = ${fcmToken != null ? 'SI' : 'NO (NULL)'}');
+      if (fcmToken != null) {
+        debugPrint('📢 DEBUG SYNC: Enviando token al servidor...');
+        final dataSource = ref.read(authDataSourceProvider);
+        await dataSource.updateFcmToken(fcmToken);
+        notificationService.listenToTokenChanges((newToken) {
+          debugPrint('📢 DEBUG SYNC: Token refrescado, enviando nuevo...');
+          dataSource.updateFcmToken(newToken);
+        });
+      }
+    } catch (e) {
+      debugPrint('❌ Error sincronizando FCM token: $e');
     }
   }
 }

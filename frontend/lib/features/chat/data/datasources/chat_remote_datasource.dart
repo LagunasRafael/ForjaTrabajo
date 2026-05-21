@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:http_parser/http_parser.dart';
 import 'package:forja_trabajo/core/network/api_client.dart';
 // Asegúrate de importar tu modelo si lo necesitas
 // import '../models/message_model.dart'; 
@@ -113,8 +114,32 @@ class ChatRemoteDataSource {
 
   Future<String?> uploadMedia(String conversationId, String filePath) async {
     try {
+      final ext = filePath.split('.').last.toLowerCase();
+      String contentType;
+      if (['jpg', 'jpeg', 'png', 'webp'].contains(ext)) {
+        contentType = 'image/jpeg';
+      } else if (['mp4', 'mov', 'mkv'].contains(ext)) {
+        contentType = 'video/mp4';
+      } else if (['m4a', 'aac'].contains(ext)) {
+        contentType = 'audio/m4a';
+      } else if (ext == 'mp3') {
+        contentType = 'audio/mpeg';
+      } else if (ext == 'ogg') {
+        contentType = 'audio/ogg';
+      } else if (ext == 'wav') {
+        contentType = 'audio/wav';
+      } else if (ext == 'opus') {
+        contentType = 'audio/opus';
+      } else {
+        contentType = 'application/octet-stream';
+      }
+
       final formData = FormData.fromMap({
-        'file': await MultipartFile.fromFile(filePath),
+        'file': await MultipartFile.fromFile(
+          filePath,
+          filename: 'media.$ext',
+          contentType: MediaType.parse(contentType),
+        ),
       });
       final response = await _apiClient.dio.post(
         '/services/chat/$conversationId/upload',
@@ -128,17 +153,30 @@ class ChatRemoteDataSource {
     }
   }
 
-  Future<void> openDispute(String conversationId, String reason) async {
+  Future<Map<String, dynamic>> openDispute(String conversationId, String reason) async {
     try {
-      await _apiClient.dio.post(
+      final response = await _apiClient.dio.post(
         '/services/chat/$conversationId/dispute',
         data: {"reason": reason},
       );
-      print("✅ Disputa abierta exitosamente para la conversación: $conversationId");
+      print("Disputa abierta exitosamente para la conversación: $conversationId");
+      return response.data as Map<String, dynamic>;
     } catch (e) {
-      print("🚨 ERROR EN DATASOURCE (OPEN DISPUTE): $e");
+      print("ERROR EN DATASOURCE (OPEN DISPUTE): $e");
       rethrow;
     }
+  }
+
+  Future<Map<String, dynamic>> sendMessageRest(String conversationId, String content, String messageType) async {
+    final response = await _apiClient.dio.post(
+      '/services/chat/$conversationId/message',
+      data: {
+        "content": content,
+        "message_type": messageType,
+      },
+    );
+    print("Mensaje enviado por REST: ${response.data['id']}");
+    return response.data;
   }
 
   Future<void> markAsRead(String conversationId) async {

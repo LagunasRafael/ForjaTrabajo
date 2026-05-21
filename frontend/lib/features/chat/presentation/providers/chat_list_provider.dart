@@ -15,10 +15,19 @@ class ChatListNotifier extends StateNotifier<AsyncValue<List<ChatSummaryEntity>>
   final ChatRepository repository;
 
   StreamSubscription? _notifSubscription;
+  Timer? _pollingTimer;
 
   ChatListNotifier(this.repository) : super(const AsyncValue.loading()) {
     loadRealChats();
     _listenToNotifications();
+    _startPolling();
+  }
+
+  void _startPolling() {
+    _pollingTimer?.cancel();
+    _pollingTimer = Timer.periodic(const Duration(seconds: 8), (_) {
+      if (mounted) loadRealChats();
+    });
   }
 
   void _listenToNotifications() {
@@ -36,6 +45,7 @@ class ChatListNotifier extends StateNotifier<AsyncValue<List<ChatSummaryEntity>>
   @override
   void dispose() {
     _notifSubscription?.cancel();
+    _pollingTimer?.cancel();
     super.dispose();
   }
 
@@ -67,14 +77,14 @@ class ChatListNotifier extends StateNotifier<AsyncValue<List<ChatSummaryEntity>>
       return chat;
     }).toList();
 
-    state = AsyncData(updatedChats);
+    state = AsyncValue.data(updatedChats);
 
     try {
       await repository.archiveChat(chatId, archive);
     } catch (e) {
       if (!mounted) return;
       // Rollback: restaurar el estado anterior si falla
-      state = AsyncData(currentChats);
+      state = AsyncValue.data(currentChats);
       print("Error archivando: $e");
     }
   }
@@ -84,7 +94,7 @@ class ChatListNotifier extends StateNotifier<AsyncValue<List<ChatSummaryEntity>>
     final currentChats = state.value ?? [];
     
     final updatedChats = currentChats.where((chat) => chat.id != chatId).toList();
-    state = AsyncData(updatedChats);
+    state = AsyncValue.data(updatedChats);
 
     try {
       await repository.deleteChat(chatId);
@@ -98,6 +108,7 @@ class ChatListNotifier extends StateNotifier<AsyncValue<List<ChatSummaryEntity>>
 
   /// Marca localmente un chat como leído para feedback instantáneo
   void markAsReadLocal(String chatId) {
+    if (!mounted) return;
     final current = state.value;
     if (current == null) return;
     
@@ -110,4 +121,4 @@ class ChatListNotifier extends StateNotifier<AsyncValue<List<ChatSummaryEntity>>
 
     state = AsyncValue.data(updatedChats);
   }
-}
+}

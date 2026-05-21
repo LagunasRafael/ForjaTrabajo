@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart'; // Para kDebugMode
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'dart:io' show Platform;
+import 'package:forja_trabajo/core/network/notification_service.dart';
 
 class ApiClient {
   static final ApiClient _instance = ApiClient._internal();
@@ -16,7 +17,6 @@ class ApiClient {
 
   factory ApiClient() => _instance;
 
-  // Constructor interno privado
   ApiClient._internal() : storage = const FlutterSecureStorage() {
     dio = Dio(
       BaseOptions(
@@ -98,12 +98,30 @@ class ApiClient {
             await storage.delete(key: 'jwt_token');
             await storage.delete(key: 'refresh_token');
 
-            // TODO: Aquí luego pondremos código para mandar al usuario a la pantalla de Login
-            print('🚨 Sesión totalmente expirada. Limpiando tokens...');
+            print('🚨 Sesión totalmente expirada. Redirigiendo a login...');
+            navigatorKey.currentState?.pushNamedAndRemoveUntil('/login', (route) => false);
           }
-          return handler.next(e);
+            return handler.next(e);
         },
       ),
     );
+  }
+
+  Future<Map<String, dynamic>> reportUser({
+    required String reportedUserId,
+    String? reportedServiceId,
+    required String reason,
+    String? description,
+  }) async {
+    final response = await dio.post(
+      '/services/report',
+      data: {
+        'reported_user_id': reportedUserId,
+        if (reportedServiceId != null) 'reported_service_id': reportedServiceId,
+        'reason': reason,
+        if (description != null) 'description': description,
+      },
+    );
+    return response.data;
   }
 }

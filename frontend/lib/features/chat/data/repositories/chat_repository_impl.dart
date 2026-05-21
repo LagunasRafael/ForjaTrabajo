@@ -17,6 +17,12 @@ class ChatRepositoryImpl implements ChatRepository {
   }
 
   @override
+  Future<MessageEntity> sendMessageRest(String conversationId, String content, String messageType) async {
+    final json = await remoteDataSource.sendMessageRest(conversationId, content, messageType);
+    return MessageModel.fromJson(json);
+  }
+
+  @override
   Future<String> getOrCreateConversation(String requestId) async {
     return await remoteDataSource.startOrGetChat(requestId);
   }
@@ -53,8 +59,11 @@ class ChatRepositoryImpl implements ChatRepository {
   }
 
   @override
-  Future<void> openDispute(String conversationId, String reason) async {
-    await remoteDataSource.openDispute(conversationId, reason);
+  Future<MessageEntity> openDispute(String conversationId, String reason) async {
+    final data = await remoteDataSource.openDispute(conversationId, reason);
+    // El backend devuelve { "status": ..., "system_message": {...} }
+    final msgJson = data['system_message'] as Map<String, dynamic>;
+    return MessageModel.fromJson(msgJson);
   }
 
   @override

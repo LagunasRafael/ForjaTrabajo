@@ -16,7 +16,6 @@ class ClientMainLayout extends ConsumerWidget {
     final currentIndex = ref.watch(clientNavProvider);
     final unreadCount = ref.watch(unreadCountProvider);
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
 
     final List<Widget> screens = [
       const HomeClientScreen(), // 0
@@ -52,7 +51,7 @@ class ClientMainLayout extends ConsumerWidget {
       bottomNavigationBar: BottomAppBar(
         shape: const CircularNotchedRectangle(),
         notchMargin: 8.0,
-        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+        color: theme.colorScheme.surface,
         elevation: 10,
         shadowColor: Colors.black.withValues(alpha: 0.4),
         child: SizedBox(
@@ -62,22 +61,22 @@ class ClientMainLayout extends ConsumerWidget {
             children: <Widget>[
               Expanded(
                   child: _buildNavItem(
-                      Icons.home_filled, 'Inicio', 0, ref, currentIndex,
+                      Icons.home_filled, 'Explorar', 0, ref, currentIndex, theme,
                       badgeCount: 0)),
               Expanded(
                   child: _buildNavItem(
-                      Icons.chat_bubble_rounded, 'Mensajes', 1, ref, currentIndex,
+                      Icons.chat_bubble_rounded, 'Mensajes', 1, ref, currentIndex, theme,
                       badgeCount: unreadCount)),
 
               const SizedBox(width: 48), // 👈 El hueco para el botón
 
               Expanded(
                   child: _buildNavItem(
-                      Icons.work, 'Mis Trabajos', 3, ref, currentIndex,
+                      Icons.work, 'Mis Trabajos', 3, ref, currentIndex, theme,
                       badgeCount: 0)),
               Expanded(
                   child: _buildNavItem(
-                      Icons.person, 'Perfil', 4, ref, currentIndex,
+                      Icons.person, 'Perfil', 4, ref, currentIndex, theme,
                       badgeCount: 0)),
             ],
           ),
@@ -87,10 +86,10 @@ class ClientMainLayout extends ConsumerWidget {
   }
 
   Widget _buildNavItem(
-      IconData icon, String label, int index, WidgetRef ref, int currentIndex,
+      IconData icon, String label, int index, WidgetRef ref, int currentIndex, ThemeData theme,
       {int badgeCount = 0}) {
     final isSelected = currentIndex == index;
-    final color = isSelected ? const Color(0xFF1E1B4B) : Colors.grey.shade400;
+    final color = isSelected ? const Color(0xFF1E1B4B) : theme.colorScheme.onSurface.withOpacity(0.5);
 
     Widget iconWidget = Icon(icon, color: color, size: 26);
 

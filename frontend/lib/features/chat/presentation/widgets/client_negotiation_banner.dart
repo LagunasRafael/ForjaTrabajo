@@ -12,11 +12,12 @@ class ClientNegotiationBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFFF5F3FF), // Morado muy clarito
+        color: theme.colorScheme.primaryContainer,
         border: Border.all(color: const Color(0xFFC4B5FD)), // Borde morado
         borderRadius: BorderRadius.circular(16),
       ),
@@ -39,8 +40,8 @@ class ClientNegotiationBanner extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   "Tu oferta: \$$lastOfferAmount",
-                  style: const TextStyle(
-                    color: Colors.black87,
+                  style: TextStyle(
+                    color: theme.colorScheme.onSurface,
                     fontSize: 15,
                     fontWeight: FontWeight.bold,
                   ),

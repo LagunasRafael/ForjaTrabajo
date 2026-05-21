@@ -5,11 +5,8 @@ import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:forja_trabajo/features/auth/presentation/widgets/profile_shared_widgets.dart';
-import 'package:forja_trabajo/features/services/presentation/screens/client/edit_profile_screen.dart';
 import 'package:forja_trabajo/features/profile/presentation/settings_screen.dart';
 import 'package:forja_trabajo/features/profile/presentation/screens/user_profile_screen.dart';
-import 'package:forja_trabajo/features/services/presentation/providers/nav_providers.dart';
-import 'package:forja_trabajo/features/notifications/presentation/screens/notifications_screen.dart';
 import 'package:forja_trabajo/features/profile/presentation/screens/identity_verification_screen.dart';
 import 'package:forja_trabajo/features/profile/presentation/providers/public_profile_provider.dart';
 
@@ -67,19 +64,10 @@ class ClientProfileScreen extends ConsumerWidget {
 ProfileMenuOption(
                     icon: LucideIcons.fileText,
                     title: 'Mis Facturas',
+                    icon: LucideIcons.creditCard,
+                    title: 'Métodos de Pago',
                     onTap: () {
                       Navigator.pushNamed(context, '/client/invoices');
-                    }),
-                ProfileMenuOption(
-                    icon: LucideIcons.bell,
-                    title: 'Notificaciones',
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const NotificationsScreen(),
-                        ),
-                      );
                     }),
                 if (user?.isIdentityVerified != true &&
                     verificationAsync.valueOrNull?['has_pending_verification'] != true)
@@ -98,17 +86,6 @@ ProfileMenuOption(
                           ref.invalidate(authProvider);
                         });
                       }),
-                ProfileMenuOption(
-                  icon: LucideIcons.pencil,
-                  title: 'Editar Perfil',
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => const EditProfileScreen()),
-                    );
-                  },
-                ),
                 ProfileMenuOption(
                   icon: LucideIcons.settings,
                   title: 'Configuración',

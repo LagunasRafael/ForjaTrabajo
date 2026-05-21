@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { ConfirmModal } from '../../../components/ConfirmModal';
 import { 
   ArrowLeft, MapPin, DollarSign, Clock, User, 
-  ShieldCheck, ShieldAlert, ExternalLink, Box ,Trash2
+  ShieldCheck, ShieldAlert, ExternalLink, Box, Trash2
 } from 'lucide-react';
 import { getServiceById, toggleServiceActive, type ServiceEntity, getServiceOffers,deleteServiceAdmin } from '../services/service.service';
 
@@ -15,6 +16,8 @@ export const ServiceDetail = () => {
   const [service, setService] = useState<ServiceEntity | null>(null);
   const [loading, setLoading] = useState(true);
   const [offers, setOffers] = useState<any[]>([]);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // 📡 Carga de datos usando tu service.service
   useEffect(() => {
@@ -57,18 +60,16 @@ export const ServiceDetail = () => {
   // 🗑️ Lógica para Eliminar Definitivamente
   const handleDelete = async () => {
     if (!service) return;
-    
-    // Un pequeño popup de confirmación para evitar accidentes
-    const confirm = window.confirm("¿Estás seguro de ELIMINAR este servicio? Esta acción no se puede deshacer.");
-    if (!confirm) return;
 
+    setIsDeleting(true);
     try {
       await deleteServiceAdmin(service.id);
       toast.success('Servicio eliminado de la base de datos');
-      // Lo regresamos a la lista porque este servicio ya no existe
-      navigate('/services'); 
+      setShowDeleteConfirm(false);
+      navigate('/services');
     } catch (error) {
       toast.error('Error al eliminar el servicio');
+      setIsDeleting(false);
     }
   };
 
@@ -103,7 +104,7 @@ export const ServiceDetail = () => {
 
           {/* BOTÓN 2: ELIMINAR DEFINITIVAMENTE */}
           <button 
-            onClick={handleDelete}
+            onClick={() => setShowDeleteConfirm(true)}
             className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-bold border transition-all bg-rose-500/10 text-rose-500 border-rose-500/20 hover:bg-rose-500/20 hover:text-rose-400"
           >
             <Trash2 size={16} />
@@ -256,9 +257,21 @@ export const ServiceDetail = () => {
           )}
         </div>
       ))}
+
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={handleDelete}
+        title="Eliminar servicio"
+        message="¿Estás seguro de ELIMINAR este servicio? Esta acción no se puede deshacer."
+        confirmLabel="Eliminar"
+        confirmClass="bg-red-600 hover:bg-red-500"
+        isLoading={isDeleting}
+      />
     </div>
   )}
-</div>
+    </div>
     </div>
   );
+
 };

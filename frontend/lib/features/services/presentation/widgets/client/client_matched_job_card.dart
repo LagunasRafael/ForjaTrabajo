@@ -9,7 +9,8 @@ import 'package:forja_trabajo/features/services/presentation/providers/service_l
 import 'package:forja_trabajo/features/chat/presentation/providers/chat_provider.dart';
 import 'package:forja_trabajo/features/chat/presentation/screens/shared_chat_screen.dart';
 import 'package:forja_trabajo/features/profile/presentation/widgets/review_dialog.dart' as forja_review;
-import 'package:forja_trabajo/features/services/presentation/screens/client/checkout_screen.dart';
+import 'package:forja_trabajo/features/services/presentation/providers/job_management_provider.dart';
+import 'package:forja_trabajo/features/chat/presentation/providers/chat_list_provider.dart';
 
 class ClientMatchedJobCard extends ConsumerWidget {
   final ServiceEntity service;
@@ -113,7 +114,10 @@ class _ClientMatchedActionsState extends ConsumerState<_ClientMatchedActions> {
           builder: (_) => SharedChatScreen(
             conversationId: conversationId,
             myRole: 'client',
-            service: {'title': widget.service.title},
+            service: {
+              'id': widget.service.id,
+              'title': widget.service.title,
+            },
             otherUserName: widget.service.workerName,
             otherUserAvatarUrl: widget.service.workerImageUrl,
           ),
@@ -197,7 +201,8 @@ class _ClientMatchedActionsState extends ConsumerState<_ClientMatchedActions> {
       
       if (success && context.mounted) {
         ref.invalidate(myRequestsProvider); 
-        
+        ref.invalidate(workerJobsProvider);
+        ref.invalidate(chatListProvider);        
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text("✅ Trabajo finalizado exitosamente."), 

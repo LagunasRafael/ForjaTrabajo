@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useAutoRefresh } from '../../../hooks/useAutoRefresh';
 import type { User } from '../types/user.types';
 import type { UserFormData } from '../schemas/user.schema';
 
@@ -20,6 +21,8 @@ export const useUsers = () => {
   useEffect(() => {
     fetchUsers();
   }, []);
+
+  useAutoRefresh(() => fetchUsers(), 30000);
 
   const fetchUsers = async () => {
     setIsLoading(true);

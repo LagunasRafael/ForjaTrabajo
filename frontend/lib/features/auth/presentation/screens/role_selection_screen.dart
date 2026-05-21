@@ -188,7 +188,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                   Text(
                     'Al continuar, aceptas nuestros Términos y Política de Privacidad.',
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.grey.shade400, fontSize: 11),
+                    style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.6), fontSize: 11),
                   ),
                   const SizedBox(height: 40),
                 ],

@@ -20,8 +20,9 @@ class ServiceTextField extends StatelessWidget {
   final String hint;
   final int maxLines;
   final IconData? icon;
+  final FormFieldValidator<String>? validator;
 
-  const ServiceTextField({super.key, required this.controller, required this.hint, this.maxLines = 1, this.icon});
+  const ServiceTextField({super.key, required this.controller, required this.hint, this.maxLines = 1, this.icon, this.validator});
 
   @override
   Widget build(BuildContext context) {
@@ -29,6 +30,7 @@ class ServiceTextField extends StatelessWidget {
       controller: controller,
       maxLines: maxLines,
       style: const TextStyle(fontWeight: FontWeight.w500),
+      validator: validator,
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: TextStyle(color: Colors.grey[400]),
@@ -38,6 +40,8 @@ class ServiceTextField extends StatelessWidget {
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.grey.shade200)),
         enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.grey.shade200)),
         focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Color(0xFF4F46E5), width: 2)),
+        errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Color(0xFFEF4444), width: 2)),
+        focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Color(0xFFEF4444), width: 2)),
       ),
     );
   }

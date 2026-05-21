@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { getConversationsApi } from '../services/disputes.service';
+import { useAutoRefresh } from '../../../hooks/useAutoRefresh';
 import type { Conversation } from '../types/dispute.types';
 
 export const DisputesPage = () => {
@@ -12,6 +13,8 @@ export const DisputesPage = () => {
   useEffect(() => {
     loadConversations();
   }, []);
+
+  useAutoRefresh(() => loadConversations(), 30000);
 
   const loadConversations = async () => {
     try {

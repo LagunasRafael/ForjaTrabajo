@@ -48,10 +48,10 @@ def migrate():
         # Añadir is_deleted_by_worker
         print("Intentando añadir la columna is_deleted_by_worker a conversations...")
         cursor.execute("ALTER TABLE conversations ADD COLUMN is_deleted_by_worker BOOLEAN DEFAULT FALSE;")
-        print("✅ Columna is_deleted_by_worker añadida correctamente.")
+        print("Columna is_deleted_by_worker añadida correctamente.")
     except sqlite3.OperationalError as e:
         if "duplicate column name" in str(e):
-            print("⚠️ La columna is_deleted_by_worker ya existía.")
+            print("La columna is_deleted_by_worker ya existía.")
         else:
             print(f"Error al añadir is_deleted_by_worker: {e}")
 
@@ -109,6 +109,39 @@ def migrate():
             print("⚠️ La columna stripe_account_id ya existía.")
         else:
             print(f"Error al añadir stripe_account_id: {e}")
+        print("Intentando añadir la columna is_banned a users...")
+        cursor.execute("ALTER TABLE users ADD COLUMN is_banned BOOLEAN DEFAULT FALSE;")
+        print("Columna is_banned añadida correctamente.")
+    except sqlite3.OperationalError as e:
+        if "duplicate column name" in str(e):
+            print("La columna is_banned ya existía.")
+        else:
+            print(f"Error al añadir is_banned: {e}")
+
+    try:
+        print("Creando tabla reports...")
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS reports (
+                id VARCHAR(36) PRIMARY KEY,
+                reporter_id VARCHAR(36) NOT NULL,
+                reported_user_id VARCHAR(36),
+                reported_service_id VARCHAR(36),
+                reason VARCHAR(30) NOT NULL,
+                description TEXT,
+                status VARCHAR(30) DEFAULT 'pending',
+                admin_id VARCHAR(36),
+                admin_note TEXT,
+                created_at DATETIME,
+                resolved_at DATETIME,
+                FOREIGN KEY (reporter_id) REFERENCES users(id),
+                FOREIGN KEY (reported_user_id) REFERENCES users(id),
+                FOREIGN KEY (reported_service_id) REFERENCES services(id),
+                FOREIGN KEY (admin_id) REFERENCES users(id)
+            )
+        """)
+        print("Tabla reports creada correctamente.")
+    except sqlite3.OperationalError as e:
+        print(f"Error al crear reports: {e}")
 
     conn.commit()
     conn.close()

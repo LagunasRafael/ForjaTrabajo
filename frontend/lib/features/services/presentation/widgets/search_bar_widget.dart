@@ -8,9 +8,10 @@ class SearchBarWidget extends ConsumerWidget { // 🚀 Nombre correcto y sin "_"
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 15),
-      decoration: BoxDecoration(color: const Color(0xFFF3F4F6), borderRadius: BorderRadius.circular(16)),
+      decoration: BoxDecoration(color: theme.colorScheme.surfaceVariant, borderRadius: BorderRadius.circular(16)),
       child: TextField(
         onChanged: (value) => ref.read(searchQueryProvider.notifier).state = value,
         decoration: const InputDecoration(

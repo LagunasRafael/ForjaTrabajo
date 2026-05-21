@@ -5,6 +5,8 @@ import '../../providers/service_offers_provider.dart';
 import '../../providers/service_list_provider.dart';
 import '../../providers/nav_providers.dart';
 import 'package:forja_trabajo/features/services/presentation/widgets/client/candidate_card.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:forja_trabajo/core/network/notification_service.dart';
 
 class OffersReceivedScreen extends ConsumerWidget {
   final ServiceEntity? service;
@@ -17,6 +19,18 @@ class OffersReceivedScreen extends ConsumerWidget {
     final effectiveId = service?.id ?? serviceId;
     if (effectiveId == null) return const Scaffold(body: Center(child: Text("Error: ID faltante")));
 
+    // 🔔 Escuchar eventos de notificación para refrescar en tiempo real
+    ref.listen<AsyncValue<RemoteMessage>>(notificationEventProvider, (previous, next) {
+      next.whenData((message) {
+        final type = message.data['type'] ?? '';
+        if (type == 'new_application' || type == 'offer_responded' || type.toString().contains('job_')) {
+          debugPrint('🔄 [OffersReceivedScreen] Refrescando por notificación: $type');
+          ref.invalidate(offersListProvider(effectiveId));
+          ref.invalidate(serviceDetailProvider(effectiveId));
+        }
+      });
+    });
+
     final serviceAsync = service != null 
         ? AsyncValue.data(service!) 
         : ref.watch(serviceDetailProvider(effectiveId));
@@ -27,6 +41,7 @@ class OffersReceivedScreen extends ConsumerWidget {
       loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
       error: (e, s) => Scaffold(body: Center(child: Text("Error cargando servicio: $e"))),
       data: (serviceData) {
+        final theme = Theme.of(context);
         final status = serviceData.status.toString().toLowerCase();
 
         if (status.contains('matched') || status.contains('waiting')) {
@@ -100,16 +115,16 @@ class OffersReceivedScreen extends ConsumerWidget {
         }
 
         return Scaffold(
-          backgroundColor: const Color(0xFFF3F4F6),
+          backgroundColor: theme.scaffoldBackgroundColor,
           appBar: AppBar(
-            backgroundColor: Colors.white, 
+            backgroundColor: theme.colorScheme.surface, 
             elevation: 0,
             leading: IconButton(
-              icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black, size: 20), 
+              icon: Icon(Icons.arrow_back_ios_new, color: theme.colorScheme.onSurface, size: 20), 
               onPressed: () => Navigator.pop(context)
             ),
             title: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text("Postulaciones", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: Colors.black)),
+              Text("Postulaciones", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: theme.colorScheme.onSurface)),
               Text(serviceData.title.toUpperCase(), style: const TextStyle(fontSize: 10, color: Color(0xFF4F46E5), fontWeight: FontWeight.bold)),
             ]),
           ),
@@ -133,7 +148,8 @@ class OffersReceivedScreen extends ConsumerWidget {
                 itemCount: offers.length,
                 itemBuilder: (context, index) => CandidateCard(
                   offer: offers[index], 
-                  serviceId: effectiveId
+                  serviceId: effectiveId,
+                  serviceTitle: serviceData.title,
                 ),
               );
             },

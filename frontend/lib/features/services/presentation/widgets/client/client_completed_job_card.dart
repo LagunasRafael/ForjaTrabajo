@@ -63,11 +63,11 @@ class ClientCompletedJobCard extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 🧱 TU LEGO: Imagen con Badge de Completado
+              // 🧱 TU LEGO: Imagen con Badge de Completado o Cancelado
               SharedJobImage(
                 imageUrls: service.imageUrls,
-                badgeText: "COMPLETADO",
-                badgeColor: const Color(0xFF10B981), // Verde éxito
+                badgeText: service.status == JobStatus.cancelled ? "CANCELADO" : "COMPLETADO",
+                badgeColor: service.status == JobStatus.cancelled ? Colors.red : const Color(0xFF10B981), // Rojo o Verde
               ),
               
               Padding(
@@ -78,12 +78,14 @@ class ClientCompletedJobCard extends ConsumerWidget {
                     _buildTitleAndStars(isDark),
                     const SizedBox(height: 6),
                     _buildWorkerInfo(context),
-                    const SizedBox(height: 12),
+                     const SizedBox(height: 12),
                     _buildDescription(isDark),
-                    const SizedBox(height: 16),
                     
-                    // 🚧 ACCIONES: Lógica aislada en su propia clase
-                    _ClientCompletedActions(service: service),
+                    // 🚧 ACCIONES: Lógica aislada en su propia clase (sólo si no está cancelado)
+                    if (service.status != JobStatus.cancelled) ...[
+                      const SizedBox(height: 16),
+                      _ClientCompletedActions(service: service),
+                    ],
                   ],
                 ),
               ),
@@ -95,26 +97,15 @@ class ClientCompletedJobCard extends ConsumerWidget {
   }
 
   Widget _buildTitleAndStars(bool isDark) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Expanded(
-          child: Text(
-            service.title,
-            style: TextStyle(
-              fontWeight: FontWeight.bold, 
-              fontSize: 16, 
-              color: isDark ? Colors.white : Colors.black87 // 🎨 Color adaptable
-            ),
-            maxLines: 1, overflow: TextOverflow.ellipsis,
-          ),
-        ),
-        Row(
-          children: List.generate(
-            5, (index) => const Icon(Icons.star, color: Color(0xFFFBBF24), size: 16),
-          ),
-        ),
-      ],
+    return Text(
+      service.title,
+      style: TextStyle(
+        fontWeight: FontWeight.bold,
+        fontSize: 16,
+        color: isDark ? Colors.white : Colors.black87,
+      ),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
     );
   }
 

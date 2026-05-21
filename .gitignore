@@ -57,6 +57,7 @@ forja-admin/dist/
 forja-admin/.env
 forja-admin/docs/credenciales.txt
 node_modules/
+documento_residencias 
 
 # ========================
 # MOBILE & DESKTOP BUILDS

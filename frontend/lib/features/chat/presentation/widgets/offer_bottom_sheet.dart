@@ -21,6 +21,7 @@ class _OfferBottomSheetState extends State<OfferBottomSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     // Esto asegura que el modal suba si se abre el teclado
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
 
@@ -65,10 +66,10 @@ class _OfferBottomSheetState extends State<OfferBottomSheet> {
             style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             decoration: InputDecoration(
               prefixText: "\$ ",
-              prefixStyle: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black),
+              prefixStyle: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface),
               suffixText: "MXN",
               filled: true,
-              fillColor: const Color(0xFFF3F4F6),
+              fillColor: theme.colorScheme.surfaceVariant,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
                 borderSide: BorderSide.none,

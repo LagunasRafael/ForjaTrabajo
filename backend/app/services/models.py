@@ -91,14 +91,14 @@ class Service(Base):
     def request_id(self):
         """Devuelve el request_id del Job activo asociado si lo hay."""
         for request in self.requests:
-            if request.job and request.job.status != JobStatus.CANCELLED:
+            if request.job:
                 return str(request.id)
         return None
 
     @property
     def worker_name(self):
         for request in self.requests:
-            if request.job and request.job.status != JobStatus.CANCELLED:
+            if request.job:
                 if request.worker and request.worker.full_name:
                     return request.worker.full_name
         return None
@@ -106,7 +106,7 @@ class Service(Base):
     @property
     def worker_image_url(self):
         for request in self.requests:
-            if request.job and request.job.status != JobStatus.CANCELLED:
+            if request.job:
                 if request.worker and request.worker.profile_picture_url:
                     return request.worker.profile_picture_url
         return None
@@ -114,7 +114,7 @@ class Service(Base):
     @property
     def worker_id(self):
         for request in self.requests:
-            if request.job and request.job.status != JobStatus.CANCELLED:
+            if request.job:
                 return str(request.worker_id)
         return None
 # -----------------------------
@@ -256,10 +256,40 @@ class Notification(Base):
 # -----------------------------
 # REVIEWS AND RATINGS
 # -----------------------------
+class ReportStatus(str, enum.Enum):
+    PENDING = "pending"
+    RESOLVED_BANNED = "resolved_banned"
+    RESOLVED_SERVICE_BANNED = "resolved_service_banned"
+    DISMISSED = "dismissed"
+
+class ReportReason(str, enum.Enum):
+    SPAM = "spam"
+    INAPPROPRIATE_CONTENT = "inappropriate_content"
+    SCAM = "scam"
+    HARASSMENT = "harassment"
+    FAKE_PROFILE = "fake_profile"
+    OTHER = "other"
+
+class Report(Base):
+    __tablename__ = "reports"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    reporter_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
+    reported_user_id = Column(String(36), ForeignKey("users.id"), nullable=True, index=True)
+    reported_service_id = Column(String(36), ForeignKey("services.id"), nullable=True, index=True)
+    reason = Column(Enum(ReportReason), nullable=False)
+    description = Column(Text, nullable=True)
+    status = Column(Enum(ReportStatus), default=ReportStatus.PENDING, nullable=False)
+    admin_id = Column(String(36), ForeignKey("users.id"), nullable=True)
+    admin_note = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    resolved_at = Column(DateTime, nullable=True)
+
+    reporter = relationship("User", foreign_keys=[reporter_id])
+    reported_user = relationship("User", foreign_keys=[reported_user_id])
+    admin = relationship("User", foreign_keys=[admin_id])
+
 class Review(Base):
-    """
-    Modelo para guardar la calificación y comentario después de finalizar un trabajo.
-    """
     __tablename__ = "reviews"
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))

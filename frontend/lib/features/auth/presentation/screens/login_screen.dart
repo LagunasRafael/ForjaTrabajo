@@ -51,6 +51,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
     final isLoading = authState.status == 'loading';
+    final theme = Theme.of(context);
 
     // LÓGICA DE NAVEGACIÓN Y ERRORES
     ref.listen<AuthState>(authProvider, (previous, next) {
@@ -100,7 +101,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     });
 
     return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: Stack(
         children: [
           Positioned(top: -50, right: -50, child: _buildBlurCircle()),
@@ -145,9 +146,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       const SizedBox(height: 8),
                       TextFormField(
                         controller: _emailController,
+                        keyboardType: TextInputType.emailAddress,
                         decoration: _buildInputDecoration('ejemplo@correo.com'),
-                        validator: (value) =>
-                            value!.isEmpty ? 'Ingresa tu correo' : null,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) return 'Ingresa tu correo';
+                          if (!value.contains('@')) return 'Correo no válido';
+                          return null;
+                        },
                       ),
                       const SizedBox(height: 20),
                       _buildLabel('Contraseña'),
@@ -235,12 +240,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           style: GoogleFonts.inter(
               fontSize: 14,
               fontWeight: FontWeight.w600,
-              color: Colors.grey.shade700)));
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6))));
 
   InputDecoration _buildInputDecoration(String hint) => InputDecoration(
         hintText: hint,
         filled: true,
-        fillColor: Colors.white,
         border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
             borderSide: BorderSide(color: Colors.grey.shade200)),

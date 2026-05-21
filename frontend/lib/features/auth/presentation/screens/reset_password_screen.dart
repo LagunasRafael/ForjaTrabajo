@@ -41,6 +41,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
     final isLoading = authState.status == 'loading';
+    final theme = Theme.of(context);
 
     ref.listen<AuthState>(authProvider, (previous, next) {
       if (next.status == 'error') {
@@ -64,7 +65,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
     });
 
     return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text('Verificar Código',
             style: GoogleFonts.inter(
@@ -133,7 +134,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                               style: GoogleFonts.inter(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w600,
-                                  color: Colors.grey.shade700)),
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6))),
                           const SizedBox(height: 8),
                           TextFormField(
                             controller: _codeController,
@@ -150,7 +151,6 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                                   color: Colors.grey.shade400,
                                   letterSpacing: 10),
                               filled: true,
-                              fillColor: Colors.white,
                               counterText: "",
                               contentPadding:
                                   const EdgeInsets.symmetric(vertical: 20),

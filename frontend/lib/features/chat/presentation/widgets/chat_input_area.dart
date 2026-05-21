@@ -8,9 +8,11 @@ import 'package:record/record.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:wechat_assets_picker/wechat_assets_picker.dart';
 import 'package:forja_trabajo/features/chat/presentation/providers/chat_provider.dart';
 import 'package:forja_trabajo/features/chat/presentation/widgets/offer_bottom_sheet.dart';
 import 'package:forja_trabajo/features/chat/presentation/widgets/chat_media_preview.dart';
+import 'package:forja_trabajo/features/chat/presentation/widgets/spanish_asset_picker_delegate.dart';
 
 class ChatInputArea extends ConsumerStatefulWidget {
   final String conversationId;
@@ -39,6 +41,7 @@ class _ChatInputAreaState extends ConsumerState<ChatInputArea> {
   List<XFile> _selectedMedia = [];
   List<String> _selectedMediaTypes = [];
   List<Duration?> _selectedMediaDurations = [];
+  List<AssetEntity> _selectedAssets = [];
 
   final AudioRecorder _audioRecorder = AudioRecorder();
   bool _isRecording = false;
@@ -85,6 +88,7 @@ class _ChatInputAreaState extends ConsumerState<ChatInputArea> {
         _selectedMedia.clear();
         _selectedMediaTypes.clear();
         _selectedMediaDurations.clear();
+        _selectedAssets.clear();
       });
     } else {
       notifier.sendMessage(text, "text");
@@ -146,7 +150,7 @@ class _ChatInputAreaState extends ConsumerState<ChatInputArea> {
                 ),
               ListTile(
                 leading: const Icon(Icons.photo_library, color: Colors.blue),
-                title: const Text("Galería (Fotos y Videos)"),
+                title: const Text("Galería"),
                 onTap: () {
                   Navigator.pop(context);
                   _pickGallery();
@@ -190,39 +194,78 @@ class _ChatInputAreaState extends ConsumerState<ChatInputArea> {
   }
 
   Future<void> _pickGallery() async {
-    FilePickerResult? result = await FilePicker.platform.pickFiles(
-      type: FileType.media,
-      allowMultiple: true,
-    );
-
-    if (result != null && mounted) {
-      List<XFile> currentMedia = List.from(_selectedMedia);
-      List<String> currentTypes = List.from(_selectedMediaTypes);
-      List<Duration?> currentDurations = List.from(_selectedMediaDurations);
-
-      for (var file in result.files) {
-        if (file.path != null) {
-          if (currentMedia.length >= 5) {
-             _showMaxLimitError();
-             break;
-          }
-          
-          currentMedia.add(XFile(file.path!));
-          currentDurations.add(null);
-          final ext = file.extension?.toLowerCase() ?? '';
-          if (['mp4', 'mov', 'avi', 'mkv'].contains(ext)) {
-            currentTypes.add('video');
-          } else {
-            currentTypes.add('image');
-          }
+    try {
+      // Solicitar permisos explícitamente antes de abrir la galería
+      final PermissionState ps = await PhotoManager.requestPermissionExtend();
+      if (!ps.isAuth) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('⚠️ Permiso denegado para acceder a la galería.'),
+              backgroundColor: Colors.orange,
+            ),
+          );
         }
+        return;
       }
 
-      setState(() {
-        _selectedMedia = currentMedia;
-        _selectedMediaTypes = currentTypes;
-        _selectedMediaDurations = currentDurations;
-      });
+      final List<AssetEntity>? result = await AssetPicker.pickAssets(
+        context,
+        pickerConfig: AssetPickerConfig(
+          maxAssets: 5,
+          selectedAssets: _selectedAssets,
+          requestType: RequestType.common,
+          textDelegate: const SpanishAssetPickerTextDelegate(),
+        ),
+      );
+
+      if (result != null && mounted) {
+        setState(() {
+          _selectedAssets = result;
+        });
+
+        List<XFile> currentMedia = [];
+        List<String> currentTypes = [];
+        List<Duration?> currentDurations = [];
+
+        for (var asset in result) {
+          final file = await asset.file;
+          if (file != null) {
+            currentMedia.add(XFile(file.path));
+            
+            if (asset.type == AssetType.video) {
+              currentTypes.add('video');
+              currentDurations.add(Duration(seconds: asset.duration));
+            } else {
+              currentTypes.add('image');
+              currentDurations.add(null);
+            }
+          }
+        }
+
+        setState(() {
+          _selectedMedia = currentMedia;
+          _selectedMediaTypes = currentTypes;
+          _selectedMediaDurations = currentDurations;
+        });
+      }
+    } catch (e) {
+      print("🚨 Error en _pickGallery: $e");
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text("Error al abrir galería"),
+            content: Text("Ocurrió un detalle técnico:\n$e\n\nIntenta reiniciar la app."),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("Cerrar"),
+              ),
+            ],
+          ),
+        );
+      }
     }
   }
 
@@ -351,6 +394,7 @@ class _ChatInputAreaState extends ConsumerState<ChatInputArea> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     bool hasInput = _messageController.text.isNotEmpty || _selectedMedia.isNotEmpty;
 
     return Column(
@@ -366,12 +410,15 @@ class _ChatInputAreaState extends ConsumerState<ChatInputArea> {
                   _selectedMedia.removeAt(index);
                   _selectedMediaTypes.removeAt(index);
                   _selectedMediaDurations.removeAt(index);
+                  if (index < _selectedAssets.length) {
+                    _selectedAssets.removeAt(index);
+                  }
                 });
               },
            ),
         Container(
           padding: const EdgeInsets.all(12),
-          color: Colors.white,
+          color: theme.colorScheme.surface,
           child: SafeArea(
         child: Row(
           children: [
@@ -452,7 +499,7 @@ class _ChatInputAreaState extends ConsumerState<ChatInputArea> {
                   decoration: InputDecoration(
                     hintText: widget.isEnabled ? "Escribe un mensaje..." : "Chat finalizado",
                     filled: true,
-                    fillColor: const Color(0xFFF3F4F6),
+                    fillColor: theme.colorScheme.surfaceVariant,
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   ),
@@ -470,18 +517,16 @@ class _ChatInputAreaState extends ConsumerState<ChatInputArea> {
                 onLongPressEnd: widget.isEnabled && !hasInput && !_isLockedRecording ? (details) => _stopRecording() : null,
                 onPanUpdate: (!hasInput && _isRecording && !_isLockedRecording) 
                      ? (details) {
-                         if (details.localPosition.dx < -30) {
-                             _cancelRecording();
-                         } else if (details.localPosition.dy < -50) {
-                             setState(() { _isLockedRecording = true; });
-                         }
+                          if (details.localPosition.dx < -30) {
+                              _cancelRecording();
+                          } else if (details.localPosition.dy < -50) {
+                              setState(() { _isLockedRecording = true; });
+                          }
                        }
                      : null,
                 onTap: _isLockedRecording 
                      ? () => _stopRecording() 
-                     : hasInput ? _onSend : () { 
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Mantén presionado para enviar voz')));
-                },
+                     : hasInput ? _onSend : null,
                 child: Padding(
                   padding: const EdgeInsets.all(12),
                   child: Icon(

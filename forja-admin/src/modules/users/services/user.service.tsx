@@ -11,16 +11,25 @@ interface UserDTO {
   is_active: boolean;
   created_at: string;
   profile_picture_url?: string;
+  is_banned?: boolean;
 }
 
 // 2. MAPPER (Adapter Pattern): Convierte el DTO crudo al formato del Frontend
 const mapUserFromApi = (dto: UserDTO): User => {
+  let status: User['status'];
+  if (dto.is_banned) {
+    status = 'banned';
+  } else if (dto.is_active) {
+    status = 'active';
+  } else {
+    status = 'inactive';
+  }
   return {
     id: dto.id,
     full_name: dto.full_name || "Usuario Sin Nombre",
     email: dto.email,
     role: dto.role as any,
-    status: dto.is_active ? 'active' : 'inactive',
+    status,
     createdAt: dto.created_at,
     avatarUrl: dto.profile_picture_url,
   };
@@ -50,13 +59,21 @@ export const createUserApi = async (formData: UserFormData): Promise<User> => {
 
 // 🟠 ACTUALIZAR
 export const updateUserApi = async (id: string, formData: UserFormData): Promise<User> => {
-  const payload = {
-    full_name: formData.name, // Traducimos nuevamente
+  const payload: Record<string, any> = {
+    full_name: formData.name,
     role: formData.role,
-    is_active: formData.status === 'active' // Traducimos status a is_active booleano
   };
 
-  // Asumiendo que tus rutas de update/delete están en /auth/users
+  if (formData.status === 'active') {
+    payload.is_active = true;
+    payload.is_banned = false;
+  } else if (formData.status === 'banned') {
+    payload.is_active = false;
+    payload.is_banned = true;
+  } else {
+    payload.is_active = formData.status === 'active';
+  }
+
   const { data } = await api.put<UserDTO>(`/auth/users/${id}`, payload);
   return mapUserFromApi(data);
 };

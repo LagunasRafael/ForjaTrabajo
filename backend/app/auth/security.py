@@ -56,14 +56,21 @@ def get_current_user(
         # Asegúrate de que en routes.py guardes el ID como string en el "sub"
         user_id = str(payload.get("sub"))
         if user_id is None or user_id == "None":
+            print("🔑 [Auth] Sub is None or 'None' in token payload")
             raise credentials_exception
-    except JWTError:
+    except JWTError as e:
+        print(f"🔑 [Auth] JWT decode error: {e}")
         raise credentials_exception
 
     # Buscamos por ID directamente
     user = db.query(models.User).filter(models.User.id == user_id).first()
     
-    if user is None or not user.is_active:
+    if user is None:
+        print(f"🔑 [Auth] User {user_id} not found in database")
+        raise credentials_exception
+        
+    if not user.is_active or user.is_banned:
+        print(f"🔑 [Auth] User {user.email} (id={user.id}) is blocked. is_active={user.is_active}, is_banned={user.is_banned}")
         raise credentials_exception
 
     return user

@@ -11,6 +11,7 @@ import 'package:forja_trabajo/features/services/domain/usecases/jobs/cancel_job_
 import 'package:forja_trabajo/features/chat/presentation/providers/chat_provider.dart';
 import 'package:forja_trabajo/features/chat/presentation/screens/shared_chat_screen.dart';
 
+import 'package:forja_trabajo/features/chat/presentation/providers/chat_list_provider.dart';
 import 'package:forja_trabajo/features/services/presentation/screens/shared/widgets/shared_job_widgets.dart';
 
 class WorkerActiveJobCard extends ConsumerWidget {
@@ -46,6 +47,8 @@ class WorkerActiveJobCard extends ConsumerWidget {
                   ref.invalidate(workerJobsProvider);
                   ref.invalidate(serviceListProvider);
                 },
+                reportUserId: job.clientId,
+                reportServiceId: job.id,
               ),
             ),
             Padding(
@@ -104,7 +107,10 @@ class _WorkerActiveActionsState extends ConsumerState<_WorkerActiveActions> {
           builder: (_) => SharedChatScreen(
             conversationId: conversationId,
             myRole: 'worker',
-            service: {'title': widget.job.title},
+            service: {
+              'id': widget.job.id,
+              'title': widget.job.title,
+            },
             otherUserName: widget.job.authorName,
             otherUserAvatarUrl: widget.job.profilePictureUrl,
           ),
@@ -232,7 +238,9 @@ class _WorkerActiveActionsState extends ConsumerState<_WorkerActiveActions> {
 
       if (success && context.mounted) {
         ref.invalidate(workerJobsProvider);
+        ref.invalidate(myRequestsProvider);
         ref.invalidate(serviceListProvider);
+        ref.invalidate(chatListProvider);
 
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(

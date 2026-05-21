@@ -65,7 +65,7 @@ class NotificationCard extends ConsumerWidget {
                       if (notification.body != null && notification.body!.isNotEmpty) ...[
                         const SizedBox(height: 6),
                         Text(
-                          notification.body!,
+                          _formatBody(notification.body!),
                           style: TextStyle(
                             color: Colors.grey[700],
                             fontSize: 14,
@@ -200,5 +200,10 @@ class NotificationCard extends ConsumerWidget {
       case 'payment_released': return const Color(0xFF7F13EC);
       default: return Colors.grey;
     }
+  }
+
+  String _formatBody(String body) {
+    final regex = RegExp(r'\$(\d+)\.0{1,2}\b');
+    return body.replaceAllMapped(regex, (match) => '\$${match.group(1)}');
   }
 }

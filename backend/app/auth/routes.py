@@ -182,8 +182,14 @@ def login(request: Request, data: schemas.UserLogin, db: Session = Depends(get_d
         # Usamos la constante de FastAPI para mayor claridad
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, 
-            detail="Credenciales inválidas",
+            detail="Correo electrónico o contraseña incorrectos",
             headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    if not user.is_active or getattr(user, "is_banned", False):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Tu cuenta ha sido desactivada o baneada por moderación.",
         )
 
     # El 'sub' (subject) del JWT debe ser el identificador único
@@ -262,9 +268,14 @@ def update_user(
     #     db_user.role = user_data.role # type: ignore
     if user_data.phone is not None:
         db_user.phone = user_data.phone # type: ignore
-    
-    # Si estás manejando is_active, descomenta esta línea:
-    # db_user.is_active = user_data.is_active 
+    if user_data.is_active is not None:
+        db_user.is_active = user_data.is_active
+        if user_data.is_active:
+            db_user.is_banned = False
+    if user_data.is_banned is not None:
+        db_user.is_banned = user_data.is_banned
+        if user_data.is_banned:
+            db_user.is_active = False
 
     # 3. Guardamos los cambios
     db.commit()
@@ -351,22 +362,23 @@ def update_fcm_token(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    # Si estamos asignando un token real
-    if data.fcm_token:
-        # 🛡️ SEGURIDAD AGRESIVA: 
-        # Borrar este token de CUALQUIER otro usuario que no sea el actual.
-        # Esto soluciona el error de "veo notificaciones de otros perfiles".
-        db.query(models.User).filter(
-            models.User.fcm_token == data.fcm_token,
-            models.User.id != current_user.id
-        ).update({"fcm_token": ""}, synchronize_session=False)
-        
-    # Actualizar el token del usuario actual
-    current_user.fcm_token = data.fcm_token # type: ignore
-    db.commit()
-    
-    logger.info(f"🚀 FCM Token actualizado para {current_user.email}")
-    return {"status": "success", "message": "FCM token actualizado y vinculado exclusivamente"}
+    try:
+        token = data.fcm_token if data.fcm_token else ""
+        if token:
+            db.query(models.User).filter(
+                models.User.fcm_token == token,
+                models.User.id != current_user.id
+            ).update({"fcm_token": ""}, synchronize_session=False)
+
+        current_user.fcm_token = token
+        db.commit()
+
+        print(f"FCM Token actualizado para {current_user.email}")
+        return {"status": "success", "message": "FCM token actualizado"}
+    except Exception as e:
+        print(f"Error actualizando FCM token: {e}")
+        db.rollback()
+        return {"status": "error", "message": str(e)}
 
 # ============================================================
 # 🛡️ ENDPOINT PROTEGIDO: Solo un admin puede crear usuarios

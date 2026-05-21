@@ -9,7 +9,9 @@ import '../../domain/usecases/service_requests/accept_postulation_usecase.dart';
 
 import '../../data/repositories/service_repository_impl.dart';
 import 'service_offers_provider.dart'; 
-
+import 'service_list_provider.dart';
+import 'job_management_provider.dart';
+import 'package:forja_trabajo/features/chat/presentation/providers/chat_list_provider.dart';
 final createPostulationProvider = Provider((ref) => CreatePostulationUseCase(ref.watch(serviceRepositoryProvider)));
 final updatePostulationProvider = Provider((ref) => UpdatePostulationUseCase(ref.watch(serviceRepositoryProvider)));
 final withdrawPostulationProvider = Provider((ref) => WithdrawPostulationUseCase(ref.watch(serviceRepositoryProvider)));
@@ -76,6 +78,11 @@ class ServiceRequestController extends StateNotifier<AsyncValue<void>> {
       final token = await _getToken(); 
       
       final result = await ref.read(acceptPostulationProvider).call(requestId, token);
+      
+      ref.invalidate(myRequestsProvider);
+      ref.invalidate(workerJobsProvider);
+      ref.invalidate(serviceListProvider);
+      ref.invalidate(chatListProvider);
       
       state = const AsyncValue.data(null);
       return result;

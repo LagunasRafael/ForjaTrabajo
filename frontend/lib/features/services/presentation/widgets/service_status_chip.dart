@@ -1,6 +1,5 @@
 
 import 'package:flutter/material.dart';
-import 'package:forja_trabajo/features/services/domain/entities/service_entity.dart';
 
 class ServiceStatusChip extends StatelessWidget {
   final String status;

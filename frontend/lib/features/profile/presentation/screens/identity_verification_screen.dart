@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/datasources/verification_remote_data_source.dart';
+import '../widgets/camera_capture_screen.dart';
 import '../widgets/camera_guide_overlay.dart';
 
 class IdentityVerificationScreen extends ConsumerStatefulWidget {
@@ -84,24 +85,22 @@ class _IdentityVerificationScreenState extends ConsumerState<IdentityVerificatio
         selfie: _selfie!,
       );
       if (mounted) {
-        setState(() {
-          _result = result;
-          _isSubmitting = false;
-        });
         final msg = result['message'] ?? 'Verificación enviada';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(msg),
-            backgroundColor: result['status'] == 'approved' ? Colors.green : Colors.blue,
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 3),
           ),
         );
+        Navigator.of(context).pop(true);
       }
     } catch (e) {
       if (mounted) {
         setState(() => _isSubmitting = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error: ${e.toString().replaceAll("Exception: ", "")}'),
+            content: Text('Error: ${e.toString()}'),
             backgroundColor: Colors.red,
           ),
         );
@@ -178,9 +177,9 @@ class _IdentityVerificationScreenState extends ConsumerState<IdentityVerificatio
       child: Container(
         height: 120,
         decoration: BoxDecoration(
-          color: Colors.grey.shade100,
+          color: Theme.of(context).colorScheme.surfaceVariant,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey.shade300),
+          border: Border.all(color: Theme.of(context).colorScheme.outline),
         ),
         child: image != null
             ? ClipRRect(

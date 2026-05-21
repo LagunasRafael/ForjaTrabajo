@@ -21,6 +21,7 @@ class ChatTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
     Offset? tapPosition;
 
     return InkWell(
@@ -40,7 +41,10 @@ class ChatTile extends ConsumerWidget {
               otherUserAvatarUrl: chat.avatarUrl,
               otherUserId: chat.otherUserId,
               myRole: chat.myRole, 
-              service: {'title': chat.serviceName},
+              service: {
+                'id': chat.serviceId,
+                'title': chat.serviceName,
+              },
             ),
           ),
         );
@@ -80,7 +84,7 @@ class ChatTile extends ConsumerWidget {
                       Expanded(
                         child: Text(
                           chat.name, 
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87),
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: theme.colorScheme.onSurface),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
@@ -109,7 +113,7 @@ class ChatTile extends ConsumerWidget {
                   Text(
                     chat.lastMessage, 
                     style: TextStyle(
-                      color: chat.hasUnread ? Colors.black87 : Colors.grey.shade700, 
+                      color: chat.hasUnread ? theme.colorScheme.onSurface : theme.colorScheme.onSurface.withOpacity(0.6), 
                       fontSize: 15, // 👈 AQUÍ SE HIZO MÁS GRANDE
                       fontWeight: chat.hasUnread ? FontWeight.bold : FontWeight.normal,
                     ), 
