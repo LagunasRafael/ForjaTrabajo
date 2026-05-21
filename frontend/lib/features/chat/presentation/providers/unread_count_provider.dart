@@ -3,7 +3,7 @@ import 'package:forja_trabajo/features/chat/presentation/providers/chat_list_pro
 
 /// Cuenta cuántos chats activos tienen mensajes no leídos.
 /// Se actualiza automáticamente cuando el chatListProvider cambia.
-final unreadCountProvider = Provider<int>((ref) {
+final unreadCountProvider = Provider.autoDispose<int>((ref) {
   final chatState = ref.watch(chatListProvider);
   return chatState.maybeWhen(
     data: (chats) => chats.where((c) => c.hasUnread && !c.isArchived).length,

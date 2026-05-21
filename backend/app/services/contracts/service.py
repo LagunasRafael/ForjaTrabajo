@@ -6,6 +6,7 @@ from sqlalchemy import or_
 from app.core.roles import Role
 from app.auth import models as auth_models
 from app.services.notifications import service as notif_service
+from app.payments.services import capture_payment
 import logging
 
 logger = logging.getLogger(__name__)
@@ -103,6 +104,12 @@ def complete_job(db: Session, job_id: str, user_id: str):
 
         db.commit()
         db.refresh(job)
+
+        # Liberar pago retenido en Stripe (escrow → released)
+        try:
+            capture_payment(db, str(job.id))
+        except Exception as e:
+            logger.warning(f"No se pudo liberar el pago automaticamente: {e}")
 
         # 🔔 Notificar al trabajador que el trabajo fue finalizado (Migrado)
         notif_service.notify_job_completed(db, job)

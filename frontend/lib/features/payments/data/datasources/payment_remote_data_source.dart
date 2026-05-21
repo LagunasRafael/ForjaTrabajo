@@ -5,7 +5,7 @@ import '../models/payment_model.dart';
 abstract class PaymentRemoteDataSource {
   Future<PaymentModel> processPayment(PaymentModel payment);
   Future<List<PaymentModel>> getPaymentHistory();
-  Future<Map<String, dynamic>> createPaymentIntent(double amountMxn, String workerId);
+  Future<Map<String, dynamic>> createPaymentIntent(double amountMxn, String workerId, String jobId);
   Future<void> confirmPayment({
     required String paymentIntentId,
     required String workerId,
@@ -86,7 +86,7 @@ class PaymentRemoteDataSourceImpl implements PaymentRemoteDataSource {
   }
 
   @override
-  Future<Map<String, dynamic>> createPaymentIntent(double amountMxn, String workerId) async {
+  Future<Map<String, dynamic>> createPaymentIntent(double amountMxn, String workerId, String jobId) async {
     try {
       final token = await _getToken();
       final response = await dio.post(
@@ -94,6 +94,7 @@ class PaymentRemoteDataSourceImpl implements PaymentRemoteDataSource {
         data: {
           'amount_mxn': amountMxn,
           'worker_id': workerId,
+          'job_id': jobId,
         },
         options: Options(
           headers: {

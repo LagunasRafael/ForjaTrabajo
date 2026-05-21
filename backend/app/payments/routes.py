@@ -59,7 +59,7 @@ def get_payments(
     return services.get_payments_by_role(db=db, current_user=current_user)
 
 
-# --- STRIPE DESTINATION CHARGE ---
+# --- STRIPE ESCROW (SIN STRIPE CONNECT) ---
 
 @router.post("/create-intent", response_model=schemas.CreateIntentResponse)
 def create_payment_intent(
@@ -68,45 +68,88 @@ def create_payment_intent(
     current_user: auth_models.User = Depends(get_current_user)
 ):
     """
-    Crea un PaymentIntent con Destination Charge.
-    Stripe cobra al cliente y transfiere automaticamente
-    el total menos la comision a la cuenta del trabajador.
+    Crea un PaymentIntent con capture_method='manual' (escrow).
+    Stripe retiene los fondos sin cobrarlos hasta que el trabajo se complete.
+    NO requiere Stripe Connect del trabajador — el cliente solo paga con su tarjeta.
     """
-    worker = db.query(auth_models.User).filter(
-        auth_models.User.id == data.worker_id
-    ).first()
+    # 1. Validar que el trabajo exista y esté en MATCHED
+    from app.services.models import Job, JobStatus, ServiceRequest
 
-    if not worker:
+    job = db.query(Job).filter(Job.id == data.job_id).first()
+    if not job:
+        job = db.query(Job).join(ServiceRequest).filter(ServiceRequest.service_id == data.job_id).first()
+    if not job:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Trabajador no encontrado"
+            detail="Trabajo no encontrado"
         )
-
-    if not worker.stripe_account_id:
+    if job.status != JobStatus.MATCHED:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="El trabajador no tiene una cuenta de Stripe Connect configurada"
+            detail=f"El trabajo no está en estado 'matched'. Estado actual: {job.status.value}"
         )
 
-    amount_cents = int(data.amount_mxn * 100)
-    fee_cents = int(amount_cents * 0.15)
+    # 2. Buscar o crear contrato
+    contract = db.query(models.Contract).filter(
+        models.Contract.job_id == job.id
+    ).first()
+    if not contract:
+        contract = models.Contract(
+            job_id=job.id,
+            client_id=str(job.client_id),
+            status="pending"
+        )
+        db.add(contract)
+        db.flush()
 
+    # 3. Buscar pago existente pendiente
+    existing_payment = db.query(models.Payment).filter(
+        models.Payment.contract_id == contract.id,
+        models.Payment.status.in_([
+            models.PaymentStatus.PENDING,
+            models.PaymentStatus.HELD_IN_ESCROW
+        ])
+    ).first()
+    if existing_payment:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Ya existe un pago pendiente o retenido para este trabajo."
+        )
+
+    # 4. Crear PaymentIntent en Stripe (manual capture = escrow)
+    amount_cents = int(data.amount_mxn * 100)
     try:
         intent = stripe.PaymentIntent.create(
             amount=amount_cents,
             currency="mxn",
-            application_fee_amount=fee_cents,
-            transfer_data={"destination": worker.stripe_account_id},
-        )
-        return schemas.CreateIntentResponse(
-            client_secret=intent.client_secret,
-            payment_intent_id=intent.id
+            capture_method="manual",
+            metadata={
+                "worker_id": data.worker_id,
+                "job_id": data.job_id,
+            }
         )
     except stripe.error.StripeError as e:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"Error al crear PaymentIntent: {str(e)}"
         )
+
+    # 5. Guardar Payment en BD
+    db_payment = models.Payment(
+        contract_id=contract.id,
+        amount=data.amount_mxn,
+        amount_cents=amount_cents,
+        status=models.PaymentStatus.PENDING,
+        payment_method="card",
+        stripe_payment_intent_id=intent.id
+    )
+    db.add(db_payment)
+    db.commit()
+
+    return schemas.CreateIntentResponse(
+        client_secret=intent.client_secret,
+        payment_intent_id=intent.id
+    )
 
 
 @router.post("/confirm-payment")
@@ -299,7 +342,17 @@ def get_worker_stripe_status(
 
 
 @workers_router.post("/stripe-setup", response_model=schemas.StripeSetupResponse)
-def setup_worker_stripe(data: schemas.StripeSetupRequest, db: Session = Depends(get_db)):
+def setup_worker_stripe(
+    data: schemas.StripeSetupRequest,
+    db: Session = Depends(get_db),
+    current_user: auth_models.User = Depends(get_current_user)
+):
+    if current_user.id != data.user_id and current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No puedes configurar la billetera de otro usuario"
+        )
+
     user = db.query(auth_models.User).filter(auth_models.User.id == data.user_id).first()
     if not user:
         raise HTTPException(
@@ -320,15 +373,18 @@ def setup_worker_stripe(data: schemas.StripeSetupRequest, db: Session = Depends(
                 country="MX",
                 email=user.email,
                 business_type="individual",
+                capabilities={
+                    "transfers": {"requested": True},
+                },
                 business_profile={
-                    "url": "https://miapp.com",
+                    "url": "https://forjatrabajo.com",
                     "product_description": "Proveedor de servicios independientes en la plataforma.",
                     "mcc": "7299"
                 },
                 individual={
                     "first_name": first_name,
                     "last_name": last_name,
-                }
+                },
             )
             stripe_account_id = account.id
             user.stripe_account_id = stripe_account_id
@@ -351,8 +407,8 @@ def setup_worker_stripe(data: schemas.StripeSetupRequest, db: Session = Depends(
         account_link = stripe.AccountLink.create(
             account=stripe_account_id,
             type="account_onboarding",
-            refresh_url="https://example.com/reintentar",
-            return_url="https://example.com/exito"
+            refresh_url="https://forjatrabajo.com/configurar-billetera",
+            return_url="https://forjatrabajo.com/billetera-lista"
         )
         return schemas.StripeSetupResponse(url=account_link.url)
     except stripe.error.StripeError as e:
