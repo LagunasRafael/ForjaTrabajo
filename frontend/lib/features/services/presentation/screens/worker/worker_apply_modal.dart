@@ -64,17 +64,6 @@ class _WorkerApplyModalWidgetState extends ConsumerState<_WorkerApplyModalWidget
         return;
     }
 
-    // 🛡️ VALIDACIÓN: El precio del trabajador NO puede ser MENOR al del cliente
-    if (cleanPrice < widget.service.basePrice) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text("⚠️ Tu oferta no puede ser menor al presupuesto del cliente (\$${widget.service.basePrice.toStringAsFixed(0)})"), 
-        backgroundColor: Colors.orange,
-        behavior: SnackBarBehavior.floating,
-      ));
-      return;
-    }
-
-
     FocusScope.of(context).unfocus();
 
 
@@ -144,7 +133,7 @@ class _WorkerApplyModalWidgetState extends ConsumerState<_WorkerApplyModalWidget
               const SizedBox(height: 10),
               
               Text(
-                "SUGERENCIA DEL CLIENTE: \$${widget.service.basePrice.toStringAsFixed(0)} MXN", 
+                "PRESUPUESTO SUGERIDO POR EL CLIENTE: \$${widget.service.basePrice.toStringAsFixed(0)} MXN", 
                 style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF9CA3AF), letterSpacing: 0.5)
               ),
               const SizedBox(height: 35),

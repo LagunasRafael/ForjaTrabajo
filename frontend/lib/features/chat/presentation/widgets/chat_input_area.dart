@@ -98,36 +98,72 @@ class _ChatInputAreaState extends ConsumerState<ChatInputArea> {
     widget.onMessageSent?.call();
   }
 
-  void _showOfferDialog() {
-    final scaffoldContext = context;
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => OfferBottomSheet(
-        onSendOffer: (amount) async {
-          try {
-            await ref.read(chatProvider(widget.conversationId).notifier).sendOffer(amount);
-            widget.onMessageSent?.call();
-            if (scaffoldContext.mounted) {
-              ScaffoldMessenger.of(scaffoldContext).showSnackBar(
-                SnackBar(
-                  content: Text("✅ Contraoferta de \$${amount.toStringAsFixed(0)} enviada"),
-                  backgroundColor: const Color(0xFF10B981),
-                ),
-              );
+    void _showOfferDialog() {
+      final scaffoldContext = context;
+
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (context) => OfferBottomSheet(
+          onSendOffer: (amount) async {
+            try {
+              await ref
+                  .read(chatProvider(widget.conversationId).notifier)
+                  .sendOffer(amount);
+
+              widget.onMessageSent?.call();
+
+              if (scaffoldContext.mounted) {
+                ScaffoldMessenger.of(scaffoldContext).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      "Contraoferta de \$${amount.toStringAsFixed(0)} enviada",
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Color(0xFF4F46E5)),
+                    ),
+                    backgroundColor: const Color(0xFFF0F0F0).withOpacity(1),
+                    behavior: SnackBarBehavior.floating,
+                    margin: EdgeInsets.only(
+                      bottom: MediaQuery.of(scaffoldContext).size.height - 820,
+                      left: 24,
+                      right: 24,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    duration: const Duration(seconds: 2),
+                  ),
+                );
+              }
+            } catch (e) {
+              if (scaffoldContext.mounted) {
+                ScaffoldMessenger.of(scaffoldContext).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      "Error: $e",
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Color(0xFF4F46E5)),
+                    ),
+                    backgroundColor: const Color(0xFFF0F0F0).withOpacity(1),
+                    behavior: SnackBarBehavior.floating,
+                    margin: EdgeInsets.only(
+                      bottom: MediaQuery.of(scaffoldContext).size.height - 220,
+                      left: 24,
+                      right: 24,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    duration: const Duration(seconds: 2),
+                  ),
+                );
+              }
             }
-          } catch (e) {
-            if (scaffoldContext.mounted) {
-              ScaffoldMessenger.of(scaffoldContext).showSnackBar(
-                SnackBar(content: Text("🚨 Error: $e"), backgroundColor: Colors.red),
-              );
-            }
-          }
-        },
-      ),
-    );
-  }
+          },
+        ),
+      );
+    }
 
   void _showActionMenu(BuildContext context) {
     showModalBottomSheet(
