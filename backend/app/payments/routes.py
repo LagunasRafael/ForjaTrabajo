@@ -144,6 +144,8 @@ def create_payment_intent(
         stripe_payment_intent_id=intent.id
     )
     db.add(db_payment)
+    # El cliente inició el pago, ya no necesita el deadline
+    job.payment_due_at = None  # type: ignore
     db.commit()
 
     return schemas.CreateIntentResponse(
@@ -239,7 +241,25 @@ def confirm_escrow(
     confirma que el pago fue autorizado exitosamente.
     Actualiza el estado del pago a 'held_in_escrow'.
     """
-    return services.confirm_escrow(db=db, payment_intent_id=data.payment_intent_id)
+    payment = services.confirm_escrow(db=db, payment_intent_id=data.payment_intent_id)
+
+    # 💬 Mensaje del sistema en el chat: pago confirmado
+    try:
+        contract = db.query(models.Contract).filter(models.Contract.id == payment.contract_id).first()
+        if contract:
+            job = db.query(services_models.Job).filter(services_models.Job.id == contract.job_id).first()
+            if job:
+                from app.services.chats.service import add_system_message, get_or_create_conversation
+                conversation = get_or_create_conversation(db, str(job.request_id), str(current_user.id))
+                add_system_message(
+                    db, str(conversation.id), str(current_user.id),
+                    "✅ Pago confirmado. El trabajador ya puede comenzar con el trabajo."
+                )
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(f"No se pudo enviar mensaje de sistema: {e}")
+
+    return payment
 
 
 @router.post("/refund/{payment_id}", response_model=schemas.PaymentResponse)

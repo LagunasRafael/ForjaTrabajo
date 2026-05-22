@@ -135,6 +135,9 @@ def create_payment_intent(db: Session, job_id: str, amount: float):
         stripe_payment_intent_id=intent.id
     )
 
+    # El cliente inició el pago, ya no necesita el deadline
+    job.payment_due_at = None  # type: ignore
+
     db.add(db_payment)
     db.commit()
     db.refresh(db_payment)

@@ -125,6 +125,26 @@ def get_all_jobs_admin(
     return result
 
 # =================================================================
+# CRON / EXPIRACIÓN AUTOMÁTICA
+# =================================================================
+@router.post("/cron/check-expirations")
+def check_expirations(
+    db: Session = Depends(get_db),
+    current_user: auth_models.User = Depends(get_current_user)
+):
+    """
+    Endpoint llamado por un cron externo (cron-job.org, etc.)
+    Revisa trabajos con payment_due_at vencido o auto_release_at vencido.
+    Solo accesible por admin.
+    """
+    if current_user.role != Role.ADMIN:
+        raise HTTPException(status_code=403, detail="Solo admin")
+    
+    from app.services.expiration import process_expired_payments
+    results = process_expired_payments(db)
+    return results
+
+# =================================================================
 # REVIEWS
 # =================================================================
 @router.post("/jobs/{job_id}/review", response_model=schemas.ReviewResponse)
