@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja_trabajo/features/services/domain/entities/service_entity.dart';
@@ -112,6 +113,67 @@ class _ClientMatchedActions extends ConsumerStatefulWidget {
 
 class _ClientMatchedActionsState extends ConsumerState<_ClientMatchedActions> {
   bool _isOpeningChat = false;
+  String _countdown = '';
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _startCountdown();
+  }
+
+  @override
+  void didUpdateWidget(covariant _ClientMatchedActions oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.service.status != widget.service.status ||
+        oldWidget.service.hasPaid != widget.service.hasPaid) {
+      _startCountdown();
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  void _startCountdown() {
+    _timer?.cancel();
+    _updateCountdown();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) => _updateCountdown());
+  }
+
+  void _updateCountdown() {
+    DateTime? deadline;
+    if (widget.service.status == JobStatus.matched && !widget.service.hasPaid) {
+      deadline = widget.service.paymentDueAt;
+    } else if (widget.service.status == JobStatus.waiting_confirmation) {
+      deadline = widget.service.autoReleaseAt;
+    }
+
+    if (deadline == null) {
+      if (_countdown.isNotEmpty) setState(() => _countdown = '');
+      return;
+    }
+
+    final remaining = deadline.difference(DateTime.now());
+    if (remaining.isNegative) {
+      setState(() => _countdown = '');
+      _timer?.cancel();
+      return;
+    }
+
+    final hours = remaining.inHours;
+    final minutes = remaining.inMinutes.remainder(60);
+    final seconds = remaining.inSeconds.remainder(60);
+    if (hours > 0) {
+      setState(() => _countdown = '${hours}h ${minutes.toString().padLeft(2, '0')}m ${seconds.toString().padLeft(2, '0')}s');
+    } else if (minutes > 0) {
+      setState(() => _countdown = '${minutes}m ${seconds.toString().padLeft(2, '0')}s');
+    } else {
+      setState(() => _countdown = '${seconds}s');
+    }
+  }
 
   Future<void> _openChat(BuildContext context) async {
     final requestId = widget.service.requestId;
@@ -183,6 +245,8 @@ class _ClientMatchedActionsState extends ConsumerState<_ClientMatchedActions> {
 
     return Column(
       children: [
+        if (_countdown.isNotEmpty)
+          _buildCountdownBanner(context),
         const Divider(height: 24),
         Row(
           children: [
@@ -206,6 +270,55 @@ class _ClientMatchedActionsState extends ConsumerState<_ClientMatchedActions> {
           ],
         ),
       ],
+    );
+  }
+
+  Widget _buildCountdownBanner(BuildContext context) {
+    final isMatched = widget.service.status == JobStatus.matched;
+    final isWaiting = widget.service.status == JobStatus.waiting_confirmation;
+
+    String message;
+    Color bgColor;
+    Color textColor;
+
+    if (isMatched && !widget.service.hasPaid) {
+      message = "Tiempo restante para pagar";
+      bgColor = Colors.red.shade50;
+      textColor = Colors.red.shade800;
+    } else if (isWaiting) {
+      message = "Tiempo restante para confirmación automática";
+      bgColor = Colors.orange.shade50;
+      textColor = Colors.orange.shade800;
+    } else {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.access_time, size: 18, color: textColor),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(message,
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: textColor)),
+                const SizedBox(height: 2),
+                Text(_countdown,
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: textColor)),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -242,14 +355,13 @@ class _ClientMatchedActionsState extends ConsumerState<_ClientMatchedActions> {
           )
         );
 
-        // 🔥 MOSTRAR DIÁLOGO DE RESEÑA DESPUÉS DE FINALIZAR 🔥
         showDialog(
           context: context,
           barrierDismissible: false,
           builder: (dialogContext) => ProviderScope(
             parent: ProviderScope.containerOf(context),
             child: forja_review.ReviewDialog(
-              jobId: widget.service.id, // Suponiendo que service.id mapea al jobId en la API de Flutter
+              jobId: widget.service.id,
               revieweeName: widget.service.workerName ?? 'el trabajador',
             ),
           ),

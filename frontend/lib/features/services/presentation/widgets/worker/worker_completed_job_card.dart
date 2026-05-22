@@ -66,23 +66,27 @@ class WorkerCompletedJobCard extends StatelessWidget {
             ),
 
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    const Icon(Icons.payments_outlined, size: 18, color: Colors.grey),
-                    const SizedBox(width: 8),
-                    Text(
-                      job.status == JobStatus.cancelled
-                          ? "Precio pactado: \$${job.basePrice.toStringAsFixed(0)}"
-                          : "Ganancia: \$${job.basePrice.toStringAsFixed(0)}",
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF4B5563)
+                Expanded(
+                  child: Row(
+                    children: [
+                      const Icon(Icons.payments_outlined, size: 18, color: Colors.grey),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          job.status == JobStatus.cancelled
+                              ? "Precio pactado: \$${job.basePrice.toStringAsFixed(0)}"
+                              : "Ganancia: \$${job.basePrice.toStringAsFixed(0)}",
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF4B5563)
+                          ),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
                 if (job.status != JobStatus.cancelled)
                   job.alreadyReviewed

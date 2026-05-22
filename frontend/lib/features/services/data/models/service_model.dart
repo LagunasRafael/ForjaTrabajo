@@ -25,6 +25,8 @@ class ServiceModel extends ServiceEntity {
     super.workerId,
     super.alreadyReviewed,
     super.hasPaid,
+    super.paymentDueAt,
+    super.autoReleaseAt,
   });
 
   factory ServiceModel.fromJson(Map<String, dynamic> json) {
@@ -75,6 +77,8 @@ class ServiceModel extends ServiceEntity {
       workerId: json['worker_id']?.toString(),
       alreadyReviewed: json['already_reviewed'] ?? false,
       hasPaid: json['has_paid'] ?? false,
+      paymentDueAt: json['payment_due_at'] != null ? DateTime.parse(json['payment_due_at'].toString()) : null,
+      autoReleaseAt: json['auto_release_at'] != null ? DateTime.parse(json['auto_release_at'].toString()) : null,
     );
   }
 
@@ -120,6 +124,8 @@ class ServiceModel extends ServiceEntity {
       workerId: entity.workerId,
       alreadyReviewed: entity.alreadyReviewed,
       hasPaid: entity.hasPaid,
+      paymentDueAt: entity.paymentDueAt,
+      autoReleaseAt: entity.autoReleaseAt,
     );
   }
 
@@ -147,6 +153,8 @@ class ServiceModel extends ServiceEntity {
       workerId: workerId,
       alreadyReviewed: alreadyReviewed,
       hasPaid: hasPaid,
+      paymentDueAt: paymentDueAt,
+      autoReleaseAt: autoReleaseAt,
     );
   }
 }

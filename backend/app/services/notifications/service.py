@@ -394,6 +394,138 @@ def notify_escrow_confirmed(db: Session, worker_id: str, amount: float, service_
         logger.warning(f"⚠️ Error en notify_escrow_confirmed: {e}")
 
 
+def notify_client_payment_deadline(db: Session, job: models.Job, payment_due_minutes: int):
+    """Notifica al cliente que tiene un plazo para realizar el pago."""
+    try:
+        client = db.query(auth_models.User).filter(auth_models.User.id == job.client_id).first()
+        if client:
+            hours = payment_due_minutes // 60
+            if hours > 0:
+                time_str = f"{hours} horas"
+            else:
+                time_str = f"{payment_due_minutes} minutos"
+            title = "Plazo para realizar el pago"
+            body = f"Tienes {time_str} para pagar el trabajo. Si no pagas a tiempo, se cancelará automáticamente."
+
+            create_in_app_notification(
+                db=db, user_id=str(client.id), title=title, body=body,
+                notification_type="payment_deadline", reference_id=str(job.id),
+                target_role="client"
+            )
+            if client.fcm_token:
+                send_push_notification(
+                    fcm_token=str(client.fcm_token), title=title, body=body,
+                    data={"type": "payment_deadline", "job_id": str(job.id), "target_role": "client"}
+                )
+    except Exception as e:
+        logger.warning(f"Error en notify_client_payment_deadline: {e}")
+
+
+def notify_worker_confirmation_deadline(db: Session, job: models.Job, auto_release_minutes: int):
+    """Notifica al trabajador que el cliente tiene un plazo para confirmar la finalización."""
+    try:
+        worker = db.query(auth_models.User).filter(auth_models.User.id == job.provider_id).first()
+        if worker:
+            hours = auto_release_minutes // 60
+            if hours > 0:
+                time_str = f"{hours} horas"
+            else:
+                time_str = f"{auto_release_minutes} minutos"
+            title = "Esperando confirmación del cliente"
+            body = f"Marcaste el trabajo como terminado. El cliente tiene {time_str} para confirmar. Si no responde, el pago se liberará automáticamente."
+
+            create_in_app_notification(
+                db=db, user_id=str(worker.id), title=title, body=body,
+                notification_type="confirmation_deadline", reference_id=str(job.id),
+                target_role="worker"
+            )
+            if worker.fcm_token:
+                send_push_notification(
+                    fcm_token=str(worker.fcm_token), title=title, body=body,
+                    data={"type": "confirmation_deadline", "job_id": str(job.id), "target_role": "worker"}
+                )
+    except Exception as e:
+        logger.warning(f"Error en notify_worker_confirmation_deadline: {e}")
+
+
+def notify_payment_expired(db: Session, job: models.Job):
+    """Notifica al cliente y al trabajador que el pago expiró y el trabajo fue cancelado."""
+    try:
+        client = db.query(auth_models.User).filter(auth_models.User.id == job.client_id).first()
+        worker = db.query(auth_models.User).filter(auth_models.User.id == job.provider_id).first()
+
+        if client:
+            create_in_app_notification(
+                db=db, user_id=str(client.id),
+                title="Plazo de pago vencido",
+                body="El plazo para pagar el trabajo ha expirado. El trabajo ha sido cancelado.",
+                notification_type="payment_expired", reference_id=str(job.id),
+                target_role="client"
+            )
+            if client.fcm_token:
+                send_push_notification(
+                    fcm_token=str(client.fcm_token), title="Plazo de pago vencido",
+                    body="El trabajo fue cancelado porque no se realizó el pago a tiempo.",
+                    data={"type": "payment_expired", "job_id": str(job.id), "target_role": "client"}
+                )
+
+        if worker:
+            create_in_app_notification(
+                db=db, user_id=str(worker.id),
+                title="Trabajo cancelado por falta de pago",
+                body="El cliente no realizó el pago a tiempo. El trabajo ha sido cancelado.",
+                notification_type="payment_expired", reference_id=str(job.id),
+                target_role="worker"
+            )
+            if worker.fcm_token:
+                send_push_notification(
+                    fcm_token=str(worker.fcm_token), title="Trabajo cancelado",
+                    body="El cliente no pagó a tiempo. El trabajo fue cancelado.",
+                    data={"type": "payment_expired", "job_id": str(job.id), "target_role": "worker"}
+                )
+    except Exception as e:
+        logger.warning(f"Error en notify_payment_expired: {e}")
+
+
+def notify_auto_released(db: Session, job: models.Job):
+    """Notifica al cliente y al trabajador que el pago se liberó automáticamente."""
+    try:
+        client = db.query(auth_models.User).filter(auth_models.User.id == job.client_id).first()
+        worker = db.query(auth_models.User).filter(auth_models.User.id == job.provider_id).first()
+
+        if worker:
+            create_in_app_notification(
+                db=db, user_id=str(worker.id),
+                title="Pago liberado automáticamente 💰",
+                body="El cliente no respondió a tiempo. El pago ha sido liberado automáticamente.",
+                notification_type="auto_released", reference_id=str(job.id),
+                target_role="worker"
+            )
+            if worker.fcm_token:
+                send_push_notification(
+                    fcm_token=str(worker.fcm_token), title="Pago liberado 💰",
+                    body="El cliente no respondió. El pago se liberó automáticamente a tu cuenta.",
+                    data={"type": "auto_released", "job_id": str(job.id), "target_role": "worker"}
+                )
+
+        if client:
+            create_in_app_notification(
+                db=db, user_id=str(client.id),
+                title="Pago liberado automáticamente",
+                body="El pago del trabajo fue liberado automáticamente al trabajador por falta de respuesta.",
+                notification_type="auto_released", reference_id=str(job.id),
+                target_role="client"
+            )
+            if client.fcm_token:
+                send_push_notification(
+                    fcm_token=str(client.fcm_token), title="Pago liberado",
+                    body="El pago fue liberado automáticamente al trabajador porque no confirmaste a tiempo.",
+                    data={"type": "auto_released", "job_id": str(job.id), "target_role": "client"}
+                )
+    except Exception as e:
+        logger.warning(f"Error en notify_auto_released: {e}")
+
+
 def notify_job_cancelled(db: Session, job: models.Job, cancelled_by_id: str):
     """Notifica a la otra parte que el trabajo fue cancelado."""
     try:
