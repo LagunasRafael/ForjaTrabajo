@@ -53,7 +53,7 @@ class WorkerJobListView extends ConsumerWidget {
             ? _buildEmptyState(context)
             : ListView.builder(
                 physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
                 itemCount: filtered.length,
                 itemBuilder: (context, index) {
                   final job = filtered[index];

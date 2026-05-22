@@ -11,8 +11,8 @@ class ApiClient {
 
   // 🌐 DIRECCIÓN IP DE TU PC PARA PROBAR EN CELULAR FÍSICO (Ej. Android/iOS)
   // Reemplaza si cambia tu IP local
-  //static final String _baseUrl = 'https://forja-api-rw0r.onrender.com';
-  static const String baseUrl = "http://10.0.2.2:8000";
+  static final String baseUrl = 'https://forja-api-rw0r.onrender.com';
+  //static const String baseUrl = "http://10.0.2.2:8000";
 
   factory ApiClient() => _instance;
 

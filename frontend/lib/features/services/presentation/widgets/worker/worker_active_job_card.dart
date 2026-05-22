@@ -5,12 +5,10 @@ import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider
 import 'package:forja_trabajo/features/services/presentation/screens/shared/service_detail_screen.dart';
 import 'package:forja_trabajo/features/services/presentation/providers/job_management_provider.dart'; 
 import 'package:forja_trabajo/features/services/presentation/providers/service_list_provider.dart';
-
 import 'package:forja_trabajo/features/services/domain/usecases/jobs/complete_job_usecase.dart';
 import 'package:forja_trabajo/features/services/domain/usecases/jobs/cancel_job_usecase.dart'; 
 import 'package:forja_trabajo/features/chat/presentation/providers/chat_provider.dart';
 import 'package:forja_trabajo/features/chat/presentation/screens/shared_chat_screen.dart';
-
 import 'package:forja_trabajo/features/chat/presentation/providers/chat_list_provider.dart';
 import 'package:forja_trabajo/features/services/presentation/screens/shared/widgets/shared_job_widgets.dart';
 
@@ -29,6 +27,7 @@ class WorkerActiveJobCard extends ConsumerWidget {
     return GestureDetector(
       onTap: () => _goToDetails(context, ref),
       child: Container(
+        width: double.infinity,
         margin: const EdgeInsets.only(bottom: 20),
         decoration: BoxDecoration(
           color: Colors.white, borderRadius: BorderRadius.circular(16),
@@ -52,7 +51,7 @@ class WorkerActiveJobCard extends ConsumerWidget {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.fromLTRB(14, 14, 14, 16),
               child: Column(
                 children: [
                   // 🧱 LEGO 2: INFO
