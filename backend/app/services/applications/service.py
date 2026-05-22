@@ -17,19 +17,6 @@ def create_service_request(db: Session, request_data: schemas.ServiceRequestCrea
     if existing_request:
         raise HTTPException(status_code=400, detail="Ya enviaste una propuesta a este trabajo.")
 
-    # 🔍 VALIDACIÓN DE PRECIO: No puede ser mayor al presupuesto del cliente
-    service_entry = db.query(models.Service).filter(models.Service.id == str(request_data.service_id)).first()
-    if not service_entry:
-        raise HTTPException(status_code=404, detail="El servicio no existe.")
-
-    if service_entry.base_price and request_data.proposed_price < float(service_entry.base_price):
-        raise HTTPException(
-            status_code=400, 
-            detail=f"Tu oferta (${request_data.proposed_price}) no puede ser menor al presupuesto del cliente (${service_entry.base_price})."
-        )
-
-
-
     db_request = models.ServiceRequest(
         service_id=str(request_data.service_id),
         description=request_data.description,
@@ -75,15 +62,6 @@ def update_service_request(db: Session, request_id: str, description: str, propo
     if not postulation:
         raise HTTPException(status_code=404, detail="Postulación no encontrada")
 
-    # 🔍 VALIDACIÓN DE PRECIO EN ACTUALIZACIÓN
-    service_entry = postulation.service
-    if service_entry and service_entry.base_price and proposed_price < float(service_entry.base_price):
-        raise HTTPException(
-            status_code=400, 
-            detail=f"Tu oferta (${proposed_price}) no puede ser menor al presupuesto del cliente (${service_entry.base_price})."
-        )
-
-
     postulation.description = description
 
     postulation.proposed_price = proposed_price
@@ -111,6 +89,23 @@ def get_worker_applications(db: Session, worker_id: str):
                 Review.reviewer_id == worker_id
             ).first()
             already_reviewed = existing_review is not None
+
+            # Verificar si el pago fue realizado
+            from app.payments.models import Contract, Payment
+            from app.payments.models import PaymentStatus as PaymentStatusEnum
+            has_paid = False
+            contract = db.query(Contract).filter(Contract.job_id == job.id).first()
+            if contract:
+                payment = db.query(Payment).filter(
+                    Payment.contract_id == contract.id,
+                    Payment.status.in_([
+                        PaymentStatusEnum.HELD_IN_ESCROW,
+                        PaymentStatusEnum.RELEASED,
+                        PaymentStatusEnum.COMPLETED,
+                    ])
+                ).first()
+                if payment:
+                    has_paid = True
 
             if job.status in [models.JobStatus.COMPLETED, models.JobStatus.CANCELLED] and job.completed_at:
                 fecha_buscada = job.completed_at.isoformat()
@@ -145,6 +140,7 @@ def get_worker_applications(db: Session, worker_id: str):
                 "already_reviewed": already_reviewed,
                 "author_name": author_name,
                 "author_image_url": author_image_url,
+                "has_paid": has_paid,
             }
 
         # 2. BUSCAMOS LAS POSTULACIONES PENDIENTES

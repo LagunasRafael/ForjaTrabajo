@@ -363,6 +363,37 @@ def notify_payment_made(db: Session, worker_id: str, amount: float, service_titl
         logger.warning(f"⚠️ Error en notify_payment_made: {e}")
 
 
+def notify_escrow_confirmed(db: Session, worker_id: str, amount: float, service_title: str, job_id: str = None):
+    """Notifica al trabajador que el pago está retenido (escrow) y puede comenzar."""
+    try:
+        worker = db.query(auth_models.User).filter(auth_models.User.id == worker_id).first()
+        if worker:
+            title = "Pago recibido"
+            body = f"El cliente ya realizó el pago por el servicio \"{service_title}\". Puedes comenzar el trabajo."
+
+            create_in_app_notification(
+                db=db, user_id=str(worker.id), title=title, body=body,
+                notification_type="payment_held", reference_id=job_id or str(worker.id),
+                target_role="worker"
+            )
+
+            if worker.fcm_token:
+                send_push_notification(
+                    fcm_token=str(worker.fcm_token),
+                    title=title,
+                    body=body,
+                    data={
+                        "type": "payment_held",
+                        "job_id": job_id or "",
+                        "amount": str(amount),
+                        "service_title": service_title,
+                        "target_role": "worker"
+                    }
+                )
+    except Exception as e:
+        logger.warning(f"⚠️ Error en notify_escrow_confirmed: {e}")
+
+
 def notify_job_cancelled(db: Session, job: models.Job, cancelled_by_id: str):
     """Notifica a la otra parte que el trabajo fue cancelado."""
     try:

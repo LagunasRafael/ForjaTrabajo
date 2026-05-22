@@ -131,7 +131,7 @@ async def upload_service_evidence_to_s3(file: UploadFile, service_id: str) -> Op
                 "ContentType": "image/jpeg",
             }
         )
-        print("✅ ¡Evidencia subida exitosamente!")
+        print("¡Imagenes cargadas exitosamente!")
 
         # 4. Devolvemos la URL pública
         return f"https://{bucket_name}.s3.amazonaws.com/{s3_key}"
