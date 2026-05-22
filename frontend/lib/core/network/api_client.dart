@@ -9,9 +9,9 @@ class ApiClient {
   late Dio dio;
   final FlutterSecureStorage storage;
 
-  // 🌐 DIRECCIÓN IP DE TU PC PARA PROBAR EN CELULAR FÍSICO (Ej. Android/iOS)
-  // Reemplaza si cambia tu IP local
-  static final String _baseUrl = 'http://192.168.0.22:8000'; 
+  // 🌐 URL de backend de Render para Producción
+  static final String _baseUrl = 'https://forja-api-rw0r.onrender.com'; 
+  
 
   static String get baseUrl => _baseUrl;
 
@@ -56,6 +56,12 @@ class ApiClient {
               return handler.next(e);
             }
 
+            // 🛡️ GUARDIA 1: Si la petición original no envió Token, ignoramos la redirección
+            final hasAuthHeader = e.requestOptions.headers.containsKey('Authorization');
+            if (!hasAuthHeader) {
+              return handler.next(e);
+            }
+
             final refreshToken = await storage.read(key: 'refresh_token');
 
             if (refreshToken != null && refreshToken.isNotEmpty) {
@@ -92,6 +98,13 @@ class ApiClient {
               } catch (refreshException) {
                 print('🚨 Error al refrescar token: $refreshException');
               }
+            }
+
+            // 🛡️ GUARDIA 2: Si el usuario cerró sesión manualmente, el jwt_token ya será nulo.
+            // En ese caso, evitamos limpiar la pantalla de Login actual de forma redundante.
+            final currentToken = await storage.read(key: 'jwt_token');
+            if (currentToken == null) {
+              return handler.next(e);
             }
 
             // Si no hay refresh_token o el refresco falló: cerramos sesión
