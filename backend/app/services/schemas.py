@@ -84,6 +84,7 @@ class Service(ServiceBase):
     worker_id: Optional[str] = None
 
     already_reviewed: bool = False
+    has_paid: bool = False
 
     class Config:
         from_attributes = True

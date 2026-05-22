@@ -1,6 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
+from typing import Optional, List
 
 from app.db.database import get_db
 from app.auth.security import check_role, get_current_user
@@ -8,20 +9,22 @@ from app.core.roles import Role
 from app.auth import models as auth_models
 
 from app.services import schemas, models
-from app.services.contracts import service
+from app.services.contracts import service as contracts_service
+from app.services.contracts import schemas as contracts_schemas
+from app.utils.s3 import upload_service_evidence_to_s3
 from sqlalchemy.orm import joinedload
 
 router = APIRouter()
 
 @router.post("/accept-postulation/{request_id}")
 def accept_worker_postulation(request_id: str, db: Session = Depends(get_db), current_user: auth_models.User = Depends(get_current_user)):
-    result = service.accept_postulation(db, request_id, str(current_user.id))
+    result = contracts_service.accept_postulation(db, request_id, str(current_user.id))
     return result
 
 @router.put("/jobs/{job_id}/complete", response_model=schemas.Job)
 def complete_job_status(job_id: str, db: Session = Depends(get_db), current_user: auth_models.User = Depends(check_role([Role.CLIENT, Role.WORKER, Role.ADMIN]))):
     try:
-        return service.complete_job(db, job_id, str(current_user.id))
+        return contracts_service.complete_job(db, job_id, str(current_user.id))
     except HTTPException as e:
         raise e
     except Exception as e:
@@ -31,7 +34,52 @@ def complete_job_status(job_id: str, db: Session = Depends(get_db), current_user
 @router.put("/jobs/{job_id}/cancel", response_model=schemas.Job)
 def cancel_job_status(job_id: str, db: Session = Depends(get_db), current_user: auth_models.User = Depends(get_current_user)):
     """Cancela un Job que ya estaba en 'matched'."""
-    return service.cancel_job(db, job_id, str(current_user.id), str(current_user.role))
+    return contracts_service.cancel_job(db, job_id, str(current_user.id), str(current_user.role))
+
+# =================================================================
+# WORK EVIDENCES
+# =================================================================
+@router.get("/{service_id}/evidences", response_model=List[contracts_schemas.WorkEvidenceResponse])
+def list_evidences(
+    service_id: str,
+    db: Session = Depends(get_db),
+    current_user: auth_models.User = Depends(get_current_user),
+):
+    return contracts_service.get_evidences(db, service_id, str(current_user.id), str(current_user.role))
+
+@router.post("/{service_id}/evidences", response_model=contracts_schemas.WorkEvidenceResponse)
+async def upload_evidence(
+    service_id: str,
+    file: UploadFile = File(...),
+    description: Optional[str] = Form(None),
+    db: Session = Depends(get_db),
+    current_user: auth_models.User = Depends(get_current_user),
+):
+    service = db.query(models.Service).filter(models.Service.id == service_id).first()
+    if not service:
+        raise HTTPException(status_code=404, detail="Servicio no encontrado")
+
+    worker_id = str(service.worker_id)
+    if str(current_user.id) != worker_id:
+        raise HTTPException(status_code=403, detail="Solo el trabajador asignado puede subir evidencias")
+
+    if service.status not in [models.JobStatus.MATCHED, models.JobStatus.WAITING_CONFIRMATION]:
+        raise HTTPException(status_code=400, detail="No puedes subir evidencias en un trabajo cancelado o finalizado")
+
+    image_url = await upload_service_evidence_to_s3(file, service_id)
+    if not image_url:
+        raise HTTPException(status_code=500, detail="Error al subir la imagen a S3")
+
+    return contracts_service.create_evidence(db, service_id, worker_id, image_url, description)
+
+@router.delete("/{service_id}/evidences/{evidence_id}")
+def remove_evidence(
+    service_id: str,
+    evidence_id: str,
+    db: Session = Depends(get_db),
+    current_user: auth_models.User = Depends(get_current_user),
+):
+    return contracts_service.delete_evidence(db, evidence_id, service_id, str(current_user.id))
 
 # =================================================================
 # ADMIN JOBS
@@ -75,6 +123,26 @@ def get_all_jobs_admin(
             "createdAt": service_obj.created_at.isoformat() if service_obj and service_obj.created_at else job.started_at.isoformat(),
         })
     return result
+
+# =================================================================
+# CRON / EXPIRACIÓN AUTOMÁTICA
+# =================================================================
+@router.post("/cron/check-expirations")
+def check_expirations(
+    db: Session = Depends(get_db),
+    current_user: auth_models.User = Depends(get_current_user)
+):
+    """
+    Endpoint llamado por un cron externo (cron-job.org, etc.)
+    Revisa trabajos con payment_due_at vencido o auto_release_at vencido.
+    Solo accesible por admin.
+    """
+    if current_user.role != Role.ADMIN:
+        raise HTTPException(status_code=403, detail="Solo admin")
+    
+    from app.services.expiration import process_expired_payments
+    results = process_expired_payments(db)
+    return results
 
 # =================================================================
 # REVIEWS

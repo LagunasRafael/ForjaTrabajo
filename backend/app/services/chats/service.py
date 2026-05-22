@@ -9,6 +9,26 @@ from app.services.notifications import service as notif_service
 from app.payments import models as payment_models
 import logging
 
+def add_system_message(db: Session, conversation_id: str, sender_id: str, content: str):
+    """Agrega un mensaje de sistema a una conversación."""
+    import uuid
+    new_msg = models.Message(
+        id=str(uuid.uuid4()),
+        conversation_id=conversation_id,
+        sender_id=sender_id,
+        content=content,
+        message_type=models.MessageType.SYSTEM.value,
+        status="sent",
+        created_at=datetime.utcnow()
+    )
+    convo = db.query(models.Conversation).filter(models.Conversation.id == conversation_id).first()
+    if convo:
+        convo.updated_at = datetime.utcnow()
+    db.add(new_msg)
+    db.commit()
+    return new_msg
+
+
 def get_or_create_conversation(db: Session, request_id: str, user_id: str):
     """Busca si ya existe un chat para esta postulación, o crea uno nuevo."""
     request_entry = db.query(models.ServiceRequest).filter(models.ServiceRequest.id == request_id).first()

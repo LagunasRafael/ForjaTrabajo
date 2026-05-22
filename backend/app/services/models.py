@@ -181,6 +181,11 @@ class Job(Base):
     started_at = Column(DateTime, default=datetime.utcnow)
     completed_at = Column(DateTime, nullable=True)
 
+    # Feature 2: Fecha límite para pagar (se setea al aceptar postulación)
+    payment_due_at = Column(DateTime, nullable=True)
+    # Feature 9: Fecha de liberación automática (se setea al marcar completado)
+    auto_release_at = Column(DateTime, nullable=True)
+
     request = relationship("ServiceRequest", back_populates="job")
     
 # -----------------------------
@@ -304,3 +309,19 @@ class Review(Base):
     job = relationship("Job", backref="reviews")
     reviewer = relationship("User", foreign_keys=[reviewer_id])
     reviewee = relationship("User", foreign_keys=[reviewee_id])
+
+# -----------------------------
+# WORK EVIDENCES
+# -----------------------------
+class WorkEvidence(Base):
+    __tablename__ = "work_evidences"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    service_id = Column(String(36), ForeignKey("services.id"), nullable=False, index=True)
+    worker_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
+    image_url = Column(String(500), nullable=False)
+    description = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    service = relationship("Service", backref="work_evidences")
+    worker = relationship("User", foreign_keys=[worker_id])

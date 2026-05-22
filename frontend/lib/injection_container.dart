@@ -25,8 +25,8 @@ Future<void> init() async {
 
   sl.registerLazySingleton(() => Dio(BaseOptions(
   baseUrl: ApiConfig.baseUrl,
-  connectTimeout: const Duration(seconds: 5),
-  receiveTimeout: const Duration(seconds: 30),
+  connectTimeout: const Duration(seconds: 60),
+  receiveTimeout: const Duration(seconds: 60),
 )));
 
   // Use cases

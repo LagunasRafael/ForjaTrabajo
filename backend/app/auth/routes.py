@@ -50,7 +50,7 @@ def register(request: Request, user: schemas.UserCreate, background_tasks: Backg
             
     # 3. Generar código de 6 dígitos
     verification_code = generate_verification_code()
-    
+
     # 4. Crear el usuario en la BD (is_email_verified=False inicial)
     new_user = service.create_user(db, user_data, verification_code=verification_code)
     
