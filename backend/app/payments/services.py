@@ -1,9 +1,12 @@
 import stripe
+import logging
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session, joinedload
 from . import models, schemas
 from app.core.config import STRIPE_SECRET_KEY
 from app.services.models import Job, JobStatus, ServiceRequest
+
+logger = logging.getLogger(__name__)
 
 stripe.api_key = STRIPE_SECRET_KEY
 
@@ -229,27 +232,67 @@ def capture_payment(db: Session, job_id: str):
         # No hay pago en escrow, puede ser un flujo sin Stripe
         return None
 
-    if not payment.stripe_payment_intent_id:
-        return None
+    # 3. Capturar en Stripe (si aplica)
+    if payment.stripe_payment_intent_id:
+        try:
+            print(f"[CAPTURE] Capturando PaymentIntent: {payment.stripe_payment_intent_id}", flush=True)
+            captured_intent = stripe.PaymentIntent.capture(
+                str(payment.stripe_payment_intent_id)
+            )
+            print(f"[CAPTURE] Capture exitoso, status: {captured_intent.status}", flush=True)
+        except stripe.error.StripeError as e:
+            print(f"[CAPTURE] ERROR DE STRIPE al capturar: {e}", flush=True)
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=f"Error al capturar pago en Stripe: {str(e)}"
+            )
 
-    # 3. Capturar en Stripe
-    try:
-        captured_intent = stripe.PaymentIntent.capture(
-            str(payment.stripe_payment_intent_id)
-        )
-    except stripe.error.StripeError as e:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Error al capturar pago en Stripe: {str(e)}"
-        )
+        # 4. Transferir los fondos a la cuenta Stripe Connect del trabajador
+        print(f"[CAPTURE] Iniciando transferencia al worker...", flush=True)
+        _transfer_to_worker(db, job, payment)
+        print(f"[CAPTURE] Transferencia completada", flush=True)
 
-    # 4. Actualizar nuestra BD
+    # 5. Actualizar nuestra BD (con o sin Stripe)
     payment.status = models.PaymentStatus.RELEASED  # type: ignore
     contract.status = "completed"  # type: ignore
 
     db.commit()
     db.refresh(payment)
     return payment
+
+
+def _transfer_to_worker(db: Session, job, payment):
+    """
+    Transfiere los fondos capturados desde la cuenta de la plataforma
+    a la cuenta Stripe Connect Express del trabajador.
+    Si el worker no tiene Stripe configurado, los fondos quedan retenidos
+    en la plataforma y se registra una advertencia.
+    """
+    from app.auth.models import User
+
+    worker = db.query(User).filter(User.id == job.provider_id).first()
+    if not worker or not worker.stripe_account_id:
+        logger.warning(
+            f"Worker {job.provider_id} no tiene cuenta Stripe Connect. "
+            f"Fondos ${payment.amount} retenidos en la plataforma."
+        )
+        return
+
+    try:
+        stripe.Transfer.create(
+            amount=payment.amount_cents,
+            currency="mxn",
+            destination=worker.stripe_account_id,
+            transfer_group=f"payment_{payment.id}",
+        )
+        logger.info(
+            f"Transferencia exitosa de ${payment.amount} al worker "
+            f"{worker.id} (Stripe account: {worker.stripe_account_id})"
+        )
+    except stripe.error.StripeError as e:
+        logger.error(
+            f"Error al transferir ${payment.amount} al worker {worker.id}: {e}"
+        )
 
 
 def get_payment(db: Session, payment_id: str):
@@ -333,14 +376,19 @@ def refund_payment(db: Session, payment_id: str):
     # 1. Reembolsar en Stripe
     try:
         if payment.stripe_payment_intent_id:
-            # Si el pago está en escrow (manual capture), lo cancelamos (cancel) 
-            # Si ya fue capturado, hacemos refund.
+            print(f"[REFUND] Stripe intent ID: {payment.stripe_payment_intent_id}", flush=True)
             intent = stripe.PaymentIntent.retrieve(payment.stripe_payment_intent_id)
+            print(f"[REFUND] Stripe intent status: {intent.status}", flush=True)
             if intent.status == "requires_capture":
+                print(f"[REFUND] Cancelando PaymentIntent...", flush=True)
                 stripe.PaymentIntent.cancel(payment.stripe_payment_intent_id)
+                print(f"[REFUND] PaymentIntent cancelado exitosamente", flush=True)
             else:
+                print(f"[REFUND] Creando refund para PaymentIntent...", flush=True)
                 stripe.Refund.create(payment_intent=payment.stripe_payment_intent_id)
+                print(f"[REFUND] Refund creado exitosamente", flush=True)
     except stripe.error.StripeError as e:
+        print(f"[REFUND] ERROR DE STRIPE: {e}", flush=True)
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"Error al procesar reembolso en Stripe: {str(e)}"
