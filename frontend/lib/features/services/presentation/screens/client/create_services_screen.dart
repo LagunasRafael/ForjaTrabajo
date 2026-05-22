@@ -159,7 +159,7 @@ class _CreateServiceScreenState extends ConsumerState<CreateServiceScreen> {
             backgroundColor: const Color(0xFFF0F0F0),
             behavior: SnackBarBehavior.floating,
             margin: EdgeInsets.only(
-              bottom: MediaQuery.of(context).size.height - 260,
+              bottom: MediaQuery.of(context).size.height - 900,
               left: 24,
               right: 24,
             ),

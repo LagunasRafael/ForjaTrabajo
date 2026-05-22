@@ -5,6 +5,7 @@ import '../../../../payments/presentation/providers/payment_provider.dart';
 import '../../../../payments/presentation/providers/payment_state.dart';
 import '../../providers/service_request_provider.dart';
 import '../../providers/nav_providers.dart';
+import '../../providers/service_list_provider.dart';
 
 // Provider local para la selección del método de pago
 final selectedMethodProvider = StateProvider<String>((ref) => 'visa_4242');
@@ -81,13 +82,15 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
 
       // 6. Éxito total
       if (mounted) {
+        ref.invalidate(myRequestsProvider);
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('✅ Pago realizado con éxito'), backgroundColor: Colors.green),
         );
 
-        // Redirigir a la pestaña de "Mis Trabajos - En Curso"
+        // Redirigir a la pestaña de "Mis Trabajos - En Proceso"
         ref.read(clientNavProvider.notifier).state = 3;
-        ref.read(myRequestsTabProvider.notifier).state = 1; // 1 = "En curso"
+        ref.read(myRequestsTabProvider.notifier).state = 1;
 
         Navigator.pushNamedAndRemoveUntil(context, '/client_home', (route) => false);
       }
