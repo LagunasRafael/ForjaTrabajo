@@ -112,6 +112,17 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         content={"detail": "Datos de entrada inválidos", "errores": errors},
     )
 
+# Scheduler automático (APScheduler)
+from app.services.scheduler import start_scheduler, stop_scheduler
+
+@app.on_event("startup")
+def on_startup():
+    start_scheduler()
+
+@app.on_event("shutdown")
+def on_shutdown():
+    stop_scheduler()
+
 # Routers
 app.include_router(router)
 

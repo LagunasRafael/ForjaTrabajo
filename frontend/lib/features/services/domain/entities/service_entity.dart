@@ -24,6 +24,8 @@ class ServiceEntity {
   final String? workerId;
   final bool alreadyReviewed;
   final bool hasPaid;
+  final DateTime? paymentDueAt;
+  final DateTime? autoReleaseAt;
 
   ServiceEntity({
     required this.id,
@@ -49,6 +51,8 @@ class ServiceEntity {
     this.workerId,
     this.alreadyReviewed = false,
     this.hasPaid = false,
+    this.paymentDueAt,
+    this.autoReleaseAt,
   });
 
   ServiceEntity copyWith({
@@ -75,6 +79,8 @@ class ServiceEntity {
     String? workerId,
     bool? alreadyReviewed,
     bool? hasPaid,
+    DateTime? paymentDueAt,
+    DateTime? autoReleaseAt,
   }) {
     return ServiceEntity(
       id: id ?? this.id,
@@ -100,6 +106,8 @@ class ServiceEntity {
       workerId: workerId ?? this.workerId,
       alreadyReviewed: alreadyReviewed ?? this.alreadyReviewed,
       hasPaid: hasPaid ?? this.hasPaid,
+      paymentDueAt: paymentDueAt ?? this.paymentDueAt,
+      autoReleaseAt: autoReleaseAt ?? this.autoReleaseAt,
     );
   }
 }

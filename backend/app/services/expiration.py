@@ -3,7 +3,7 @@ from datetime import datetime
 from app.services import models as service_models
 from app.payments import models as payment_models
 from app.payments.services import capture_payment, refund_payment
-from app.services.chats.service import add_system_message, get_or_create_conversation
+from app.services.notifications.service import notify_payment_expired, notify_auto_released
 import logging
 
 logger = logging.getLogger(__name__)
@@ -50,15 +50,7 @@ def _cancel_unpaid_jobs(db: Session, now: datetime) -> int:
             job.payment_due_at = None
             db.commit()
 
-            # 💬 Mensaje del sistema en el chat
-            try:
-                conversation = get_or_create_conversation(db, str(job.request_id), str(job.client_id))
-                add_system_message(
-                    db, str(conversation.id), str(job.client_id),
-                    "⏰ El plazo de pago ha expirado. El trabajo ha sido cancelado."
-                )
-            except Exception as e:
-                logger.warning(f"No se pudo enviar mensaje de sistema para job {job.id}: {e}")
+            notify_payment_expired(db, job)
 
             count += 1
         except Exception as e:
@@ -87,16 +79,7 @@ def _auto_release_jobs(db: Session, now: datetime) -> int:
                 job.request.service.is_active = False
             db.commit()
 
-            # 💬 Mensaje del sistema en el chat
-            try:
-                conversation = get_or_create_conversation(db, str(job.request_id), str(job.provider_id))
-                add_system_message(
-                    db, str(conversation.id), str(job.provider_id),
-                    "⏰ El cliente no respondió a tiempo. "
-                    "El pago ha sido liberado automáticamente al trabajador."
-                )
-            except Exception as e:
-                logger.warning(f"No se pudo enviar mensaje de sistema para job {job.id}: {e}")
+            notify_auto_released(db, job)
 
             count += 1
         except Exception as e:

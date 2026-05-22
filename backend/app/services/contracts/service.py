@@ -8,15 +8,13 @@ from typing import Optional
 from app.core.roles import Role
 from app.auth import models as auth_models
 from app.services.notifications import service as notif_service
-from app.services.chats.service import add_system_message, get_or_create_conversation
+
 from app.payments.services import capture_payment
 import logging
 
-logger = logging.getLogger(__name__)
+from app.core.config import PAYMENT_DUE_MINUTES, AUTO_RELEASE_MINUTES
 
-# Configuración de plazos (en minutos para pruebas; cambiar antes de producción)
-PAYMENT_DUE_MINUTES = 2     # Feature 2: tiempo para pagar tras aceptar (en prod: 24h = 1440)
-AUTO_RELEASE_MINUTES = 2    # Feature 9: tiempo para auto-liberar (en prod: 3 días = 4320)
+logger = logging.getLogger(__name__)
 
 def accept_postulation(db: Session, request_id: str, current_user_id: str):
     postulation = db.query(models.ServiceRequest).filter(models.ServiceRequest.id == request_id).first()
@@ -58,19 +56,9 @@ def accept_postulation(db: Session, request_id: str, current_user_id: str):
         db.add(new_job)
         db.commit()
 
-        # 🔔 Notificar al trabajador que fue aceptado (Migrado)
+        # 🔔 Notificar al trabajador que fue aceptado y al cliente sobre el plazo de pago
         notif_service.notify_job_accepted(db, new_job, service_entry.title)
-
-        # 💬 Mensaje del sistema en el chat: plazo para pagar
-        try:
-            conversation = get_or_create_conversation(db, request_id, current_user_id)
-            add_system_message(
-                db, str(conversation.id), str(current_user_id),
-                f"📌 Postulación aceptada. El cliente tiene {PAYMENT_DUE_MINUTES} minutos para realizar el pago. "
-                "Una vez confirmado el pago, el trabajador podrá comenzar el trabajo."
-            )
-        except Exception as e:
-            logger.warning(f"No se pudo crear el mensaje de sistema en el chat: {e}")
+        notif_service.notify_client_payment_deadline(db, new_job, PAYMENT_DUE_MINUTES)
         
         return {
             "status": "success", 
@@ -112,6 +100,9 @@ def complete_job(db: Session, job_id: str, user_id: str):
             
         db.commit()
         db.refresh(job)
+
+        notif_service.notify_worker_confirmation_deadline(db, job, AUTO_RELEASE_MINUTES)
+
         return job
 
     elif is_client:
