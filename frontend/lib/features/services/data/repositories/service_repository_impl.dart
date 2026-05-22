@@ -15,7 +15,9 @@ import '../datasources/service_request_remote_data_source.dart';
 import '../datasources/job_remote_data_source.dart';
 import '../models/service_model.dart';
 import '../models/service_request_model.dart';
+import '../models/work_evidence_model.dart';
 import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart';
+import 'package:forja_trabajo/features/services/domain/entities/work_evidence_entity.dart';
 
 class ServiceRepositoryImpl implements ServiceRepository {
   final CategoryRemoteDataSource categoryDS;
@@ -191,6 +193,36 @@ class ServiceRepositoryImpl implements ServiceRepository {
       debugPrint("🚨 Error en completeService: $e");
       return false;
     }
+  }
+
+  // --- EVIDENCIAS ---
+  @override
+  Future<bool> deleteEvidence(String serviceId, String evidenceId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token') ?? '';
+    if (token.isEmpty) return false;
+
+    return serviceDS.deleteEvidence(serviceId, evidenceId, token);
+  }
+
+  @override
+  Future<List<WorkEvidenceEntity>> getEvidences(String serviceId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token') ?? '';
+    if (token.isEmpty) return [];
+
+    final models = await serviceDS.getEvidences(serviceId, token);
+    return models.map((m) => m.toEntity()).toList();
+  }
+
+  @override
+  Future<WorkEvidenceEntity> uploadEvidence(String serviceId, File imageFile, String? description) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token') ?? '';
+    if (token.isEmpty) throw Exception('No hay sesión activa');
+
+    final model = await serviceDS.uploadEvidence(serviceId, imageFile, description, token);
+    return model.toEntity();
   }
 }
 

@@ -58,6 +58,8 @@ class WorkerActiveJobCard extends ConsumerWidget {
                   // 🧱 LEGO 2: INFO
                   SharedJobInfo(title: job.title, price: job.basePrice, location: job.exactAddress),
                   
+                  // 🏷️ ESTADO DEL PAGO
+                  _PaymentStatusBadge(job: job),
                   // 🚧 BOTONES DEL TRABAJADOR
                   _WorkerActiveActions(job: job),
                 ],
@@ -258,5 +260,63 @@ class _WorkerActiveActionsState extends ConsumerState<_WorkerActiveActions> {
         );
       }
     }
+  }
+}
+
+// ==========================================
+// INDICADOR DE ESTADO DEL PAGO
+// ==========================================
+class _PaymentStatusBadge extends StatelessWidget {
+  final ServiceEntity job;
+  const _PaymentStatusBadge({required this.job});
+
+  @override
+  Widget build(BuildContext context) {
+    final isWaiting = job.status == JobStatus.waiting_confirmation;
+    final isPaid = job.hasPaid;
+
+    String text;
+    Color bgColor;
+    IconData icon;
+
+    if (isWaiting) {
+      text = "Esperando confirmación del cliente";
+      bgColor = Colors.orange.shade50;
+      icon = Icons.hourglass_top;
+    } else if (isPaid) {
+      text = "Pago realizado, puedes comenzar el trabajo";
+      bgColor = const Color(0xFF10B981).withOpacity(0.1);
+      icon = Icons.check_circle;
+    } else {
+      text = "Esperando pago del cliente";
+      bgColor = Colors.orange.shade50;
+      icon = Icons.payment;
+    }
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: isPaid ? const Color(0xFF10B981) : Colors.orange),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: isPaid ? const Color(0xFF10B981) : Colors.orange.shade800,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

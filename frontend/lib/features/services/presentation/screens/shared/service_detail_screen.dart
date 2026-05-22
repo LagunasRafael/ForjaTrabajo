@@ -119,7 +119,7 @@ class _ServiceDetailScreenState extends ConsumerState<ServiceDetailScreen> {
           onPressed: isOpen ? _navigateToEdit : null,
           icon: Icon(isOpen ? Icons.edit : Icons.lock_outline, color: Colors.white),
           label: Text(
-            isOpen ? "Editar Servicio" : "Servicio Bloqueado (En curso)", 
+            isOpen ? "Editar Servicio" : "Servicio En curso", 
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)
           ),
           style: _btnStyle(isOpen ? const Color(0xFF2563EB) : Colors.grey),
@@ -162,7 +162,6 @@ class _ServiceDetailScreenState extends ConsumerState<ServiceDetailScreen> {
       );
 }
 
-// 📦 Contenedor optimizado para la barra inferior
 class _BottomBarContainer extends StatelessWidget {
   final Widget child;
   const _BottomBarContainer({required this.child});

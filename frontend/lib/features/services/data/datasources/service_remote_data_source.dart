@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/service_model.dart';
+import '../models/work_evidence_model.dart';
 import '../../../../core/network/api_client.dart';
 import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart';
 
@@ -149,13 +150,61 @@ class ServiceRemoteDataSource {
   Future<bool> completeService(String serviceId, String token) async {
     try {
       final response = await _dio.put(
-        '$_path/jobs/$serviceId/complete', // 💡 Nota: Asegúrate de que esta ruta coincida con el backend
+        '$_path/jobs/$serviceId/complete',
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
       return response.statusCode == 200;
     } catch (e) {
       debugPrint("🚨 Error al completar servicio: $e");
       return false;
+    }
+  }
+
+  Future<List<WorkEvidenceModel>> getEvidences(String serviceId, String token) async {
+    try {
+      final response = await _dio.get(
+        '$_path/$serviceId/evidences',
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      return (response.data as List).map((e) => WorkEvidenceModel.fromJson(e)).toList();
+    } catch (e) {
+      debugPrint("🚨 Error al cargar evidencias: $e");
+      return [];
+    }
+  }
+
+  Future<bool> deleteEvidence(String serviceId, String evidenceId, String token) async {
+    try {
+      final response = await _dio.delete(
+        '$_path/$serviceId/evidences/$evidenceId',
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint("🚨 Error al eliminar evidencia: $e");
+      return false;
+    }
+  }
+
+  Future<WorkEvidenceModel> uploadEvidence(String serviceId, File imageFile, String? description, String token) async {
+    final formData = FormData.fromMap({
+      'file': await MultipartFile.fromFile(imageFile.path, filename: imageFile.path.split('/').last),
+      if (description != null && description.isNotEmpty) 'description': description,
+    });
+
+    try {
+      final response = await _dio.post(
+        '$_path/$serviceId/evidences',
+        data: formData,
+        options: Options(
+          headers: {'Authorization': 'Bearer $token'},
+          contentType: 'multipart/form-data',
+        ),
+      );
+      return WorkEvidenceModel.fromJson(response.data);
+    } on DioException catch (e) {
+      debugPrint("🚨 Error al subir evidencia: ${e.response?.data}");
+      throw Exception("Fallo al subir evidencia: ${e.response?.data?['detail'] ?? e.message}");
     }
   }
 }

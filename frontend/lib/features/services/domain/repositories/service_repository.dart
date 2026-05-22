@@ -3,6 +3,7 @@ import '../entities/category_entity.dart';
 import '../entities/service_entity.dart';
 import '../entities/service_request_entity.dart';
 import '../entities/job_entity.dart';
+import '../entities/work_evidence_entity.dart';
 
 abstract class ServiceRepository {
   // --- SERVICIOS (SERVICES) ---
@@ -33,4 +34,9 @@ abstract class ServiceRepository {
   // --- TRABAJOS (JOBS) ---
   Future<JobEntity> completeJob(String jobId, String token);
   Future<JobEntity> cancelJob(String jobId, String token);
+
+  // --- EVIDENCIAS (WORK EVIDENCES) ---
+  Future<List<WorkEvidenceEntity>> getEvidences(String serviceId);
+  Future<WorkEvidenceEntity> uploadEvidence(String serviceId, File imageFile, String? description);
+  Future<bool> deleteEvidence(String serviceId, String evidenceId);
 }
