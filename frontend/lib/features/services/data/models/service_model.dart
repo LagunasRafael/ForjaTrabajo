@@ -24,6 +24,7 @@ class ServiceModel extends ServiceEntity {
     super.workerImageUrl,
     super.workerId,
     super.alreadyReviewed,
+    super.hasPaid,
   });
 
   factory ServiceModel.fromJson(Map<String, dynamic> json) {
@@ -73,6 +74,7 @@ class ServiceModel extends ServiceEntity {
       workerImageUrl: json['worker_image_url']?.toString(),
       workerId: json['worker_id']?.toString(),
       alreadyReviewed: json['already_reviewed'] ?? false,
+      hasPaid: json['has_paid'] ?? false,
     );
   }
 
@@ -117,6 +119,7 @@ class ServiceModel extends ServiceEntity {
       workerImageUrl: entity.workerImageUrl,
       workerId: entity.workerId,
       alreadyReviewed: entity.alreadyReviewed,
+      hasPaid: entity.hasPaid,
     );
   }
 
@@ -143,6 +146,7 @@ class ServiceModel extends ServiceEntity {
       workerImageUrl: workerImageUrl,
       workerId: workerId,
       alreadyReviewed: alreadyReviewed,
+      hasPaid: hasPaid,
     );
   }
 }

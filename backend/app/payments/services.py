@@ -200,6 +200,27 @@ def confirm_escrow(db: Session, payment_intent_id: str):
 
     db.commit()
     db.refresh(payment)
+
+    # Notificar al trabajador que el pago está retenido
+    try:
+        from app.services.notifications import service as notif_service
+        from app.services.models import Job
+        if contract:
+            job = db.query(Job).filter(Job.id == contract.job_id).first()
+            if job:
+                service_title = "Servicio"
+                if job.request and job.request.service:
+                    service_title = job.request.service.title
+                notif_service.notify_escrow_confirmed(
+                    db=db,
+                    worker_id=str(job.provider_id),
+                    amount=payment.amount,
+                    service_title=service_title,
+                    job_id=str(job.id)
+                )
+    except Exception as e:
+        print(f"⚠️ Error notificando pago retenido: {e}")
+
     return payment
 
 

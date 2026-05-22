@@ -9,7 +9,6 @@ from app.core.roles import Role
 from app.db.database import get_db
 from app.services import schemas, service
 from app.auth import models as auth_models
-
 from app.services import models
 from app.user_profile.models import UserProfile
 
