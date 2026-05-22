@@ -181,6 +181,11 @@ class Job(Base):
     started_at = Column(DateTime, default=datetime.utcnow)
     completed_at = Column(DateTime, nullable=True)
 
+    # Feature 2: Fecha límite para pagar (se setea al aceptar postulación)
+    payment_due_at = Column(DateTime, nullable=True)
+    # Feature 9: Fecha de liberación automática (se setea al marcar completado)
+    auto_release_at = Column(DateTime, nullable=True)
+
     request = relationship("ServiceRequest", back_populates="job")
     
 # -----------------------------

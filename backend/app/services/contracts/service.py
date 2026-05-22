@@ -1,15 +1,20 @@
 from sqlalchemy.orm import Session
 from app.services import models, schemas
 from fastapi import HTTPException
-from datetime import datetime
+from datetime import datetime, timedelta
 from sqlalchemy import or_
 from app.core.roles import Role
 from app.auth import models as auth_models
 from app.services.notifications import service as notif_service
+from app.services.chats.service import add_system_message, get_or_create_conversation
 from app.payments.services import capture_payment
 import logging
 
 logger = logging.getLogger(__name__)
+
+# Configuración de plazos (en minutos para pruebas; cambiar antes de producción)
+PAYMENT_DUE_MINUTES = 2     # Feature 2: tiempo para pagar tras aceptar (en prod: 24h = 1440)
+AUTO_RELEASE_MINUTES = 2    # Feature 9: tiempo para auto-liberar (en prod: 3 días = 4320)
 
 def accept_postulation(db: Session, request_id: str, current_user_id: str):
     postulation = db.query(models.ServiceRequest).filter(models.ServiceRequest.id == request_id).first()
@@ -44,7 +49,8 @@ def accept_postulation(db: Session, request_id: str, current_user_id: str):
             client_id=service_entry.client_id,
             status=models.JobStatus.MATCHED,
             final_price=final_price,
-            started_at=datetime.utcnow()
+            started_at=datetime.utcnow(),
+            payment_due_at=datetime.utcnow() + timedelta(minutes=PAYMENT_DUE_MINUTES)
         )
         
         db.add(new_job)
@@ -52,6 +58,17 @@ def accept_postulation(db: Session, request_id: str, current_user_id: str):
 
         # 🔔 Notificar al trabajador que fue aceptado (Migrado)
         notif_service.notify_job_accepted(db, new_job, service_entry.title)
+
+        # 💬 Mensaje del sistema en el chat: plazo para pagar
+        try:
+            conversation = get_or_create_conversation(db, request_id, current_user_id)
+            add_system_message(
+                db, str(conversation.id), str(current_user_id),
+                f"📌 Postulación aceptada. El cliente tiene {PAYMENT_DUE_MINUTES} minutos para realizar el pago. "
+                "Una vez confirmado el pago, el trabajador podrá comenzar el trabajo."
+            )
+        except Exception as e:
+            logger.warning(f"No se pudo crear el mensaje de sistema en el chat: {e}")
         
         return {
             "status": "success", 
@@ -87,6 +104,7 @@ def complete_job(db: Session, job_id: str, user_id: str):
             return job 
         
         job.status = models.JobStatus.WAITING_CONFIRMATION
+        job.auto_release_at = datetime.utcnow() + timedelta(minutes=AUTO_RELEASE_MINUTES)
         if job.request and job.request.service:
             job.request.service.status = models.JobStatus.WAITING_CONFIRMATION
             
@@ -97,6 +115,7 @@ def complete_job(db: Session, job_id: str, user_id: str):
     elif is_client:
         job.status = models.JobStatus.COMPLETED
         job.completed_at = datetime.utcnow()
+        job.auto_release_at = None  # Cliente confirmó, cancelar auto-liberación
         
         if job.request and job.request.service:
             job.request.service.status = models.JobStatus.COMPLETED
