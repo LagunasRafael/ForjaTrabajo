@@ -28,3 +28,8 @@ def mark_read(notification_id: str, db: Session = Depends(get_db), current_user:
 def mark_all_read(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Marca todas las notificaciones del usuario como leídas."""
     return service.mark_all_as_read(db=db, user_id=str(current_user.id))
+
+@router.delete("/{notification_id}")
+def delete_notification_route(notification_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """Elimina una notificación específica del usuario actual."""
+    return service.delete_notification(db=db, notification_id=notification_id, user_id=str(current_user.id))

@@ -1,13 +1,34 @@
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 from app.services import models
-from datetime import datetime
+from datetime import datetime, timedelta
 from sqlalchemy import or_, and_
 from sqlalchemy.orm import joinedload
 from app.auth import models as auth_models 
 from app.services.notifications import service as notif_service
 from app.payments import models as payment_models
+from app.core.config import PAYMENT_DUE_MINUTES
 import logging
+
+def add_system_message(db: Session, conversation_id: str, sender_id: str, content: str):
+    """Agrega un mensaje de sistema a una conversación."""
+    import uuid
+    new_msg = models.Message(
+        id=str(uuid.uuid4()),
+        conversation_id=conversation_id,
+        sender_id=sender_id,
+        content=content,
+        message_type=models.MessageType.SYSTEM.value,
+        status="sent",
+        created_at=datetime.utcnow()
+    )
+    convo = db.query(models.Conversation).filter(models.Conversation.id == conversation_id).first()
+    if convo:
+        convo.updated_at = datetime.utcnow()
+    db.add(new_msg)
+    db.commit()
+    return new_msg
+
 
 def get_or_create_conversation(db: Session, request_id: str, user_id: str):
     """Busca si ya existe un chat para esta postulación, o crea uno nuevo."""
@@ -271,7 +292,8 @@ def handle_offer_action(db: Session, message_id: str, action: str, user_id: str)
             client_id=str(convo.client_id),
             status=models.JobStatus.MATCHED,
             final_price=float(str(offer_msg.content)),
-            started_at=datetime.utcnow()
+            started_at=datetime.utcnow(),
+            payment_due_at=datetime.utcnow() + timedelta(minutes=PAYMENT_DUE_MINUTES)
         )
         db.add(new_job)
 

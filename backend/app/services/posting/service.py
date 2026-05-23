@@ -4,6 +4,7 @@ from app.services import models, schemas
 from uuid import UUID
 from fastapi import HTTPException
 from app.core.roles import Role
+from app.services.notifications import service as notif_service
 
 def create_service(db: Session, service_data: schemas.ServiceCreate, client_id: UUID):
     category = db.query(models.Category).filter(models.Category.id == str(service_data.category_id)).first()
@@ -134,6 +135,17 @@ def get_my_services(db: Session, user_id: str):
 
         setattr(service_obj, 'already_reviewed', already_reviewed)
         setattr(service_obj, 'has_paid', has_paid)
+
+        payment_due_at = None
+        auto_release_at = None
+        for request in service_obj.requests:
+            if request.job:
+                payment_due_at = request.job.payment_due_at
+                auto_release_at = request.job.auto_release_at
+                break
+        setattr(service_obj, 'payment_due_at', payment_due_at)
+        setattr(service_obj, 'auto_release_at', auto_release_at)
+
         setattr(service_obj, 'relevant_date', relevant_date)
         result.append(service_obj)
 
@@ -190,6 +202,7 @@ def cancel_service(db: Session, service_id: str, user_id: str, user_role: str):
     is_admin = user_role == Role.ADMIN
     is_owner = service_entry.client_id == str(user_id)
     is_assigned_worker = False
+    active_job = None
     
     if service_entry.status == models.JobStatus.MATCHED:
         active_job = db.query(models.Job).filter(
@@ -205,6 +218,10 @@ def cancel_service(db: Session, service_id: str, user_id: str, user_role: str):
     service_entry.status = models.JobStatus.CANCELLED  # type: ignore[assignment] 
     db.commit()
     db.refresh(service_entry)
+
+    if active_job:
+        notif_service.notify_job_cancelled(db, active_job, user_id)
+
     return {"message": "Servicio cancelado correctamente", "status": "cancelled"}
 
 def delete_service(db: Session, service_id: str):

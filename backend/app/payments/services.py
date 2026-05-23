@@ -135,6 +135,9 @@ def create_payment_intent(db: Session, job_id: str, amount: float):
         stripe_payment_intent_id=intent.id
     )
 
+    # El cliente inició el pago, ya no necesita el deadline
+    job.payment_due_at = None  # type: ignore
+
     db.add(db_payment)
     db.commit()
     db.refresh(db_payment)
@@ -422,8 +425,18 @@ def refund_payment(db: Session, payment_id: str):
     if contract:
         contract.status = "cancelled" # type: ignore
 
+    # 3. Buscar el Job para notificar
+    job = None
+    if contract:
+        job = db.query(Job).filter(Job.id == contract.job_id).first()
+
     db.commit()
     db.refresh(payment)
+
+    if job:
+        from app.services.notifications.service import notify_payment_refunded
+        notify_payment_refunded(db, job)
+
     return payment
 
 

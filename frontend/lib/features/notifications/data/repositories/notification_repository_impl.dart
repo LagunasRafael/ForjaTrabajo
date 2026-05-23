@@ -22,4 +22,9 @@ class NotificationRepositoryImpl implements NotificationRepository {
   Future<void> markAllAsRead() {
     return _remoteDataSource.markAllAsRead();
   }
+
+  @override
+  Future<void> deleteNotification(String notificationId) {
+    return _remoteDataSource.deleteNotification(notificationId);
+  }
 }

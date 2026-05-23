@@ -51,7 +51,25 @@ class NotificationsScreen extends ConsumerWidget {
               padding: const EdgeInsets.all(12),
               itemCount: notifications.length,
               separatorBuilder: (context, index) => const SizedBox(height: 12),
-              itemBuilder: (context, index) => NotificationCard(notification: notifications[index]),
+              itemBuilder: (context, index) {
+                final notification = notifications[index];
+                return Dismissible(
+                  key: ValueKey(notification.id),
+                  direction: DismissDirection.endToStart,
+                  background: Container(
+                    alignment: Alignment.centerRight,
+                    padding: const EdgeInsets.only(right: 24),
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const Icon(Icons.delete_outline, color: Colors.white, size: 28),
+                  ),
+                  onDismissed: (_) =>
+                      ref.read(notificationListProvider(role).notifier).deleteNotification(notification.id),
+                  child: NotificationCard(notification: notification),
+                );
+              },
             ),
           );
         },

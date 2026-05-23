@@ -1,15 +1,18 @@
 from sqlalchemy.orm import Session
 from app.services import models, schemas
 from fastapi import HTTPException
-from datetime import datetime
+from datetime import datetime, timedelta
 from sqlalchemy import or_
 from sqlalchemy.orm import joinedload
 from typing import Optional
 from app.core.roles import Role
 from app.auth import models as auth_models
 from app.services.notifications import service as notif_service
+
 from app.payments.services import capture_payment
 import logging
+
+from app.core.config import PAYMENT_DUE_MINUTES, AUTO_RELEASE_MINUTES
 
 logger = logging.getLogger(__name__)
 
@@ -46,14 +49,16 @@ def accept_postulation(db: Session, request_id: str, current_user_id: str):
             client_id=service_entry.client_id,
             status=models.JobStatus.MATCHED,
             final_price=final_price,
-            started_at=datetime.utcnow()
+            started_at=datetime.utcnow(),
+            payment_due_at=datetime.utcnow() + timedelta(minutes=PAYMENT_DUE_MINUTES)
         )
         
         db.add(new_job)
         db.commit()
 
-        # 🔔 Notificar al trabajador que fue aceptado (Migrado)
+        # 🔔 Notificar al trabajador que fue aceptado y al cliente sobre el plazo de pago
         notif_service.notify_job_accepted(db, new_job, service_entry.title)
+        notif_service.notify_client_payment_deadline(db, new_job, PAYMENT_DUE_MINUTES)
         
         return {
             "status": "success", 
@@ -89,16 +94,21 @@ def complete_job(db: Session, job_id: str, user_id: str):
             return job 
         
         job.status = models.JobStatus.WAITING_CONFIRMATION
+        job.auto_release_at = datetime.utcnow() + timedelta(minutes=AUTO_RELEASE_MINUTES)
         if job.request and job.request.service:
             job.request.service.status = models.JobStatus.WAITING_CONFIRMATION
             
         db.commit()
         db.refresh(job)
+
+        notif_service.notify_worker_confirmation_deadline(db, job, AUTO_RELEASE_MINUTES)
+
         return job
 
     elif is_client:
         job.status = models.JobStatus.COMPLETED
         job.completed_at = datetime.utcnow()
+        job.auto_release_at = None  # Cliente confirmó, cancelar auto-liberación
         
         if job.request and job.request.service:
             job.request.service.status = models.JobStatus.COMPLETED
@@ -210,4 +220,7 @@ def cancel_job(db: Session, job_id: str, user_id: str, user_role: str):
 
     db.commit()
     db.refresh(job)
+
+    notif_service.notify_job_cancelled(db, job, user_id)
+
     return job

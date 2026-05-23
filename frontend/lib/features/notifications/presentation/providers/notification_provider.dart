@@ -89,6 +89,22 @@ class NotificationNotifier extends StateNotifier<AsyncValue<List<NotificationEnt
       print("Error marking all as read: $e");
     }
   }
+
+  Future<void> deleteNotification(String notificationId) async {
+    // Optimistic removal first para evitar race conditions con push-triggered re-fetch
+    if (state is AsyncData) {
+      final currentList = state.value!;
+      state = AsyncValue.data(
+        currentList.where((n) => n.id != notificationId).toList(),
+      );
+    }
+    try {
+      await _repository.deleteNotification(notificationId);
+    } catch (e) {
+      print("Error deleting notification: $e");
+      fetchNotifications();
+    }
+  }
 }
 
 final notificationListProvider = StateNotifierProvider.family<NotificationNotifier, AsyncValue<List<NotificationEntity>>, String?>((ref, role) {

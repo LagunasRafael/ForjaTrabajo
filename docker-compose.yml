@@ -26,10 +26,26 @@ services:
       - "8000:8000"
     environment:
       - DATABASE_URL=postgresql://forja_user:forja_password@db:5432/forjadb
+      - ENABLE_SCHEDULER=false
+      - PAYMENT_DUE_MINUTES=2
+      - AUTO_RELEASE_MINUTES=2
       # Agrega aquí tus otras variables (o usa env_file: ./backend/.env)
     volumes:
       - ./backend:/app
       - /app/venv # Ignorar el venv local dentro de Docker
+
+  cron:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: forja_cron
+    restart: always
+    depends_on:
+      - db
+    environment:
+      - DATABASE_URL=postgresql://forja_user:forja_password@db:5432/forjadb
+      - CRON_INTERVAL_MINUTES=5
+    command: python run_cron.py
 
 volumes:
   postgres_data:

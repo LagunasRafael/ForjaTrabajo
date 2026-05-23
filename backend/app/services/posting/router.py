@@ -99,6 +99,8 @@ def read_my_requests(db: Session = Depends(get_db), current_user: auth_models.Us
             "worker_id": getattr(svc, 'worker_id', None),
             "already_reviewed": getattr(svc, 'already_reviewed', False),
             "has_paid": getattr(svc, 'has_paid', False),
+            "payment_due_at": getattr(svc, 'payment_due_at', None),
+            "auto_release_at": getattr(svc, 'auto_release_at', None),
         }
         print(f"🔍 Service {svc.id}: already_reviewed={svc_dict['already_reviewed']}, request_id={svc.request_id}")
         result.append(svc_dict)

@@ -149,25 +149,25 @@ class NotificationCard extends ConsumerWidget {
     } else if (type == 'job_accepted' || 
                type == 'job_waiting_confirmation' || 
                type == 'job_completed' || 
-               type == 'job_cancelled') {
-                 
-      // Navegar a la pestaña "Mis Trabajos"
-      ref.read(workerNavProvider.notifier).state = 1; // Para worker es índice 1
-      ref.read(clientNavProvider.notifier).state = 3; // Para client es índice 3
+               type == 'job_cancelled' ||
+               type == 'payment_deadline' ||
+               type == 'confirmation_deadline') {
+                  
+      ref.read(workerNavProvider.notifier).state = 1;
+      ref.read(clientNavProvider.notifier).state = 3;
       
-      // Mover a la subpestaña correcta (0=Abiertos, 1=En Proceso, 2=Finalizados)
-      if (type == 'job_accepted' || type == 'job_waiting_confirmation') {
-         ref.read(myRequestsTabProvider.notifier).state = 1; // En curso
+      if (type == 'job_accepted' || type == 'job_waiting_confirmation' || type == 'confirmation_deadline') {
+         ref.read(myRequestsTabProvider.notifier).state = 1;
       } else if (type == 'job_completed' || type == 'job_cancelled') {
-         ref.read(myRequestsTabProvider.notifier).state = 2; // Finalizados
+         ref.read(myRequestsTabProvider.notifier).state = 2;
       }
 
-      if (type == 'job_waiting_confirmation') {
+      if (type == 'job_waiting_confirmation' || type == 'confirmation_deadline') {
         Navigator.pushNamedAndRemoveUntil(context, '/client_home', (route) => false);
       } else {
         Navigator.pushNamedAndRemoveUntil(context, '/worker_home', (route) => false);
       }
-    } else if (type == 'payment_released') {
+    } else if (type == 'payment_released' || type == 'auto_released' || type == 'payment_held') {
       Navigator.pushNamedAndRemoveUntil(context, '/worker_home', (route) => false);
       Navigator.push(
         context,
@@ -175,6 +175,8 @@ class NotificationCard extends ConsumerWidget {
           builder: (_) => const WalletScreen(),
         ),
       );
+    } else if (type == 'payment_expired') {
+      Navigator.pushNamedAndRemoveUntil(context, '/client_home', (route) => false);
     }
   }
 
@@ -189,6 +191,11 @@ class NotificationCard extends ConsumerWidget {
       case 'new_offer': return Icons.local_offer;
       case 'offer_responded': return Icons.handshake;
       case 'payment_released': return Icons.account_balance_wallet;
+      case 'payment_held': return Icons.lock;
+      case 'payment_deadline': return Icons.timer;
+      case 'confirmation_deadline': return Icons.hourglass_top;
+      case 'payment_expired': return Icons.timer_off;
+      case 'auto_released': return Icons.rocket_launch;
       default: return Icons.notifications;
     }
   }
@@ -204,6 +211,11 @@ class NotificationCard extends ConsumerWidget {
       case 'new_offer': return Colors.amber;
       case 'offer_responded': return Colors.deepPurple;
       case 'payment_released': return const Color(0xFF7F13EC);
+      case 'payment_held': return const Color(0xFF4F46E5);
+      case 'payment_deadline': return Colors.red;
+      case 'confirmation_deadline': return Colors.orange;
+      case 'payment_expired': return Colors.red.shade700;
+      case 'auto_released': return const Color(0xFF10B981);
       default: return Colors.grey;
     }
   }
