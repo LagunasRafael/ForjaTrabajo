@@ -672,36 +672,32 @@ async def resolve_dispute(
     worker = db.query(auth_models.User).filter(auth_models.User.id == convo.worker_id).first() # type: ignore
     
     import datetime
-    if resolve_data.winner_role == "client":
-        # Reembolsar en Stripe antes de cambiar estados
-        contract = db.query(payment_models.Contract).filter(
-            payment_models.Contract.job_id == job.id
-        ).first()
-        if contract:
-            payment = db.query(payment_models.Payment).filter(
-                payment_models.Payment.contract_id == contract.id
-            ).first()
-            if payment and payment.stripe_payment_intent_id:
-                refund_payment(db, payment.id)
 
+    # Buscar contrato y pago asociados (para ambos paths)
+    contract = db.query(payment_models.Contract).filter(
+        payment_models.Contract.job_id == job.id
+    ).first()
+    payment = None
+    if contract:
+        payment = db.query(payment_models.Payment).filter(
+            payment_models.Payment.contract_id == contract.id
+        ).first()
+
+    # 1. Determinar resultado segun ganador
+    if resolve_data.winner_role == "client":
         job.status = service_models.JobStatus.CANCELLED # type: ignore
         resolution_msg = "RESOLUCION FINAL: La disputa se ha resuelto a favor del CLIENTE. Se procedera al reembolso del dinero congelado."
         
-        # Enviar emails
         if client and client.email: # type: ignore
             background_tasks.add_task(send_dispute_resolved_email, client.email, True, "client") # type: ignore
         if worker and worker.email: # type: ignore
             background_tasks.add_task(send_dispute_resolved_email, worker.email, False, "worker") # type: ignore
             
     elif resolve_data.winner_role == "worker":
-        # Capturar pago en Stripe antes de cambiar estados
-        capture_payment(db, job.id)
-
         job.status = service_models.JobStatus.COMPLETED # type: ignore
         job.completed_at = datetime.datetime.utcnow() # type: ignore
         resolution_msg = "RESOLUCION FINAL: La disputa se ha resuelto a favor del TRABAJADOR. El pago ha sido autorizado y liberado."
         
-        # Enviar emails
         if client and client.email: # type: ignore
             background_tasks.add_task(send_dispute_resolved_email, client.email, False, "client") # type: ignore
         if worker and worker.email: # type: ignore
@@ -709,17 +705,17 @@ async def resolve_dispute(
     else:
         raise HTTPException(status_code=400, detail="El ganador debe ser 'client' o 'worker'")
         
-    # 🏁 ACTUALIZAR EL SERVICIO PRINCIPAL: Reflejar el fin de la labor en el Marketplace
+    # 2. Reflejar el fin de la labor en el servicio principal
     if request_entry and request_entry.service:
         request_entry.service.status = job.status # type: ignore
         if job.status == service_models.JobStatus.COMPLETED or job.status == service_models.JobStatus.CANCELLED:
             request_entry.service.is_active = False # type: ignore
         
-    # Cerrar la conversación
+    # 3. Cerrar la conversación
     convo.status = service_models.ConversationStatus.CLOSED.value # type: ignore
     convo.updated_at = datetime.datetime.utcnow() # type: ignore
     
-    # Inyectar el mensaje final
+    # 4. Inyectar el mensaje final
     import uuid
     new_msg = service_models.Message(
         id=str(uuid.uuid4()),
@@ -731,7 +727,23 @@ async def resolve_dispute(
         created_at=datetime.datetime.utcnow()
     )
     db.add(new_msg)
-    db.commit()
+
+    # 5. Procesar pago (commit unico: persiste todos los cambios anteriores atómicamente)
+    print(f"[RESOLVE] winner={resolve_data.winner_role}, payment={'EXISTS' if payment else 'NONE'}, stripe_id={payment.stripe_payment_intent_id if payment else 'N/A'}", flush=True)
+    if resolve_data.winner_role == "client":
+        if payment:
+            print(f"[RESOLVE] Llamando refund_payment({payment.id})...", flush=True)
+            refund_payment(db, payment.id)
+            print(f"[RESOLVE] refund_payment OK", flush=True)
+        else:
+            db.commit()
+    elif resolve_data.winner_role == "worker":
+        if payment:
+            print(f"[RESOLVE] Llamando capture_payment(job.id={job.id})...", flush=True)
+            capture_payment(db, job.id)
+            print(f"[RESOLVE] capture_payment OK", flush=True)
+        else:
+            db.commit()
     
     # Broadcast websocket
     message_to_send = {

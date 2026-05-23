@@ -3,13 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_picker/image_picker.dart';
-
 import '../../../domain/entities/service_entity.dart';
 import '../../providers/category_provider.dart';
 import '../../providers/service_list_provider.dart';
 import '../../../../auth/presentation/providers/auth_provider.dart';
 import '../../providers/create_service_form_provider.dart';
-
 import 'create_service_steps/step1_details.dart';
 import 'create_service_steps/step2_location.dart';
 import 'create_service_steps/step3_summary.dart';
@@ -161,7 +159,7 @@ class _CreateServiceScreenState extends ConsumerState<CreateServiceScreen> {
             backgroundColor: const Color(0xFFF0F0F0),
             behavior: SnackBarBehavior.floating,
             margin: EdgeInsets.only(
-              bottom: MediaQuery.of(context).size.height - 260,
+              bottom: MediaQuery.of(context).size.height - 900,
               left: 24,
               right: 24,
             ),

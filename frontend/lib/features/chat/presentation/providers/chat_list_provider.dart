@@ -6,7 +6,7 @@ import '../../domain/entities/chat_summary_entity.dart';
 import '../../domain/repositories/chat_repository.dart';
 
 
-final chatListProvider = StateNotifierProvider<ChatListNotifier, AsyncValue<List<ChatSummaryEntity>>>((ref) {
+final chatListProvider = StateNotifierProvider.autoDispose<ChatListNotifier, AsyncValue<List<ChatSummaryEntity>>>((ref) {
   final repository = ref.watch(chatRepositoryProvider);
   return ChatListNotifier(repository);
 });

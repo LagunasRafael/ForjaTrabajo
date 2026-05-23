@@ -5,6 +5,7 @@ import 'package:forja_trabajo/features/services/presentation/screens/shared/util
 import 'package:forja_trabajo/features/services/presentation/screens/shared/detail/service_image_carousel.dart';
 import 'package:forja_trabajo/features/services/presentation/screens/shared/detail/service_map_section.dart';
 import 'package:forja_trabajo/features/services/presentation/screens/shared/detail/widgets/service_profile_tiles.dart';
+import 'package:forja_trabajo/features/services/presentation/screens/shared/detail/work_evidence/work_evidence_section.dart';
 
 class ServiceDetailBody extends StatelessWidget {
   final ServiceEntity service;
@@ -132,8 +133,16 @@ class ServiceDetailBody extends StatelessWidget {
                 ),
                 
                 const SizedBox(height: 30),
-                
-                // 2. EL MAPA DE UBICACIÓN
+
+                // 2. EVIDENCIAS DEL TRABAJO
+                if (service.status == JobStatus.matched ||
+                    service.status == JobStatus.waiting_confirmation ||
+                    service.status == JobStatus.completed)
+                  WorkEvidenceSection(service: service),
+
+                const SizedBox(height: 30),
+
+                // 3. EL MAPA DE UBICACIÓN
                 ServiceMapSection(
                   latitude: service.latitude,
                   longitude: service.longitude,

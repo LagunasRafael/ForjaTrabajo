@@ -5,6 +5,7 @@ import '../../../../payments/presentation/providers/payment_provider.dart';
 import '../../../../payments/presentation/providers/payment_state.dart';
 import '../../providers/service_request_provider.dart';
 import '../../providers/nav_providers.dart';
+import '../../providers/service_list_provider.dart';
 
 // Provider local para la selección del método de pago
 final selectedMethodProvider = StateProvider<String>((ref) => 'visa_4242');
@@ -59,8 +60,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
         throw Exception("Faltan datos para procesar el pago.");
       }
 
-      // 2. Crear el PaymentIntent con Destination Charge
-      final intentData = await paymentNotifier.createIntent(amount, workerId!);
+      // 2. Crear el PaymentIntent con escrow (no requiere Stripe Connect)
+      final intentData = await paymentNotifier.createIntent(amount, workerId!, jobId);
       final clientSecret = intentData['client_secret'];
       final paymentIntentId = intentData['payment_intent_id'];
 
@@ -76,23 +77,20 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       // 4. Mostrar el Payment Sheet
       await Stripe.instance.presentPaymentSheet();
 
-      // 5. Confirmar pago en backend + notificar al trabajador
-      await paymentNotifier.confirmPayment(
-        paymentIntentId: paymentIntentId,
-        workerId: workerId,
-        amountMxn: amount,
-        jobId: jobId,
-      );
+      // 5. Confirmar retención (escrow) en backend
+      await paymentNotifier.confirmEscrow(paymentIntentId);
 
       // 6. Éxito total
       if (mounted) {
+        ref.invalidate(myRequestsProvider);
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('✅ Pago realizado con éxito'), backgroundColor: Colors.green),
         );
 
-        // Redirigir a la pestaña de "Mis Trabajos - En Curso"
+        // Redirigir a la pestaña de "Mis Trabajos - En Proceso"
         ref.read(clientNavProvider.notifier).state = 3;
-        ref.read(myRequestsTabProvider.notifier).state = 1; // 1 = "En curso"
+        ref.read(myRequestsTabProvider.notifier).state = 1;
 
         Navigator.pushNamedAndRemoveUntil(context, '/client_home', (route) => false);
       }

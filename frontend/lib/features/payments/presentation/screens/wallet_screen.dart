@@ -3,6 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja_trabajo/core/theme/app_theme.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:forja_trabajo/core/network/api_client.dart';
+import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart';
+import 'package:forja_trabajo/features/payments/presentation/providers/wallet_status_provider.dart';
 import '../../../../injection_container.dart' as di;
 import '../../data/models/payment_model.dart';
 import '../../domain/usescases/get_payment_history.dart';
@@ -25,12 +29,60 @@ final walletProvider = FutureProvider<List<PaymentModel>>((ref) async {
   )).toList();
 });
 
-class WalletScreen extends ConsumerWidget {
+class WalletScreen extends ConsumerStatefulWidget {
   const WalletScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<WalletScreen> createState() => _WalletScreenState();
+}
+
+class _WalletScreenState extends ConsumerState<WalletScreen> {
+  bool _isSettingUpWallet = false;
+
+  Future<void> _setupWallet() async {
+    final user = ref.read(authProvider).user;
+    if (user == null) return;
+
+    setState(() => _isSettingUpWallet = true);
+
+    try {
+      final response = await ApiClient().dio.post(
+        '/workers/stripe-setup',
+        data: {'user_id': user.id},
+      );
+
+      final url = response.data['url'] as String;
+
+      if (url == '__ALREADY_COMPLETED__') {
+        ref.invalidate(walletStatusProvider);
+        return;
+      }
+
+      if (mounted) {
+        final uri = Uri.parse(url);
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al configurar billetera: $e'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSettingUpWallet = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final paymentsAsync = ref.watch(walletProvider);
+    final statusAsync = ref.watch(walletStatusProvider);
     final theme = Theme.of(context);
 
     return Scaffold(
@@ -48,11 +100,16 @@ class WalletScreen extends ConsumerWidget {
           final total = completed.fold(0.0, (sum, p) => sum + p.amount);
 
           return RefreshIndicator(
-            onRefresh: () async => ref.invalidate(walletProvider),
+            onRefresh: () async {
+              ref.invalidate(walletProvider);
+              ref.invalidate(walletStatusProvider);
+            },
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                _buildTotalCard(context, total, completed.length),
+                _buildStripeBanner(statusAsync),
+                if (statusAsync.valueOrNull?.isReady == true)
+                  _buildTotalCard(context, total, completed.length),
                 const SizedBox(height: 24),
                 Text('Historial de pagos',
                     style: GoogleFonts.inter(
@@ -68,6 +125,67 @@ class WalletScreen extends ConsumerWidget {
         },
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
+      ),
+    );
+  }
+
+  Widget _buildStripeBanner(AsyncValue<WalletStatus> statusAsync) {
+    final status = statusAsync.valueOrNull;
+    if (status == null) return const SizedBox.shrink();
+    if (status.isReady) return const SizedBox.shrink();
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.orange.shade50,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.orange.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(LucideIcons.wallet, color: Colors.orange.shade700, size: 22),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text('Configura tu billetera',
+                    style: GoogleFonts.inter(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.orange.shade900)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Necesitas configurar tu cuenta de Stripe para poder retirar el dinero de tus servicios.',
+            style: GoogleFonts.inter(fontSize: 13, color: Colors.orange.shade800),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: _isSettingUpWallet ? null : _setupWallet,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange.shade600,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
+              child: _isSettingUpWallet
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white))
+                  : Text('Configurar mi Billetera',
+                      style: GoogleFonts.inter(
+                          fontWeight: FontWeight.w600)),
+            ),
+          ),
+        ],
       ),
     );
   }

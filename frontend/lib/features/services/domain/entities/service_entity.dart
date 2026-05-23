@@ -23,6 +23,7 @@ class ServiceEntity {
   final String? workerImageUrl;
   final String? workerId;
   final bool alreadyReviewed;
+  final bool hasPaid;
 
   ServiceEntity({
     required this.id,
@@ -47,6 +48,7 @@ class ServiceEntity {
     this.workerImageUrl,
     this.workerId,
     this.alreadyReviewed = false,
+    this.hasPaid = false,
   });
 
   ServiceEntity copyWith({
@@ -72,6 +74,7 @@ class ServiceEntity {
     String? workerImageUrl,
     String? workerId,
     bool? alreadyReviewed,
+    bool? hasPaid,
   }) {
     return ServiceEntity(
       id: id ?? this.id,
@@ -96,6 +99,7 @@ class ServiceEntity {
       workerImageUrl: workerImageUrl ?? this.workerImageUrl,
       workerId: workerId ?? this.workerId,
       alreadyReviewed: alreadyReviewed ?? this.alreadyReviewed,
+      hasPaid: hasPaid ?? this.hasPaid,
     );
   }
 }

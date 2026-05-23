@@ -25,26 +25,31 @@ class ClientMainLayout extends ConsumerWidget {
       const ClientProfileScreen(), // 4
     ];
 
-    return Scaffold(
-      body: IndexedStack(
-        index: currentIndex,
-        children: screens,
-      ),
+final isKeyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
+
+return Scaffold(
+  body: IndexedStack(
+    index: currentIndex,
+    children: screens,
+  ),
 
       // ✅ BOTÓN FLOTANTE (Solo para Cliente)
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: const Color(0xFF1E1B4B),
-        elevation: 6,
-        shape: const CircleBorder(),
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-                builder: (context) => const CreateServiceScreen()),
-          );
-        },
-        child: const Icon(Icons.add, color: Colors.white, size: 32),
-      ),
+      floatingActionButton: isKeyboardOpen
+      ? null
+      : FloatingActionButton(
+          backgroundColor: const Color(0xFF1E1B4B),
+          elevation: 6,
+          shape: const CircleBorder(),
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const CreateServiceScreen(),
+              ),
+            );
+          },
+          child: const Icon(Icons.add, color: Colors.white, size: 32),
+        ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
 
       // ✅ BARRA CON RECORTE (Notch)

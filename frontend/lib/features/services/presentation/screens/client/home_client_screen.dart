@@ -39,11 +39,11 @@ class HomeClientScreen extends ConsumerWidget {
               child: Column( 
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  HeaderWidget(),
-                  SizedBox(height: 20),
-                  SearchBarWidget(), 
-                  SizedBox(height: 20),
-                  CategorySelectorWidget(),
+                  const  HeaderWidget(),
+                  const  SizedBox(height: 10),
+                  const  SearchBarWidget(), 
+                  const  SizedBox(height: 10),
+                  const  CategorySelectorWidget(),
                 ],
               ),
             ),

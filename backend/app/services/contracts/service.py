@@ -1,14 +1,22 @@
 from sqlalchemy.orm import Session
 from app.services import models, schemas
 from fastapi import HTTPException
-from datetime import datetime
+from datetime import datetime, timedelta
 from sqlalchemy import or_
+from sqlalchemy.orm import joinedload
+from typing import Optional
 from app.core.roles import Role
 from app.auth import models as auth_models
 from app.services.notifications import service as notif_service
+from app.services.chats.service import add_system_message, get_or_create_conversation
+from app.payments.services import capture_payment
 import logging
 
 logger = logging.getLogger(__name__)
+
+# Configuración de plazos (en minutos para pruebas; cambiar antes de producción)
+PAYMENT_DUE_MINUTES = 2     # Feature 2: tiempo para pagar tras aceptar (en prod: 24h = 1440)
+AUTO_RELEASE_MINUTES = 2    # Feature 9: tiempo para auto-liberar (en prod: 3 días = 4320)
 
 def accept_postulation(db: Session, request_id: str, current_user_id: str):
     postulation = db.query(models.ServiceRequest).filter(models.ServiceRequest.id == request_id).first()
@@ -43,7 +51,8 @@ def accept_postulation(db: Session, request_id: str, current_user_id: str):
             client_id=service_entry.client_id,
             status=models.JobStatus.MATCHED,
             final_price=final_price,
-            started_at=datetime.utcnow()
+            started_at=datetime.utcnow(),
+            payment_due_at=datetime.utcnow() + timedelta(minutes=PAYMENT_DUE_MINUTES)
         )
         
         db.add(new_job)
@@ -51,6 +60,17 @@ def accept_postulation(db: Session, request_id: str, current_user_id: str):
 
         # 🔔 Notificar al trabajador que fue aceptado (Migrado)
         notif_service.notify_job_accepted(db, new_job, service_entry.title)
+
+        # 💬 Mensaje del sistema en el chat: plazo para pagar
+        try:
+            conversation = get_or_create_conversation(db, request_id, current_user_id)
+            add_system_message(
+                db, str(conversation.id), str(current_user_id),
+                f"📌 Postulación aceptada. El cliente tiene {PAYMENT_DUE_MINUTES} minutos para realizar el pago. "
+                "Una vez confirmado el pago, el trabajador podrá comenzar el trabajo."
+            )
+        except Exception as e:
+            logger.warning(f"No se pudo crear el mensaje de sistema en el chat: {e}")
         
         return {
             "status": "success", 
@@ -86,6 +106,7 @@ def complete_job(db: Session, job_id: str, user_id: str):
             return job 
         
         job.status = models.JobStatus.WAITING_CONFIRMATION
+        job.auto_release_at = datetime.utcnow() + timedelta(minutes=AUTO_RELEASE_MINUTES)
         if job.request and job.request.service:
             job.request.service.status = models.JobStatus.WAITING_CONFIRMATION
             
@@ -96,6 +117,7 @@ def complete_job(db: Session, job_id: str, user_id: str):
     elif is_client:
         job.status = models.JobStatus.COMPLETED
         job.completed_at = datetime.utcnow()
+        job.auto_release_at = None  # Cliente confirmó, cancelar auto-liberación
         
         if job.request and job.request.service:
             job.request.service.status = models.JobStatus.COMPLETED
@@ -104,10 +126,80 @@ def complete_job(db: Session, job_id: str, user_id: str):
         db.commit()
         db.refresh(job)
 
+        # Liberar pago retenido en Stripe (escrow → released)
+        try:
+            capture_payment(db, str(job.id))
+        except Exception as e:
+            logger.warning(f"No se pudo liberar el pago automaticamente: {e}")
+
         # 🔔 Notificar al trabajador que el trabajo fue finalizado (Migrado)
         notif_service.notify_job_completed(db, job)
 
         return job
+
+def get_evidences(db: Session, service_id: str, current_user_id: str, current_user_role: str):
+    service = db.query(models.Service).options(
+        joinedload(models.Service.requests)
+    ).filter(models.Service.id == service_id).first()
+    if not service:
+        raise HTTPException(status_code=404, detail="Servicio no encontrado")
+
+    is_owner = str(service.client_id) == str(current_user_id)
+    is_worker = str(service.worker_id) == str(current_user_id) if service.worker_id else False
+    is_admin = str(current_user_role).lower() == "admin"
+
+    if not (is_owner or is_worker or is_admin):
+        raise HTTPException(status_code=403, detail="No tienes permiso para ver estas evidencias")
+
+    return db.query(models.WorkEvidence).filter(
+        models.WorkEvidence.service_id == service_id
+    ).order_by(models.WorkEvidence.created_at.desc()).all()
+
+def create_evidence(db: Session, service_id: str, worker_id: str, image_url: str, description: Optional[str] = None):
+    count = db.query(models.WorkEvidence).filter(
+        models.WorkEvidence.service_id == service_id
+    ).count()
+    if count >= 8:
+        raise HTTPException(status_code=400, detail="Límite de evidencias alcanzado (8 máximas)")
+
+    evidence = models.WorkEvidence(
+        service_id=service_id,
+        worker_id=worker_id,
+        image_url=image_url,
+        description=description,
+    )
+    db.add(evidence)
+    db.commit()
+    db.refresh(evidence)
+    return evidence
+
+def delete_evidence(db: Session, evidence_id: str, service_id: str, current_user_id: str):
+    evidence = db.query(models.WorkEvidence).filter(
+        models.WorkEvidence.id == evidence_id,
+        models.WorkEvidence.service_id == service_id,
+    ).first()
+    if not evidence:
+        raise HTTPException(status_code=404, detail="Evidencia no encontrada")
+
+    service = db.query(models.Service).filter(models.Service.id == service_id).first()
+    if not service:
+        raise HTTPException(status_code=404, detail="Servicio no encontrado")
+
+    if str(current_user_id) != str(evidence.worker_id) and str(current_user_id) != str(service.client_id):
+        raise HTTPException(status_code=403, detail="No tienes permiso para eliminar esta evidencia")
+
+    if service.status in [models.JobStatus.COMPLETED, models.JobStatus.CANCELLED]:
+        raise HTTPException(status_code=400, detail="No puedes eliminar evidencias de un trabajo finalizado o cancelado")
+
+    try:
+        from app.utils.s3 import delete_old_file_from_s3
+        delete_old_file_from_s3(evidence.image_url)
+    except Exception as e:
+        print(f"⚠️ No se pudo eliminar de S3: {e}")
+
+    db.delete(evidence)
+    db.commit()
+    return {"status": "deleted"}
 
 def cancel_job(db: Session, job_id: str, user_id: str, user_role: str):
     job = db.query(models.Job).join(models.ServiceRequest).filter(

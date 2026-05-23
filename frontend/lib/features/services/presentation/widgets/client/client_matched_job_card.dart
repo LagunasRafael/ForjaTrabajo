@@ -32,8 +32,26 @@ class ClientMatchedJobCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isWaiting = service.status == JobStatus.waiting_confirmation;
+    final isPaid = service.hasPaid;
+    final isMatched = service.status == JobStatus.matched;
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+
+    String badgeText;
+    Color badgeColor;
+    if (isWaiting) {
+      badgeText = "LISTO PARA REVISIÓN";
+      badgeColor = const Color(0xFF10B981);
+    } else if (isMatched && isPaid) {
+      badgeText = "PAGADO";
+      badgeColor = const Color(0xFF10B981);
+    } else if (isMatched) {
+      badgeText = "PAGO PENDIENTE";
+      badgeColor = Colors.red;
+    } else {
+      badgeText = "EN PROCESO";
+      badgeColor = Colors.orange;
+    }
 
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
@@ -59,8 +77,8 @@ class ClientMatchedJobCard extends ConsumerWidget {
           children: [
             SharedJobImage(
               imageUrls: service.imageUrls,
-              badgeText: isWaiting ? "LISTO PARA REVISIÓN" : (service.status == JobStatus.matched ? "PAGO PENDIENTE" : "EN PROCESO"),
-              badgeColor: isWaiting ? const Color(0xFF10B981) : (service.status == JobStatus.matched ? Colors.red : Colors.orange),
+              badgeText: badgeText,
+              badgeColor: badgeColor,
             ),
             Padding(
               padding: const EdgeInsets.all(16),
@@ -138,6 +156,30 @@ class _ClientMatchedActionsState extends ConsumerState<_ClientMatchedActions> {
   @override
   Widget build(BuildContext context) {
     final isCompleting = ref.watch(completingJobProvider(widget.service.id));
+    final isPaid = widget.service.hasPaid;
+    final isMatched = widget.service.status == JobStatus.matched;
+
+    String label;
+    IconData icon;
+    VoidCallback? onPressed;
+    Color color;
+
+    if (isMatched && !isPaid) {
+      label = "Pagar";
+      icon = Icons.payment;
+      onPressed = () => _handlePayment(context);
+      color = const Color(0xFF7B4DFF);
+    } else if (isMatched && isPaid) {
+      label = "Esperando al trabajador...";
+      icon = Icons.lock_outline;
+      onPressed = null;
+      color = Colors.grey;
+    } else {
+      label = "Confirmar finalización";
+      icon = Icons.check_circle_outline;
+      onPressed = isCompleting ? null : () => _handleComplete(context);
+      color = const Color(0xFF10B981);
+    }
 
     return Column(
       children: [
@@ -150,28 +192,17 @@ class _ClientMatchedActionsState extends ConsumerState<_ClientMatchedActions> {
               icon: Icons.chat_bubble_outline, 
               isOutlined: true, 
               isLoading: _isOpeningChat,
-              onPressed: (isCompleting || _isOpeningChat) ? null : () => _openChat(context),
+              onPressed: (_isOpeningChat) ? null : () => _openChat(context),
             ),
             const SizedBox(width: 12),
-            if (widget.service.status == JobStatus.matched && !widget.isWaiting)
-              _btn(
-                context: context,
-                label: "Pagar ahora",
-                icon: Icons.payment,
-                color: const Color(0xFF7B4DFF),
-                onPressed: () => _handlePayment(context),
-              )
-            else
-              _btn(
-                context: context,
-                label: widget.isWaiting ? "Confirmar Fin" : "En curso...",
-                icon: widget.isWaiting ? Icons.check_circle_outline : Icons.hourglass_empty,
-                color: widget.isWaiting ? const Color(0xFF10B981) : Colors.orange,
-                isLoading: isCompleting,
-                onPressed: (widget.isWaiting && !isCompleting) 
-                  ? () => _handleComplete(context) 
-                  : null,
-              ),
+            _btn(
+              context: context,
+              label: label,
+              icon: icon,
+              color: color,
+              isLoading: isCompleting,
+              onPressed: onPressed,
+            ),
           ],
         ),
       ],
