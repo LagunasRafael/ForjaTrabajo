@@ -130,7 +130,7 @@ class _SharedChatScreenState extends ConsumerState<SharedChatScreen> {
                         backgroundColor: const Color(0xFFF0F0F0).withOpacity(1),
                         behavior: SnackBarBehavior.floating,
                         margin: EdgeInsets.only(
-                          bottom: MediaQuery.of(context).size.height - 835,
+                          bottom: (MediaQuery.of(context).size.height - 835).clamp(0, double.infinity),
                           left: 24,
                           right: 24,
                         ),
@@ -153,7 +153,7 @@ class _SharedChatScreenState extends ConsumerState<SharedChatScreen> {
                         backgroundColor: const Color(0xFFF0F0F0).withOpacity(1),
                         behavior: SnackBarBehavior.floating,
                         margin: EdgeInsets.only(
-                          bottom: MediaQuery.of(context).size.height - 835,
+                          bottom: (MediaQuery.of(context).size.height - 835).clamp(0, double.infinity),
                           left: 24,
                           right: 24,
                         ),
