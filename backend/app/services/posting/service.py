@@ -76,12 +76,22 @@ def get_services(
     )
     
 def get_service_by_id(db: Session, service_id: str):
-    return (
+    srv = (
         db.query(models.Service)
         .options(joinedload(models.Service.owner))
         .filter(models.Service.id == service_id)
         .first()
     )
+    if srv:
+        return srv
+    
+    # Fallback: intentar buscar por Job ID
+    from app.services.models import Job
+    job = db.query(Job).filter(Job.id == service_id).first()
+    if job and job.request and job.request.service:
+        return job.request.service
+        
+    return None
 
 def get_my_services(db: Session, user_id: str):
     """Devuelve todos los servicios creados por el usuario logueado."""

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:forja_trabajo/features/profile/presentation/screens/portfolio_job_detail_screen.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../providers/public_profile_provider.dart';
 import '../../domain/models/public_profile_model.dart';
@@ -230,55 +231,76 @@ class UserProfileScreen extends ConsumerWidget {
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    job.title,
-                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    job.roleInJob == 'client' ? 'Como cliente' : 'Como trabajador',
-                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                  ),
-                ],
+      clipBehavior: Clip.antiAlias, // Asegura que el ripple effect no se desborde del borde redondeado
+      child: InkWell(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => PortfolioJobDetailScreen(
+                jobId: job.id,
+                jobTitle: job.title,
               ),
             ),
-            if (job.otherPartyName != null)
-              Column(
-                children: [
-                  job.otherPartyImageUrl != null && job.otherPartyImageUrl!.isNotEmpty
-                      ? CachedNetworkImage(
-                          imageUrl: job.otherPartyImageUrl!,
-                          imageBuilder: (context, imageProvider) => CircleAvatar(
-                            radius: 18,
-                            backgroundImage: imageProvider,
-                          ),
-                          errorWidget: (context, url, error) => const CircleAvatar(
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      job.title,
+                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      job.roleInJob == 'client' ? 'Como cliente' : 'Como trabajador',
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              if (job.otherPartyName != null)
+                Column(
+                  children: [
+                    job.otherPartyImageUrl != null && job.otherPartyImageUrl!.isNotEmpty
+                        ? CachedNetworkImage(
+                            imageUrl: job.otherPartyImageUrl!,
+                            imageBuilder: (context, imageProvider) => CircleAvatar(
+                              radius: 18,
+                              backgroundImage: imageProvider,
+                            ),
+                            errorWidget: (context, url, error) => const CircleAvatar(
+                              radius: 18,
+                              child: Icon(Icons.person, size: 18),
+                            ),
+                          )
+                        : const CircleAvatar(
                             radius: 18,
                             child: Icon(Icons.person, size: 18),
                           ),
-                        )
-                      : const CircleAvatar(
-                          radius: 18,
-                          child: Icon(Icons.person, size: 18),
-                        ),
-                  const SizedBox(height: 4),
-                  Text(
-                    job.otherPartyName!.split(' ').first,
-                    style: TextStyle(fontSize: 11, color: Colors.grey[600]),
-                  ),
-                ],
+                    const SizedBox(height: 4),
+                    Text(
+                      job.otherPartyName!.split(' ').first,
+                      style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                    ),
+                  ],
+                ),
+              const SizedBox(width: 8),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: Colors.grey[400],
+                size: 20,
               ),
-          ],
+            ],
+          ),
         ),
       ),
     );
