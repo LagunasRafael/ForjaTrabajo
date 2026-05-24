@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { PaymentListItem } from '../types/finance.types';
+import type{ PaymentListItem } from '../types/finance.types';
 import { toast } from 'sonner';
 
 interface TransactionTableProps {

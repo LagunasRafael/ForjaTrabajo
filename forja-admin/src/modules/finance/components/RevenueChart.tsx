@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { AnalyticsPoint } from '../types/finance.types';
+import type{ AnalyticsPoint } from '../types/finance.types';
 
 interface RevenueChartProps {
   data: AnalyticsPoint[];

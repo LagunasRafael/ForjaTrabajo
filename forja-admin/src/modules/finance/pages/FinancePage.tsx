@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getFinanceOverview, getAdminPayments, getFinanceAnalytics, getEscrowMonitor } from '../services/finance.service';
-import { FinanceOverview, PaymentListItem, AnalyticsPoint, EscrowItem } from '../types/finance.types';
+import type{ FinanceOverview, PaymentListItem, AnalyticsPoint, EscrowItem } from '../types/finance.types';
 import { RevenueChart } from '../components/RevenueChart';
 import { TransactionTable } from '../components/TransactionTable';
 import { EscrowMonitor } from '../components/EscrowMonitor';

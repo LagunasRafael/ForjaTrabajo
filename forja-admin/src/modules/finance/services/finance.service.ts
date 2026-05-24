@@ -1,5 +1,5 @@
 import api from '../../../api/client';
-import { FinanceOverview, PaymentListItem, AnalyticsPoint, EscrowItem } from '../types/finance.types';
+import type{ FinanceOverview, PaymentListItem, AnalyticsPoint, EscrowItem } from '../types/finance.types';
 
 export const getFinanceOverview = async (): Promise<FinanceOverview> => {
   const { data } = await api.get('/admin/finance/overview');

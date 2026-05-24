@@ -13,6 +13,16 @@ from pydantic import BaseModel
 router = APIRouter()
 
 
+def _get_user_name(db: Session, user_id: str) -> str:
+    user = db.query(auth_models.User).filter(auth_models.User.id == user_id).first()
+    return user.full_name if user else "N/A"
+
+
+def _get_user_stripe_account_id(db: Session, user_id: str) -> str:
+    user = db.query(auth_models.User).filter(auth_models.User.id == user_id).first()
+    return user.stripe_account_id if user else ""
+
+
 class FinanceOverview(BaseModel):
     gmv_total: float
     platform_revenue: float
@@ -142,8 +152,8 @@ def get_admin_payments(
             if job and job.request and job.request.service:
                 service_title = job.request.service.title or ""
             
-            client_name = contract.client.full_name if contract and contract.client else ""
-            worker_name = job.provider.full_name if job and job.provider else ""
+            client_name = _get_user_name(db, contract.client_id) if contract else ""
+            worker_name = _get_user_name(db, job.provider_id) if job else ""
             
             if (search_lower in p.id.lower() or 
                 search_lower in service_title.lower() or
@@ -163,8 +173,8 @@ def get_admin_payments(
         if job and job.request and job.request.service:
             service_title = job.request.service.title or ""
         
-        client_name = contract.client.full_name if contract and contract.client else "N/A"
-        worker_name = job.provider.full_name if job and job.provider else "N/A"
+        client_name = _get_user_name(db, contract.client_id) if contract else "N/A"
+        worker_name = _get_user_name(db, job.provider_id) if job else "N/A"
         
         status_val = p.status.value if hasattr(p.status, 'value') else p.status
         
@@ -247,8 +257,8 @@ def get_escrow_monitor(
         if job and job.request and job.request.service:
             service_title = job.request.service.title or ""
         
-        worker_name = job.provider.full_name if job and job.provider else "N/A"
-        worker_has_stripe = bool(job.provider.stripe_account_id) if job and job.provider else False
+        worker_name = _get_user_name(db, job.provider_id) if job else "N/A"
+        worker_has_stripe = bool(_get_user_stripe_account_id(db, job.provider_id)) if job else False
         
         status_val = p.status.value if hasattr(p.status, 'value') else p.status
         
