@@ -2,7 +2,6 @@ from fastapi import APIRouter, Depends, HTTPException, status,UploadFile,File
 from sqlalchemy.orm import Session
 from typing import List
 from datetime import datetime
-# Corregimos el typo de 'segurity' a 'security' y limpiamos imports
 from app.auth import schemas
 from app.auth import service
 from app.auth import models

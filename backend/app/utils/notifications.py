@@ -51,13 +51,11 @@ def send_push_notification(fcm_token: str, title: str, body: str, data: dict = N
             )
         )
 
-        # Preparamos el mensaje
+        # Preparamos el mensaje: SOLO data (sin notification) para evitar duplicados
+        # FCM no muestra automáticamente en background, el handler se encarga
+        full_data = {**data, "title": title, "body": body}
         message = messaging.Message(
-            notification=messaging.Notification(
-                title=title,
-                body=body,
-            ),
-            data=data,
+            data=full_data,
             token=fcm_token,
             android=android_config
         )

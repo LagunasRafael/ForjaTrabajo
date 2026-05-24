@@ -27,4 +27,9 @@ class NotificationRepositoryImpl implements NotificationRepository {
   Future<void> deleteNotification(String notificationId) {
     return _remoteDataSource.deleteNotification(notificationId);
   }
+
+  @override
+  Future<void> deleteAllNotifications() {
+    return _remoteDataSource.deleteAllNotifications();
+  }
 }

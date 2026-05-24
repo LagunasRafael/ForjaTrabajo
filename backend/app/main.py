@@ -41,6 +41,11 @@ print("Tablas creadas/verificadas con create_all.", flush=True)
 def _migrate():
     migs = [
         ("is_banned en users", "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_banned BOOLEAN DEFAULT FALSE"),
+        ("work_started_at en jobs", "ALTER TABLE jobs ADD COLUMN IF NOT EXISTS work_started_at DATETIME"),
+        ("is_deleted_by_client en services", "ALTER TABLE services ADD COLUMN is_deleted_by_client BOOLEAN DEFAULT FALSE"),
+        ("is_deleted_by_worker en services", "ALTER TABLE services ADD COLUMN is_deleted_by_worker BOOLEAN DEFAULT FALSE"),
+        ("closed_reason en conversations", "ALTER TABLE conversations ADD COLUMN closed_reason VARCHAR(50)"),
+        ("reopened_at en conversations", "ALTER TABLE conversations ADD COLUMN reopened_at DATETIME"),
     ]
     try:
         with engine.connect() as conn:

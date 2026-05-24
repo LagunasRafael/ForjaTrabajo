@@ -39,8 +39,6 @@ class SharedChatScreen extends ConsumerStatefulWidget {
 
 class _SharedChatScreenState extends ConsumerState<SharedChatScreen> {
   final ScrollController _scrollController = ScrollController();
-  
-  // Ya no usamos _prevMaxScrollExtent para esto
 
   @override
   void dispose() {
@@ -48,15 +46,18 @@ class _SharedChatScreenState extends ConsumerState<SharedChatScreen> {
     super.dispose();
   }
 
+  bool _isNearBottom() {
+    if (!_scrollController.hasClients) return true;
+    return _scrollController.offset <= 50;
+  }
+
   void _scrollToBottom() {
-    if (_scrollController.hasClients) {
-      if (_scrollController.offset > 0) {
-        _scrollController.animateTo(
-          0.0,
-          curve: Curves.easeOut,
-          duration: const Duration(milliseconds: 300),
-        );
-      }
+    if (_scrollController.hasClients && !_isNearBottom()) {
+      _scrollController.animateTo(
+        0.0,
+        curve: Curves.easeOut,
+        duration: const Duration(milliseconds: 300),
+      );
     }
   }
 
@@ -129,7 +130,7 @@ class _SharedChatScreenState extends ConsumerState<SharedChatScreen> {
                         backgroundColor: const Color(0xFFF0F0F0).withOpacity(1),
                         behavior: SnackBarBehavior.floating,
                         margin: EdgeInsets.only(
-                          bottom: MediaQuery.of(context).size.height - 180,
+                          bottom: MediaQuery.of(context).size.height - 835,
                           left: 24,
                           right: 24,
                         ),
@@ -152,7 +153,7 @@ class _SharedChatScreenState extends ConsumerState<SharedChatScreen> {
                         backgroundColor: const Color(0xFFF0F0F0).withOpacity(1),
                         behavior: SnackBarBehavior.floating,
                         margin: EdgeInsets.only(
-                          bottom: MediaQuery.of(context).size.height - 180,
+                          bottom: MediaQuery.of(context).size.height - 835,
                           left: 24,
                           right: 24,
                         ),
@@ -189,6 +190,12 @@ class _SharedChatScreenState extends ConsumerState<SharedChatScreen> {
     });
 
     final messages = ref.watch(chatProvider(widget.conversationId));
+    // Auto-scroll al recibir mensajes nuevos si el usuario está cerca del fondo
+    ref.listen(chatProvider(widget.conversationId), (prev, next) {
+      if (prev != null && next.length > prev.length && prev.isNotEmpty && _isNearBottom()) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+      }
+    });
     final chatNotifier = ref.read(chatProvider(widget.conversationId).notifier);
     
     final isOtherUserTyping = ref.watch(chatTypingProvider(widget.conversationId));
@@ -218,8 +225,9 @@ class _SharedChatScreenState extends ConsumerState<SharedChatScreen> {
       orElse: () => null,
     );
     
-    // El chat solo se bloquea totalmente si el Admin o el Sistema lo cierran (CLOSED)
-    final isClosed = thisChat?.status == 'CLOSED' || thisChat?.status == 'CERRADO';
+    // El chat solo se bloquea totalmente si está cerrado (CERRADO/CLOSED)
+    final isClosed = thisChat?.status?.toUpperCase() == 'CERRADO' || thisChat?.status?.toUpperCase() == 'CLOSED';
+    final closedReason = thisChat?.closedReason;
     
     // ¿El servicio ya está en proceso con alguien? (MATCHED, etc)
     final sStatus = (thisChat?.serviceStatus ?? 'open').toLowerCase();
@@ -236,15 +244,17 @@ class _SharedChatScreenState extends ConsumerState<SharedChatScreen> {
     final messageCount = messages.length;
 
     // Calcular el prefijo dinámico para el subtítulo del Chat
-    final subtitlePrefix = (thisChat?.status == 'EN DISPUTA')
-        ? "En disputa por"
-        : sStatus.contains('cancelled')
-            ? "Cancelado:"
-            : sStatus.contains('matched') 
-                ? "Trabaja en" 
-                : sStatus.contains('completed') 
-                    ? "Trabajó en" 
-                    : "Postulante a";
+    final subtitlePrefix = isClosed
+        ? "Chat finalizado"
+        : (thisChat?.status?.toUpperCase() == 'EN DISPUTA')
+            ? "En disputa por"
+            : sStatus.contains('cancelled')
+                ? "Cancelado:"
+                : sStatus.contains('matched') 
+                    ? "Trabaja en" 
+                    : sStatus.contains('completed') 
+                        ? "Trabajó en" 
+                        : "Postulante a";
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -446,12 +456,48 @@ class _SharedChatScreenState extends ConsumerState<SharedChatScreen> {
 
           if (isOtherUserTyping) _buildTypingIndicator(),
 
+          if (isClosed)
+            _buildClosedBanner(closedReason, context),
+
           ChatInputArea(
             conversationId: widget.conversationId,
             isClient: isClient,
             canSendOffer: canSendOffer,
             isEnabled: !isClosed,
             onMessageSent: _scrollToBottom,
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _translateClosedReason(String? reason) {
+    switch (reason) {
+      case 'WORKER_NOT_SELECTED': return 'Se seleccionó otro trabajador';
+      case 'CLIENT_PAYMENT_TIMEOUT': return 'El pago no se realizó a tiempo';
+      case 'APPLICATION_WITHDRAWN': return 'El trabajador retiró su postulación';
+      case 'SERVICE_CANCELLED': return 'El servicio fue cancelado';
+      case 'SERVICE_COMPLETED': return 'Servicio completado';
+      case 'SERVICE_COMPLETED_AUTO': return 'Servicio completado automáticamente';
+      case 'DISPUTE_RESOLVED': return 'Disputa resuelta';
+      default: return 'Chat finalizado';
+    }
+  }
+
+  Widget _buildClosedBanner(String? reason, BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      color: Colors.grey.shade100,
+      child: Row(
+        children: [
+          const Icon(Icons.lock_outline, size: 16, color: Colors.grey),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              _translateClosedReason(reason),
+              style: const TextStyle(color: Colors.grey, fontSize: 13),
+            ),
           ),
         ],
       ),

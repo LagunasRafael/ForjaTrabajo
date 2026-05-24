@@ -109,17 +109,28 @@ class ChatTile extends ConsumerWidget {
                     overflow: TextOverflow.ellipsis
                   ),
                   const SizedBox(height: 4),
-                  // 🟢 MENSAJE MÁS GRANDE (Pasó de 13 a 15)
-                  Text(
-                    chat.lastMessage, 
-                    style: TextStyle(
-                      color: chat.hasUnread ? theme.colorScheme.onSurface : theme.colorScheme.onSurface.withOpacity(0.6), 
-                      fontSize: 15, // 👈 AQUÍ SE HIZO MÁS GRANDE
-                      fontWeight: chat.hasUnread ? FontWeight.bold : FontWeight.normal,
-                    ), 
-                    overflow: TextOverflow.ellipsis, 
-                    maxLines: 1, 
-                  ),
+                  if (chat.status == 'CLOSED' || chat.status == 'CERRADO')
+                    Row(
+                      children: [
+                        const Icon(Icons.lock, size: 12, color: Colors.grey),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Finalizado',
+                          style: TextStyle(color: Colors.grey.shade500, fontSize: 12, fontWeight: FontWeight.w500),
+                        ),
+                      ],
+                    )
+                  else
+                    Text(
+                      chat.lastMessage, 
+                      style: TextStyle(
+                        color: chat.hasUnread ? theme.colorScheme.onSurface : theme.colorScheme.onSurface.withOpacity(0.6), 
+                        fontSize: 15,
+                        fontWeight: chat.hasUnread ? FontWeight.bold : FontWeight.normal,
+                      ), 
+                      overflow: TextOverflow.ellipsis, 
+                      maxLines: 1, 
+                    ),
                 ],
               ),
             ),

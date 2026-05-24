@@ -99,6 +99,16 @@ class ServiceRepositoryImpl implements ServiceRepository {
     }
   }
 
+  @override
+  Future<bool> hideFromHistory(String serviceId, String token) async {
+    try {
+      return await serviceDS.hideFromHistory(serviceId, token);
+    } catch (e) {
+      debugPrint("🚨 Error en Repository al ocultar del historial: $e");
+      rethrow;
+    }
+  }
+
   // --- SOLICITUDES Y OFERTAS ---
   @override
   Future<ServiceRequestEntity> createRequest(ServiceRequestEntity request, String token) async {

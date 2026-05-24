@@ -9,7 +9,6 @@ class ChatContextMenu {
   static Future<void> show(BuildContext context, WidgetRef ref, {required Offset position, required ChatSummaryEntity chat}) async {
     final RenderBox overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
 
-    // 🧠 Detectamos si el chat actual está archivado
     final isArchived = chat.isArchived;
 
     final value = await showMenu<String>(
@@ -21,7 +20,6 @@ class ChatContextMenu {
       elevation: 6,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)), 
       items: [
-        // 🟢 BOTÓN DINÁMICO: Archivar / Recuperar
         PopupMenuItem(
           value: isArchived ? 'unarchive' : 'archive',
           child: Row(
@@ -64,7 +62,7 @@ class ChatContextMenu {
           context: context,
           builder: (ctx) => AlertDialog(
             title: const Text('Eliminar chat'),
-            content: const Text('Deseas eliminar esta conversacion para ti?'),
+            content: const Text('¿Deseas eliminar esta conversación para ti?'),
             actions: [
               TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
               TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Eliminar', style: TextStyle(color: Colors.red))),

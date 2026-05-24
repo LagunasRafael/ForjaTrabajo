@@ -23,6 +23,29 @@ class NotificationsScreen extends ConsumerWidget {
         iconTheme: IconThemeData(color: theme.colorScheme.onSurface),
         actions: [
           IconButton(
+            icon: const Icon(Icons.delete_sweep),
+            tooltip: 'Eliminar todas',
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: const Text('Eliminar notificaciones'),
+                  content: const Text('¿Eliminar todas las notificaciones? Esta acción no se puede deshacer.'),
+                  actions: [
+                    TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        ref.read(notificationListProvider(role).notifier).deleteAllNotifications();
+                      },
+                      child: const Text('Eliminar', style: TextStyle(color: Colors.red)),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.done_all),
             tooltip: 'Marcar todo como leído',
             onPressed: () => ref.read(notificationListProvider(role).notifier).markAllAsRead(),

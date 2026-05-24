@@ -1,9 +1,11 @@
 from sqlalchemy.orm import Session
+from fastapi import HTTPException
 from app.services import models, schemas
 from uuid import UUID
-from fastapi import HTTPException
+from app.services.chats.service import close_chat
 from app.auth import models as auth_models
 from app.services.notifications import service as notif_service
+from datetime import datetime
 import logging
 
 logger = logging.getLogger(__name__)
@@ -11,7 +13,8 @@ logger = logging.getLogger(__name__)
 def create_service_request(db: Session, request_data: schemas.ServiceRequestCreate, worker_id: UUID):
     existing_request = db.query(models.ServiceRequest).filter(
         models.ServiceRequest.service_id == str(request_data.service_id),
-        models.ServiceRequest.worker_id == str(worker_id)
+        models.ServiceRequest.worker_id == str(worker_id),
+        models.ServiceRequest.status.in_(["pending", "accepted"])
     ).first()
 
     if existing_request:
@@ -46,7 +49,11 @@ def get_offers_by_service(db: Session, service_id: str, client_id: str, is_admin
         raise HTTPException(status_code=404, detail="Servicio no encontrado")
 
     if is_admin or str(db_service.client_id) == str(client_id):
-        return sorted(db_service.requests, key=lambda x: x.created_at or datetime.min, reverse=True)
+        active_requests = [
+            req for req in db_service.requests
+            if req.status not in ["expired", "rejected"]
+        ]
+        return sorted(active_requests, key=lambda x: x.created_at or datetime.min, reverse=True)
 
     my_requests = [
         req for req in db_service.requests 
@@ -201,6 +208,16 @@ def withdraw_postulation(db: Session, request_id: str, user_id: str):
 
     if not postulation:
         raise HTTPException(status_code=404, detail="Postulación no encontrada o no tienes permiso")
+
+    # Cerrar el chat antes de eliminar la postulación
+    try:
+        convo = db.query(models.Conversation).filter(
+            models.Conversation.request_id == request_id
+        ).first()
+        if convo and convo.status != models.ConversationStatus.CLOSED.value:
+            close_chat(db, str(convo.id), models.ClosedReason.APPLICATION_WITHDRAWN.value)
+    except Exception:
+        pass
 
     db.delete(postulation)
     db.commit()

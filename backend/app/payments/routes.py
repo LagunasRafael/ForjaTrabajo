@@ -77,7 +77,10 @@ def create_payment_intent(
 
     job = db.query(Job).filter(Job.id == data.job_id).first()
     if not job:
-        job = db.query(Job).join(ServiceRequest).filter(ServiceRequest.service_id == data.job_id).first()
+        job = db.query(Job).join(ServiceRequest).filter(
+            ServiceRequest.service_id == data.job_id,
+            Job.status != JobStatus.CANCELLED
+        ).first()
     if not job:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -110,11 +113,21 @@ def create_payment_intent(
             models.PaymentStatus.HELD_IN_ESCROW
         ])
     ).first()
+
     if existing_payment:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ya existe un pago pendiente o retenido para este trabajo."
-        )
+        if existing_payment.status == models.PaymentStatus.HELD_IN_ESCROW:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Ya existe un pago retenido para este trabajo. No puedes reiniciar el pago."
+            )
+        # PENDING: cancelar el intent anterior en Stripe y reemplazarlo
+        if existing_payment.stripe_payment_intent_id:
+            try:
+                stripe.PaymentIntent.cancel(existing_payment.stripe_payment_intent_id)
+            except stripe.error.StripeError:
+                pass
+        existing_payment.status = models.PaymentStatus.FAILED
+        db.commit()
 
     # 4. Crear PaymentIntent en Stripe (manual capture = escrow)
     amount_cents = int(data.amount_mxn * 100)
@@ -212,6 +225,11 @@ def confirm_payment(
         stripe_payment_intent_id=data.payment_intent_id,
     )
     db.add(payment)
+    job.payment_due_at = None
+    if job.request and job.request.service:
+        for req in job.request.service.requests:
+            if str(req.id) != str(job.request_id):
+                req.status = "rejected"
     db.commit()
     db.refresh(payment)
 
@@ -242,23 +260,6 @@ def confirm_escrow(
     Actualiza el estado del pago a 'held_in_escrow'.
     """
     payment = services.confirm_escrow(db=db, payment_intent_id=data.payment_intent_id)
-
-    # 💬 Mensaje del sistema en el chat: pago confirmado
-    try:
-        contract = db.query(models.Contract).filter(models.Contract.id == payment.contract_id).first()
-        if contract:
-            job = db.query(services_models.Job).filter(services_models.Job.id == contract.job_id).first()
-            if job:
-                from app.services.chats.service import add_system_message, get_or_create_conversation
-                conversation = get_or_create_conversation(db, str(job.request_id), str(current_user.id))
-                add_system_message(
-                    db, str(conversation.id), str(current_user.id),
-                    "✅ Pago confirmado. El trabajador ya puede comenzar con el trabajo."
-                )
-    except Exception as e:
-        import logging
-        logging.getLogger(__name__).warning(f"No se pudo enviar mensaje de sistema: {e}")
-
     return payment
 
 

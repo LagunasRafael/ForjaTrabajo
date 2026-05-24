@@ -134,6 +134,7 @@ class _WorkerActiveActionsState extends ConsumerState<_WorkerActiveActions> {
     
     // 1. Solo evaluamos el estado real que viene de la base de datos
     final isWaiting = widget.job.status == JobStatus.waiting_confirmation;
+    final isDisputed = widget.job.status == JobStatus.disputed;
 
     return Column(
       children: [
@@ -162,7 +163,7 @@ class _WorkerActiveActionsState extends ConsumerState<_WorkerActiveActions> {
             Expanded(
               child: ElevatedButton.icon(
                 // 2. Si está esperando o cargando, se deshabilita (null)
-                onPressed: (isWaiting || isCompleting)
+                onPressed: (isWaiting || isCompleting || isDisputed)
                     ? null
                     : () => _handleComplete(context, ref),
 
@@ -273,12 +274,17 @@ class _PaymentStatusBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final isWaiting = job.status == JobStatus.waiting_confirmation;
     final isPaid = job.hasPaid;
+    final isDisputed = job.status == JobStatus.disputed;
 
     String text;
     Color bgColor;
     IconData icon;
 
-    if (isWaiting) {
+    if (isDisputed) {
+      text = "Servicio en disputa";
+      bgColor = Colors.red.shade50;
+      icon = Icons.gavel;
+    } else if (isWaiting) {
       text = "Esperando confirmación del cliente";
       bgColor = Colors.orange.shade50;
       icon = Icons.hourglass_top;
@@ -302,7 +308,7 @@ class _PaymentStatusBadge extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(icon, size: 18, color: isPaid ? const Color(0xFF10B981) : Colors.orange),
+          Icon(icon, size: 18, color: isDisputed ? Colors.red : isPaid ? const Color(0xFF10B981) : Colors.orange),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
@@ -310,7 +316,7 @@ class _PaymentStatusBadge extends StatelessWidget {
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
-                color: isPaid ? const Color(0xFF10B981) : Colors.orange.shade800,
+                color: isDisputed ? Colors.red.shade800 : isPaid ? const Color(0xFF10B981) : Colors.orange.shade800,
               ),
             ),
           ),

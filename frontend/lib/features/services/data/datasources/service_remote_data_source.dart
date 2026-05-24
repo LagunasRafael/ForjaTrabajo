@@ -134,6 +134,19 @@ class ServiceRemoteDataSource {
 
   // --- GESTIÓN DE ESTADOS (CANCELAR / COMPLETAR) ---
 
+  Future<bool> hideFromHistory(String serviceId, String token) async {
+    try {
+      final response = await _dio.post(
+        '$_path/$serviceId/hide-from-history',
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint("🚨 Error al ocultar servicio del historial: $e");
+      return false;
+    }
+  }
+
   Future<bool> cancelService(String serviceId, String token) async {
     try {
       final response = await _dio.put(

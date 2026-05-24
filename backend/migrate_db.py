@@ -119,6 +119,56 @@ def migrate():
             print(f"Error al añadir is_banned: {e}")
 
     try:
+        print("Intentando añadir la columna work_started_at a jobs...")
+        cursor.execute("ALTER TABLE jobs ADD COLUMN work_started_at DATETIME;")
+        print("✅ Columna work_started_at añadida correctamente.")
+    except sqlite3.OperationalError as e:
+        if "duplicate column name" in str(e):
+            print("⚠️ La columna work_started_at ya existía.")
+        else:
+            print(f"Error al añadir work_started_at: {e}")
+
+    try:
+        print("Intentando añadir la columna is_deleted_by_client a services...")
+        cursor.execute("ALTER TABLE services ADD COLUMN is_deleted_by_client BOOLEAN DEFAULT FALSE;")
+        print("✅ Columna is_deleted_by_client añadida correctamente.")
+    except sqlite3.OperationalError as e:
+        if "duplicate column name" in str(e):
+            print("⚠️ La columna is_deleted_by_client ya existía.")
+        else:
+            print(f"Error al añadir is_deleted_by_client: {e}")
+
+    try:
+        print("Intentando añadir la columna is_deleted_by_worker a services...")
+        cursor.execute("ALTER TABLE services ADD COLUMN is_deleted_by_worker BOOLEAN DEFAULT FALSE;")
+        print("✅ Columna is_deleted_by_worker añadida correctamente.")
+    except sqlite3.OperationalError as e:
+        if "duplicate column name" in str(e):
+            print("⚠️ La columna is_deleted_by_worker ya existía.")
+        else:
+            print(f"Error al añadir is_deleted_by_worker: {e}")
+
+    try:
+        print("Intentando añadir la columna closed_reason a conversations...")
+        cursor.execute("ALTER TABLE conversations ADD COLUMN closed_reason VARCHAR(50);")
+        print("✅ Columna closed_reason añadida correctamente.")
+    except sqlite3.OperationalError as e:
+        if "duplicate column name" in str(e):
+            print("⚠️ La columna closed_reason ya existía.")
+        else:
+            print(f"Error al añadir closed_reason: {e}")
+
+    try:
+        print("Intentando añadir la columna reopened_at a conversations...")
+        cursor.execute("ALTER TABLE conversations ADD COLUMN reopened_at DATETIME;")
+        print("✅ Columna reopened_at añadida correctamente.")
+    except sqlite3.OperationalError as e:
+        if "duplicate column name" in str(e):
+            print("⚠️ La columna reopened_at ya existía.")
+        else:
+            print(f"Error al añadir reopened_at: {e}")
+
+    try:
         print("Creando tabla reports...")
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS reports (

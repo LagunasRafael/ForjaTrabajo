@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -9,13 +10,40 @@ import 'package:forja_trabajo/features/services/presentation/widgets/worker/work
 import 'package:forja_trabajo/features/services/presentation/widgets/worker/worker_active_job_card.dart';
 import 'package:forja_trabajo/features/services/presentation/widgets/worker/worker_completed_job_card.dart';
 
-class WorkerJobListView extends ConsumerWidget {
+class WorkerJobListView extends ConsumerStatefulWidget {
   final JobStatus status;
 
   const WorkerJobListView({super.key, required this.status});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<WorkerJobListView> createState() => _WorkerJobListViewState();
+}
+
+class _WorkerJobListViewState extends ConsumerState<WorkerJobListView> {
+  Timer? _pollingTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _startPolling();
+  }
+
+  void _startPolling() {
+    _pollingTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (mounted) {
+        ref.refresh(workerJobsProvider);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _pollingTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     // 🔔 Escuchar eventos de notificación para refrescar la lista en tiempo real
     ref.listen<AsyncValue<RemoteMessage>>(notificationEventProvider, (previous, next) {
       next.whenData((message) {
@@ -37,13 +65,13 @@ class WorkerJobListView extends ConsumerWidget {
     return jobsAsync.when(
       data: (jobs) {
         final filtered = jobs.where((j) {
-          if (status == JobStatus.matched) {
-            return j.status == JobStatus.matched || j.status == JobStatus.waiting_confirmation;
+          if (widget.status == JobStatus.matched) {
+            return j.status == JobStatus.matched || j.status == JobStatus.waiting_confirmation || j.status == JobStatus.disputed;
           }
-          if (status == JobStatus.completed) {
+          if (widget.status == JobStatus.completed) {
             return j.status == JobStatus.completed || j.status == JobStatus.cancelled;
           }
-          return j.status == status;
+          return j.status == widget.status;
         }).toList();
 
         return RefreshIndicator(
@@ -58,10 +86,13 @@ class WorkerJobListView extends ConsumerWidget {
                 itemBuilder: (context, index) {
                   final job = filtered[index];
                   
-                  return switch (status) {
+                  final isTerminal = job.status == JobStatus.completed || job.status == JobStatus.cancelled;
+                  return switch (widget.status) {
                     JobStatus.open      => WorkerPendingJobCard(job: job),
                     JobStatus.matched   => WorkerActiveJobCard(job: job),
-                    JobStatus.completed => WorkerCompletedJobCard(job: job),
+                    JobStatus.completed => isTerminal
+                      ? WorkerCompletedJobCard(job: job)
+                      : const SizedBox.shrink(),
                     _                   => const SizedBox.shrink(),
                   };
                 },
@@ -80,7 +111,7 @@ class WorkerJobListView extends ConsumerWidget {
       children: [
         SizedBox(
           height: MediaQuery.of(context).size.height * 0.6,
-          child: _EmptyStateHelper(status: status),
+          child: _EmptyStateHelper(status: widget.status),
         ),
       ],
     );

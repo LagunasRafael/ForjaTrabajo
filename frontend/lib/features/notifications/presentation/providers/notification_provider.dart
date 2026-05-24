@@ -105,6 +105,18 @@ class NotificationNotifier extends StateNotifier<AsyncValue<List<NotificationEnt
       fetchNotifications();
     }
   }
+
+  Future<void> deleteAllNotifications() async {
+    if (state is AsyncData) {
+      state = const AsyncValue.data([]);
+    }
+    try {
+      await _repository.deleteAllNotifications();
+    } catch (e) {
+      print("Error deleting all notifications: $e");
+      fetchNotifications();
+    }
+  }
 }
 
 final notificationListProvider = StateNotifierProvider.family<NotificationNotifier, AsyncValue<List<NotificationEntity>>, String?>((ref, role) {

@@ -11,6 +11,7 @@ from app.utils.s3 import upload_service_evidence_to_s3
 # Importamos los schemas, models globales y el servicio local
 from app.services import schemas, models
 from app.services.posting import service
+from app.services.expiration import process_expired_payments
 
 router = APIRouter()
 
@@ -66,6 +67,7 @@ def search_services_route(query: str, db: Session = Depends(get_db)):
 
 @router.get("/my-requests", response_model=List[schemas.Service])
 def read_my_requests(db: Session = Depends(get_db), current_user: auth_models.User = Depends(get_current_user)):
+    process_expired_payments(db)
     services = service.get_my_services(db, user_id=str(current_user.id))
     result = []
     for svc in services:
@@ -112,6 +114,7 @@ def services_by_category(category_id: str, db: Session = Depends(get_db)):
 
 @router.get("/{service_id}", response_model=schemas.Service)
 def read_service(service_id: str, db: Session = Depends(get_db)):
+    process_expired_payments(db)
     db_service = service.get_service_by_id(db, service_id=service_id)
     if db_service is None:
         raise HTTPException(status_code=404, detail="El servicio no existe")
@@ -131,6 +134,20 @@ def cancel_service(service_id: str, db: Session = Depends(get_db), current_user:
 @router.delete("/{service_id}", status_code=status.HTTP_200_OK)
 def delete_service(service_id: str, db: Session = Depends(get_db), current_user: auth_models.User = Depends(check_role([Role.ADMIN]))):
     return service.delete_service(db, service_id)
+
+@router.post("/{service_id}/hide-from-history")
+def hide_service_from_history(service_id: str, db: Session = Depends(get_db), current_user: auth_models.User = Depends(get_current_user)):
+    """Marca el servicio como eliminado del historial para el usuario actual."""
+    svc = db.query(models.Service).filter(models.Service.id == service_id).first()
+    if not svc:
+        raise HTTPException(status_code=404, detail="Servicio no encontrado")
+    user_id = str(current_user.id)
+    if str(svc.client_id) == user_id:
+        svc.is_deleted_by_client = True
+    else:
+        svc.is_deleted_by_worker = True
+    db.commit()
+    return {"status": "success", "message": "Eliminado del historial"}
 
 @router.patch("/{service_id}/active", response_model=schemas.Service)
 def toggle_service_visibility(

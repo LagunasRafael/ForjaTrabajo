@@ -9,6 +9,9 @@ from app.core.roles import Role
 from sqlalchemy import or_
 from app.auth import models as auth_models
 from app.services.notifications import service as notif_service
+from app.payments.models import Payment, Contract, PaymentStatus
+from app.services.chats.service import close_service_chats
+import stripe
 import logging
 
 logger = logging.getLogger(__name__)
@@ -143,6 +146,7 @@ def get_my_services(db: Session, user_id: str):
         )
         .filter(
             models.Service.client_id == user_id,
+            models.Service.is_deleted_by_client == False,
         )
         .order_by(models.Service.created_at.desc())
         .all()
@@ -198,6 +202,7 @@ def cancel_service(db: Session, service_id: str, user_id: str, user_role: str):
     is_admin = user_role == Role.ADMIN
     is_owner = service_entry.client_id == str(user_id)
     is_assigned_worker = False
+    active_job = None
     
     if service_entry.status == models.JobStatus.MATCHED:
         active_job = db.query(models.Job).join(models.ServiceRequest).filter(
@@ -209,10 +214,44 @@ def cancel_service(db: Session, service_id: str, user_id: str, user_role: str):
 
     if not (is_owner or is_admin or is_assigned_worker):
         raise HTTPException(status_code=403, detail="No tienes permiso para cancelar")
-        
+    
+    # 1. Cancelar pagos pendientes en Stripe
+    if active_job:
+        contract = db.query(Contract).filter(Contract.job_id == active_job.id).first()
+        if contract:
+            payments = db.query(Payment).filter(
+                Payment.contract_id == contract.id,
+                Payment.status.in_([PaymentStatus.PENDING, PaymentStatus.HELD_IN_ESCROW])
+            ).all()
+            for payment in payments:
+                if payment.stripe_payment_intent_id:
+                    try:
+                        intent = stripe.PaymentIntent.retrieve(payment.stripe_payment_intent_id)
+                        if intent.status == "requires_capture":
+                            stripe.PaymentIntent.cancel(payment.stripe_payment_intent_id)
+                        elif intent.status in ("requires_payment_method", "requires_confirmation"):
+                            stripe.PaymentIntent.cancel(payment.stripe_payment_intent_id)
+                    except Exception:
+                        pass
+                payment.status = PaymentStatus.FAILED
+    
+    # 2. Cerrar todos los chats del servicio
+    try:
+        close_service_chats(db, service_id, models.ClosedReason.SERVICE_CANCELLED.value)
+    except Exception as e:
+        logger.warning(f"No se pudieron cerrar los chats del servicio: {e}")
+    
+    # 3. Marcar servicio como cancelado
     service_entry.status = models.JobStatus.CANCELLED  # type: ignore
+    if active_job:
+        active_job.status = models.JobStatus.CANCELLED  # type: ignore
+    
     db.commit()
     db.refresh(service_entry)
+    
+    if active_job:
+        notif_service.notify_job_cancelled(db, active_job, user_id)
+    
     return {"message": "Servicio cancelado correctamente", "status": "cancelled"}
 
 def delete_service(db: Session, service_id: str):
@@ -321,7 +360,7 @@ def get_worker_applications(db: Session, worker_id: str):
             req = job.request
             srv = req.service if req else None
 
-            if not srv:
+            if not srv or srv.is_deleted_by_worker:
                 continue
 
             fecha_buscada = job.started_at.isoformat() if job.started_at else None
@@ -353,6 +392,7 @@ def get_worker_applications(db: Session, worker_id: str):
                 models.ServiceRequest.worker_id == worker_id,
                 models.ServiceRequest.status == "pending",
                 models.Service.is_active == True,
+                models.Service.is_deleted_by_worker == False,
             )
             .all()
         )
@@ -542,31 +582,46 @@ def cancel_job(db: Session, job_id: str, user_id: str, user_role: str):
 
     is_worker = str(job.provider_id) == str(user_id)
     is_client = str(job.client_id) == str(user_id)
-    # is_admin = user_role == Role.ADMIN # Role might be different now
 
     if not (is_worker or is_client):
         raise HTTPException(status_code=403, detail="No tienes permiso para cancelar")
+
+    # 1. Cancelar pagos pendientes en Stripe
+    contract = db.query(Contract).filter(Contract.job_id == job.id).first()
+    if contract:
+        payments = db.query(Payment).filter(
+            Payment.contract_id == contract.id,
+            Payment.status.in_([PaymentStatus.PENDING, PaymentStatus.HELD_IN_ESCROW])
+        ).all()
+        for payment in payments:
+            if payment.stripe_payment_intent_id:
+                try:
+                    intent = stripe.PaymentIntent.retrieve(payment.stripe_payment_intent_id)
+                    if intent.status in ("requires_payment_method", "requires_confirmation", "requires_capture"):
+                        stripe.PaymentIntent.cancel(payment.stripe_payment_intent_id)
+                except Exception:
+                    pass
+            payment.status = PaymentStatus.FAILED
 
     job.status = models.JobStatus.CANCELLED  # type: ignore
     
     if job.request and job.request.service:
         if is_worker:
             job.request.service.status = models.JobStatus.OPEN  # type: ignore
-            print(f"♻️ Servicio {job.request.service.id} re-abierto porque el trabajador canceló.")
         else:
             job.request.service.status = models.JobStatus.CANCELLED  # type: ignore
 
     db.commit()
     db.refresh(job)
 
-    # 🔒 BLOQUEAR EL CHAT: Al cancelar el trabajo, se cierra la conversación
+    # 2. Cerrar el chat del trabajo
     try:
         convo = db.query(models.Conversation).filter(models.Conversation.request_id == str(job.request_id)).first()
-        if convo:
-            convo.status = models.ConversationStatus.CLOSED.value # type: ignore
-            db.commit()
+        if convo and convo.status != models.ConversationStatus.CLOSED.value:
+            from app.services.chats.service import close_chat
+            close_chat(db, str(convo.id), models.ClosedReason.SERVICE_CANCELLED.value)
     except Exception as e:
-        logger.warning(f"⚠️ No se pudo cerrar el chat al cancelar el trabajo: {e}")
+        logger.warning(f"No se pudo cerrar el chat al cancelar el trabajo: {e}")
 
     return job
 

@@ -5,6 +5,12 @@ from uuid import UUID
 from fastapi import HTTPException
 from app.core.roles import Role
 from app.services.notifications import service as notif_service
+from app.services.chats.service import close_service_chats
+from app.payments.models import Payment, Contract, PaymentStatus
+import stripe
+import logging
+
+logger = logging.getLogger(__name__)
 
 def create_service(db: Session, service_data: schemas.ServiceCreate, client_id: UUID):
     category = db.query(models.Category).filter(models.Category.id == str(service_data.category_id)).first()
@@ -105,7 +111,7 @@ def get_my_services(db: Session, user_id: str):
         relevant_date = service_obj.created_at
 
         for request in service_obj.requests:
-            if request.job:
+            if request.job and request.job.status != models.JobStatus.CANCELLED:
                 contract = db.query(Contract).filter(Contract.job_id == request.job.id).first()
                 if contract:
                     payment = db.query(Payment).filter(
@@ -127,7 +133,7 @@ def get_my_services(db: Session, user_id: str):
                     already_reviewed = True
                 
             # Determinar fecha relevante para ordenamiento cruzado (Abierto, En Proceso, Finalizado)
-            if request.job:
+            if request.job and service_obj.status != models.JobStatus.OPEN:
                 if request.job.status in [models.JobStatus.COMPLETED, models.JobStatus.CANCELLED] and request.job.completed_at:
                     relevant_date = request.job.completed_at
                 elif request.job.started_at:
@@ -139,7 +145,7 @@ def get_my_services(db: Session, user_id: str):
         payment_due_at = None
         auto_release_at = None
         for request in service_obj.requests:
-            if request.job:
+            if request.job and request.job.status != models.JobStatus.CANCELLED:
                 payment_due_at = request.job.payment_due_at
                 auto_release_at = request.job.auto_release_at
                 break
@@ -205,8 +211,8 @@ def cancel_service(db: Session, service_id: str, user_id: str, user_role: str):
     active_job = None
     
     if service_entry.status == models.JobStatus.MATCHED:
-        active_job = db.query(models.Job).filter(
-            models.Job.client_id == service_entry.client_id,
+        active_job = db.query(models.Job).join(models.ServiceRequest).filter(
+            models.ServiceRequest.service_id == service_entry.id,
             models.Job.status == models.JobStatus.MATCHED
         ).first()
         if active_job and str(active_job.provider_id) == str(user_id):
@@ -214,8 +220,35 @@ def cancel_service(db: Session, service_id: str, user_id: str, user_role: str):
 
     if not (is_owner or is_admin or is_assigned_worker):
         raise HTTPException(status_code=403, detail="No tienes permiso para cancelar")
-        
-    service_entry.status = models.JobStatus.CANCELLED  # type: ignore[assignment] 
+    
+    # Cancelar pagos pendientes en Stripe
+    if active_job:
+        contract = db.query(Contract).filter(Contract.job_id == active_job.id).first()
+        if contract:
+            payments = db.query(Payment).filter(
+                Payment.contract_id == contract.id,
+                Payment.status.in_([PaymentStatus.PENDING, PaymentStatus.HELD_IN_ESCROW])
+            ).all()
+            for payment in payments:
+                if payment.stripe_payment_intent_id:
+                    try:
+                        intent = stripe.PaymentIntent.retrieve(payment.stripe_payment_intent_id)
+                        if intent.status in ("requires_payment_method", "requires_confirmation", "requires_capture"):
+                            stripe.PaymentIntent.cancel(payment.stripe_payment_intent_id)
+                    except Exception:
+                        pass
+                payment.status = PaymentStatus.FAILED
+    
+    # Cerrar todos los chats del servicio
+    try:
+        close_service_chats(db, service_id, models.ClosedReason.SERVICE_CANCELLED.value)
+    except Exception as e:
+        logger.warning(f"No se pudieron cerrar los chats del servicio: {e}")
+    
+    service_entry.status = models.JobStatus.CANCELLED  # type: ignore[assignment]
+    if active_job:
+        active_job.status = models.JobStatus.CANCELLED  # type: ignore[assignment]
+    
     db.commit()
     db.refresh(service_entry)
 

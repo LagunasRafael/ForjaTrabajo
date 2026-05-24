@@ -649,3 +649,10 @@ def delete_notification(db: Session, notification_id: str, user_id: str):
     db.commit()
     return {"status": "success", "message": "Notificación eliminada"}
 
+def delete_all_notifications(db: Session, user_id: str):
+    db.query(models.Notification).filter(
+        models.Notification.user_id == user_id
+    ).delete()
+    db.commit()
+    return {"status": "success", "message": "Todas las notificaciones eliminadas"}
+

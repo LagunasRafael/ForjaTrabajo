@@ -35,7 +35,6 @@ class ChatListScreen extends ConsumerWidget {
           loading: () => const Center(child: CircularProgressIndicator(color: Color(0xFF4F46E5))),
           error: (err, stack) => Center(child: Text("Error cargando chats: $err")),
           data: (chats) {
-            // 🧠 Filtros seguros (si isArchived es null en memoria, no crashea)
             final activeChats = chats.where((c) => c.isArchived != true).toList();
             final archivedChats = chats.where((c) => c.isArchived == true).toList();
 
