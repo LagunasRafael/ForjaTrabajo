@@ -1,3 +1,5 @@
+import '../../../services/data/models/category_model.dart';
+
 class User {
   final String id;
   final String email;
@@ -10,6 +12,8 @@ class User {
   final double? longitude;
   final bool isEmailVerified;
   final bool isIdentityVerified;
+  final String? bio;
+  final List<CategoryModel>? categories;
   
   // 🛡️ Ayudantes de verificación de rol
   bool get isWorker => role.toLowerCase().contains('worker') || role.toLowerCase().contains('trabajador');
@@ -28,6 +32,8 @@ class User {
     this.city,
     this.latitude,
     this.longitude,
+    this.bio,
+    this.categories,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -43,6 +49,10 @@ class User {
       city: json['city'],
       latitude: json['latitude'],
       longitude: json['longitude'],
+      bio: json['bio'],
+      categories: (json['categories'] as List<dynamic>?)
+          ?.map((c) => CategoryModel.fromJson(c as Map<String, dynamic>))
+          .toList(),
     );
   }
 
@@ -58,6 +68,8 @@ class User {
     String? city,
     double? latitude,
     double? longitude,
+    String? bio,
+    List<CategoryModel>? categories,
   }) {
     return User(
       id: id ?? this.id,
@@ -71,6 +83,8 @@ class User {
       city: city ?? this.city,
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
+      bio: bio ?? this.bio,
+      categories: categories ?? this.categories,
     );
   }
 }

@@ -188,3 +188,5 @@ class UserProfileResponse(BaseModel):
     total_reviews: int = 0
     is_identity_verified: bool = False
     completed_jobs: List[JobSummarySchema] = []
+    bio: Optional[str] = None
+    categories: Optional[List[Category]] = []

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../providers/public_profile_provider.dart';
 import '../../domain/models/public_profile_model.dart';
 import '../../domain/models/review_model.dart';
@@ -84,6 +85,82 @@ class UserProfileScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 16),
                 _buildStatsRow(profile),
+                if (profile.bio != null && profile.bio!.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.grey[900]
+                          : Colors.grey[50],
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.grey[800]!
+                            : Colors.grey[200]!,
+                      ),
+                    ),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Acerca de mí',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            profile.bio!,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Theme.of(context).brightness == Brightness.dark
+                                  ? Colors.grey[300]
+                                  : Colors.grey[700],
+                              height: 1.4,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+                if (profile.categories.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  const Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Servicios que realizo',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: profile.categories.map((cat) {
+                        return Chip(
+                          label: Text(
+                            cat.name,
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                          backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
+                          labelStyle: const TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.w600),
+                          side: BorderSide.none,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ],
                 if (profile.completedJobs.isNotEmpty) ...[
                   const SizedBox(height: 24),
                   const Divider(),
