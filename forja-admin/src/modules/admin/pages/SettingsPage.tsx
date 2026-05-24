@@ -10,7 +10,6 @@ export const SettingsPage = () => {
     siteName: '',
     supportEmail: '',
     maintenanceMode: false,
-    commissionRate: 10,
   });
 
   useEffect(() => {
@@ -21,7 +20,6 @@ export const SettingsPage = () => {
           siteName: response.data.site_name,
           supportEmail: response.data.support_email,
           maintenanceMode: response.data.maintenance_mode,
-          commissionRate: response.data.commission_rate,
         });
         localStorage.setItem('maintenance_mode', JSON.stringify(response.data.maintenance_mode));
         window.dispatchEvent(new Event('maintenance_changed'));
@@ -48,7 +46,6 @@ export const SettingsPage = () => {
         site_name: config.siteName,
         support_email: config.supportEmail,
         maintenance_mode: config.maintenanceMode,
-        commission_rate: config.commissionRate,
       });
       localStorage.setItem('maintenance_mode', JSON.stringify(config.maintenanceMode));
       window.dispatchEvent(new Event('maintenance_changed'));
@@ -164,30 +161,6 @@ export const SettingsPage = () => {
                 </button>
               </div>
             </form>
-          </section>
-
-          {/* SECCIÓN DE COMISIONES (Finanzas) */}
-          <section className="rounded-2xl border border-slate-800 bg-slate-900/50 p-6 backdrop-blur-sm">
-            <h3 className="text-lg font-semibold text-white mb-6 flex items-center gap-2">
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-emerald-400"><path d="M12 2v20" /><path d="m17 5-5-3-5 3" /><path d="m17 19-5 3-5-3" /><path d="M2 12h20" /><path d="m5 7-3 5 3 5" /><path d="m19 7 3 5-3 5" /></svg>
-              Reglas de Negocio
-            </h3>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-xs font-medium text-slate-400 uppercase tracking-wider">Comisión de la Plataforma (%)</label>
-                <div className="flex items-center gap-4">
-                  <input
-                    type="range"
-                    min="0" max="30"
-                    value={config.commissionRate}
-                    onChange={(e) => setConfig({ ...config, commissionRate: parseInt(e.target.value) })}
-                    className="flex-1 h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
-                  />
-                  <span className="text-lg font-bold text-white w-12">{config.commissionRate}%</span>
-                </div>
-                <p className="text-xs text-slate-500 italic">Este valor se usará para el cálculo de proyecciones en el módulo de Finanzas.</p>
-              </div>
-            </div>
           </section>
         </div>
 

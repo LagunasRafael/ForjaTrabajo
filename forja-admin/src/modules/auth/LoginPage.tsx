@@ -17,7 +17,7 @@ export const LoginPage = () => {
     try {
       // 1. Petición al Backend
       const { data } = await api.post('/auth/login', {
-        email: email,
+        identifier: email,
         password: password
       });
 

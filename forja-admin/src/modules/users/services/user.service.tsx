@@ -112,3 +112,19 @@ export const uploadUserAvatarApi = async (id: string, file: File): Promise<User>
 
   return updatedUser;
 };
+
+export const banUserApi = async (id: string): Promise<User> => {
+  const { data } = await api.put<UserDTO>(`/auth/users/${id}`, {
+    is_banned: true,
+    is_active: false,
+  });
+  return mapUserFromApi(data);
+};
+
+export const unbanUserApi = async (id: string): Promise<User> => {
+  const { data } = await api.put<UserDTO>(`/auth/users/${id}`, {
+    is_banned: false,
+    is_active: true,
+  });
+  return mapUserFromApi(data);
+};
