@@ -237,9 +237,20 @@ def refresh_token(data: schemas.TokenRefresh, db: Session = Depends(get_db)):
     }
 
 @router.get("/me", response_model=schemas.UserResponse)
-def get_me(current_user: models.User = Depends(get_current_user)):
+def get_me(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    from sqlalchemy.orm import joinedload
+    
+    # Recargamos al usuario cargando explícitamente sus categorías para evitar problemas de lazy loading
+    user_with_cats = db.query(models.User)\
+        .options(joinedload(models.User.categories))\
+        .filter(models.User.id == current_user.id)\
+        .first()
+        
     print(f"DEBUG: /auth/me llamado para {current_user.email}. Rol en objeto: {current_user.role}")
-    return current_user
+    return user_with_cats if user_with_cats else current_user
 
 @router.get("/users", response_model=List[schemas.UserResponse])
 def read_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
