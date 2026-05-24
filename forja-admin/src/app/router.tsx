@@ -8,7 +8,7 @@ import { ServicesPage } from '../modules/services/pages/ServicesPage';
 import { JobsPage } from '../modules/jobs/pages/JobsPage';
 import { ProfilePage } from '../modules/admin/pages/ProfilePage';
 import { ServiceDetail } from '../modules/services/pages/ServiceDetail';
-import { FinancePage } from '../modules/services/pages/FinancePage';
+import { FinancePage } from '../modules/finance/pages/FinancePage';
 // 🟢 1. IMPORTA TU NUEVA PÁGINA AQUÍ
 import { SettingsPage } from '../modules/admin/pages/SettingsPage'; // Ajusta la ruta según tu carpeta
 import { DisputesPage } from '../modules/disputes/pages/DisputesPage';

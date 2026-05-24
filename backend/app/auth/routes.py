@@ -177,13 +177,13 @@ def reset_password(request: Request, data: schemas.ResetPasswordRequest, db: Ses
 @router.post("/login", response_model=schemas.Token)
 @limiter.limit("5/minute")
 def login(request: Request, data: schemas.UserLogin, db: Session = Depends(get_db)):
-    user = service.authenticate_user(db, data.email, data.password)
+    user = service.authenticate_user(db, data.identifier, data.password)
 
     if not user:
         # Usamos la constante de FastAPI para mayor claridad
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, 
-            detail="Correo electrónico o contraseña incorrectos",
+            detail="Correo electrónico, teléfono o contraseña incorrectos",
             headers={"WWW-Authenticate": "Bearer"},
         )
 

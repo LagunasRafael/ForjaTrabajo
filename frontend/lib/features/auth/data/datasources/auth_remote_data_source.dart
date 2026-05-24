@@ -12,12 +12,12 @@ class AuthRemoteDataSource {
   AuthRemoteDataSource({required this.apiClient});
 
   /// Inicia sesión y guarda el JWT en el dispositivo
-  Future<String> login(String email, String password) async {
+  Future<String> login(String identifier, String password) async {
     try {
       final response = await apiClient.dio.post(
         '/auth/login',
         data: {
-          'email': email,
+          'identifier': identifier,
           'password': password,
         },
       );
@@ -86,19 +86,19 @@ class AuthRemoteDataSource {
   Future<void> register({
     required String fullName,
     required String email,
-    required String phone,
+    String? phone,
     required String password,
     required String role,
   }) async {
     try {
       await apiClient.dio.post(
-        '/auth/register', // 👈 Verifica este endpoint con tu compañero de backend
+        '/auth/register',
         data: {
-          'full_name': fullName, // 👈 Verifica estas llaves con su Schema
+          'full_name': fullName,
           'email': email,
           'phone': phone,
           'password': password,
-          'role': role, // ej. 'cliente' o 'trabajador'
+          'role': role,
         },
       );
       // Si la petición sale bien (200 o 201), no retornamos nada, solo terminamos.

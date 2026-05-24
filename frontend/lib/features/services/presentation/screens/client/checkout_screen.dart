@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
 import '../../../../payments/presentation/providers/payment_provider.dart';
-import '../../../../payments/presentation/providers/payment_state.dart';
 import '../../providers/service_request_provider.dart';
 import '../../providers/nav_providers.dart';
 import '../../providers/service_list_provider.dart';
@@ -32,9 +31,15 @@ class CheckoutScreen extends ConsumerStatefulWidget {
 
 class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   bool _isProcessing = false;
+  bool _hasError = false;
+  String _lastErrorMessage = '';
 
   Future<void> _handlePayment() async {
-    setState(() => _isProcessing = true);
+    setState(() {
+      _isProcessing = true;
+      _hasError = false;
+      _lastErrorMessage = '';
+    });
 
     try {
       final paymentNotifier = ref.read(paymentProvider.notifier);
@@ -44,7 +49,6 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       String? workerId = widget.workerId;
       double? amount = widget.amount;
 
-      // Si no tenemos jobId, significa que estamos contratando en este momento
       if (jobId == null && widget.offer != null) {
         amount = (widget.offer?.proposedPrice as num?)?.toDouble() ?? 0.0;
         workerId = widget.offer?.workerId;
@@ -60,12 +64,10 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
         throw Exception("Faltan datos para procesar el pago.");
       }
 
-      // 2. Crear el PaymentIntent con escrow (no requiere Stripe Connect)
       final intentData = await paymentNotifier.createIntent(amount, workerId!, jobId);
       final clientSecret = intentData['client_secret'];
       final paymentIntentId = intentData['payment_intent_id'];
 
-      // 3. Configurar el Payment Sheet de Stripe
       await Stripe.instance.initPaymentSheet(
         paymentSheetParameters: SetupPaymentSheetParameters(
           paymentIntentClientSecret: clientSecret,
@@ -74,13 +76,10 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
         ),
       );
 
-      // 4. Mostrar el Payment Sheet
       await Stripe.instance.presentPaymentSheet();
 
-      // 5. Confirmar retención (escrow) en backend
       await paymentNotifier.confirmEscrow(paymentIntentId);
 
-      // 6. Éxito total
       if (mounted) {
         ref.invalidate(myRequestsProvider);
 
@@ -88,21 +87,42 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
           const SnackBar(content: Text('✅ Pago realizado con éxito'), backgroundColor: Colors.green),
         );
 
-        // Redirigir a la pestaña de "Mis Trabajos - En Proceso"
         ref.read(clientNavProvider.notifier).state = 3;
         ref.read(myRequestsTabProvider.notifier).state = 1;
 
         Navigator.pushNamedAndRemoveUntil(context, '/client_home', (route) => false);
       }
     } catch (e) {
-      debugPrint("🚨 Error en Checkout: $e");
+      debugPrint("Error en Checkout: $e");
+      String message;
+      bool isCancellation = false;
+
       if (e is StripeException) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Pago cancelado o fallido: ${e.error.localizedMessage}'), backgroundColor: Colors.orange),
-        );
+        message = e.error.localizedMessage ?? 'Error de pago';
+        isCancellation = message.toLowerCase().contains('cancel') || message.toLowerCase().contains('abandon');
       } else {
+        message = e.toString().replaceFirst('Exception: ', '');
+      }
+
+      setState(() {
+        _hasError = true;
+        _lastErrorMessage = message;
+      });
+
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text(isCancellation ? 'Pago cancelado' : 'Error: $message'),
+            backgroundColor: isCancellation ? Colors.orange : Colors.red,
+            duration: const Duration(seconds: 4),
+            action: !isCancellation
+                ? SnackBarAction(
+                    label: 'Reintentar',
+                    textColor: Colors.white,
+                    onPressed: _handlePayment,
+                  )
+                : null,
+          ),
         );
       }
     } finally {
@@ -201,26 +221,48 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
             const SizedBox(height: 30),
 
             // --- 4. BOTÓN DE ACCIÓN ---
+            if (_hasError) ...[
+              Container(
+                padding: const EdgeInsets.all(12),
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.red.shade200),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.error_outline, color: Colors.red.shade700, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _lastErrorMessage.length > 60
+                            ? '${_lastErrorMessage.substring(0, 60)}...'
+                            : _lastErrorMessage,
+                        style: TextStyle(color: Colors.red.shade800, fontSize: 13),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             SizedBox(
               width: double.infinity,
               height: 58,
-              child: ElevatedButton(
+              child: ElevatedButton.icon(
                 onPressed: _isProcessing ? null : _handlePayment,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF7B4DFF), 
+                  backgroundColor: _hasError ? Colors.red.shade500 : const Color(0xFF7B4DFF),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   elevation: 0,
                 ),
-                child: _isProcessing
-                  ? const CircularProgressIndicator(color: Colors.white)
-                  : const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text("Confirmar y Pagar", style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold)),
-                        const SizedBox(width: 10),
-                        Icon(Icons.arrow_forward, color: Colors.white, size: 20),
-                      ],
-                    ),
+                icon: _isProcessing
+                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                    : Icon(_hasError ? Icons.refresh : Icons.arrow_forward, color: Colors.white, size: 20),
+                label: Text(
+                  _isProcessing ? 'Procesando...' : _hasError ? 'Reintentar Pago' : 'Confirmar y Pagar',
+                  style: const TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold),
+                ),
               ),
             ),
             

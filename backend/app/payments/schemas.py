@@ -29,6 +29,7 @@ class PaymentResponse(BaseModel):
     contract_id: str
     amount: float
     amount_cents: int = 0
+    platform_fee: float = 0.0
     status: str
     payment_method: str
     stripe_payment_intent_id: Optional[str] = None

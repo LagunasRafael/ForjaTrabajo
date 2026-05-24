@@ -30,8 +30,13 @@ def create_user(db: Session, user_data: dict, verification_code: Optional[str] =
     db.refresh(db_user)
     return db_user
 
-def authenticate_user(db: Session, email: str, password: str):
-    user = get_user_by_email(db, email)
+def authenticate_user(db: Session, identifier: str, password: str):
+    if "@" in identifier:
+        user = get_user_by_email(db, identifier)
+    else:
+        phone = "".join(filter(str.isdigit, identifier))
+        user = get_user_by_phone(db, phone)
+        
     if not user:
         return None
     if not verify_password(password, str(user.hashed_password)):
