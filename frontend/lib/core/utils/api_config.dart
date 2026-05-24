@@ -1,10 +1,6 @@
 import 'package:flutter/foundation.dart';
 
 class ApiConfig {
-  static String get baseUrl {
-    if (kReleaseMode) {
-      return 'https://forja-api-rw0r.onrender.com';
-    }
-    return 'http://localhost:8000';
-  }
+  //static const String baseUrl = 'http://10.0.2.2:8000';
+  static const String baseUrl = 'https://forja-api-rw0r.onrender.com';
 }

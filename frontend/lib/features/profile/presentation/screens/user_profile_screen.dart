@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:forja_trabajo/features/profile/presentation/screens/portfolio_job_detail_screen.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../providers/public_profile_provider.dart';
 import '../../domain/models/public_profile_model.dart';
 import '../../domain/models/review_model.dart';
@@ -84,6 +86,82 @@ class UserProfileScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 16),
                 _buildStatsRow(profile),
+                if (profile.bio != null && profile.bio!.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.grey[900]
+                          : Colors.grey[50],
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.grey[800]!
+                            : Colors.grey[200]!,
+                      ),
+                    ),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Acerca de mí',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            profile.bio!,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Theme.of(context).brightness == Brightness.dark
+                                  ? Colors.grey[300]
+                                  : Colors.grey[700],
+                              height: 1.4,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+                if (profile.categories.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  const Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Servicios que realizo',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: profile.categories.map((cat) {
+                        return Chip(
+                          label: Text(
+                            cat.name,
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                          backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
+                          labelStyle: const TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.w600),
+                          side: BorderSide.none,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ],
                 if (profile.completedJobs.isNotEmpty) ...[
                   const SizedBox(height: 24),
                   const Divider(),
@@ -153,55 +231,76 @@ class UserProfileScreen extends ConsumerWidget {
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    job.title,
-                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    job.roleInJob == 'client' ? 'Como cliente' : 'Como trabajador',
-                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                  ),
-                ],
+      clipBehavior: Clip.antiAlias, // Asegura que el ripple effect no se desborde del borde redondeado
+      child: InkWell(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => PortfolioJobDetailScreen(
+                jobId: job.id,
+                jobTitle: job.title,
               ),
             ),
-            if (job.otherPartyName != null)
-              Column(
-                children: [
-                  job.otherPartyImageUrl != null && job.otherPartyImageUrl!.isNotEmpty
-                      ? CachedNetworkImage(
-                          imageUrl: job.otherPartyImageUrl!,
-                          imageBuilder: (context, imageProvider) => CircleAvatar(
-                            radius: 18,
-                            backgroundImage: imageProvider,
-                          ),
-                          errorWidget: (context, url, error) => const CircleAvatar(
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      job.title,
+                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      job.roleInJob == 'client' ? 'Como cliente' : 'Como trabajador',
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              if (job.otherPartyName != null)
+                Column(
+                  children: [
+                    job.otherPartyImageUrl != null && job.otherPartyImageUrl!.isNotEmpty
+                        ? CachedNetworkImage(
+                            imageUrl: job.otherPartyImageUrl!,
+                            imageBuilder: (context, imageProvider) => CircleAvatar(
+                              radius: 18,
+                              backgroundImage: imageProvider,
+                            ),
+                            errorWidget: (context, url, error) => const CircleAvatar(
+                              radius: 18,
+                              child: Icon(Icons.person, size: 18),
+                            ),
+                          )
+                        : const CircleAvatar(
                             radius: 18,
                             child: Icon(Icons.person, size: 18),
                           ),
-                        )
-                      : const CircleAvatar(
-                          radius: 18,
-                          child: Icon(Icons.person, size: 18),
-                        ),
-                  const SizedBox(height: 4),
-                  Text(
-                    job.otherPartyName!.split(' ').first,
-                    style: TextStyle(fontSize: 11, color: Colors.grey[600]),
-                  ),
-                ],
+                    const SizedBox(height: 4),
+                    Text(
+                      job.otherPartyName!.split(' ').first,
+                      style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                    ),
+                  ],
+                ),
+              const SizedBox(width: 8),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: Colors.grey[400],
+                size: 20,
               ),
-          ],
+            ],
+          ),
         ),
       ),
     );

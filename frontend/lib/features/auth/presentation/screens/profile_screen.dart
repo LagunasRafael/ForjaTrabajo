@@ -6,6 +6,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../providers/auth_provider.dart';
 import 'login_screen.dart';
+import '../../../services/presentation/screens/client/edit_profile_screen.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -145,7 +146,14 @@ class ProfileScreen extends ConsumerWidget {
                   _buildProfileOption(
                     icon: LucideIcons.userCog,
                     title: 'Editar Datos Personales',
-                    onTap: () {},
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const EditProfileScreen(),
+                        ),
+                      );
+                    },
                     theme: theme,
                   ),
                   _buildDivider(theme),

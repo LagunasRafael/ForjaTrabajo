@@ -1,7 +1,7 @@
 import enum
 import uuid
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, Boolean, Enum, Float, DateTime, Text, ForeignKey
+from sqlalchemy import Column, Integer, String, Boolean, Enum, Float, DateTime, Text, ForeignKey, Table
 from app.db.database import Base
 from sqlalchemy.orm import relationship
 
@@ -14,6 +14,13 @@ class VerificationStatus(str, enum.Enum):
     PENDING = "pending"
     APPROVED = "approved"
     REJECTED = "rejected"
+
+worker_categories_association = Table(
+    "worker_categories",
+    Base.metadata,
+    Column("worker_id", String(36), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
+    Column("category_id", String(36), ForeignKey("categories.id", ondelete="CASCADE"), primary_key=True)
+)
 
 class User(Base):
     __tablename__ = "users"
@@ -38,8 +45,14 @@ class User(Base):
     is_identity_verified = Column(Boolean, default=False)
     stripe_account_id = Column(String, nullable=True)
     is_banned = Column(Boolean, default=False, nullable=False)
+    bio = Column(String(400), nullable=True)
 
     services = relationship("Service", back_populates="owner")
+    categories = relationship(
+        "Category",
+        secondary=worker_categories_association,
+        backref="workers"
+    )
 
 class IdentityVerification(Base):
     __tablename__ = "identity_verifications"
