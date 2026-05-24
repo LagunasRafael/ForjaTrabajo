@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
 import { getConversationMessagesApi, sendAdminMessageApi, resolveDisputeApi } from '../services/disputes.service';
 import { useAutoRefresh } from '../../../hooks/useAutoRefresh';
@@ -8,6 +8,11 @@ import type { Message } from '../types/dispute.types';
 export const ChatViewer = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const clientName = searchParams.get('client') || '';
+  const workerName = searchParams.get('worker') || '';
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [adminMessage, setAdminMessage] = useState('');
@@ -111,42 +116,90 @@ export const ChatViewer = () => {
               <span className="text-slate-500">No hay mensajes en este chat.</span>
             </div>
           ) : (
-            messages.map((msg, idx) => {
-              // Agrupamos los mensajes para ver si cambia el sender
-              const isNewSender = idx === 0 || messages[idx - 1].sender_id !== msg.sender_id;
-              
-              // Determinar color de burbuja de manera determinista (pseudo-hash del ID)
-              const isSystem = msg.message_type === 'system';
-              const isClient = msg.sender_name.toLowerCase().includes('cliente') || msg.sender_id.charCodeAt(0) % 2 === 0;
+            (() => {
+              // Identificar remitentes no-sistema para el fallback dinámico
+              const nonSystemSenders = Array.from(
+                new Set(messages.filter(m => m.message_type !== 'system').map(m => m.sender_id))
+              );
 
-              return (
-                <div key={msg.id} className={`flex flex-col ${isSystem ? 'items-center w-full' : isClient ? 'items-end' : 'items-start'}`}>
-                  {isNewSender && !isSystem && (
-                    <span className="text-xs text-slate-500 mb-1 ml-1 mr-1">
-                      {msg.sender_name}
-                    </span>
-                  )}
-                  <div className={`${isSystem ? 'max-w-[90%] text-center border border-red-500/30' : 'max-w-[80%] sm:max-w-[70%]'} rounded-2xl px-4 py-2.5 text-sm ${
-                    isSystem ? 'bg-red-900/20 text-red-200' :
-                    isClient 
-                      ? 'bg-indigo-600 text-white rounded-tr-sm' 
-                      : 'bg-slate-800 text-slate-200 rounded-tl-sm'
-                  }`}>
-                    {msg.message_type === 'offer' ? (
-                      <div className="flex items-center gap-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-                        <span className="font-semibold">Oferta enviada: {msg.content}</span>
-                      </div>
-                    ) : (
-                      <p className="whitespace-pre-wrap">{msg.content}</p>
+              return messages.map((msg, idx) => {
+                // Agrupamos los mensajes para ver si cambia el sender
+                const isNewSender = idx === 0 || messages[idx - 1].sender_id !== msg.sender_id;
+                
+                const isSystem = msg.message_type === 'system';
+                
+                // Determinar alineación usando los nombres de cliente y trabajador pasados por navegación
+                let isClient = false;
+                if (clientName && workerName) {
+                  // Comparación insensible a mayúsculas/minúsculas y espacios
+                  isClient = msg.sender_name.trim().toLowerCase() === clientName.trim().toLowerCase();
+                } else {
+                  // Fallback dinámico ultra-robusto: el primer emisor va a la izquierda (trabajador), el segundo a la derecha (cliente)
+                  const senderIndex = nonSystemSenders.indexOf(msg.sender_id);
+                  isClient = senderIndex === 1; // Si es el segundo emisor único, va a la derecha (cliente)
+                }
+
+                return (
+                  <div key={msg.id} className={`flex flex-col ${isSystem ? 'items-center w-full' : isClient ? 'items-end' : 'items-start'}`}>
+                    {isNewSender && !isSystem && (
+                      <span className="text-xs text-slate-500 mb-1 ml-1 mr-1">
+                        {msg.sender_name}
+                      </span>
                     )}
-                  </div>
+                    <div className={`${isSystem ? 'max-w-[90%] text-center border border-red-500/30' : 'max-w-[80%] sm:max-w-[70%]'} rounded-2xl px-4 py-2.5 text-sm ${
+                      isSystem ? 'bg-red-900/20 text-red-200' :
+                      isClient 
+                        ? 'bg-indigo-600 text-white rounded-tr-sm' 
+                        : 'bg-slate-800 text-slate-200 rounded-tl-sm'
+                    }`}>
+                      {msg.message_type === 'offer' ? (
+                        <div className="flex items-center gap-2">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                          <span className="font-semibold">Oferta enviada: {msg.content}</span>
+                        </div>
+                      ) : msg.message_type === 'image' || msg.message_type === 'gallery' ? (
+                        <div className="space-y-2">
+                          <img 
+                            src={msg.content} 
+                            alt="Evidencia" 
+                            className="max-w-xs sm:max-w-sm rounded-lg object-contain border border-slate-700/50 hover:opacity-90 transition-opacity cursor-pointer shadow-md bg-slate-950/20"
+                            onClick={() => window.open(msg.content, '_blank')}
+                          />
+                          <span className="text-[10px] text-slate-400 block italic">Haz clic para abrir en grande</span>
+                        </div>
+                      ) : msg.message_type === 'audio' || (msg.content.startsWith('http') && (msg.content.endsWith('.m4a') || msg.content.endsWith('.mp3') || msg.content.endsWith('.wav') || msg.content.endsWith('.ogg') || msg.content.endsWith('.aac') || msg.content.endsWith('.opus'))) ? (
+                        <div className="space-y-2 py-1 min-w-[240px]">
+                          <div className="flex items-center gap-2 text-xs text-slate-300 font-medium">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-indigo-400"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+                            <span>Nota de voz</span>
+                          </div>
+                          <audio 
+                            src={msg.content} 
+                            controls 
+                            className="w-full max-w-xs h-9 rounded-lg"
+                          />
+                        </div>
+                      ) : msg.content.startsWith('http') ? (
+                        <a 
+                          href={msg.content} 
+                          target="_blank" 
+                          rel="noreferrer" 
+                          className="text-indigo-400 hover:text-indigo-300 underline break-all flex items-center gap-1.5"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                          Ver archivo adjunto
+                        </a>
+                      ) : (
+                        <p className="whitespace-pre-wrap">{msg.content}</p>
+                      )}
+                    </div>
                   <span className="text-[10px] text-slate-600 mt-1">
                     {new Date(msg.created_at).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}
                   </span>
                 </div>
               );
             })
+          })()
           )}
         </div>
 

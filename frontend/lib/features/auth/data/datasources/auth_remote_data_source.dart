@@ -138,8 +138,10 @@ class AuthRemoteDataSource {
       // ⚠️ Asegúrate de que esta ruta tenga el prefijo correcto (ej. /auth/me o /users/me)
       final response = await apiClient.dio.get('/auth/me');
 
-      debugPrint(
-          '✅ RESPUESTA CRUDA DE FASTAPI: ${response.data}'); // 👈 Agregamos esto
+      debugPrint('==================================================');
+      debugPrint('🚨 [DEBUG PROD] RESPUESTA CRUDA DE /auth/me:');
+      debugPrint('${response.data}');
+      debugPrint('==================================================');
 
       return User.fromJson(response.data);
     } on DioException catch (e) {

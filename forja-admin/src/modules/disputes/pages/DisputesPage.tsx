@@ -94,7 +94,7 @@ export const DisputesPage = () => {
 
                     <td className="px-6 py-4 text-right">
                       <button 
-                        onClick={() => navigate(`/disputes/${conv.id}`)}
+                        onClick={() => navigate(`/disputes/${conv.id}?client=${encodeURIComponent(conv.client_name)}&worker=${encodeURIComponent(conv.worker_name)}`)}
                         className="text-indigo-400 hover:text-indigo-300 text-sm font-medium transition-colors"
                       >
                         Ver Chat &rarr;

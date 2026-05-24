@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import '../../../services/data/models/category_model.dart';
 
 class User {
@@ -37,23 +38,60 @@ class User {
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
-    return User(
-      id: json['id'] ?? '',
-      email: json['email'] ?? '',
-      fullName: json['full_name'] ?? 'Usuario',
-      role: json['role'] ?? 'cliente',
-      isEmailVerified: json['is_email_verified'] ?? false,
-      isIdentityVerified: json['is_identity_verified'] ?? false,
-      phone: json['phone'],
-      profilePictureUrl: json['profile_picture_url'],
-      city: json['city'],
-      latitude: json['latitude'],
-      longitude: json['longitude'],
-      bio: json['bio'],
-      categories: (json['categories'] as List<dynamic>?)
-          ?.map((c) => CategoryModel.fromJson(c as Map<String, dynamic>))
-          .toList(),
+    final parsedId = json['id'] ?? '';
+    final parsedEmail = json['email'] ?? '';
+    final parsedFullName = json['full_name'] ?? 'Usuario';
+    final parsedRole = (json['role'] ?? 'cliente').toString();
+    final parsedIsEmailVerified = json['is_email_verified'] ?? false;
+    final parsedIsIdentityVerified = json['is_identity_verified'] ?? false;
+    final parsedPhone = json['phone'];
+    final parsedProfilePictureUrl = json['profile_picture_url'];
+    final parsedCity = json['city'];
+    final parsedLatitude = json['latitude'];
+    final parsedLongitude = json['longitude'];
+    final parsedBio = json['bio'];
+    
+    List<CategoryModel>? parsedCategories;
+    if (json['categories'] != null) {
+      try {
+        parsedCategories = (json['categories'] as List<dynamic>)
+            .map((c) => CategoryModel.fromJson(c as Map<String, dynamic>))
+            .toList();
+      } catch (e) {
+        debugPrint('🚨 [DEBUG PROD] Error parsing categories list: $e');
+      }
+    }
+
+    final user = User(
+      id: parsedId,
+      email: parsedEmail,
+      fullName: parsedFullName,
+      role: parsedRole,
+      isEmailVerified: parsedIsEmailVerified,
+      isIdentityVerified: parsedIsIdentityVerified,
+      phone: parsedPhone,
+      profilePictureUrl: parsedProfilePictureUrl,
+      city: parsedCity,
+      latitude: parsedLatitude,
+      longitude: parsedLongitude,
+      bio: parsedBio,
+      categories: parsedCategories,
     );
+
+    debugPrint('==================================================');
+    debugPrint('🚨 [DEBUG PROD] PARSED USER OBJECT:');
+    debugPrint('   - ID: ${user.id}');
+    debugPrint('   - Email: ${user.email}');
+    debugPrint('   - Full Name: ${user.fullName}');
+    debugPrint('   - Role (Raw in JSON): ${json['role']}');
+    debugPrint('   - Role (Parsed String): ${user.role}');
+    debugPrint('   - isWorker evaluated to: ${user.isWorker}');
+    debugPrint('   - isClient evaluated to: ${user.isClient}');
+    debugPrint('   - Bio: ${user.bio}');
+    debugPrint('   - Categories: ${user.categories?.map((c) => c.name).toList()}');
+    debugPrint('==================================================');
+
+    return user;
   }
 
   User copyWith({
