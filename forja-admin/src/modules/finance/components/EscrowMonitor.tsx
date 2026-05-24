@@ -1,4 +1,4 @@
-import { EscrowItem } from '../types/finance.types';
+import type{ EscrowItem } from '../types/finance.types';
 import { processPendingTransfer } from '../services/finance.service';
 import { toast } from 'sonner';
 

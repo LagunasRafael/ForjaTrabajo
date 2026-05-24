@@ -1,4 +1,4 @@
-import { PaymentListItem } from '../types/finance.types';
+import type{ PaymentListItem } from '../types/finance.types';
 
 interface PaymentDetailModalProps {
   payment: PaymentListItem | null;
