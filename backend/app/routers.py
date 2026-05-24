@@ -11,6 +11,7 @@ from app.payments.routes import router as payments_router, workers_router
 from app.settings.routes import router as settings_router
 from app.moderation.router import router as moderation_router
 from app.payments.webhooks import router as webhook_router
+from app.admin.finance.routes import router as admin_finance_router
 
 router = APIRouter()
 
@@ -27,6 +28,7 @@ router.include_router(payments_router, prefix="/payments", tags=["Payments"])
 router.include_router(workers_router, prefix="/workers", tags=["Workers - Stripe"])
 router.include_router(settings_router, prefix="/settings", tags=["Settings"])
 
+router.include_router(admin_finance_router, prefix="/admin/finance", tags=["Admin - Finance"])
 
 router.include_router(moderation_router, prefix="/services", tags=["Moderacion"])
 

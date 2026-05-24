@@ -9,7 +9,9 @@ import {
   createUserApi, 
   updateUserApi, 
   deleteUserApi,
-  uploadUserAvatarApi 
+  uploadUserAvatarApi,
+  banUserApi,
+  unbanUserApi,
 } from '../services/user.service';
 
 export const useUsers = () => {
@@ -104,6 +106,22 @@ export const useUsers = () => {
     }
   };
 
+  const banUser = async (id: string) => {
+    const updatedUser = await banUserApi(id);
+    setUsers(prev => prev.map(user => 
+      user.id === id ? { ...user, ...updatedUser } : user
+    ));
+    return updatedUser;
+  };
+
+  const unbanUser = async (id: string) => {
+    const updatedUser = await unbanUserApi(id);
+    setUsers(prev => prev.map(user => 
+      user.id === id ? { ...user, ...updatedUser } : user
+    ));
+    return updatedUser;
+  };
+
   return {
     users,
     isLoading,
@@ -111,7 +129,9 @@ export const useUsers = () => {
     createUser,
     updateUser,
     deleteUser,
-    refreshUsers: fetchUsers, // Por si necesitas un botón de "Recargar" en el futuro
+    refreshUsers: fetchUsers,
     uploadAvatar,
+    banUser,
+    unbanUser,
   };
 };

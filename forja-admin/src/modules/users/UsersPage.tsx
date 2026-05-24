@@ -2,10 +2,11 @@ import { useState, useMemo } from 'react';
 import { UserTable } from './components/UserTable';
 import { UserToolbar } from './components/UserToolbar';
 import { UserFormSlideOver } from './components/UserFormSlideOver';
-import { useUsers } from './hooks/useUsers'; // <--- Importamos el Hook
+import { useUsers } from './hooks/useUsers';
 import type { User } from './types/user.types';
 import { toast } from 'sonner';
 import {type UserFormData } from './schemas/user.schema';
+import { ConfirmModal } from '../../components/ConfirmModal';
 
 const UsersPage = () => {
   // 1. Lógica de Datos (Extraída al Hook)
@@ -15,6 +16,7 @@ const UsersPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isSlideOverOpen, setIsSlideOverOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
 
   // 3. Filtrado
   const filteredUsers = useMemo(() => {
@@ -54,13 +56,20 @@ const UsersPage = () => {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    // Usamos toast.promise para acciones asíncronas (efecto muy pro)
-    toast.promise(deleteUser(id), {
-      loading: 'Eliminando usuario...',
-      success: 'Usuario eliminado permanentemente',
-      error: 'No se pudo eliminar el usuario',
-    });
+  const handleDeleteClick = (user: User) => {
+    setDeleteTarget(user);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+    try {
+      await deleteUser(deleteTarget.id);
+      toast.success(`${deleteTarget.full_name} ha sido eliminado`);
+    } catch {
+      toast.error('No se pudo eliminar el usuario');
+    } finally {
+      setDeleteTarget(null);
+    }
   };
 
   return (
@@ -79,7 +88,7 @@ const UsersPage = () => {
         users={filteredUsers} 
         isLoading={isLoading} 
         onEdit={handleOpenEdit} 
-        onDelete={handleDelete}
+        onDelete={handleDeleteClick}
       />
       
       <UserFormSlideOver 
@@ -87,6 +96,20 @@ const UsersPage = () => {
         onClose={() => setIsSlideOverOpen(false)}
         onSubmit={handleSave}
         initialData={selectedUser}
+      />
+
+      <ConfirmModal
+        isOpen={deleteTarget !== null}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDeleteConfirm}
+        title="Eliminar usuario"
+        message={
+          deleteTarget
+            ? `¿Estás seguro de que quieres eliminar permanentemente a ${deleteTarget.full_name}? Esta acción no se puede deshacer.`
+            : ''
+        }
+        confirmLabel="Eliminar"
+        confirmClass="bg-red-600 hover:bg-red-500"
       />
     </div>
   );
