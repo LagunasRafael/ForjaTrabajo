@@ -481,7 +481,7 @@ class _EditProfileModalState extends ConsumerState<_EditProfileModal> {
               categoryListAsync.when(
                 data: (categories) {
                   return Container(
-                    maxHeight: 180,
+                    constraints: const BoxConstraints(maxHeight: 180),
                     decoration: BoxDecoration(
                       border: Border.all(color: Colors.grey.shade300),
                       borderRadius: BorderRadius.circular(12),

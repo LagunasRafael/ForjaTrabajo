@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart';
+
 // Importa GoogleFonts o tus estilos si los usas
 
 class EditProfileScreen extends ConsumerStatefulWidget {
@@ -43,7 +44,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       final newPhone = _phoneController.text;
 
       // 👇 2. AQUÍ SUCEDE LA MAGIA: Llamamos a Riverpod
-      await ref.read(authProvider.notifier).updateUserInfo(newName, newPhone);
+      await ref.read(authProvider.notifier).updateUserInfo(newName: newName, newPhone: newPhone);
 
       // 3. Si la pantalla sigue abierta después de guardar, la cerramos
       if (mounted) {
