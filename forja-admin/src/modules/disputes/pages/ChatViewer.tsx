@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
 import { getConversationMessagesApi, sendAdminMessageApi, resolveDisputeApi } from '../services/disputes.service';
-import { useAutoRefresh } from '../../../hooks/useAutoRefresh';
+import { useWebSocketChat } from '../../../hooks/useWebSocketChat';
 import type { Message } from '../types/dispute.types';
 
 export const ChatViewer = () => {
@@ -20,13 +20,50 @@ export const ChatViewer = () => {
   const [isResolving, setIsResolving] = useState(false);
   const [showResolveModal, setShowResolveModal] = useState(false);
 
+  const { isConnected, lastMessage } = useWebSocketChat(id);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTo({
+        top: messagesContainerRef.current.scrollHeight,
+        behavior,
+      });
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isLoading && messages.length > 0) {
+      scrollToBottom('instant');
+    }
+  }, [isLoading, messages.length, scrollToBottom]);
+
+  useEffect(() => {
+    if (lastMessage) {
+      scrollToBottom('smooth');
+    }
+  }, [lastMessage, scrollToBottom]);
+
   useEffect(() => {
     if (id) {
       loadMessages(id);
     }
   }, [id]);
 
-  useAutoRefresh(() => loadMessages(id!), 10000);
+  const addMessageToState = useCallback((newMsg: Message) => {
+    setMessages(prev => {
+      if (prev.some(m => m.id === newMsg.id)) return prev;
+      return [...prev, newMsg];
+    });
+  }, []);
+
+  useEffect(() => {
+    if (lastMessage) {
+      console.log('[ChatViewer] New WebSocket message received:', lastMessage);
+      addMessageToState(lastMessage as Message);
+    }
+  }, [lastMessage, addMessageToState]);
 
   const loadMessages = async (conversationId: string) => {
     try {
@@ -48,7 +85,6 @@ export const ChatViewer = () => {
       await sendAdminMessageApi(id, adminMessage.trim());
       setAdminMessage('');
       toast.success('Mensaje enviado');
-      await loadMessages(id); // recargar para ver el nuevo mensaje
     } catch (error) {
       toast.error('Error al enviar mensaje');
     } finally {
@@ -103,10 +139,13 @@ export const ChatViewer = () => {
         
         <div className="p-4 border-b border-slate-800 bg-slate-900 flex justify-between items-center shrink-0">
           <span className="text-sm font-medium text-slate-300">Historial de mensajes</span>
-          <span className="text-xs px-2 py-1 bg-amber-500/10 text-amber-500 rounded ring-1 ring-amber-500/20">Solo Lectura</span>
+          <div className="flex items-center gap-2">
+            <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></span>
+            <span className="text-xs px-2 py-1 bg-amber-500/10 text-amber-500 rounded ring-1 ring-amber-500/20">Solo Lectura</span>
+          </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 scrollbar-thin scrollbar-track-slate-900 scrollbar-thumb-slate-700">
+        <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 scrollbar-thin scrollbar-track-slate-900 scrollbar-thumb-slate-700">
           {isLoading ? (
             <div className="flex justify-center items-center h-full">
               <span className="text-slate-500 animate-pulse">Cargando mensajes...</span>
@@ -130,7 +169,7 @@ export const ChatViewer = () => {
                 
                 // Determinar alineación usando los nombres de cliente y trabajador pasados por navegación
                 let isClient = false;
-                if (clientName && workerName) {
+                if (clientName && workerName && msg.sender_name) {
                   // Comparación insensible a mayúsculas/minúsculas y espacios
                   isClient = msg.sender_name.trim().toLowerCase() === clientName.trim().toLowerCase();
                 } else {
@@ -143,7 +182,7 @@ export const ChatViewer = () => {
                   <div key={msg.id} className={`flex flex-col ${isSystem ? 'items-center w-full' : isClient ? 'items-end' : 'items-start'}`}>
                     {isNewSender && !isSystem && (
                       <span className="text-xs text-slate-500 mb-1 ml-1 mr-1">
-                        {msg.sender_name}
+                        {msg.sender_name || 'Usuario'}
                       </span>
                     )}
                     <div className={`${isSystem ? 'max-w-[90%] text-center border border-red-500/30' : 'max-w-[80%] sm:max-w-[70%]'} rounded-2xl px-4 py-2.5 text-sm ${
@@ -201,6 +240,7 @@ export const ChatViewer = () => {
             })
           })()
           )}
+          <div ref={messagesEndRef} />
         </div>
 
         {/* ADMIN INPUT AREA */}

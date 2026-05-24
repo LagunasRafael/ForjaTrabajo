@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:forja_trabajo/core/theme/app_theme.dart';
@@ -146,14 +147,23 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               const SizedBox(height: 8),
               TextFormField(
                 controller: _phoneController,
-                keyboardType: TextInputType.phone,
+                keyboardType: TextInputType.number,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(10),
+                ],
                 decoration: InputDecoration(
-                  hintText: "Ej. 555 123 4567",
+                  hintText: "Ej. 5512345678 (10 dígitos)",
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                   prefixIcon: const Icon(Icons.phone_outlined),
                 ),
+                validator: (v) {
+                  if (v == null || v.isEmpty) return 'El teléfono es obligatorio';
+                  if (v.length != 10) return 'El teléfono debe tener 10 dígitos';
+                  return null;
+                },
               ),
               if (isWorker) ...[
                 const SizedBox(height: 24),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart';
@@ -82,7 +83,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       ref.read(authProvider.notifier).registerUser(
             fullName: _nameController.text.trim(),
             email: _emailController.text.trim(),
-            phone: _phoneController.text.trim(),
+            phone: _phoneController.text.trim().isEmpty ? null : _phoneController.text.trim(),
             password: _passwordController.text.trim(),
             role: roleString,
           );
@@ -175,13 +176,21 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 ),
                 const SizedBox(height: 20),
 
-                _buildTextField(
+                 _buildTextField(
                   label: 'Teléfono',
-                  hint: '+52 123 456 7890',
+                  hint: 'Ej. 5512345678 (10 dígitos)',
                   icon: Icons.phone_outlined,
-                  keyboardType: TextInputType.phone,
+                  keyboardType: TextInputType.number,
                   controller: _phoneController,
-                  validator: (v) => v!.isEmpty ? 'Ingresa un teléfono' : null,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    LengthLimitingTextInputFormatter(10),
+                  ],
+                   validator: (v) {
+                    if (v == null || v.isEmpty) return null; // Opcional
+                    if (v.length != 10) return 'El teléfono debe tener 10 dígitos';
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 20),
 
@@ -398,6 +407,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     bool isPassword = false,
     TextInputType keyboardType = TextInputType.text,
     String? Function(String?)? validator,
+    List<TextInputFormatter>? inputFormatters,
   }) {
     final theme = Theme.of(context);
 
@@ -416,6 +426,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           controller: controller,
           obscureText: isPassword && !_showPassword,
           keyboardType: keyboardType,
+          inputFormatters: inputFormatters,
           style: GoogleFonts.inter(color: theme.textTheme.bodyLarge?.color),
           validator: validator,
           decoration: InputDecoration(
