@@ -1,9 +1,25 @@
+import math
 from typing import Optional
 from sqlalchemy.orm import Session, joinedload
 from app.services import models, schemas
 from uuid import UUID
 from fastapi import HTTPException
 from app.core.roles import Role
+from app.services.notifications import service as notif_service
+from app.services.chats.service import close_service_chats
+from app.payments.models import Payment, Contract, PaymentStatus
+import stripe
+import logging
+
+logger = logging.getLogger(__name__)
+
+def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    R = 6371
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+    a = math.sin(dlat / 2) ** 2 + math.cos(math.radians(lat1)) * \
+        math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2
+    return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
 def create_service(db: Session, service_data: schemas.ServiceCreate, client_id: UUID):
     category = db.query(models.Category).filter(models.Category.id == str(service_data.category_id)).first()
@@ -35,12 +51,17 @@ def get_services(
     include_inactive: bool = False,
     category_id: Optional[str] = None,
     query: Optional[str] = None,
+    latitude: Optional[float] = None,
+    longitude: Optional[float] = None,
+    radius_km: Optional[float] = None,
 ):
     """Devuelve servicios para el marketplace.
     
     Filtros opcionales:
     - category_id: filtra por categoría.
     - query: búsqueda por texto en title y description.
+    - latitude, longitude, radius_km: filtro por distancia (Haversine).
+      Si faltan lat/lng o radius_km, se omiten.
     """
     q = db.query(models.Service).options(joinedload(models.Service.owner))
 
@@ -60,13 +81,22 @@ def get_services(
             (models.Service.description.ilike(search_term))
         )
 
-    return (
+    results = (
         q
         .order_by(models.Service.created_at.desc())
         .offset(skip)
         .limit(limit)
         .all()
     )
+
+    if latitude is not None and longitude is not None and radius_km is not None:
+        results = [
+            s for s in results
+            if s.latitude is not None and s.longitude is not None
+            and _haversine_km(latitude, longitude, float(s.latitude), float(s.longitude)) <= radius_km
+        ]
+
+    return results
     
 def get_service_by_id(db: Session, service_id: str):
     srv = (
@@ -114,7 +144,7 @@ def get_my_services(db: Session, user_id: str):
         relevant_date = service_obj.created_at
 
         for request in service_obj.requests:
-            if request.job:
+            if request.job and request.job.status != models.JobStatus.CANCELLED:
                 contract = db.query(Contract).filter(Contract.job_id == request.job.id).first()
                 if contract:
                     payment = db.query(Payment).filter(
@@ -137,7 +167,7 @@ def get_my_services(db: Session, user_id: str):
                     already_reviewed = True
                 
             # Determinar fecha relevante para ordenamiento cruzado (Abierto, En Proceso, Finalizado)
-            if request.job:
+            if request.job and service_obj.status != models.JobStatus.OPEN:
                 if request.job.status in [models.JobStatus.COMPLETED, models.JobStatus.CANCELLED] and request.job.completed_at:
                     relevant_date = request.job.completed_at
                 elif request.job.started_at:
@@ -149,7 +179,7 @@ def get_my_services(db: Session, user_id: str):
         payment_due_at = None
         auto_release_at = None
         for request in service_obj.requests:
-            if request.job:
+            if request.job and request.job.status != models.JobStatus.CANCELLED:
                 payment_due_at = request.job.payment_due_at
                 auto_release_at = request.job.auto_release_at
                 break
@@ -212,10 +242,11 @@ def cancel_service(db: Session, service_id: str, user_id: str, user_role: str):
     is_admin = user_role == Role.ADMIN
     is_owner = service_entry.client_id == str(user_id)
     is_assigned_worker = False
+    active_job = None
     
     if service_entry.status == models.JobStatus.MATCHED:
-        active_job = db.query(models.Job).filter(
-            models.Job.client_id == service_entry.client_id,
+        active_job = db.query(models.Job).join(models.ServiceRequest).filter(
+            models.ServiceRequest.service_id == service_entry.id,
             models.Job.status == models.JobStatus.MATCHED
         ).first()
         if active_job and str(active_job.provider_id) == str(user_id):
@@ -223,10 +254,41 @@ def cancel_service(db: Session, service_id: str, user_id: str, user_role: str):
 
     if not (is_owner or is_admin or is_assigned_worker):
         raise HTTPException(status_code=403, detail="No tienes permiso para cancelar")
-        
-    service_entry.status = models.JobStatus.CANCELLED  # type: ignore[assignment] 
+    
+    # Cancelar pagos pendientes en Stripe
+    if active_job:
+        contract = db.query(Contract).filter(Contract.job_id == active_job.id).first()
+        if contract:
+            payments = db.query(Payment).filter(
+                Payment.contract_id == contract.id,
+                Payment.status.in_([PaymentStatus.PENDING, PaymentStatus.HELD_IN_ESCROW])
+            ).all()
+            for payment in payments:
+                if payment.stripe_payment_intent_id:
+                    try:
+                        intent = stripe.PaymentIntent.retrieve(payment.stripe_payment_intent_id)
+                        if intent.status in ("requires_payment_method", "requires_confirmation", "requires_capture"):
+                            stripe.PaymentIntent.cancel(payment.stripe_payment_intent_id)
+                    except Exception:
+                        pass
+                payment.status = PaymentStatus.FAILED
+    
+    # Cerrar todos los chats del servicio
+    try:
+        close_service_chats(db, service_id, models.ClosedReason.SERVICE_CANCELLED.value)
+    except Exception as e:
+        logger.warning(f"No se pudieron cerrar los chats del servicio: {e}")
+    
+    service_entry.status = models.JobStatus.CANCELLED  # type: ignore[assignment]
+    if active_job:
+        active_job.status = models.JobStatus.CANCELLED  # type: ignore[assignment]
+    
     db.commit()
     db.refresh(service_entry)
+
+    if active_job:
+        notif_service.notify_job_cancelled(db, active_job, user_id)
+
     return {"message": "Servicio cancelado correctamente", "status": "cancelled"}
 
 def delete_service(db: Session, service_id: str):

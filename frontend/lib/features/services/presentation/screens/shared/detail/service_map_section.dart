@@ -3,8 +3,8 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart'; 
 
-import 'package:forja_trabajo/features/services/presentation/widgets/client/maps/location_loading_placeholder.dart';
-import 'package:forja_trabajo/features/services/presentation/widgets/client/maps/full_screen_map_viewer.dart';
+import 'package:forja_trabajo/shared/widgets/maps/location_loading_placeholder.dart';
+import 'package:forja_trabajo/shared/widgets/maps/full_screen_map_viewer.dart';
 
 class ServiceMapSection extends StatefulWidget {
   final double? latitude;

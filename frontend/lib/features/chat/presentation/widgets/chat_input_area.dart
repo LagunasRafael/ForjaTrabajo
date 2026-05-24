@@ -73,6 +73,7 @@ class _ChatInputAreaState extends ConsumerState<ChatInputArea> {
   }
 
   void _onSend() {
+    if (!widget.isEnabled) return;
     final text = _messageController.text.trim();
     if (text.isEmpty && _selectedMedia.isEmpty) return;
     

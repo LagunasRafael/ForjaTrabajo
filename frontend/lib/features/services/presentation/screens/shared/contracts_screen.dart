@@ -86,10 +86,10 @@ class _ContractsScreenState extends ConsumerState<ContractsScreen> {
     return servicesAsync.when(
       data: (services) {
         // Filtramos para obtener solo En Proceso (matched) o Finalizados (completed)
-        var filteredServices = services.where((s) => s.status == JobStatus.matched || s.status == JobStatus.completed).toList();
+        var filteredServices = services.where((s) => s.status == JobStatus.matched || s.status == JobStatus.disputed || s.status == JobStatus.waiting_confirmation || s.status == JobStatus.completed).toList();
 
         if (statusFilter == ContractStatus.active) {
-          filteredServices = filteredServices.where((s) => s.status == JobStatus.matched).toList();
+          filteredServices = filteredServices.where((s) => s.status == JobStatus.matched || s.status == JobStatus.disputed || s.status == JobStatus.waiting_confirmation).toList();
         } else if (statusFilter == ContractStatus.finished) {
           filteredServices = filteredServices.where((s) => s.status == JobStatus.completed).toList();
         }

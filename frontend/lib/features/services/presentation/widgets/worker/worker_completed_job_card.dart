@@ -1,18 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-// 🚀 1. Usamos la Entidad real, no dynamic
 import 'package:forja_trabajo/features/services/domain/entities/service_entity.dart';
 import 'package:forja_trabajo/features/services/presentation/widgets/service_status_chip.dart';
+import 'package:forja_trabajo/features/services/data/repositories/service_repository_impl.dart';
+import 'package:forja_trabajo/features/services/presentation/providers/job_management_provider.dart';
 import 'package:forja_trabajo/features/profile/presentation/widgets/review_dialog.dart' as forja_review;
 import 'package:forja_trabajo/features/profile/presentation/screens/user_profile_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-class WorkerCompletedJobCard extends StatelessWidget {
+class WorkerCompletedJobCard extends ConsumerWidget {
   final ServiceEntity job;
 
   const WorkerCompletedJobCard({super.key, required this.job});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -67,6 +69,11 @@ class WorkerCompletedJobCard extends StatelessWidget {
 
             Row(
               children: [
+                IconButton(
+                  icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                  onPressed: () => _handleDeleteFromHistory(context, ref),
+                  tooltip: 'Eliminar de mi historial',
+                ),
                 Expanded(
                   child: Row(
                     children: [
@@ -175,5 +182,31 @@ class WorkerCompletedJobCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _handleDeleteFromHistory(BuildContext context, WidgetRef ref) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Eliminar del historial'),
+        content: const Text('¿Eliminar este servicio de tu historial?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Eliminar', style: TextStyle(color: Colors.red))),
+        ],
+      ),
+    );
+    if (confirm == true && context.mounted) {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token') ?? '';
+      if (token.isEmpty) return;
+      final success = await ref.read(serviceRepositoryProvider).hideFromHistory(job.id, token);
+      if (success && context.mounted) {
+        ref.invalidate(workerJobsProvider);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Eliminado del historial'), behavior: SnackBarBehavior.floating),
+        );
+      }
+    }
   }
 }

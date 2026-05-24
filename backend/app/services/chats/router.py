@@ -1,7 +1,7 @@
 from app.utils.notifications import send_push_notification
 from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
 from sqlalchemy.orm import Session
-from typing import Dict, List
+from typing import List, Dict
 import json
 from pydantic import BaseModel
 import logging
@@ -12,6 +12,7 @@ from app.core.roles import Role
 from app.auth import models as auth_models
 from app.services.chats import schemas
 from app.services.chats import service 
+from app.services.chats.ws_manager import manager
 from app.services import models as service_models
 from app.payments import models as payment_models
 from app.payments.services import refund_payment, capture_payment
@@ -28,41 +29,6 @@ router = APIRouter()
 class MessagePayload(BaseModel):
     content: str
     message_type: str = "text"
-
-# ---------------------------------------------------------
-# MANAGER DE WEBSOCKETS (El "Operador del Conmutador")
-# ---------------------------------------------------------
-class ConnectionManager:
-    def __init__(self):
-        # Guarda quién está conectado a qué sala: { "conversation_id": [websocket1, websocket2] }
-        self.active_connections: Dict[str, List[WebSocket]] = {}
-
-    async def connect(self, websocket: WebSocket, conversation_id: str):
-        await websocket.accept()
-        if conversation_id not in self.active_connections:
-            self.active_connections[conversation_id] = []
-        self.active_connections[conversation_id].append(websocket)
-
-    def disconnect(self, websocket: WebSocket, conversation_id: str):
-        if conversation_id in self.active_connections:
-            self.active_connections[conversation_id].remove(websocket)
-            if not self.active_connections[conversation_id]:
-                del self.active_connections[conversation_id]
-
-    async def broadcast(self, conversation_id: str, message: dict):
-        if conversation_id in self.active_connections:
-            dead_connections = []
-            for connection in self.active_connections[conversation_id]:
-                try:
-                    await connection.send_json(message)
-                except Exception as e:
-                    print(f"Error broadcasting to connection: {e}")
-                    dead_connections.append(connection)
-            for dead_conn in dead_connections:
-                if dead_conn in self.active_connections[conversation_id]:
-                    self.active_connections[conversation_id].remove(dead_conn)
-
-manager = ConnectionManager()
 
 # ---------------------------------------------------------
 # RUTAS REST (Peticiones normales de Flutter)
@@ -713,6 +679,7 @@ async def resolve_dispute(
         
     # 3. Cerrar la conversación
     convo.status = service_models.ConversationStatus.CLOSED.value # type: ignore
+    convo.closed_reason = service_models.ClosedReason.DISPUTE_RESOLVED.value # type: ignore
     convo.updated_at = datetime.datetime.utcnow() # type: ignore
     
     # 4. Inyectar el mensaje final

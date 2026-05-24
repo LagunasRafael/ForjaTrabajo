@@ -2,7 +2,6 @@ from fastapi import APIRouter, Depends, HTTPException, status,UploadFile,File
 from sqlalchemy.orm import Session
 from typing import List
 from datetime import datetime
-# Corregimos el typo de 'segurity' a 'security' y limpiamos imports
 from app.auth import schemas
 from app.auth import service
 from app.auth import models
@@ -50,6 +49,8 @@ def register(request: Request, user: schemas.UserCreate, background_tasks: Backg
             
     # 3. Generar código de 6 dígitos
     verification_code = generate_verification_code()
+
+    print(f"🔐 CÓDIGO DE VERIFICACIÓN PARA {user.email}: {verification_code}")
 
     # 4. Crear el usuario en la BD (is_email_verified=False inicial)
     new_user = service.create_user(db, user_data, verification_code=verification_code)

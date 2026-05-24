@@ -40,15 +40,23 @@ print("Tablas creadas/verificadas con create_all.", flush=True)
 
 def _migrate():
     migs = [
-        ("is_banned en users", "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_banned BOOLEAN DEFAULT FALSE"),
-        ("platform_fee en payments", "ALTER TABLE payments ADD COLUMN IF NOT EXISTS platform_fee FLOAT DEFAULT 0.0"),
-        ("platform_fee_cents en payments", "ALTER TABLE payments ADD COLUMN IF NOT EXISTS platform_fee_cents INTEGER DEFAULT 0"),
-        ("bio en users", "ALTER TABLE users ADD COLUMN IF NOT EXISTS bio VARCHAR(400) DEFAULT NULL"),
+        ("is_banned en users", "users", "is_banned", "ALTER TABLE users ADD COLUMN is_banned BOOLEAN DEFAULT FALSE"),
+        ("work_started_at en jobs", "jobs", "work_started_at", "ALTER TABLE jobs ADD COLUMN work_started_at DATETIME"),
+        ("is_deleted_by_client en services", "services", "is_deleted_by_client", "ALTER TABLE services ADD COLUMN is_deleted_by_client BOOLEAN DEFAULT FALSE"),
+        ("is_deleted_by_worker en services", "services", "is_deleted_by_worker", "ALTER TABLE services ADD COLUMN is_deleted_by_worker BOOLEAN DEFAULT FALSE"),
+        ("closed_reason en conversations", "conversations", "closed_reason", "ALTER TABLE conversations ADD COLUMN closed_reason VARCHAR(50)"),
+        ("reopened_at en conversations", "conversations", "reopened_at", "ALTER TABLE conversations ADD COLUMN reopened_at DATETIME"),
+        ("bio en users", "users", "bio", "ALTER TABLE users ADD COLUMN bio VARCHAR(400) DEFAULT NULL"),
     ]
     try:
         with engine.connect() as conn:
-            for name, sql in migs:
+            for name, table, column, sql in migs:
                 try:
+                    result = conn.execute(text(f"PRAGMA table_info({table})"))
+                    existing_cols = [row[1] for row in result.fetchall()]
+                    if column in existing_cols:
+                        print(f"Migracion ok (ya existia): {name}", flush=True)
+                        continue
                     conn.execute(text(sql))
                     conn.commit()
                     print(f"Migracion ok: {name}", flush=True)

@@ -5,20 +5,15 @@ import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider
 import 'package:forja_trabajo/features/services/presentation/screens/shared/service_detail_screen.dart';
 import 'package:forja_trabajo/features/profile/presentation/widgets/review_dialog.dart' as forja_review;
 import 'package:forja_trabajo/features/payments/presentation/screens/invoices_screen.dart';
-
 // 🚀 Legos universales
 import 'package:forja_trabajo/features/services/presentation/screens/shared/widgets/shared_job_widgets.dart';
 import 'package:forja_trabajo/features/profile/presentation/screens/user_profile_screen.dart';
-
 class ClientCompletedJobCard extends ConsumerWidget {
   final ServiceEntity service;
-
   const ClientCompletedJobCard({super.key, required this.service});
-
   void _goToDetails(BuildContext context, WidgetRef ref) {
     final user = ref.read(authProvider).user;
     if (user == null) return;
-
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -30,13 +25,11 @@ class ClientCompletedJobCard extends ConsumerWidget {
       ),
     );
   }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // 🎨 LÓGICA DE TUS COMPAÑEROS: Soporte para Modo Oscuro
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
       decoration: BoxDecoration(
@@ -82,10 +75,8 @@ class ClientCompletedJobCard extends ConsumerWidget {
                     _buildDescription(isDark),
                     
                     // 🚧 ACCIONES: Lógica aislada en su propia clase (sólo si no está cancelado)
-                    if (service.status != JobStatus.cancelled) ...[
-                      const SizedBox(height: 16),
-                      _ClientCompletedActions(service: service),
-                    ],
+                    const SizedBox(height: 16),
+                    _ClientCompletedActions(service: service),
                   ],
                 ),
               ),
@@ -95,7 +86,6 @@ class ClientCompletedJobCard extends ConsumerWidget {
       ),
     );
   }
-
   Widget _buildTitleAndStars(bool isDark) {
     return Text(
       service.title,
@@ -108,13 +98,12 @@ class ClientCompletedJobCard extends ConsumerWidget {
       overflow: TextOverflow.ellipsis,
     );
   }
-
   Widget _buildWorkerInfo(BuildContext context) {
-    final workerName = service.workerName ?? "Trabajador asignado";
+    final workerName = service.workerName ?? "Trabajador";
     final workerId = service.workerId;
     return GestureDetector(
       onTap: () {
-        if (workerId != null) {
+        if (workerId != null && workerId.isNotEmpty) {
           Navigator.of(context).push(
             MaterialPageRoute(
               builder: (_) => UserProfileScreen(userId: workerId),
@@ -122,27 +111,29 @@ class ClientCompletedJobCard extends ConsumerWidget {
           );
         }
       },
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 12,
-            backgroundImage: service.workerImageUrl != null && service.workerImageUrl!.isNotEmpty
-                ? NetworkImage(service.workerImageUrl!)
-                : null,
-            child: service.workerImageUrl == null || service.workerImageUrl!.isEmpty
-                ? const Icon(Icons.person, size: 12)
-                : null,
-          ),
-          const SizedBox(width: 6),
-          Text(
-            workerName,
-            style: const TextStyle(color: Colors.grey, fontSize: 13),
-          ),
-        ],
+      child: Padding(
+        padding: const EdgeInsets.only(top: 8),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 12,
+              backgroundImage: service.workerImageUrl != null && service.workerImageUrl!.isNotEmpty
+                  ? NetworkImage(service.workerImageUrl!)
+                  : null,
+              child: service.workerImageUrl == null || service.workerImageUrl!.isEmpty
+                  ? const Icon(Icons.person, size: 12)
+                  : null,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              "Trabajador: $workerName",
+              style: const TextStyle(color: Colors.grey, fontSize: 13),
+            ),
+          ],
+        ),
       ),
     );
   }
-
   Widget _buildDescription(bool isDark) {
     return Text(
       service.summary ?? service.description,
@@ -155,7 +146,6 @@ class ClientCompletedJobCard extends ConsumerWidget {
     );
   }
 }
-
 // =======================================================
 // LÓGICA DE BOTONES AISLADA (Mantenemos tu Clean Architecture)
 // =======================================================
@@ -163,7 +153,6 @@ class _ClientCompletedActions extends ConsumerWidget {
   final ServiceEntity service;
   
   const _ClientCompletedActions({required this.service});
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Row(
@@ -183,7 +172,6 @@ class _ClientCompletedActions extends ConsumerWidget {
           ),
         ),
         const SizedBox(width: 12),
-
         service.alreadyReviewed
             ? Container(
                 height: 48,
@@ -220,14 +208,12 @@ class _ClientCompletedActions extends ConsumerWidget {
       ],
     );
   }
-
   Future<void> _handleRequestInvoice(BuildContext context, WidgetRef ref) async {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const InvoicesScreen()),
     );
   }
-
   Future<void> _handleRateWorker(BuildContext context, WidgetRef ref) async {
     showDialog(
       context: context,

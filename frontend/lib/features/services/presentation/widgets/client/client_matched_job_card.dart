@@ -35,12 +35,16 @@ class ClientMatchedJobCard extends ConsumerWidget {
     final isWaiting = service.status == JobStatus.waiting_confirmation;
     final isPaid = service.hasPaid;
     final isMatched = service.status == JobStatus.matched;
+    final isDisputed = service.status == JobStatus.disputed;
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
     String badgeText;
     Color badgeColor;
-    if (isWaiting) {
+    if (isDisputed) {
+      badgeText = "EN DISPUTA";
+      badgeColor = Colors.red;
+    } else if (isWaiting) {
       badgeText = "LISTO PARA REVISIÓN";
       badgeColor = const Color(0xFF10B981);
     } else if (isMatched && isPaid) {
@@ -115,6 +119,9 @@ class _ClientMatchedActionsState extends ConsumerState<_ClientMatchedActions> {
   bool _isOpeningChat = false;
   String _countdown = '';
   Timer? _timer;
+  Timer? _retryTimer;
+  int _retryCount = 0;
+  static const int _maxRetries = 40;
 
   @override
   void initState() {
@@ -125,6 +132,8 @@ class _ClientMatchedActionsState extends ConsumerState<_ClientMatchedActions> {
   @override
   void didUpdateWidget(covariant _ClientMatchedActions oldWidget) {
     super.didUpdateWidget(oldWidget);
+    _retryTimer?.cancel();
+    _retryCount = 0;
     if (oldWidget.service.status != widget.service.status ||
         oldWidget.service.hasPaid != widget.service.hasPaid) {
       _startCountdown();
@@ -134,6 +143,7 @@ class _ClientMatchedActionsState extends ConsumerState<_ClientMatchedActions> {
   @override
   void dispose() {
     _timer?.cancel();
+    _retryTimer?.cancel();
     super.dispose();
   }
 
@@ -141,6 +151,22 @@ class _ClientMatchedActionsState extends ConsumerState<_ClientMatchedActions> {
     _timer?.cancel();
     _updateCountdown();
     _timer = Timer.periodic(const Duration(seconds: 1), (_) => _updateCountdown());
+  }
+
+  void _startPostExpiryRetry() {
+    _retryTimer?.cancel();
+    _retryCount = 0;
+    _retryTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+      if (!mounted) {
+        _retryTimer?.cancel();
+        return;
+      }
+      _retryCount++;
+      ref.invalidate(myRequestsProvider);
+      if (_retryCount >= _maxRetries) {
+        _retryTimer?.cancel();
+      }
+    });
   }
 
   void _updateCountdown() {
@@ -160,6 +186,12 @@ class _ClientMatchedActionsState extends ConsumerState<_ClientMatchedActions> {
     if (remaining.isNegative) {
       setState(() => _countdown = '');
       _timer?.cancel();
+      Future.microtask(() {
+        if (mounted) {
+          ref.invalidate(myRequestsProvider);
+          _startPostExpiryRetry();
+        }
+      });
       return;
     }
 
@@ -220,6 +252,7 @@ class _ClientMatchedActionsState extends ConsumerState<_ClientMatchedActions> {
     final isCompleting = ref.watch(completingJobProvider(widget.service.id));
     final isPaid = widget.service.hasPaid;
     final isMatched = widget.service.status == JobStatus.matched;
+    final isDisputed = widget.service.status == JobStatus.disputed;
 
     String label;
     IconData icon;
@@ -256,17 +289,19 @@ class _ClientMatchedActionsState extends ConsumerState<_ClientMatchedActions> {
               icon: Icons.chat_bubble_outline, 
               isOutlined: true, 
               isLoading: _isOpeningChat,
-              onPressed: (_isOpeningChat) ? null : () => _openChat(context),
+              onPressed: _isOpeningChat ? null : () => _openChat(context),
             ),
-            const SizedBox(width: 12),
-            _btn(
-              context: context,
-              label: label,
-              icon: icon,
-              color: color,
-              isLoading: isCompleting,
-              onPressed: onPressed,
-            ),
+            if (!isDisputed) ...[
+              const SizedBox(width: 12),
+              _btn(
+                context: context,
+                label: label,
+                icon: icon,
+                color: color,
+                isLoading: isCompleting,
+                onPressed: onPressed,
+              ),
+            ],
           ],
         ),
       ],

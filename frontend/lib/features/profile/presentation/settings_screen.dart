@@ -282,16 +282,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
             // Botón de Confirmar Salida
             ElevatedButton(
-              onPressed: () {
+              onPressed: () async {
                 Navigator.of(dialogContext)
                     .pop(); // 1. Cerramos el diálogo primero
-                ref
+                await ref
                     .read(authProvider.notifier)
                     .logoutUser(); // 2. Ejecutamos el cierre de sesión
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (context) => const LoginScreen()),
-                );
+                if (context.mounted) {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (context) => const LoginScreen()),
+                  );
+                }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red,

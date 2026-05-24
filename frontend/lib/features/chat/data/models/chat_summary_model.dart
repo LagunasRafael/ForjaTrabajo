@@ -16,6 +16,8 @@ class ChatSummaryModel extends ChatSummaryEntity {
     super.isArchived,
     super.serviceStatus,
     super.serviceId,
+    super.closedReason,
+    super.isHistory,
   });
 
   factory ChatSummaryModel.fromJson(Map<String, dynamic> json) {
@@ -38,6 +40,8 @@ class ChatSummaryModel extends ChatSummaryEntity {
       isArchived: json['isArchived'] ?? false,
       serviceStatus: json['serviceStatus'] ?? 'OPEN',
       serviceId: json['serviceId']?.toString() ?? '',
+      closedReason: json['closedReason']?.toString(),
+      isHistory: json['isHistory'] ?? false,
     );
   }
 }

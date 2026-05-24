@@ -40,4 +40,20 @@ class NotificationRemoteDataSource {
       throw Exception('Error marking all notifications as read: $e');
     }
   }
+
+  Future<void> deleteNotification(String notificationId) async {
+    try {
+      await _apiClient.dio.delete('/services/notifications/$notificationId');
+    } catch (e) {
+      throw Exception('Error deleting notification: $e');
+    }
+  }
+
+  Future<void> deleteAllNotifications() async {
+    try {
+      await _apiClient.dio.delete('/services/notifications/');
+    } catch (e) {
+      throw Exception('Error deleting all notifications: $e');
+    }
+  }
 }
