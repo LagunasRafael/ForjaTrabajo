@@ -246,18 +246,21 @@ def capture_payment(db: Session, job_id: str):
         # Si no hay contrato, no hay pago Stripe que capturar (flujo sin Stripe)
         return None
 
-    # 2. Buscar el pago retenido
+    # 2. Buscar el pago (retenido o pendiente de transferir)
     payment = db.query(models.Payment).filter(
         models.Payment.contract_id == contract.id,
-        models.Payment.status == models.PaymentStatus.HELD_IN_ESCROW
+        models.Payment.status.in_([
+            models.PaymentStatus.HELD_IN_ESCROW,
+            models.PaymentStatus.PENDING_TRANSFER,
+        ])
     ).first()
 
     if not payment:
         # No hay pago en escrow, puede ser un flujo sin Stripe
         return None
 
-    # 3. Capturar en Stripe (si aplica)
-    if payment.stripe_payment_intent_id:
+    # 3. Capturar en Stripe si aún está retenido
+    if payment.stripe_payment_intent_id and payment.status == models.PaymentStatus.HELD_IN_ESCROW:
         try:
             print(f"[CAPTURE] Capturando PaymentIntent: {payment.stripe_payment_intent_id}", flush=True)
             captured_intent = stripe.PaymentIntent.capture(
@@ -274,10 +277,20 @@ def capture_payment(db: Session, job_id: str):
         # 4. Transferir los fondos a la cuenta Stripe Connect del trabajador
         print(f"[CAPTURE] Iniciando transferencia al worker...", flush=True)
         _transfer_to_worker(db, job, payment)
+
+    elif payment.status == models.PaymentStatus.PENDING_TRANSFER:
+        # PaymentIntent ya fue capturado antes, solo intentar transferir
+        print(f"[CAPTURE] PaymentIntent ya capturado, reintentando transferencia...", flush=True)
+        _transfer_to_worker(db, job, payment)
+
+    if payment.status == models.PaymentStatus.PENDING_TRANSFER:
+        print(f"[CAPTURE] Worker sin Stripe — pago en PENDING_TRANSFER", flush=True)
+    else:
         print(f"[CAPTURE] Transferencia completada", flush=True)
 
-    # 5. Actualizar nuestra BD (con o sin Stripe)
-    payment.status = models.PaymentStatus.RELEASED  # type: ignore
+    # 5. Actualizar nuestra BD
+    if payment.status != models.PaymentStatus.PENDING_TRANSFER:
+        payment.status = models.PaymentStatus.RELEASED  # type: ignore
     contract.status = "completed"  # type: ignore
 
     db.commit()
@@ -289,16 +302,17 @@ def _transfer_to_worker(db: Session, job, payment):
     """
     Transfiere los fondos capturados desde la cuenta de la plataforma
     a la cuenta Stripe Connect Express del trabajador.
-    Si el worker no tiene Stripe configurado, los fondos quedan retenidos
-    en la plataforma y se registra una advertencia.
+    Si el worker no tiene Stripe configurado, el pago queda como
+    PENDING_TRANSFER y se libera automáticamente cuando configure su billetera.
     """
     from app.auth.models import User
 
     worker = db.query(User).filter(User.id == job.provider_id).first()
     if not worker or not worker.stripe_account_id:
-        logger.warning(
-            f"Worker {job.provider_id} no tiene cuenta Stripe Connect. "
-            f"Fondos ${payment.amount} retenidos en la plataforma."
+        payment.status = models.PaymentStatus.PENDING_TRANSFER
+        logger.info(
+            f"Pago {payment.id} marcado como PENDING_TRANSFER — "
+            f"el worker {job.provider_id} no tiene Stripe configurado"
         )
         return
 
@@ -317,6 +331,59 @@ def _transfer_to_worker(db: Session, job, payment):
         logger.error(
             f"Error al transferir ${payment.amount} al worker {worker.id}: {e}"
         )
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Error al transferir el pago al trabajador: {str(e)}. "
+                   f"Los fondos están retenidos en la plataforma."
+        )
+
+
+def process_pending_transfers_for_worker(db: Session, worker_id: str):
+    """
+    Cuando un worker configura su Stripe Connect, procesa todos los pagos
+    que quedaron pendientes de transferir (PENDING_TRANSFER).
+    """
+    from app.auth.models import User
+
+    worker = db.query(User).filter(User.id == worker_id).first()
+    if not worker or not worker.stripe_account_id:
+        return
+
+    pending_payments = (
+        db.query(models.Payment)
+        .join(models.Contract)
+        .join(Job, models.Contract.job_id == Job.id)
+        .filter(
+            Job.provider_id == worker_id,
+            models.Payment.status == models.PaymentStatus.PENDING_TRANSFER,
+        )
+        .all()
+    )
+
+    if not pending_payments:
+        logger.info(f"No hay pagos pendientes para el worker {worker_id}")
+        return
+
+    for payment in pending_payments:
+        try:
+            stripe.Transfer.create(
+                amount=payment.amount_cents,
+                currency="mxn",
+                destination=worker.stripe_account_id,
+                transfer_group=f"payment_{payment.id}",
+            )
+            payment.status = models.PaymentStatus.RELEASED
+            logger.info(
+                f"Transferencia pendiente completada para pago {payment.id} "
+                f"(${payment.amount} al worker {worker_id})"
+            )
+        except stripe.error.StripeError as e:
+            logger.error(
+                f"Error al procesar transferencia pendiente "
+                f"para pago {payment.id}: {e}"
+            )
+
+    db.commit()
 
 
 def get_payment(db: Session, payment_id: str):
@@ -397,6 +464,12 @@ def refund_payment(db: Session, payment_id: str):
     if payment.status == models.PaymentStatus.REFUNDED:
         return payment
 
+    if payment.status in (models.PaymentStatus.RELEASED, models.PaymentStatus.COMPLETED):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No se puede reembolsar un pago que ya fue liberado al trabajador."
+        )
+
     # 1. Reembolsar en Stripe
     try:
         if payment.stripe_payment_intent_id:
@@ -456,7 +529,10 @@ def resolve_dispute(db: Session, conversation_id: str, resolution: str):
     
     payment = db.query(models.Payment).filter(
         models.Payment.contract_id == contract.id,
-        models.Payment.status == models.PaymentStatus.HELD_IN_ESCROW
+        models.Payment.status.in_([
+            models.PaymentStatus.HELD_IN_ESCROW,
+            models.PaymentStatus.PENDING_TRANSFER,
+        ])
     ).first()
 
     if resolution == "refund":

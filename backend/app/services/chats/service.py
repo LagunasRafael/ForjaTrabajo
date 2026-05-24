@@ -407,6 +407,7 @@ def open_dispute(db: Session, conversation_id: str, user_id: str, reason: str):
             ).order_by(payment_models.Payment.created_at.desc()).first()
             if payment and payment.status in [
                 payment_models.PaymentStatus.HELD_IN_ESCROW,
+                payment_models.PaymentStatus.PENDING_TRANSFER,
                 payment_models.PaymentStatus.RELEASED
             ]:
                 is_paid = True

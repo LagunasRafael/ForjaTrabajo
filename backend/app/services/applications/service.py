@@ -17,6 +17,14 @@ def create_service_request(db: Session, request_data: schemas.ServiceRequestCrea
     if existing_request:
         raise HTTPException(status_code=400, detail="Ya enviaste una propuesta a este trabajo.")
 
+    worker = db.query(auth_models.User).filter(auth_models.User.id == str(worker_id)).first()
+    if not worker or not worker.stripe_account_id:
+        raise HTTPException(
+            status_code=400,
+            detail="Debes configurar tu billetera (Stripe) antes de postularte. "
+                   "Ve a \"Mi Billetera\" en tu perfil para configurarla."
+        )
+
     db_request = models.ServiceRequest(
         service_id=str(request_data.service_id),
         description=request_data.description,
@@ -100,6 +108,7 @@ def get_worker_applications(db: Session, worker_id: str):
                     Payment.contract_id == contract.id,
                     Payment.status.in_([
                         PaymentStatusEnum.HELD_IN_ESCROW,
+                        PaymentStatusEnum.PENDING_TRANSFER,
                         PaymentStatusEnum.RELEASED,
                         PaymentStatusEnum.COMPLETED,
                     ])
