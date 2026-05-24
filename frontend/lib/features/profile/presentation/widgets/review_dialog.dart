@@ -75,38 +75,44 @@ class _ReviewDialogState extends ConsumerState<ReviewDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: Text('Califica a ${widget.revieweeName}', textAlign: TextAlign.center),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Text('¿Cómo fue tu experiencia trabajando con esta persona?'),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(5, (index) {
-              return IconButton(
-                icon: Icon(
-                  index < _rating ? Icons.star : Icons.star_border,
-                  color: Colors.amber,
-                  size: 36,
-                ),
-                onPressed: () {
-                  setState(() {
-                    _rating = index + 1;
-                  });
-                },
-              );
-            }),
-          ),
-          const SizedBox(height: 16),
-          TextField(
-            controller: _commentController,
-            maxLines: 3,
-            decoration: const InputDecoration(
-              hintText: 'Escribe un comentario (opcional)',
-              border: OutlineInputBorder(),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('¿Cómo fue tu experiencia trabajando con esta persona?'),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(5, (index) {
+                return InkWell(
+                  onTap: () {
+                    setState(() {
+                      _rating = index + 1;
+                    });
+                  },
+                  borderRadius: BorderRadius.circular(20),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 8.0),
+                    child: Icon(
+                      index < _rating ? Icons.star : Icons.star_border,
+                      color: Colors.amber,
+                      size: 32,
+                    ),
+                  ),
+                );
+              }),
             ),
-          ),
-        ],
+            const SizedBox(height: 16),
+            TextField(
+              controller: _commentController,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                hintText: 'Escribe un comentario (opcional)',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
       ),
       actions: [
         TextButton(

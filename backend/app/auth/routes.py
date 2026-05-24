@@ -238,9 +238,20 @@ def refresh_token(data: schemas.TokenRefresh, db: Session = Depends(get_db)):
     }
 
 @router.get("/me", response_model=schemas.UserResponse)
-def get_me(current_user: models.User = Depends(get_current_user)):
+def get_me(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    from sqlalchemy.orm import joinedload
+    
+    # Recargamos al usuario cargando explícitamente sus categorías para evitar problemas de lazy loading
+    user_with_cats = db.query(models.User)\
+        .options(joinedload(models.User.categories))\
+        .filter(models.User.id == current_user.id)\
+        .first()
+        
     print(f"DEBUG: /auth/me llamado para {current_user.email}. Rol en objeto: {current_user.role}")
-    return current_user
+    return user_with_cats if user_with_cats else current_user
 
 @router.get("/users", response_model=List[schemas.UserResponse])
 def read_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
@@ -277,6 +288,17 @@ def update_user(
         db_user.is_banned = user_data.is_banned
         if user_data.is_banned:
             db_user.is_active = False
+    if user_data.bio is not None:
+        db_user.bio = user_data.bio # type: ignore
+    if user_data.category_ids is not None:
+        if len(user_data.category_ids) > 5:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Solo puedes seleccionar hasta 5 categorías"
+            )
+        from app.services.models import Category as DBCategory
+        categories_to_add = db.query(DBCategory).filter(DBCategory.id.in_(user_data.category_ids)).all()
+        db_user.categories = categories_to_add
 
     # 3. Guardamos los cambios
     db.commit()
@@ -517,7 +539,9 @@ def get_user_profile(user_id: str, db: Session = Depends(get_db)):
         "average_rating": average_rating,
         "total_reviews": total_reviews,
         "is_identity_verified": bool(user.is_identity_verified),
-        "completed_jobs": completed_jobs[:10]
+        "completed_jobs": completed_jobs[:10],
+        "bio": user.bio,
+        "categories": user.categories
     }
 
 @router.get("/users/{user_id}/reviews", response_model=List[service_schemas.ReviewResponse])

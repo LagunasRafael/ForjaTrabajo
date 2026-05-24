@@ -1,8 +1,9 @@
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart'; // Para kDebugMode
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'dart:io' show Platform;
 import 'package:forja_trabajo/core/network/notification_service.dart';
+import 'package:forja_trabajo/core/utils/api_config.dart';
 
 class ApiClient {
   static final ApiClient _instance = ApiClient._internal();
@@ -11,9 +12,9 @@ class ApiClient {
 
   // 🌐 DIRECCIÓN IP DE TU PC PARA PROBAR EN CELULAR FÍSICO (Ej. Android/iOS)
   // Reemplaza si cambia tu IP local
-
-  //static final String baseUrl = 'https://forja-api-rw0r.onrender.com';
-  static const String baseUrl = "http://10.0.2.2:8000";
+  static final String _baseUrl = 'https://forja-api-rw0r.onrender.com';
+  static String get baseUrl => _baseUrl;
+  //static const String baseUrl = "http://10.0.2.2:8000";
 
   factory ApiClient() => _instance;
 
@@ -56,6 +57,12 @@ class ApiClient {
               return handler.next(e);
             }
 
+            // 🛡️ GUARDIA 1: Si la petición original no envió Token, ignoramos la redirección
+            final hasAuthHeader = e.requestOptions.headers.containsKey('Authorization');
+            if (!hasAuthHeader) {
+              return handler.next(e);
+            }
+
             final refreshToken = await storage.read(key: 'refresh_token');
 
             if (refreshToken != null && refreshToken.isNotEmpty) {
@@ -92,6 +99,13 @@ class ApiClient {
               } catch (refreshException) {
                 print('🚨 Error al refrescar token: $refreshException');
               }
+            }
+
+            // 🛡️ GUARDIA 2: Si el usuario cerró sesión manualmente, el jwt_token ya será nulo.
+            // En ese caso, evitamos limpiar la pantalla de Login actual de forma redundante.
+            final currentToken = await storage.read(key: 'jwt_token');
+            if (currentToken == null) {
+              return handler.next(e);
             }
 
             // Si no hay refresh_token o el refresco falló: cerramos sesión

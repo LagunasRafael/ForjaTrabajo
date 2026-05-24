@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart';
+import 'package:forja_trabajo/features/profile/presentation/screens/legal_document_screen.dart';
 import 'verification_screen.dart';
 
 import '../../../../core/theme/app_theme.dart';
@@ -22,10 +24,40 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
 
+  late TapGestureRecognizer _termsRecognizer;
+  late TapGestureRecognizer _privacyRecognizer;
+
   // Estado del formulario
   bool _isWorker = false; // false = Cliente, true = Trabajador
   bool _showPassword = false;
   bool _acceptTerms = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _termsRecognizer = TapGestureRecognizer()
+      ..onTap = () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const LegalDocumentScreen(
+              type: LegalDocumentType.termsAndConditions,
+            ),
+          ),
+        );
+      };
+    _privacyRecognizer = TapGestureRecognizer()
+      ..onTap = () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const LegalDocumentScreen(
+              type: LegalDocumentType.privacyPolicy,
+            ),
+          ),
+        );
+      };
+  }
 
   @override
   void dispose() {
@@ -33,6 +65,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     _emailController.dispose();
     _phoneController.dispose();
     _passwordController.dispose();
+    _termsRecognizer.dispose();
+    _privacyRecognizer.dispose();
     super.dispose();
   }
 
@@ -187,20 +221,22 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                               color: theme.colorScheme.onSurface.withOpacity(0.6),
                               fontSize: 13,
                               height: 1.4),
-                          children: const [
-                            TextSpan(text: 'Acepto los '),
+                          children: [
+                            const TextSpan(text: 'Acepto los '),
                             TextSpan(
                                 text: 'Términos y Condiciones',
-                                style: TextStyle(
+                                recognizer: _termsRecognizer,
+                                style: const TextStyle(
                                     color: AppTheme.primaryColor,
                                     fontWeight: FontWeight.bold)),
-                            TextSpan(text: ' y la '),
+                            const TextSpan(text: ' y la '),
                             TextSpan(
                                 text: 'Política de Privacidad',
-                                style: TextStyle(
+                                recognizer: _privacyRecognizer,
+                                style: const TextStyle(
                                     color: AppTheme.primaryColor,
                                     fontWeight: FontWeight.bold)),
-                            TextSpan(text: ' de Forja Trabajo.'),
+                            const TextSpan(text: ' de Forja Trabajo.'),
                           ],
                         ),
                       ),

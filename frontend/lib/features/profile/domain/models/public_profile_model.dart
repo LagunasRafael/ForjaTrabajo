@@ -1,3 +1,5 @@
+import '../../../services/data/models/category_model.dart';
+
 class JobSummaryModel {
   final String id;
   final String title;
@@ -48,6 +50,8 @@ class PublicProfileModel {
   final int totalReviews;
   final bool isIdentityVerified;
   final List<JobSummaryModel> completedJobs;
+  final String? bio;
+  final List<CategoryModel> categories;
 
   PublicProfileModel({
     required this.id,
@@ -59,6 +63,8 @@ class PublicProfileModel {
     this.totalReviews = 0,
     this.isIdentityVerified = false,
     this.completedJobs = const [],
+    this.bio,
+    this.categories = const [],
   });
 
   factory PublicProfileModel.fromJson(Map<String, dynamic> json) {
@@ -75,6 +81,10 @@ class PublicProfileModel {
       isIdentityVerified: json['is_identity_verified'] ?? false,
       completedJobs: (json['completed_jobs'] as List<dynamic>?)
           ?.map((j) => JobSummaryModel.fromJson(j as Map<String, dynamic>))
+          .toList() ?? [],
+      bio: json['bio'],
+      categories: (json['categories'] as List<dynamic>?)
+          ?.map((c) => CategoryModel.fromJson(c as Map<String, dynamic>))
           .toList() ?? [],
     );
   }

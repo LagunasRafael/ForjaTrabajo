@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:forja_trabajo/features/services/presentation/screens/client/edit_profile_screen.dart';
 import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart';
 import 'package:forja_trabajo/features/auth/presentation/screens/login_screen.dart';
+import 'package:forja_trabajo/features/profile/presentation/screens/legal_document_screen.dart';
 import 'package:forja_trabajo/core/theme/theme_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -121,8 +122,28 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             icon: Icons.description_outlined,
             title: "Términos y Condiciones",
             onTap: () {
-              // Puedes poner el link a tu web de privacidad
-              _launchURL("https://forja-trabajo.com/terminos");
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const LegalDocumentScreen(
+                    type: LegalDocumentType.termsAndConditions,
+                  ),
+                ),
+              );
+            },
+          ),
+          _buildListTile(
+            icon: Icons.privacy_tip_outlined,
+            title: "Aviso de Privacidad",
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const LegalDocumentScreen(
+                    type: LegalDocumentType.privacyPolicy,
+                  ),
+                ),
+              );
             },
           ),
 

@@ -138,8 +138,10 @@ class AuthRemoteDataSource {
       // ⚠️ Asegúrate de que esta ruta tenga el prefijo correcto (ej. /auth/me o /users/me)
       final response = await apiClient.dio.get('/auth/me');
 
-      debugPrint(
-          '✅ RESPUESTA CRUDA DE FASTAPI: ${response.data}'); // 👈 Agregamos esto
+      debugPrint('==================================================');
+      debugPrint('🚨 [DEBUG PROD] RESPUESTA CRUDA DE /auth/me:');
+      debugPrint('${response.data}');
+      debugPrint('==================================================');
 
       return User.fromJson(response.data);
     } on DioException catch (e) {
@@ -215,15 +217,21 @@ class AuthRemoteDataSource {
     }
   }
 
-  Future<void> updateProfileData(
-      String userId, String fullName, String phone) async {
+  Future<void> updateProfileData({
+    required String userId,
+    required String fullName,
+    required String phone,
+    String? bio,
+    List<String>? categoryIds,
+  }) async {
     try {
-      // 👇 Cambiamos la URL para que coincida con tu @router.put("/users/{user_id}")
       await apiClient.dio.put(
         '/auth/users/$userId',
         data: {
           'full_name': fullName,
           'phone': phone,
+          if (bio != null) 'bio': bio,
+          if (categoryIds != null) 'category_ids': categoryIds,
         },
       );
     } catch (e) {

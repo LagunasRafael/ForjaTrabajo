@@ -46,6 +46,7 @@ def _migrate():
         ("is_deleted_by_worker en services", "ALTER TABLE services ADD COLUMN is_deleted_by_worker BOOLEAN DEFAULT FALSE"),
         ("closed_reason en conversations", "ALTER TABLE conversations ADD COLUMN closed_reason VARCHAR(50)"),
         ("reopened_at en conversations", "ALTER TABLE conversations ADD COLUMN reopened_at DATETIME"),
+        ("bio en users", "ALTER TABLE users ADD COLUMN IF NOT EXISTS bio VARCHAR(400) DEFAULT NULL"),
     ]
     try:
         with engine.connect() as conn:
@@ -67,10 +68,12 @@ app = FastAPI(
 )
 
 
-# 🔥 CORS - Desarrollo (Flutter Web cambia puerto dinámicamente)
+from app.core.config import CORS_ORIGINS
+
+# 🔥 CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # En producción cambia "*" por tu URL de Flutter
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -135,3 +138,11 @@ app.include_router(router)
 @app.get("/")
 def root():
     return {"message": "Forja Trabajo API funcionando"}
+
+
+@app.get("/health")
+def health():
+    return {
+        "status": "healthy",
+        "version": "1.0.0",
+    }

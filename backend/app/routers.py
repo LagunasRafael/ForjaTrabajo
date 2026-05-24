@@ -10,6 +10,7 @@ from app.services.notifications.router import router as notifications_router
 from app.payments.routes import router as payments_router, workers_router
 from app.settings.routes import router as settings_router
 from app.moderation.router import router as moderation_router
+from app.payments.webhooks import router as webhook_router
 
 router = APIRouter()
 
@@ -28,3 +29,5 @@ router.include_router(settings_router, prefix="/settings", tags=["Settings"])
 
 
 router.include_router(moderation_router, prefix="/services", tags=["Moderacion"])
+
+router.include_router(webhook_router, tags=["Stripe Webhooks"])

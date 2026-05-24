@@ -11,6 +11,15 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 60
 # Stripe
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
 STRIPE_PUBLISHABLE_KEY = os.getenv("STRIPE_PUBLISHABLE_KEY")
+STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
+
+# URL de la plataforma (para Stripe Connect, CORS, etc.)
+# En producción: https://tudominio.com
+PLATFORM_URL = os.getenv("PLATFORM_URL", "https://forja-trabajo.com")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "*")
+
+# CORS - separado por comas si múltiples orígenes
+CORS_ORIGINS = [o.strip() for o in os.getenv("CORS_ORIGINS", "*").split(",")]
 
 # Scheduler
 ENABLE_SCHEDULER = os.getenv("ENABLE_SCHEDULER", "true").lower() == "true"
