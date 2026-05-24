@@ -143,6 +143,32 @@ def migrate():
     except sqlite3.OperationalError as e:
         print(f"Error al crear reports: {e}")
 
+    try:
+        # Añadir bio
+        print("Intentando añadir la columna bio a users...")
+        cursor.execute("ALTER TABLE users ADD COLUMN bio VARCHAR(400);")
+        print("✅ Columna bio añadida correctamente.")
+    except sqlite3.OperationalError as e:
+        if "duplicate column name" in str(e):
+            print("⚠️ La columna bio ya existía.")
+        else:
+            print(f"Error al añadir bio: {e}")
+
+    try:
+        print("Creando tabla worker_categories...")
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS worker_categories (
+                worker_id VARCHAR(36) NOT NULL,
+                category_id VARCHAR(36) NOT NULL,
+                PRIMARY KEY (worker_id, category_id),
+                FOREIGN KEY (worker_id) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
+            )
+        """)
+        print("✅ Tabla worker_categories creada correctamente.")
+    except sqlite3.OperationalError as e:
+        print(f"Error al crear worker_categories: {e}")
+
     conn.commit()
     conn.close()
     print("Migración finalizada.")

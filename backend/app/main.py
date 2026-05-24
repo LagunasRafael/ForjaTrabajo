@@ -41,6 +41,7 @@ print("Tablas creadas/verificadas con create_all.", flush=True)
 def _migrate():
     migs = [
         ("is_banned en users", "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_banned BOOLEAN DEFAULT FALSE"),
+        ("bio en users", "ALTER TABLE users ADD COLUMN IF NOT EXISTS bio VARCHAR(400) DEFAULT NULL"),
     ]
     try:
         with engine.connect() as conn:

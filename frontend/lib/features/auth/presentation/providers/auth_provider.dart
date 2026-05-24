@@ -249,14 +249,23 @@ class AuthNotifier extends Notifier<AuthState> {
     }
   }
 
-  Future<void> updateUserInfo(String newName, String newPhone) async {
+  Future<void> updateUserInfo({
+    required String newName,
+    required String newPhone,
+    String? bio,
+    List<String>? categoryIds,
+  }) async {
     if (state.user == null) return;
     final dataSource = ref.read(authDataSourceProvider);
     try {
-      await dataSource.updateProfileData(state.user!.id, newName, newPhone);
-      final updatedUser =
-          state.user!.copyWith(fullName: newName, phone: newPhone);
-      state = state.copyWith(user: updatedUser);
+      await dataSource.updateProfileData(
+        userId: state.user!.id,
+        fullName: newName,
+        phone: newPhone,
+        bio: bio,
+        categoryIds: categoryIds,
+      );
+      await fetchProfile();
     } catch (e) {
       debugPrint("🚨 Error updateUserInfo: $e");
     }
