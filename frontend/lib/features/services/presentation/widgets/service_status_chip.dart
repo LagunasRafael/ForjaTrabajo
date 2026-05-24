@@ -23,6 +23,20 @@ class ServiceStatusChip extends StatelessWidget {
         color = Colors.orange;
         text = 'En Proceso';
         break;
+      case 'matched':
+        color = Colors.blue;
+        text = 'En Progreso';
+        break;
+      case 'waiting_confirmation':
+      case 'esperando confirmación':
+        color = Colors.orange;
+        text = 'Esperando Confirmación';
+        break;
+      case 'disputed':
+      case 'en disputa':
+        color = Colors.red;
+        text = 'En Disputa';
+        break;
       case 'completed':
       case 'finalizado':
         color = Colors.green;
@@ -67,6 +81,12 @@ class ServiceStatusChip extends StatelessWidget {
       case 'inprogress':
       case 'in_progress':
         return 'En Progreso';
+      case 'matched':
+        return 'En Progreso';
+      case 'waiting_confirmation':
+        return 'Esperando Confirmación';
+      case 'disputed':
+        return 'En Disputa';
       case 'completed':
         return 'Completado';
       case 'cancelled':

@@ -118,7 +118,6 @@ class ProfileLogoutButton extends ConsumerWidget {
                 // Invalidamos para que al entrar de nuevo no haya datos "viejos" en memoria
                 ref.invalidate(serviceListProvider);
                 ref.invalidate(myRequestsProvider);
-                ref.invalidate(authProvider);
 
                 // Reseteo de navegación (ajusta según tu provider de índice)
                 // ref.invalidate(bottomNavIndexProvider);

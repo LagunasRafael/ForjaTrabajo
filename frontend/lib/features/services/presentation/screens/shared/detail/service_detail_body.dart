@@ -137,7 +137,8 @@ class ServiceDetailBody extends StatelessWidget {
                 // 2. EVIDENCIAS DEL TRABAJO
                 if (service.status == JobStatus.matched ||
                     service.status == JobStatus.waiting_confirmation ||
-                    service.status == JobStatus.completed)
+                    service.status == JobStatus.completed ||
+                    service.status == JobStatus.disputed)
                   WorkEvidenceSection(service: service),
 
                 const SizedBox(height: 30),

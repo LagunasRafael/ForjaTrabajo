@@ -14,6 +14,7 @@ class JobStatus(str, Enum):
     WAITING_CONFIRMATION = "waiting_confirmation"
     completed = "completed"
     cancelled = "cancelled"
+    disputed = "disputed"
 
 # -----------------------------
 # CATEGORIES 
@@ -136,6 +137,7 @@ class Job(BaseModel):
     status: JobStatus
     final_price: Optional[Decimal] = None
     started_at: Optional[datetime] = None
+    work_started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
 
     class Config:

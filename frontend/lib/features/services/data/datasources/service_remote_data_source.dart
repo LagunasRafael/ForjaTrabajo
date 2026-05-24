@@ -23,7 +23,7 @@ class ServiceRemoteDataSource {
 
   // --- MÉTODOS DE CONSULTA (GET) ---
 
-  Future<List<ServiceModel>> getServices({String? categoryId, String? query}) async {
+  Future<List<ServiceModel>> getServices({String? categoryId, String? query, double? latitude, double? longitude, double? radius}) async {
     try {
       final queryParams = <String, dynamic>{};
       if (categoryId != null && categoryId.isNotEmpty) {
@@ -32,6 +32,9 @@ class ServiceRemoteDataSource {
       if (query != null && query.trim().isNotEmpty) {
         queryParams['query'] = query.trim();
       }
+      if (latitude != null) queryParams['latitude'] = latitude;
+      if (longitude != null) queryParams['longitude'] = longitude;
+      if (radius != null) queryParams['radius_km'] = radius;
       final response = await _dio.get(
         '$_path/',
         queryParameters: queryParams.isNotEmpty ? queryParams : null,
@@ -133,6 +136,19 @@ class ServiceRemoteDataSource {
   }
 
   // --- GESTIÓN DE ESTADOS (CANCELAR / COMPLETAR) ---
+
+  Future<bool> hideFromHistory(String serviceId, String token) async {
+    try {
+      final response = await _dio.post(
+        '$_path/$serviceId/hide-from-history',
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint("🚨 Error al ocultar servicio del historial: $e");
+      return false;
+    }
+  }
 
   Future<bool> cancelService(String serviceId, String token) async {
     try {

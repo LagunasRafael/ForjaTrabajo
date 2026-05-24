@@ -13,7 +13,7 @@ extension CategoryHelper on String {
         if (name.contains('panad') || name.contains('pan')) return Icons.bakery_dining;
     if (name.contains('jardin') || name.contains('poda')) return Icons.yard;
     if (name.contains('arquitect')) return Icons.architecture;
-    if (name.contains('alban') || name.contains('obra')) return Icons.construction;
+    if (name.contains('alba') || name.contains('obra')) return Icons.construction;
     if (name.contains('herrero') || name.contains('solda')) return Icons.build;
     if (name.contains('vidrio') || name.contains('ventana')) return Icons.window;
     if (name.contains('cerraj') || name.contains('llave')) return Icons.key;
@@ -33,7 +33,7 @@ extension CategoryHelper on String {
     if (t.contains('arquitect')) return Colors.indigo;
     if (t.contains('alban') || t.contains('obra')) return Colors.brown;
     if (t.contains('herrero') || t.contains('solda')) return Colors.grey;
-    if (t.contains('vidrio') || t.contains('ventana')) return Colors.cyan;
+    if (t.contains('vidri') || t.contains('ventana')) return Colors.cyan;
     if (t.contains('cerraj') || t.contains('llave')) return Colors.amber;
     return const Color(0xFF4F46E5); // Color por defecto
   }

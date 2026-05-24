@@ -109,7 +109,7 @@ class _MyRequestsScreenState extends ConsumerState<MyRequestsScreen>
         data: (services) {
           final filtered = services.where((s) {
             if (status == JobStatus.matched) {
-              return s.status == JobStatus.matched || s.status == JobStatus.waiting_confirmation;
+              return s.status == JobStatus.matched || s.status == JobStatus.waiting_confirmation || s.status == JobStatus.disputed;
             }
             if (status == JobStatus.completed) {
               return s.status == JobStatus.completed || s.status == JobStatus.cancelled;

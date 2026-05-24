@@ -487,6 +487,45 @@ def notify_payment_expired(db: Session, job: models.Job):
         logger.warning(f"Error en notify_payment_expired: {e}")
 
 
+def notify_payment_refunded(db: Session, job: models.Job):
+    """Notifica al cliente y al trabajador que el pago fue reembolsado."""
+    try:
+        client = db.query(auth_models.User).filter(auth_models.User.id == job.client_id).first()
+        worker = db.query(auth_models.User).filter(auth_models.User.id == job.provider_id).first()
+
+        if client:
+            create_in_app_notification(
+                db=db, user_id=str(client.id),
+                title="Pago reembolsado",
+                body="El pago del trabajo ha sido reembolsado exitosamente.",
+                notification_type="payment_refunded", reference_id=str(job.id),
+                target_role="client"
+            )
+            if client.fcm_token:
+                send_push_notification(
+                    fcm_token=str(client.fcm_token), title="Pago reembolsado",
+                    body="El pago del trabajo ha sido reembolsado exitosamente.",
+                    data={"type": "payment_refunded", "job_id": str(job.id), "target_role": "client"}
+                )
+
+        if worker:
+            create_in_app_notification(
+                db=db, user_id=str(worker.id),
+                title="Pago reembolsado",
+                body="El pago del trabajo ha sido reembolsado al cliente.",
+                notification_type="payment_refunded", reference_id=str(job.id),
+                target_role="worker"
+            )
+            if worker.fcm_token:
+                send_push_notification(
+                    fcm_token=str(worker.fcm_token), title="Pago reembolsado",
+                    body="El pago del trabajo ha sido reembolsado al cliente.",
+                    data={"type": "payment_refunded", "job_id": str(job.id), "target_role": "worker"}
+                )
+    except Exception as e:
+        logger.warning(f"Error en notify_payment_refunded: {e}")
+
+
 def notify_auto_released(db: Session, job: models.Job):
     """Notifica al cliente y al trabajador que el pago se liberó automáticamente."""
     try:
@@ -598,4 +637,22 @@ def mark_all_as_read(db: Session, user_id: str):
     ).update({"is_read": True})
     db.commit()
     return {"status": "success", "message": "Todas las notificaciones marcadas como leídas"}
+
+def delete_notification(db: Session, notification_id: str, user_id: str):
+    notification = db.query(models.Notification).filter(
+        models.Notification.id == notification_id,
+        models.Notification.user_id == user_id
+    ).first()
+    if not notification:
+        raise HTTPException(status_code=404, detail="Notificación no encontrada")
+    db.delete(notification)
+    db.commit()
+    return {"status": "success", "message": "Notificación eliminada"}
+
+def delete_all_notifications(db: Session, user_id: str):
+    db.query(models.Notification).filter(
+        models.Notification.user_id == user_id
+    ).delete()
+    db.commit()
+    return {"status": "success", "message": "Todas las notificaciones eliminadas"}
 

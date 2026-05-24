@@ -27,6 +27,7 @@ class JobStatus(str, enum.Enum):
     WAITING_CONFIRMATION = "waiting_confirmation" 
     COMPLETED = "completed"  
     CANCELLED = "cancelled"
+    DISPUTED = "disputed"
 # -----------------------------
 # CATEGORY 
 # -----------------------------
@@ -65,6 +66,8 @@ class Service(Base):
     client_id = Column(String(36), ForeignKey("users.id"), nullable=False) 
     status = Column(Enum(JobStatus), default=JobStatus.OPEN)
     is_active = Column(Boolean, default=True)
+    is_deleted_by_client = Column(Boolean, default=False)
+    is_deleted_by_worker = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     category = relationship("Category", back_populates="services")
     requests = relationship("ServiceRequest", back_populates="service")
@@ -91,7 +94,7 @@ class Service(Base):
     def request_id(self):
         """Devuelve el request_id del Job activo asociado si lo hay."""
         for request in self.requests:
-            if request.job:
+            if request.job and request.job.status != JobStatus.CANCELLED:
                 return str(request.id)
         return None
 
@@ -99,14 +102,25 @@ class Service(Base):
     def worker_name(self):
         for request in self.requests:
             if request.job:
-                if request.worker and request.worker.full_name:
-                    return request.worker.full_name
+                if request.worker:
+                    name = request.worker.full_name
+                    if name:
+                        return name
+                    if request.worker.email:
+                        return request.worker.email.split('@')[0]
+        for request in self.requests:
+            if request.worker:
+                name = request.worker.full_name
+                if name:
+                    return name
+                if request.worker.email:
+                    return request.worker.email.split('@')[0]
         return None
 
     @property
     def worker_image_url(self):
         for request in self.requests:
-            if request.job:
+            if request.job and request.job.status != JobStatus.CANCELLED:
                 if request.worker and request.worker.profile_picture_url:
                     return request.worker.profile_picture_url
         return None
@@ -114,7 +128,7 @@ class Service(Base):
     @property
     def worker_id(self):
         for request in self.requests:
-            if request.job:
+            if request.job and request.job.status != JobStatus.CANCELLED:
                 return str(request.worker_id)
         return None
 # -----------------------------
@@ -179,6 +193,7 @@ class Job(Base):
     final_price = Column(Numeric(10, 2), nullable=True)
 
     started_at = Column(DateTime, default=datetime.utcnow)
+    work_started_at = Column(DateTime, nullable=True)
     completed_at = Column(DateTime, nullable=True)
 
     # Feature 2: Fecha límite para pagar (se setea al aceptar postulación)
@@ -192,9 +207,19 @@ class Job(Base):
 # CHATS Y NEGOCIACIÓN
 # -----------------------------
 class ConversationStatus(str, enum.Enum):
+    ACTIVE = "active"
     OPEN = "open"
     CLOSED = "closed" 
     DISPUTE = "dispute"
+
+class ClosedReason(str, enum.Enum):
+    WORKER_NOT_SELECTED = "WORKER_NOT_SELECTED"
+    CLIENT_PAYMENT_TIMEOUT = "CLIENT_PAYMENT_TIMEOUT"
+    APPLICATION_WITHDRAWN = "APPLICATION_WITHDRAWN"
+    SERVICE_CANCELLED = "SERVICE_CANCELLED"
+    SERVICE_COMPLETED = "SERVICE_COMPLETED"
+    SERVICE_COMPLETED_AUTO = "SERVICE_COMPLETED_AUTO"
+    DISPUTE_RESOLVED = "DISPUTE_RESOLVED"
 
 class MessageType(str, enum.Enum):
     TEXT = "text" 
@@ -210,7 +235,9 @@ class Conversation(Base):
     worker_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
     
     status = Column(String(20), default=ConversationStatus.OPEN.value)
-    
+    closed_reason = Column(String(50), nullable=True)
+    reopened_at = Column(DateTime, nullable=True)
+
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

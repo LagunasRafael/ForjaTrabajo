@@ -23,6 +23,29 @@ class NotificationsScreen extends ConsumerWidget {
         iconTheme: IconThemeData(color: theme.colorScheme.onSurface),
         actions: [
           IconButton(
+            icon: const Icon(Icons.delete_sweep),
+            tooltip: 'Eliminar todas',
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: const Text('Eliminar notificaciones'),
+                  content: const Text('¿Eliminar todas las notificaciones? Esta acción no se puede deshacer.'),
+                  actions: [
+                    TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        ref.read(notificationListProvider(role).notifier).deleteAllNotifications();
+                      },
+                      child: const Text('Eliminar', style: TextStyle(color: Colors.red)),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.done_all),
             tooltip: 'Marcar todo como leído',
             onPressed: () => ref.read(notificationListProvider(role).notifier).markAllAsRead(),
@@ -51,7 +74,25 @@ class NotificationsScreen extends ConsumerWidget {
               padding: const EdgeInsets.all(12),
               itemCount: notifications.length,
               separatorBuilder: (context, index) => const SizedBox(height: 12),
-              itemBuilder: (context, index) => NotificationCard(notification: notifications[index]),
+              itemBuilder: (context, index) {
+                final notification = notifications[index];
+                return Dismissible(
+                  key: ValueKey(notification.id),
+                  direction: DismissDirection.endToStart,
+                  background: Container(
+                    alignment: Alignment.centerRight,
+                    padding: const EdgeInsets.only(right: 24),
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const Icon(Icons.delete_outline, color: Colors.white, size: 28),
+                  ),
+                  onDismissed: (_) =>
+                      ref.read(notificationListProvider(role).notifier).deleteNotification(notification.id),
+                  child: NotificationCard(notification: notification),
+                );
+              },
             ),
           );
         },
