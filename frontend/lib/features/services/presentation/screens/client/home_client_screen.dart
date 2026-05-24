@@ -7,6 +7,7 @@ import 'package:forja_trabajo/features/services/presentation/widgets/categories/
 import 'package:forja_trabajo/features/services/presentation/widgets/service_list_widget.dart'; 
 import 'package:forja_trabajo/features/services/presentation/widgets/search_bar_widget.dart'; 
 import 'package:forja_trabajo/features/services/presentation/providers/service_list_provider.dart';
+import 'package:forja_trabajo/shared/widgets/location/location_radius_bar.dart';
 
 class HomeClientScreen extends ConsumerWidget {
   const HomeClientScreen({super.key});
@@ -42,6 +43,8 @@ class HomeClientScreen extends ConsumerWidget {
                   const  HeaderWidget(),
                   const  SizedBox(height: 10),
                   const  SearchBarWidget(), 
+                  const  SizedBox(height: 10),
+                  const  LocationRadiusBar(),
                   const  SizedBox(height: 10),
                   const  CategorySelectorWidget(),
                 ],

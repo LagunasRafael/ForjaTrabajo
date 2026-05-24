@@ -23,7 +23,7 @@ class ServiceRemoteDataSource {
 
   // --- MÉTODOS DE CONSULTA (GET) ---
 
-  Future<List<ServiceModel>> getServices({String? categoryId, String? query}) async {
+  Future<List<ServiceModel>> getServices({String? categoryId, String? query, double? latitude, double? longitude, double? radius}) async {
     try {
       final queryParams = <String, dynamic>{};
       if (categoryId != null && categoryId.isNotEmpty) {
@@ -32,6 +32,9 @@ class ServiceRemoteDataSource {
       if (query != null && query.trim().isNotEmpty) {
         queryParams['query'] = query.trim();
       }
+      if (latitude != null) queryParams['latitude'] = latitude;
+      if (longitude != null) queryParams['longitude'] = longitude;
+      if (radius != null) queryParams['radius_km'] = radius;
       final response = await _dio.get(
         '$_path/',
         queryParameters: queryParams.isNotEmpty ? queryParams : null,

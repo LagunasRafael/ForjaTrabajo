@@ -100,6 +100,8 @@ class _FullScreenLocationPickerState extends State<FullScreenLocationPicker> {
             options: MapOptions(
               initialCenter: _selectedCenter,
               initialZoom: 15.5,
+              minZoom: 3,
+              maxZoom: 18,
               interactionOptions: const InteractionOptions(
                 flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
               ),
@@ -152,7 +154,7 @@ class _FullScreenLocationPickerState extends State<FullScreenLocationPicker> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.75),
+                color: Colors.black.withValues(alpha: 0.75),
                 borderRadius: BorderRadius.circular(30),
               ),
               child: const Center(
@@ -168,7 +170,38 @@ class _FullScreenLocationPickerState extends State<FullScreenLocationPicker> {
             ),
           ),
 
-          // 💳 Card de Confirmación Inferior Modular
+          Positioned(
+            right: 16,
+            bottom: 200,
+            child: Column(
+              children: [
+                _MapZoomButton(
+                  icon: Icons.add_rounded,
+                  themeColor: widget.themeColor,
+                  onTap: () {
+                    final camera = _mapController.camera;
+                    _mapController.move(
+                      camera.center,
+                      (camera.zoom + 1).clamp(3.0, 18.0),
+                    );
+                  },
+                ),
+                const SizedBox(height: 8),
+                _MapZoomButton(
+                  icon: Icons.remove_rounded,
+                  themeColor: widget.themeColor,
+                  onTap: () {
+                    final camera = _mapController.camera;
+                    _mapController.move(
+                      camera.center,
+                      (camera.zoom - 1).clamp(3.0, 18.0),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+
           Positioned(
             bottom: 0,
             left: 0,
@@ -190,6 +223,40 @@ class _FullScreenLocationPickerState extends State<FullScreenLocationPicker> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _MapZoomButton extends StatelessWidget {
+  final IconData icon;
+  final Color themeColor;
+  final VoidCallback onTap;
+
+  const _MapZoomButton({
+    required this.icon,
+    required this.themeColor,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      elevation: 4,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: onTap,
+        child: SizedBox(
+          width: 44,
+          height: 44,
+          child: Icon(
+            icon,
+            color: themeColor,
+            size: 26,
+          ),
+        ),
       ),
     );
   }

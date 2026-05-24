@@ -6,11 +6,11 @@ import 'package:latlong2/latlong.dart';
 
 import 'package:forja_trabajo/features/services/domain/usecases/location/get_device_location_usecase.dart';
 import 'package:forja_trabajo/features/services/presentation/widgets/client/create_service_widgets.dart';
-import 'nominatim_service.dart';
-import 'address_suggestions_card.dart';
-import 'interactive_location_map.dart';
-import 'location_loading_placeholder.dart';
-import 'address_search_input.dart';
+import 'package:forja_trabajo/shared/widgets/maps/nominatim_service.dart';
+import 'package:forja_trabajo/shared/widgets/maps/address_suggestions_card.dart';
+import 'package:forja_trabajo/shared/widgets/maps/interactive_location_map.dart';
+import 'package:forja_trabajo/shared/widgets/maps/location_loading_placeholder.dart';
+import 'package:forja_trabajo/shared/widgets/maps/address_search_input.dart';
 
 class LocationPickerWidget extends ConsumerStatefulWidget {
   final TextEditingController addressCtrl;

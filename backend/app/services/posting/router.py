@@ -54,11 +54,15 @@ def list_services(
     include_inactive: bool = False,
     category_id: Optional[str] = Query(None, description="Filtrar por categoría"),
     query: Optional[str] = Query(None, description="Buscar por texto en título o descripción"),
+    latitude: Optional[float] = Query(None, description="Latitud del usuario para filtro por distancia"),
+    longitude: Optional[float] = Query(None, description="Longitud del usuario para filtro por distancia"),
+    radius_km: Optional[float] = Query(None, description="Radio de búsqueda en km"),
     db: Session = Depends(get_db),
 ):
     return service.get_services(
         db, skip=skip, limit=limit, include_inactive=include_inactive,
         category_id=category_id, query=query,
+        latitude=latitude, longitude=longitude, radius_km=radius_km,
     )
 
 @router.get("/search", response_model=List[schemas.Service])

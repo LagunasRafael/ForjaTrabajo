@@ -7,7 +7,7 @@ import '../entities/work_evidence_entity.dart';
 
 abstract class ServiceRepository {
   // --- SERVICIOS (SERVICES) ---
-  Future<List<ServiceEntity>> getServices({String? categoryId, String? query});
+  Future<List<ServiceEntity>> getServices({String? categoryId, String? query, double? latitude, double? longitude, double? radiusKm});
   Future<List<ServiceEntity>> getServicesByCategory(String categoryId);
   Future<ServiceEntity> getServiceById(String id);
   Future<List<ServiceEntity>> searchServices(String query);

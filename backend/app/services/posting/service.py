@@ -1,3 +1,4 @@
+import math
 from typing import Optional
 from sqlalchemy.orm import Session, joinedload
 from app.services import models, schemas
@@ -11,6 +12,14 @@ import stripe
 import logging
 
 logger = logging.getLogger(__name__)
+
+def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    R = 6371
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+    a = math.sin(dlat / 2) ** 2 + math.cos(math.radians(lat1)) * \
+        math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2
+    return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
 def create_service(db: Session, service_data: schemas.ServiceCreate, client_id: UUID):
     category = db.query(models.Category).filter(models.Category.id == str(service_data.category_id)).first()
@@ -42,12 +51,17 @@ def get_services(
     include_inactive: bool = False,
     category_id: Optional[str] = None,
     query: Optional[str] = None,
+    latitude: Optional[float] = None,
+    longitude: Optional[float] = None,
+    radius_km: Optional[float] = None,
 ):
     """Devuelve servicios para el marketplace.
     
     Filtros opcionales:
     - category_id: filtra por categoría.
     - query: búsqueda por texto en title y description.
+    - latitude, longitude, radius_km: filtro por distancia (Haversine).
+      Si faltan lat/lng o radius_km, se omiten.
     """
     q = db.query(models.Service).options(joinedload(models.Service.owner))
 
@@ -67,13 +81,22 @@ def get_services(
             (models.Service.description.ilike(search_term))
         )
 
-    return (
+    results = (
         q
         .order_by(models.Service.created_at.desc())
         .offset(skip)
         .limit(limit)
         .all()
     )
+
+    if latitude is not None and longitude is not None and radius_km is not None:
+        results = [
+            s for s in results
+            if s.latitude is not None and s.longitude is not None
+            and _haversine_km(latitude, longitude, float(s.latitude), float(s.longitude)) <= radius_km
+        ]
+
+    return results
     
 def get_service_by_id(db: Session, service_id: str):
     srv = (

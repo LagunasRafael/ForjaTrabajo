@@ -51,8 +51,8 @@ class ServiceRepositoryImpl implements ServiceRepository {
 
   // --- SERVICIOS ---
   @override
-  Future<List<ServiceEntity>> getServices({String? categoryId, String? query}) =>
-      serviceDS.getServices(categoryId: categoryId, query: query);
+  Future<List<ServiceEntity>> getServices({String? categoryId, String? query, double? latitude, double? longitude, double? radiusKm}) =>
+      serviceDS.getServices(categoryId: categoryId, query: query, latitude: latitude, longitude: longitude, radius: radiusKm);
 
   @override
   Future<List<ServiceEntity>> getServicesByCategory(String id) =>
