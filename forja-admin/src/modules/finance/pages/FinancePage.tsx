@@ -193,7 +193,7 @@ export const FinancePage = () => {
       {/* Tabla de Transacciones */}
       <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-6 backdrop-blur-sm">
         <h3 className="text-lg font-bold text-white mb-6">Historial de Transacciones</h3>
-        <TransactionTable payments={payments} isLoading={isLoading} onRefresh={fetchData} />
+        <TransactionTable payments={payments} isLoading={isLoading} onRefresh={fetchData} onSelectPayment={setSelectedPayment} />
       </div>
 
       {/* Modal de Detalle */}

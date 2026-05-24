@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useAutoRefresh } from '../../hooks/useAutoRefresh';
+import { usePendingCounts } from '../../hooks/usePendingCounts';
 import { toast } from 'sonner';
 import { 
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, 
@@ -12,6 +13,7 @@ import { getCategories } from '../services/services/category.service';
 import { getServices } from '../services/services/service.service';
 
 export const DashboardPage = () => {
+  const { counts } = usePendingCounts();
   const [stats, setStats] = useState({
     users: 0,
     categories: 0,
@@ -131,7 +133,67 @@ export const DashboardPage = () => {
         <StatCard title="En Proceso (Match)" value={stats.activeRequests} trend="En curso" colorClass="text-rose-400" icon={<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>} />
       </div>
 
-      {/* 3. SECCIÓN DE ANÁLISIS VISUAL Y USUARIOS */}
+      {/* 3. PENDIENTES DE MODERACIÓN */}
+      <div>
+        <h3 className="text-lg font-bold text-white mb-4">Pendientes de Moderación</h3>
+        <div className="grid gap-6 sm:grid-cols-3">
+          <div className="relative overflow-hidden rounded-2xl border border-red-500/20 bg-red-500/5 p-6 backdrop-blur-sm group hover:border-red-500/40 transition-all">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-slate-400">Disputas Activas</p>
+                <h3 className="mt-2 text-3xl font-bold text-red-400">
+                  {counts.disputes}
+                </h3>
+              </div>
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-red-500/10 text-red-400">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><line x1="12" x2="12" y1="7" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>
+              </div>
+            </div>
+            <a href="/disputes" className="mt-4 flex items-center text-sm font-medium text-red-400 hover:text-red-300 transition-colors">
+              Ver disputas
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="ml-1"><path d="m9 18 6-6-6-6"/></svg>
+            </a>
+          </div>
+
+          <div className="relative overflow-hidden rounded-2xl border border-amber-500/20 bg-amber-500/5 p-6 backdrop-blur-sm group hover:border-amber-500/40 transition-all">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-slate-400">Verificaciones Pendientes</p>
+                <h3 className="mt-2 text-3xl font-bold text-amber-400">
+                  {counts.verifications}
+                </h3>
+              </div>
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-500/10 text-amber-400">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+              </div>
+            </div>
+            <a href="/verifications" className="mt-4 flex items-center text-sm font-medium text-amber-400 hover:text-amber-300 transition-colors">
+              Ver verificaciones
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="ml-1"><path d="m9 18 6-6-6-6"/></svg>
+            </a>
+          </div>
+
+          <div className="relative overflow-hidden rounded-2xl border border-orange-500/20 bg-orange-500/5 p-6 backdrop-blur-sm group hover:border-orange-500/40 transition-all">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-slate-400">Reportes Pendientes</p>
+                <h3 className="mt-2 text-3xl font-bold text-orange-400">
+                  {counts.reports}
+                </h3>
+              </div>
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-orange-500/10 text-orange-400">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" x2="4" y1="22" y2="15"/></svg>
+              </div>
+            </div>
+            <a href="/reports" className="mt-4 flex items-center text-sm font-medium text-orange-400 hover:text-orange-300 transition-colors">
+              Ver reportes
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="ml-1"><path d="m9 18 6-6-6-6"/></svg>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      {/* 4. SECCIÓN DE ANÁLISIS VISUAL Y USUARIOS */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* GRÁFICA DE DISTRIBUCIÓN (1/3) */}
@@ -260,7 +322,7 @@ export const DashboardPage = () => {
         </div>
       </div>
 
-      {/* 4. SECCIÓN INFERIOR DE ACCESO RÁPIDO */}
+      {/* 5. SECCIÓN INFERIOR DE ACCESO RÁPIDO */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="rounded-2xl border border-slate-800 bg-indigo-600/10 p-6 border-dashed flex items-center gap-6">
           <div className="h-14 w-14 rounded-2xl bg-indigo-500/20 flex items-center justify-center text-indigo-400">
