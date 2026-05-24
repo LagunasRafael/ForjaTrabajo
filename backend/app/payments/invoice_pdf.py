@@ -51,6 +51,7 @@ def generate_invoice_pdf(payment_data: dict) -> str:
     status_map = {
         "RELEASED": "PAGADO", "COMPLETED": "PAGADO", "PAID": "PAGADO",
         "HELD_IN_ESCROW": "EN GARANTÍA",
+        "PENDING_TRANSFER": "PAGADO",
         "REFUNDED": "REEMBOLSADO",
         "PENDING": "PENDIENTE",
     }

@@ -85,6 +85,8 @@ class Service(ServiceBase):
 
     already_reviewed: bool = False
     has_paid: bool = False
+    payment_due_at: Optional[datetime] = None
+    auto_release_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True

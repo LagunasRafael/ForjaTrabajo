@@ -172,6 +172,9 @@ def migrate():
     conn.commit()
     conn.close()
     print("Migración finalizada.")
+    print()
+    print("⚠️  Si usas PostgreSQL (Supabase), ejecuta este SQL en el Editor SQL:")
+    print("    ALTER TYPE paymentstatus ADD VALUE IF NOT EXISTS 'pending_transfer';")
 
 if __name__ == "__main__":
     migrate()

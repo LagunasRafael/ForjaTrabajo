@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:forja_trabajo/features/payments/presentation/providers/wallet_status_provider.dart';
+import 'package:forja_trabajo/features/payments/presentation/screens/wallet_screen.dart';
 import 'package:forja_trabajo/features/services/domain/entities/service_entity.dart';
 import 'package:forja_trabajo/features/services/presentation/providers/job_management_provider.dart';
 import 'package:forja_trabajo/features/services/presentation/providers/service_request_provider.dart';
@@ -8,12 +10,67 @@ import 'package:forja_trabajo/features/services/presentation/widgets/worker/work
 void showWorkerApplyModal(
   BuildContext context, ServiceEntity service, {
   String? existingMessage, double? existingPrice, String? requestId,
-}) {
+}) async {
+  final container = ProviderScope.containerOf(context, listen: false);
+  final walletStatus = await container.read(walletStatusProvider.future);
+
+  if (!walletStatus.isReady) {
+    if (!context.mounted) return;
+    _showWalletRequiredDialog(context);
+    return;
+  }
+
+  if (!context.mounted) return;
   showModalBottomSheet(
     context: context, isScrollControlled: true, backgroundColor: Colors.transparent,
     builder: (ctx) => _WorkerApplyModalWidget(
       service: service, existingMessage: existingMessage, existingPrice: existingPrice, requestId: requestId,
     ),
+  );
+}
+
+void _showWalletRequiredDialog(BuildContext context) {
+  showDialog(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: const Row(
+        children: [
+          Icon(Icons.wallet_rounded, color: Colors.orange, size: 28),
+          SizedBox(width: 10),
+          Text('Billetera requerida', style: TextStyle(fontSize: 18)),
+        ],
+      ),
+      content: const Text(
+        'Para postularte a trabajos necesitas configurar tu billetera (Stripe) primero.\n\n'
+        'Ve a "Mi Billetera" en tu perfil para configurarla.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx),
+          child: const Text('Ahora no'),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            Navigator.pop(ctx);
+            _navigateToWallet(context);
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF7F13EC),
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+          child: const Text('Ir a Mi Billetera'),
+        ),
+      ],
+    ),
+  );
+}
+
+void _navigateToWallet(BuildContext context) {
+  Navigator.push(
+    context,
+    MaterialPageRoute(builder: (_) => const WalletScreen()),
   );
 }
 

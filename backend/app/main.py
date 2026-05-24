@@ -63,10 +63,12 @@ app = FastAPI(
 )
 
 
-# 🔥 CORS - Desarrollo (Flutter Web cambia puerto dinámicamente)
+from app.core.config import CORS_ORIGINS
+
+# 🔥 CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # En producción cambia "*" por tu URL de Flutter
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -113,6 +115,17 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         content={"detail": "Datos de entrada inválidos", "errores": errors},
     )
 
+# Scheduler automático (APScheduler)
+from app.services.scheduler import start_scheduler, stop_scheduler
+
+@app.on_event("startup")
+def on_startup():
+    start_scheduler()
+
+@app.on_event("shutdown")
+def on_shutdown():
+    stop_scheduler()
+
 # Routers
 app.include_router(router)
 
@@ -120,3 +133,11 @@ app.include_router(router)
 @app.get("/")
 def root():
     return {"message": "Forja Trabajo API funcionando"}
+
+
+@app.get("/health")
+def health():
+    return {
+        "status": "healthy",
+        "version": "1.0.0",
+    }

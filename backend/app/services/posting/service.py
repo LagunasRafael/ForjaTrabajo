@@ -111,6 +111,7 @@ def get_my_services(db: Session, user_id: str):
                         Payment.contract_id == contract.id,
                         Payment.status.in_([
                             PaymentStatusEnum.HELD_IN_ESCROW,
+                            PaymentStatusEnum.PENDING_TRANSFER,
                             PaymentStatusEnum.RELEASED,
                             PaymentStatusEnum.COMPLETED,
                         ])
@@ -134,6 +135,17 @@ def get_my_services(db: Session, user_id: str):
 
         setattr(service_obj, 'already_reviewed', already_reviewed)
         setattr(service_obj, 'has_paid', has_paid)
+
+        payment_due_at = None
+        auto_release_at = None
+        for request in service_obj.requests:
+            if request.job:
+                payment_due_at = request.job.payment_due_at
+                auto_release_at = request.job.auto_release_at
+                break
+        setattr(service_obj, 'payment_due_at', payment_due_at)
+        setattr(service_obj, 'auto_release_at', auto_release_at)
+
         setattr(service_obj, 'relevant_date', relevant_date)
         result.append(service_obj)
 

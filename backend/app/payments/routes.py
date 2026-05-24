@@ -11,6 +11,7 @@ from app.services.notifications import service as notification_service
 from . import schemas, models
 import app.payments.services as services
 from .invoice_pdf import generate_invoice_pdf
+from app.core.config import PLATFORM_URL
 
 router = APIRouter()
 workers_router = APIRouter()
@@ -351,6 +352,8 @@ def get_worker_stripe_status(
 
     try:
         account = stripe.Account.retrieve(user.stripe_account_id)
+        if account.charges_enabled and account.payouts_enabled:
+            services.process_pending_transfers_for_worker(db, str(current_user.id))
         return schemas.StripeStatusResponse(
             has_stripe_account=True,
             onboarding_completed=account.charges_enabled,
@@ -397,7 +400,7 @@ def setup_worker_stripe(
                     "transfers": {"requested": True},
                 },
                 business_profile={
-                    "url": "https://forjatrabajo.com",
+                    "url": PLATFORM_URL,
                     "product_description": "Proveedor de servicios independientes en la plataforma.",
                     "mcc": "7299"
                 },
@@ -409,6 +412,9 @@ def setup_worker_stripe(
             stripe_account_id = account.id
             user.stripe_account_id = stripe_account_id
             db.commit()
+
+            # Intentar liberar pagos pendientes apenas se configura la cuenta
+            services.process_pending_transfers_for_worker(db, str(current_user.id))
         except stripe.error.StripeError as e:
             raise HTTPException(
                 status_code=status.HTTP_502_BAD_GATEWAY,
@@ -419,6 +425,7 @@ def setup_worker_stripe(
     try:
         account = stripe.Account.retrieve(stripe_account_id)
         if account.charges_enabled and account.payouts_enabled:
+            services.process_pending_transfers_for_worker(db, str(current_user.id))
             return schemas.StripeSetupResponse(url="__ALREADY_COMPLETED__")
     except stripe.error.StripeError:
         pass
@@ -427,8 +434,8 @@ def setup_worker_stripe(
         account_link = stripe.AccountLink.create(
             account=stripe_account_id,
             type="account_onboarding",
-            refresh_url="https://forjatrabajo.com/configurar-billetera",
-            return_url="https://forjatrabajo.com/billetera-lista"
+            refresh_url=f"{PLATFORM_URL}/configurar-billetera",
+            return_url=f"{PLATFORM_URL}/billetera-lista"
         )
         return schemas.StripeSetupResponse(url=account_link.url)
     except stripe.error.StripeError as e:
