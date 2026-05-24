@@ -39,6 +39,8 @@ class Payment(Base):
     
     amount = Column(Float, nullable=False)
     amount_cents = Column(Integer, nullable=False, default=0)
+    platform_fee = Column(Float, default=0.0)
+    platform_fee_cents = Column(Integer, default=0)
     status = Column(Enum(PaymentStatus), default=PaymentStatus.PENDING)
     payment_method = Column(String, default="card")
     stripe_payment_intent_id = Column(String, nullable=True)

@@ -205,10 +205,14 @@ def confirm_payment(
         )
 
     amount_cents = int(data.amount_mxn * 100)
+    fee_rate = services.get_commission_rate(db)
+    fee_cents = int(amount_cents * fee_rate)
     payment = models.Payment(
         contract_id=contract.id,
         amount=data.amount_mxn,
         amount_cents=amount_cents,
+        platform_fee=round(fee_cents / 100, 2),
+        platform_fee_cents=fee_cents,
         status=models.PaymentStatus.COMPLETED,
         stripe_payment_intent_id=data.payment_intent_id,
     )

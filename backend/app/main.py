@@ -41,6 +41,8 @@ print("Tablas creadas/verificadas con create_all.", flush=True)
 def _migrate():
     migs = [
         ("is_banned en users", "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_banned BOOLEAN DEFAULT FALSE"),
+        ("platform_fee en payments", "ALTER TABLE payments ADD COLUMN IF NOT EXISTS platform_fee FLOAT DEFAULT 0.0"),
+        ("platform_fee_cents en payments", "ALTER TABLE payments ADD COLUMN IF NOT EXISTS platform_fee_cents INTEGER DEFAULT 0"),
     ]
     try:
         with engine.connect() as conn:

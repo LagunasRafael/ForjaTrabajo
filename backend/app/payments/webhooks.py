@@ -60,11 +60,36 @@ def _handle_payment_intent_failed(payment_intent: dict):
             payment.status = models.PaymentStatus.FAILED
             db.commit()
             logger.info(f"Pago {payment.id} marcado como FAILED por webhook")
+            _notify_payment_failed(db, payment)
     except Exception as e:
         logger.error(f"Error en webhook payment_intent.payment_failed: {e}")
         db.rollback()
     finally:
         db.close()
+
+
+def _notify_payment_failed(db: Session, payment):
+    """Notifica al cliente que su pago falló."""
+    try:
+        from app.services.notifications import service as notif_service
+        from app.services.models import Contract, Job
+        contract = db.query(Contract).filter(Contract.id == payment.contract_id).first()
+        if contract and contract.job:
+            job = contract.job
+            service_title = "Servicio"
+            if job.request and job.request.service:
+                service_title = job.request.service.title
+            notif_service.create_in_app_notification(
+                db=db,
+                user_id=str(job.client_id),
+                title="Pago fallido",
+                body=f"El pago por ${payment.amount} para '{service_title}' no pudo procesarse. Intenta de nuevo.",
+                notification_type="payment_failed",
+                reference_id=str(job.id),
+            )
+            logger.info(f"Notificación de pago fallido enviada al cliente {job.client_id}")
+    except Exception as e:
+        logger.error(f"Error notificando pago fallido: {e}")
 
 
 def _handle_charge_dispute_created(dispute: dict):
