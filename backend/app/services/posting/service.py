@@ -111,6 +111,7 @@ def get_my_services(db: Session, user_id: str):
                         Payment.contract_id == contract.id,
                         Payment.status.in_([
                             PaymentStatusEnum.HELD_IN_ESCROW,
+                            PaymentStatusEnum.PENDING_TRANSFER,
                             PaymentStatusEnum.RELEASED,
                             PaymentStatusEnum.COMPLETED,
                         ])

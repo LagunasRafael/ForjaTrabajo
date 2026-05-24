@@ -15,10 +15,11 @@ class ContractStatus(str, enum.Enum):
 class PaymentStatus(str, enum.Enum):
     PENDING = "pending"
     HELD_IN_ESCROW = "held_in_escrow"
-    RELEASED = "released"       
+    RELEASED = "released"
     COMPLETED = "completed"
     FAILED = "failed"
     REFUNDED = "refunded"
+    PENDING_TRANSFER = "pending_transfer"
 
 class Contract(Base):
     __tablename__ = "contracts"
