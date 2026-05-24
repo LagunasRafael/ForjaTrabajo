@@ -72,11 +72,11 @@ class AuthNotifier extends Notifier<AuthState> {
     }
   }
 
-  Future<void> loginUser(String email, String password) async {
+  Future<void> loginUser(String identifier, String password) async {
     state = state.copyWith(status: 'loading', errorMessage: '');
     try {
       final dataSource = ref.read(authDataSourceProvider);
-      final token = await dataSource.login(email, password);
+      final token = await dataSource.login(identifier, password);
 
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('token', token);
@@ -141,7 +141,7 @@ class AuthNotifier extends Notifier<AuthState> {
   Future<void> registerUser({
     required String fullName,
     required String email,
-    required String phone,
+    String? phone,
     required String password,
     required String role,
   }) async {

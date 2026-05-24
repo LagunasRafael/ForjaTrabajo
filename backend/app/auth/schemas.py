@@ -19,7 +19,7 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     password: str = Field(..., min_length=8)
     role: Optional[Role] = Role.CLIENT 
-    phone: str = Field(..., min_length=10, max_length=20)
+    phone: Optional[str] = Field(None, min_length=10, max_length=10, pattern=r"^\d{10}$")
 
     @field_validator("password")
     @classmethod
@@ -54,7 +54,7 @@ class ResendCodeRequest(BaseModel):
 
 # 4. Esquema para Login
 class UserLogin(BaseModel):
-    email: EmailStr 
+    identifier: str = Field(..., min_length=3, max_length=100)
     password: str
 
 # 5. Esquema para el Token JWT
@@ -72,7 +72,7 @@ class UserUpdate(BaseModel):
     role: Optional[str] = None
     is_active: Optional[bool] = None
     is_banned: Optional[bool] = None
-    phone: Optional[str] = None
+    phone: Optional[str] = Field(None, min_length=10, max_length=10, pattern=r"^\d{10}$")
     bio: Optional[str] = Field(None, max_length=400)
     category_ids: Optional[List[str]] = None
 

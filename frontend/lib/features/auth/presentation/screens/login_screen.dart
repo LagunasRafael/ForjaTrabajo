@@ -142,15 +142,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                       ),
                       const SizedBox(height: 40),
-                      _buildLabel('Email'),
+                      _buildLabel('Correo electrónico o Teléfono'),
                       const SizedBox(height: 8),
                       TextFormField(
                         controller: _emailController,
                         keyboardType: TextInputType.emailAddress,
-                        decoration: _buildInputDecoration('ejemplo@correo.com'),
+                        decoration: _buildInputDecoration('ejemplo@correo.com o 5512345678'),
                         validator: (value) {
-                          if (value == null || value.isEmpty) return 'Ingresa tu correo';
-                          if (!value.contains('@')) return 'Correo no válido';
+                          if (value == null || value.isEmpty) return 'Ingresa tu correo o teléfono';
+                          final trimmed = value.trim();
+                          if (trimmed.contains('@')) {
+                            return null;
+                          } else {
+                            final isDigits = RegExp(r'^\d+$').hasMatch(trimmed);
+                            if (!isDigits || trimmed.length != 10) {
+                              return 'Ingresa un correo válido o un teléfono de 10 dígitos';
+                            }
+                          }
                           return null;
                         },
                       ),
