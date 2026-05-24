@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-// 🚀 TUS IMPORTS MODULARES (Ganaron por orden)
+// 🚀 TUS IMPORTS MODULARES (Ganaron por ordern)
 import 'package:forja_trabajo/features/services/domain/entities/service_entity.dart';
 import 'package:forja_trabajo/features/services/presentation/widgets/worker/worker_job_list_view.dart';
 import 'package:forja_trabajo/features/services/presentation/providers/nav_providers.dart';
+import 'package:forja_trabajo/features/services/presentation/providers/job_management_provider.dart';
 
 class MyJobsScreen extends ConsumerStatefulWidget {
   final int initialIndex;
@@ -14,12 +15,13 @@ class MyJobsScreen extends ConsumerStatefulWidget {
   ConsumerState<MyJobsScreen> createState() => _WorkerMyJobsScreenState();
 }
 
-class _WorkerMyJobsScreenState extends ConsumerState<MyJobsScreen> with SingleTickerProviderStateMixin {
+class _WorkerMyJobsScreenState extends ConsumerState<MyJobsScreen> with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late TabController _tabController;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     // Prioridad: 1. Índice que viene por constructor 2. Índice del provider
     final index = widget.initialIndex != 0 ? widget.initialIndex : ref.read(workerJobsTabProvider);
     _tabController = TabController(
@@ -27,12 +29,28 @@ class _WorkerMyJobsScreenState extends ConsumerState<MyJobsScreen> with SingleTi
       vsync: this, 
       initialIndex: index
     );
+    _tabController.addListener(_onTabChanged);
+  }
+
+  void _onTabChanged() {
+    if (!_tabController.indexIsChanging && mounted) {
+      ref.invalidate(workerJobsProvider);
+    }
   }
 
   @override
   void dispose() {
+    _tabController.removeListener(_onTabChanged);
     _tabController.dispose();
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && mounted) {
+      ref.invalidate(workerJobsProvider);
+    }
   }
 
   @override

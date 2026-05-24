@@ -26,6 +26,33 @@ final notificationEventProvider = StreamProvider<RemoteMessage>((ref) {
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
   debugPrint("📬 Background message: ${message.messageId}");
+  try {
+    final localNotifications = FlutterLocalNotificationsPlugin();
+    await localNotifications.initialize(const InitializationSettings(
+      android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+    ));
+    final title = message.notification?.title ?? message.data['title'] ?? 'ForjaTrabajo';
+    final body = message.notification?.body ?? message.data['body'] ?? '';
+    if (title != 'ForjaTrabajo' || body.isNotEmpty) {
+      await localNotifications.show(
+        message.hashCode,
+        title,
+        body,
+        const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'forja_high_priority',
+            'Alertas de Forja',
+            channelDescription: 'Notificaciones importantes de mensajes y trabajos',
+            importance: Importance.max,
+            priority: Priority.high,
+            icon: '@mipmap/ic_launcher',
+          ),
+        ),
+      );
+    }
+  } catch (e) {
+    debugPrint('⚠️ Error mostrando notificación en background: $e');
+  }
 }
 
 class NotificationService {
@@ -88,13 +115,14 @@ class NotificationService {
       // No lanzamos el error para que la app pueda seguir funcionando sin notificaciones locales
     }
 
-    // 3. Foreground: mostrar banner visual y REFRESCAR PROVIDERS
+    // 3. Foreground: mostrar notificación del sistema + banner visual + REFRESCAR PROVIDERS
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       if (!_shouldHandleMessage(message)) return;
       
       debugPrint('🚀 [FCM] ¡NOTIFICACIÓN RECIBIDA EN FOREGROUND!');
       debugPrint('🚀 Tipo: ${message.data['type']} | ID: ${message.messageId}');
       
+      _showLocalNotification(message);
       _onNotificationController.add(message);
       
       try {
@@ -130,14 +158,16 @@ class NotificationService {
   }
 
   void _showLocalNotification(RemoteMessage message) {
-    final notification = message.notification;
-    if (notification == null) return;
+    final title = message.notification?.title ?? message.data['title'];
+    final body = message.notification?.body ?? message.data['body'];
+    if (title == null && body == null) return;
 
     try {
+      final id = DateTime.now().millisecondsSinceEpoch ~/ 100;
       _localNotifications.show(
-        notification.hashCode,
-        notification.title,
-        notification.body,
+        id,
+        title ?? 'ForjaTrabajo',
+        body ?? '',
         NotificationDetails(
           android: AndroidNotificationDetails(
             _channel.id,
@@ -148,9 +178,10 @@ class NotificationService {
             icon: '@mipmap/ic_launcher',
           ),
         ),
-      );
+      ).then((_) => debugPrint('✅ Notificación local mostrada con ID: $id'))
+       .catchError((e) => debugPrint('⚠️ Error mostrando local notification: $e'));
     } catch (e) {
-      debugPrint('⚠️ Error mostrando local notification: $e');
+      debugPrint('⚠️ Error en _showLocalNotification: $e');
     }
   }
 
@@ -307,53 +338,80 @@ class NotificationService {
       if (serviceId != null) {
         navigator.push(MaterialPageRoute(builder: (_) => OffersReceivedScreen(serviceId: serviceId)));
       } else {
-        switch (type) {
-          case 'new_request':
-            // Ir a Mis Solicitudes -> Pestaña Postulaciones (1)
-            container?.read(clientNavProvider.notifier).state = 3;
-            container?.read(myRequestsTabProvider.notifier).state = 1;
-            navigatorKey.currentState?.pushNamed('/my_requests');
-            break;
-
-          case 'job_accepted':
-          case 'in_progress':
-            // Ir a Mis Empleos -> En Proceso (1)
-            container?.read(workerNavProvider.notifier).state = 1;
-            container?.read(workerJobsTabProvider.notifier).state = 1;
-            navigatorKey.currentState?.pushNamed('/my_jobs');
-            break;
-
-          case 'job_completed':
-          case 'job_cancelled':
-            // Ir a Mis Empleos -> Finalizados (2)
-            container?.read(workerNavProvider.notifier).state = 1;
-            container?.read(workerJobsTabProvider.notifier).state = 2;
-            navigatorKey.currentState?.pushNamed('/my_jobs');
-            break;
-
-          case 'general':
-          default:
-            // Pantalla de notificaciones general
-            navigatorKey.currentState?.push(
-              MaterialPageRoute(builder: (_) => const NotificationsScreen()),
-            );
-            break;
-        }
+        container?.read(clientNavProvider.notifier).state = 3;
+        container?.read(myRequestsTabProvider.notifier).state = 0;
+        navigator.push(MaterialPageRoute(builder: (_) => const MyRequestsScreen(initialIndex: 0)));
       }
+    } else if (type == 'job_accepted' || type == 'in_progress') {
+      // ✅ Trabajador: Mis Empleos -> En Proceso (1)
+      container?.read(workerNavProvider.notifier).state = 1;
+      container?.read(workerJobsTabProvider.notifier).state = 1;
+      navigator.push(MaterialPageRoute(builder: (_) => const MyJobsScreen(initialIndex: 1)));
     } else if (type == 'job_completed') {
-      // ✅ Trabajador: Mis Trabajos (Index 1) -> Historial (Index 2)
+      // ✅ Trabajador: Mis Trabajos -> Historial (2)
       container?.read(workerNavProvider.notifier).state = 1;
       container?.read(workerJobsTabProvider.notifier).state = 2;
       navigator.push(MaterialPageRoute(builder: (_) => const MyJobsScreen(initialIndex: 2)));
     } else if (type == 'job_waiting_confirmation') {
-      // ✅ Cliente: Mis Trabajos (Index 3) -> En Proceso (Index 1)
+      // ✅ Cliente: Mis Trabajos -> En Proceso (1)
       container?.read(clientNavProvider.notifier).state = 3;
       container?.read(myRequestsTabProvider.notifier).state = 1;
       navigator.push(MaterialPageRoute(builder: (_) => const MyRequestsScreen(initialIndex: 1)));
-    } else if (type == 'job_cancelled') {
+    } else if (type == 'job_cancelled' || type == 'payment_expired') {
+      final targetRole = data['target_role'];
+      if (targetRole == 'client') {
+        container?.read(clientNavProvider.notifier).state = 3;
+        container?.read(myRequestsTabProvider.notifier).state = 0;
+        navigator.push(MaterialPageRoute(builder: (_) => const MyRequestsScreen(initialIndex: 0)));
+      } else {
+        container?.read(workerNavProvider.notifier).state = 1;
+        container?.read(workerJobsTabProvider.notifier).state = 2;
+        navigator.push(MaterialPageRoute(builder: (_) => const MyJobsScreen(initialIndex: 2)));
+      }
+    } else if (type == 'payment_deadline') {
+      // ✅ Cliente: ir a En Proceso para pagar
+      container?.read(clientNavProvider.notifier).state = 3;
+      container?.read(myRequestsTabProvider.notifier).state = 1;
+      navigator.push(MaterialPageRoute(builder: (_) => const MyRequestsScreen(initialIndex: 1)));
+    } else if (type == 'confirmation_deadline') {
+      // ✅ Trabajador: ir a En Proceso
       container?.read(workerNavProvider.notifier).state = 1;
-      container?.read(workerJobsTabProvider.notifier).state = 2;
-      navigator.push(MaterialPageRoute(builder: (_) => const MyJobsScreen(initialIndex: 2)));
+      container?.read(workerJobsTabProvider.notifier).state = 1;
+      navigator.push(MaterialPageRoute(builder: (_) => const MyJobsScreen(initialIndex: 1)));
+    } else if (type == 'payment_held' || type == 'payment_released') {
+      // ✅ Trabajador: le avisamos que ya pagaron
+      final targetRole = data['target_role'];
+      if (targetRole == 'worker') {
+        container?.read(workerNavProvider.notifier).state = 1;
+        container?.read(workerJobsTabProvider.notifier).state = 1;
+        navigator.push(MaterialPageRoute(builder: (_) => const MyJobsScreen(initialIndex: 1)));
+      } else {
+        container?.read(clientNavProvider.notifier).state = 3;
+        container?.read(myRequestsTabProvider.notifier).state = 1;
+        navigator.push(MaterialPageRoute(builder: (_) => const MyRequestsScreen(initialIndex: 1)));
+      }
+    } else if (type == 'auto_released') {
+      final targetRole = data['target_role'];
+      if (targetRole == 'worker') {
+        container?.read(workerNavProvider.notifier).state = 1;
+        container?.read(workerJobsTabProvider.notifier).state = 2;
+        navigator.push(MaterialPageRoute(builder: (_) => const MyJobsScreen(initialIndex: 2)));
+      } else {
+        container?.read(clientNavProvider.notifier).state = 3;
+        container?.read(myRequestsTabProvider.notifier).state = 2;
+        navigator.push(MaterialPageRoute(builder: (_) => const MyRequestsScreen(initialIndex: 2)));
+      }
+    } else if (type == 'payment_refunded') {
+      final targetRole = data['target_role'];
+      if (targetRole == 'client') {
+        container?.read(clientNavProvider.notifier).state = 3;
+        container?.read(myRequestsTabProvider.notifier).state = 2;
+        navigator.push(MaterialPageRoute(builder: (_) => const MyRequestsScreen(initialIndex: 2)));
+      } else {
+        container?.read(workerNavProvider.notifier).state = 1;
+        container?.read(workerJobsTabProvider.notifier).state = 2;
+        navigator.push(MaterialPageRoute(builder: (_) => const MyJobsScreen(initialIndex: 2)));
+      }
     } else if (type == 'offer_responded' || type == 'new_offer') {
       final conversationId = data['conversation_id'];
       if (conversationId != null) {
@@ -373,9 +431,12 @@ class NotificationService {
         return Icons.chat_bubble_rounded;
       case 'new_offer':
         return Icons.local_offer_rounded;
+      case 'offer_responded':
+        return Icons.handshake_rounded;
       case 'new_application':
         return Icons.person_add_rounded;
       case 'job_accepted':
+      case 'in_progress':
         return Icons.check_circle_rounded;
       case 'job_waiting_confirmation':
         return Icons.hourglass_bottom_rounded;
@@ -383,6 +444,23 @@ class NotificationService {
         return Icons.verified_rounded;
       case 'job_cancelled':
         return Icons.cancel_rounded;
+      case 'payment_deadline':
+        return Icons.timer_rounded;
+      case 'confirmation_deadline':
+        return Icons.schedule_rounded;
+      case 'payment_expired':
+        return Icons.timer_off_rounded;
+      case 'payment_held':
+      case 'payment_released':
+        return Icons.payments_rounded;
+      case 'payment_refunded':
+        return Icons.currency_exchange_rounded;
+      case 'auto_released':
+        return Icons.autorenew_rounded;
+      case 'dispute_opened':
+        return Icons.gavel_rounded;
+      case 'dispute_resolved':
+        return Icons.checklist_rounded;
       default:
         return Icons.notifications_rounded;
     }

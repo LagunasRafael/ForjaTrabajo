@@ -8,15 +8,50 @@ import 'package:forja_trabajo/features/services/presentation/widgets/client/cand
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:forja_trabajo/core/network/notification_service.dart';
 
-class OffersReceivedScreen extends ConsumerWidget {
+class OffersReceivedScreen extends ConsumerStatefulWidget {
   final ServiceEntity? service;
   final String? serviceId;
 
   const OffersReceivedScreen({super.key, this.service, this.serviceId});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final effectiveId = service?.id ?? serviceId;
+  ConsumerState<OffersReceivedScreen> createState() => _OffersReceivedScreenState();
+}
+
+class _OffersReceivedScreenState extends ConsumerState<OffersReceivedScreen> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final id = widget.service?.id ?? widget.serviceId;
+      if (id != null) {
+        ref.invalidate(offersListProvider(id));
+        ref.invalidate(serviceDetailProvider(id));
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && mounted) {
+      final id = widget.service?.id ?? widget.serviceId;
+      if (id != null) {
+        ref.invalidate(offersListProvider(id));
+        ref.invalidate(serviceDetailProvider(id));
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final effectiveId = widget.service?.id ?? widget.serviceId;
     if (effectiveId == null) return const Scaffold(body: Center(child: Text("Error: ID faltante")));
 
     // 🔔 Escuchar eventos de notificación para refrescar en tiempo real
@@ -31,10 +66,7 @@ class OffersReceivedScreen extends ConsumerWidget {
       });
     });
 
-    final serviceAsync = service != null 
-        ? AsyncValue.data(service!) 
-        : ref.watch(serviceDetailProvider(effectiveId));
-    
+    final serviceAsync = ref.watch(serviceDetailProvider(effectiveId));
     final offersAsync = ref.watch(offersListProvider(effectiveId));
     
     return serviceAsync.when(
@@ -44,7 +76,7 @@ class OffersReceivedScreen extends ConsumerWidget {
         final theme = Theme.of(context);
         final status = serviceData.status.toString().toLowerCase();
 
-        if (status.contains('matched') || status.contains('waiting')) {
+        if (status.contains('matched') || status.contains('waiting') || status.contains('disputed')) {
           return Scaffold(
             backgroundColor: const Color(0xFFF3F4F6),
             appBar: AppBar(
@@ -134,7 +166,7 @@ class OffersReceivedScreen extends ConsumerWidget {
             loading: () => const Center(child: CircularProgressIndicator(color: Color(0xFF10B981))),
             error: (e, s) => Center(child: Text("Error: $e", style: const TextStyle(color: Colors.red))),
             data: (offers) {
-              if (offers == null || offers.isEmpty) {
+              if (offers.isEmpty) {
                 return ListView(
                   children: const [
                     SizedBox(height: 200),

@@ -1,7 +1,4 @@
-import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart';
 import 'package:forja_trabajo/features/chat/data/datasources/chat_remote_datasource.dart';
@@ -11,6 +8,8 @@ import 'package:forja_trabajo/features/chat/domain/repositories/chat_repository.
 import 'package:forja_trabajo/features/chat/presentation/providers/chat_list_provider.dart';
 import 'package:forja_trabajo/core/network/api_client.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
+import 'package:forja_trabajo/features/services/presentation/providers/service_list_provider.dart';
+import 'package:forja_trabajo/features/services/presentation/providers/job_management_provider.dart';
 
 // --- PROVIDERS DE INFRAESTRUCTURA ---
 
@@ -52,8 +51,6 @@ class ChatNotifier extends StateNotifier<List<MessageModel>> {
   WebSocketChannel? _channel;
   bool _isReconnecting = false;
   bool _isLoadingMore = false;
-  Timer? _pollingTimer;
-  
   int _currentLimit = 15;
   bool _isDisposed = false;
 
@@ -75,7 +72,6 @@ class ChatNotifier extends StateNotifier<List<MessageModel>> {
   @override
   void dispose() {
     _isDisposed = true;
-    _pollingTimer?.cancel();
     _channel?.sink.close();
     super.dispose();
   }
@@ -85,7 +81,7 @@ class ChatNotifier extends StateNotifier<List<MessageModel>> {
     
     try {
       print("📦 [Chat] Cargando historial para $conversationId...");
-      // 1. Cargar historial
+      // 1. Cargar historial via REST
       final history = await _repository.getChatHistory(conversationId);
       
       if (!_isDisposed) {
@@ -100,18 +96,8 @@ class ChatNotifier extends StateNotifier<List<MessageModel>> {
         print("⚠️ [Chat] Error al marcar como leído (no crítico): $e");
       }
       
-      // 3. Conectar WebSocket
+      // 3. Conectar WebSocket (fuente principal de mensajes en tiempo real)
       _connect();
-
-      // 4. Polling de seguridad cada 6 segundos para no perder mensajes
-      _pollingTimer?.cancel();
-      _pollingTimer = Timer.periodic(const Duration(seconds: 6), (_) async {
-        if (_isDisposed || !mounted) return;
-        // Solo hacer polling si el WS no está conectado
-        if (_channel == null || _isReconnecting) {
-          await _pollNewMessages();
-        }
-      });
     } catch (e) {
       print("🚨 [Chat] Error crítico cargando historial: $e");
       _connect(); 
@@ -119,23 +105,6 @@ class ChatNotifier extends StateNotifier<List<MessageModel>> {
   }
 
   /// Pide al servidor los mensajes más recientes y los fusiona sin duplicados
-  Future<void> _pollNewMessages() async {
-    try {
-      final history = await _repository.getChatHistory(conversationId, skip: 0, limit: _currentLimit);
-      if (!mounted || _isDisposed) return;
-      final fresh = history.map((m) => MessageModel.fromEntity(m)).toList();
-      // Solo agregar mensajes que no tengamos ya (evitar regresar temp messages)
-      final existingIds = state.where((m) => !m.id.startsWith('temp_')).map((m) => m.id).toSet();
-      final newOnes = fresh.where((m) => !existingIds.contains(m.id)).toList();
-      if (newOnes.isNotEmpty) {
-        print("🔄 [Poll] ${newOnes.length} mensajes nuevos recuperados");
-        state = [...newOnes, ...state];
-      }
-    } catch (e) {
-      print("⚠️ [Poll] Error en polling: $e");
-    }
-  }
-
   void _connect() {
     if (_isDisposed || _isReconnecting || userId.isEmpty || conversationId.isEmpty) return;
 
@@ -189,6 +158,18 @@ class ChatNotifier extends StateNotifier<List<MessageModel>> {
         if (senderId != userId) {
           ref.read(chatTypingProvider(conversationId).notifier).state = decoded['is_typing'] ?? false;
         }
+        return;
+      }
+
+      if (decoded is Map && decoded['type'] == 'conversation_closed') {
+        print("🔒 [WS] Chat cerrado: $conversationId, razón: ${decoded['closed_reason']}");
+        ref.read(chatListProvider.notifier).loadRealChats();
+        return;
+      }
+
+      if (decoded is Map && decoded['type'] == 'conversation_reactivated') {
+        print("🔓 [WS] Chat reactivado: $conversationId");
+        ref.read(chatListProvider.notifier).loadRealChats();
         return;
       }
 
@@ -402,6 +383,9 @@ class ChatNotifier extends StateNotifier<List<MessageModel>> {
         if (mounted) state = [model, ...state];
       }
       ref.read(chatListProvider.notifier).loadRealChats();
+      ref.invalidate(myRequestsProvider);
+      ref.invalidate(workerJobsProvider);
+      ref.invalidate(serviceListProvider);
     } catch (e) {
       print("Error abriendo disputa: $e");
       rethrow;

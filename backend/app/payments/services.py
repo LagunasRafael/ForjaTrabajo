@@ -1,5 +1,6 @@
 import stripe
 import logging
+from datetime import datetime
 import uuid
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session, joinedload
@@ -56,6 +57,13 @@ def create_payment(db: Session, payment: schemas.PaymentCreate):
 
     db_contract.status = "in_progress"  # type: ignore
 
+    if db_contract.job:
+        db_contract.job.payment_due_at = None
+        if db_contract.job.request and db_contract.job.request.service:
+            for req in db_contract.job.request.service.requests:
+                if str(req.id) != str(db_contract.job.request_id):
+                    req.status = "rejected"
+
     db.add(db_payment)
     db.commit()
     db.refresh(db_payment)
@@ -111,10 +119,19 @@ def create_payment_intent(db: Session, job_id: str, amount: float):
     ).first()
 
     if existing_payment:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ya existe un pago pendiente o retenido para este trabajo."
-        )
+        if existing_payment.status == models.PaymentStatus.HELD_IN_ESCROW:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Ya existe un pago retenido para este trabajo. No puedes reiniciar el pago."
+            )
+        # PENDING: cancelar el intent anterior en Stripe y reemplazarlo
+        if existing_payment.stripe_payment_intent_id:
+            try:
+                stripe.PaymentIntent.cancel(existing_payment.stripe_payment_intent_id)
+            except stripe.error.StripeError:
+                pass
+        existing_payment.status = models.PaymentStatus.FAILED
+        db.commit()
 
     # 4. Calcular cantidad en centavos
     amount_cents = int(amount * 100)
@@ -219,6 +236,14 @@ def confirm_escrow(db: Session, payment_intent_id: str):
     ).first()
     if contract:
         contract.status = "in_progress"  # type: ignore
+        job = db.query(Job).filter(Job.id == contract.job_id).first()
+        if job:
+            job.payment_due_at = None
+            job.work_started_at = datetime.utcnow()
+            if job.request and job.request.service:
+                for req in job.request.service.requests:
+                    if str(req.id) != str(job.request_id):
+                        req.status = "rejected"
 
     db.commit()
     db.refresh(payment)
@@ -226,7 +251,6 @@ def confirm_escrow(db: Session, payment_intent_id: str):
     # Notificar al trabajador que el pago está retenido
     try:
         from app.services.notifications import service as notif_service
-        from app.services.models import Job
         if contract:
             job = db.query(Job).filter(Job.id == contract.job_id).first()
             if job:
@@ -535,8 +559,18 @@ def refund_payment(db: Session, payment_id: str):
     if contract:
         contract.status = "cancelled" # type: ignore
 
+    # 3. Buscar el Job para notificar
+    job = None
+    if contract:
+        job = db.query(Job).filter(Job.id == contract.job_id).first()
+
     db.commit()
     db.refresh(payment)
+
+    if job:
+        from app.services.notifications.service import notify_payment_refunded
+        notify_payment_refunded(db, job)
+
     return payment
 
 

@@ -1,13 +1,73 @@
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 from app.services import models
-from datetime import datetime
+from datetime import datetime, timedelta
 from sqlalchemy import or_, and_
+from app.services.chats.ws_manager import broadcast_event
 from sqlalchemy.orm import joinedload
 from app.auth import models as auth_models 
 from app.services.notifications import service as notif_service
 from app.payments import models as payment_models
+from app.core.config import PAYMENT_DUE_MINUTES
 import logging
+
+def close_chat(db: Session, conversation_id: str, reason: str):
+    """Cierra un chat con una razón específica."""
+    convo = db.query(models.Conversation).filter(models.Conversation.id == conversation_id).first()
+    if not convo:
+        return None
+    convo.status = models.ConversationStatus.CLOSED.value
+    convo.closed_reason = reason
+    convo.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(convo)
+
+    broadcast_event(conversation_id, {
+        "type": "conversation_closed",
+        "conversation_id": conversation_id,
+        "status": "CLOSED",
+        "closed_reason": reason
+    })
+    return convo
+
+
+def reactivate_chat(db: Session, conversation_id: str):
+    """Reabre un chat cerrado, reseteando su estado."""
+    convo = db.query(models.Conversation).filter(models.Conversation.id == conversation_id).first()
+    if not convo:
+        return None
+    convo.status = models.ConversationStatus.ACTIVE.value
+    convo.closed_reason = None
+    convo.is_deleted_by_client = False
+    convo.is_deleted_by_worker = False
+    convo.reopened_at = datetime.utcnow()
+    convo.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(convo)
+
+    broadcast_event(conversation_id, {
+        "type": "conversation_reactivated",
+        "conversation_id": conversation_id,
+        "status": "ACTIVE",
+        "reopened_at": convo.reopened_at.isoformat() if convo.reopened_at else None
+    })
+    return convo
+
+
+def close_service_chats(db: Session, service_id: str, reason: str, exclude_request_id: str = None):
+    """Cierra todos los chats de un servicio, opcionalmente excluyendo uno."""
+    from app.services.models import ServiceRequest
+    requests = db.query(ServiceRequest).filter(ServiceRequest.service_id == service_id).all()
+    closed = 0
+    for req in requests:
+        if exclude_request_id and str(req.id) == exclude_request_id:
+            continue
+        convo = db.query(models.Conversation).filter(models.Conversation.request_id == req.id).first()
+        if convo and convo.status != models.ConversationStatus.CLOSED.value:
+            close_chat(db, str(convo.id), reason)
+            closed += 1
+    return closed
+
 
 def add_system_message(db: Session, conversation_id: str, sender_id: str, content: str):
     """Agrega un mensaje de sistema a una conversación."""
@@ -30,7 +90,8 @@ def add_system_message(db: Session, conversation_id: str, sender_id: str, conten
 
 
 def get_or_create_conversation(db: Session, request_id: str, user_id: str):
-    """Busca si ya existe un chat para esta postulación, o crea uno nuevo."""
+    """Busca si ya existe un chat para esta postulación, o crea uno nuevo.
+    Si estaba cerrado y se reactiva, lo reabre."""
     request_entry = db.query(models.ServiceRequest).filter(models.ServiceRequest.id == request_id).first()
     if not request_entry:
         raise HTTPException(status_code=404, detail="La postulación no existe")
@@ -41,18 +102,39 @@ def get_or_create_conversation(db: Session, request_id: str, user_id: str):
     if str(user_id) not in [str(service_entry.client_id), str(request_entry.worker_id)]:
         raise HTTPException(status_code=403, detail="No perteneces a esta negociación")
 
-    convo = db.query(models.Conversation).filter(models.Conversation.request_id == request_id).first()
+    is_worker = str(user_id) == str(request_entry.worker_id)
+
+    # Buscar conversación existente para esta combinación (cliente, trabajador, servicio)
+    convo = db.query(models.Conversation).join(
+        models.ServiceRequest
+    ).filter(
+        models.Conversation.client_id == str(service_entry.client_id),
+        models.Conversation.worker_id == str(request_entry.worker_id),
+        models.ServiceRequest.service_id == str(service_entry.id)
+    ).first()
     
-    if not convo:
-        convo = models.Conversation(
-            request_id=str(request_id),
-            client_id=str(service_entry.client_id), # type: ignore
-            worker_id=str(request_entry.worker_id), # type: ignore
-            status=models.ConversationStatus.OPEN.value
+    if convo:
+        # Si el chat estaba cerrado, reactivarlo
+        if convo.status == models.ConversationStatus.CLOSED.value:
+            reactivate_chat(db, str(convo.id))
+        return convo
+    
+    # Solo el cliente puede iniciar un chat nuevo
+    if is_worker:
+        raise HTTPException(
+            status_code=403,
+            detail="Solo el cliente puede iniciar la conversación"
         )
-        db.add(convo)
-        db.commit()
-        db.refresh(convo)
+    
+    convo = models.Conversation(
+        request_id=str(request_id),
+        client_id=str(service_entry.client_id), # type: ignore
+        worker_id=str(request_entry.worker_id), # type: ignore
+        status=models.ConversationStatus.OPEN.value
+    )
+    db.add(convo)
+    db.commit()
+    db.refresh(convo)
 
     return convo
 
@@ -61,6 +143,10 @@ def save_message(db: Session, conversation_id: str, sender_id: str, content: str
     convo = db.query(models.Conversation).filter(models.Conversation.id == conversation_id).first()
     if not convo:
         raise ValueError("Chat inexistente")
+
+    # Bloquear mensajes si el chat está cerrado (excepto system)
+    if convo.status == models.ConversationStatus.CLOSED.value and msg_type != "system":
+        raise ValueError("Chat finalizado")
 
     new_msg = models.Message(
         conversation_id=str(conversation_id),
@@ -123,8 +209,10 @@ def get_user_chats(db: Session, user_id: str):
         # ⚠️ FILTRADO DE POSTULACIONES PENDIENTES SIN MENSAJES:
         # No inundar la bandeja del chat si solo son postulados y nadie ha hablado.
         # Solo mostrar el chat si ya comenzó/se aceptó (status != pending) O si el cliente ya inició conversación (hay al menos 1 mensaje).
+        # También mostrar chats cerrados (tienen historial que conservar).
+        is_closed = str(convo.status).lower() == models.ConversationStatus.CLOSED.value
         request_status = str(request.status).lower().strip() if (request and request.status) else "pending"
-        if request_status == "pending" and not last_msg:
+        if request_status == "pending" and not last_msg and not is_closed:
             continue
         
         # ✅ AQUÍ ESTÁ LA MAGIA CORREGIDA: Usamos full_name
@@ -187,22 +275,27 @@ def get_user_chats(db: Session, user_id: str):
 
         # 7. Traducir status para la UI
         status_db = str(convo.status).lower()
-        if status_db in ["open", "negociating", "matched", "waiting_confirmation"]:
+        if status_db in ["active", "open", "negociating", "matched", "waiting_confirmation"]:
             status_ui = "ACTIVO"
         elif status_db == "dispute":
             status_ui = "EN DISPUTA"
         else:
             status_ui = "CERRADO"
 
-        # 8. Obtener el estado de archivado por usuario
+        # 8. Determinar si es historial (servicio finalizado)
+        srv_status = str(request.service.status).lower() if request and request.service else ""
+        is_history = status_ui == "CERRADO" or any(x in srv_status for x in ["cancelled", "completed", "expired"])
+
+        # 9. Obtener el estado de archivado por usuario
         is_archived = convo.is_archived_by_client if str(convo.client_id) == str(user_id) else convo.is_archived_by_worker
 
-        # 9. Armar el JSON exacto que espera Flutter
+        # 10. Armar el JSON exacto que espera Flutter
         chat_list.append({
             "id": str(convo.id),
             "name": other_name,
             "serviceName": str(service_name),
             "status": status_ui,
+            "closedReason": convo.closed_reason,
             "lastMessage": last_message_text,
             "time": last_msg.created_at.strftime("%I:%M %p") if last_msg and hasattr(last_msg.created_at, "strftime") else "", # type: ignore
             "avatarUrl": avatar,
@@ -211,6 +304,7 @@ def get_user_chats(db: Session, user_id: str):
             "isOnline": False,
             "hasUnread": has_unread,
             "isArchived": is_archived or False,
+            "isHistory": is_history,
             "serviceStatus": str(request.service.status) if request and request.service else "OPEN",
             "serviceId": str(request.service.id) if request and request.service else ""
         })
@@ -291,7 +385,8 @@ def handle_offer_action(db: Session, message_id: str, action: str, user_id: str)
             client_id=str(convo.client_id),
             status=models.JobStatus.MATCHED,
             final_price=float(str(offer_msg.content)),
-            started_at=datetime.utcnow()
+            started_at=datetime.utcnow(),
+            payment_due_at=datetime.utcnow() + timedelta(minutes=PAYMENT_DUE_MINUTES)
         )
         db.add(new_job)
 
@@ -423,6 +518,16 @@ def open_dispute(db: Session, conversation_id: str, user_id: str, reason: str):
 
     convo.status = models.ConversationStatus.DISPUTE.value # type: ignore
     convo.updated_at = datetime.utcnow() # type: ignore
+
+    # Pausar el temporizador de auto-liberación del trabajador si está activo
+    if service_request and service_request.job:
+        job = service_request.job
+        job.status = models.JobStatus.DISPUTED
+        if job.auto_release_at is not None:
+            job.auto_release_at = None
+            print(f"🛑 Disputa: auto_release_at cancelado para job {job.id}")
+        if service_request.service:
+            service_request.service.status = models.JobStatus.DISPUTED
 
     system_msg_content = f"{user_name} ha abierto una DISPUTA.\nMotivo: {reason}\nUn administrador revisará este caso pronto."
     new_msg = models.Message(
