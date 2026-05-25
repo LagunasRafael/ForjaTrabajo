@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { getServices } from '../services/service.service'
 import { getCategories } from '../services/category.service';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 
 export const FinancePage = () => {
   const [services, setServices] = useState<any[]>([]);
