@@ -127,7 +127,7 @@ export const DashboardPage = () => {
 
       {/* 2. GRID DE KPIs (Métricas Principales) */}
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard title="Usuarios Totales" value={stats.users} trend="+12%" colorClass="text-blue-400" icon={<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>} />
+        <StatCard title="Usuarios Totales" value={counts.total_users || stats.users} trend="+12%" colorClass="text-blue-400" icon={<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>} />
         <StatCard title="Categorías" value={stats.categories} trend="Estable" colorClass="text-emerald-400" icon={<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>} />
         <StatCard title="Servicios Totales" value={stats.services} trend="+28%" colorClass="text-indigo-400" icon={<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M15 18a3 3 0 1 0-6 0"/><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2-2h12a2 2 0 0 0 2-2V7z"/><circle cx="12" cy="13" r="2"/></svg>} />
         <StatCard title="En Proceso (Match)" value={stats.activeRequests} trend="En curso" colorClass="text-rose-400" icon={<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>} />
@@ -136,7 +136,7 @@ export const DashboardPage = () => {
       {/* 3. PENDIENTES DE MODERACIÓN */}
       <div>
         <h3 className="text-lg font-bold text-white mb-4">Pendientes de Moderación</h3>
-        <div className="grid gap-6 sm:grid-cols-3">
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           <div className="relative overflow-hidden rounded-2xl border border-red-500/20 bg-red-500/5 p-6 backdrop-blur-sm group hover:border-red-500/40 transition-all">
             <div className="flex items-center justify-between">
               <div>
@@ -187,6 +187,24 @@ export const DashboardPage = () => {
             </div>
             <a href="/reports" className="mt-4 flex items-center text-sm font-medium text-orange-400 hover:text-orange-300 transition-colors">
               Ver reportes
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="ml-1"><path d="m9 18 6-6-6-6"/></svg>
+            </a>
+          </div>
+
+          <div className="relative overflow-hidden rounded-2xl border border-rose-500/20 bg-rose-500/5 p-6 backdrop-blur-sm group hover:border-rose-500/40 transition-all">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-slate-400">Servicios Reportados</p>
+                <h3 className="mt-2 text-3xl font-bold text-rose-400">
+                  {counts.reported_services}
+                </h3>
+              </div>
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-rose-500/10 text-rose-400">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="m9 12 2 2 4-4"/></svg>
+              </div>
+            </div>
+            <a href="/reported-services" className="mt-4 flex items-center text-sm font-medium text-rose-400 hover:text-rose-300 transition-colors">
+              Ver servicios reportados
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="ml-1"><path d="m9 18 6-6-6-6"/></svg>
             </a>
           </div>

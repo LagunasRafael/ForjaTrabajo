@@ -68,6 +68,7 @@ class Service(Base):
     is_active = Column(Boolean, default=True)
     is_deleted_by_client = Column(Boolean, default=False)
     is_deleted_by_worker = Column(Boolean, default=False)
+    is_reported = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     category = relationship("Category", back_populates="services")
     requests = relationship("ServiceRequest", back_populates="service")
