@@ -36,8 +36,28 @@ class WalletScreen extends ConsumerStatefulWidget {
   ConsumerState<WalletScreen> createState() => _WalletScreenState();
 }
 
-class _WalletScreenState extends ConsumerState<WalletScreen> {
+class _WalletScreenState extends ConsumerState<WalletScreen> with WidgetsBindingObserver {
   bool _isSettingUpWallet = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && mounted) {
+      ref.invalidate(walletStatusProvider);
+      ref.invalidate(walletProvider);
+    }
+  }
 
   Future<void> _setupWallet() async {
     final user = ref.read(authProvider).user;
@@ -61,7 +81,7 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
       if (mounted) {
         final uri = Uri.parse(url);
         if (await canLaunchUrl(uri)) {
-          await launchUrl(uri, mode: LaunchMode.externalApplication);
+          await launchUrl(uri, mode: LaunchMode.platformDefault);
         }
       }
     } catch (e) {
