@@ -3,6 +3,7 @@ import { useState,useEffect } from 'react';
 import { Toaster } from 'sonner';
 import { UserMenu } from './UserMenu';
 import { NotificationPanel } from '../components/NotificationPanel';
+import { usePendingCounts } from '../hooks/usePendingCounts';
 
 // 1. Movimos los navItems afuera del componente (Mejor rendimiento)
 const navItems = [
@@ -49,12 +50,13 @@ const navItems = [
 ];
 
 // Componente de navegación reutilizable (Desktop + Mobile)
-const SidebarNav = ({ onNavClick }: { onNavClick?: () => void }) => {
+const SidebarNav = ({ onNavClick, counts }: { onNavClick?: () => void; counts: Record<string, number> }) => {
   const location = useLocation();
   return (
     <nav className="flex-1 space-y-1 px-4 py-6">
       {navItems.map((item) => {
         const isActive = location.pathname === item.path || (item.path !== '/' && location.pathname.startsWith(item.path));
+        const pendingCount = counts[item.path] || 0;
         return (
           <NavLink
             key={item.path}
@@ -69,7 +71,12 @@ const SidebarNav = ({ onNavClick }: { onNavClick?: () => void }) => {
             <span className={`transition-colors ${isActive ? 'text-indigo-400' : 'text-slate-500 group-hover:text-slate-300'}`}>
               {item.icon}
             </span>
-            {item.name}
+            <span className="flex-1">{item.name}</span>
+            {pendingCount > 0 && (
+              <span className="ml-auto bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full min-w-[1.25rem] text-center">
+                {pendingCount}
+              </span>
+            )}
           </NavLink>
         );
       })}
@@ -93,6 +100,7 @@ const SidebarLogo = () => (
 
 export const AdminLayout = () => {
   const location = useLocation();
+  const { counts } = usePendingCounts();
 
   // 🔒 Auth Guard: si no hay token, redirigir al login
   const token = localStorage.getItem('token');
@@ -166,13 +174,21 @@ export const AdminLayout = () => {
               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
             </button>
           </div>
-          <SidebarNav onNavClick={() => setIsMobileMenuOpen(false)} />
+          <SidebarNav onNavClick={() => setIsMobileMenuOpen(false)} counts={{
+            '/disputes': counts.disputes,
+            '/verifications': counts.verifications,
+            '/reports': counts.reports,
+          }} />
         </aside>
 
         {/* 🖥️ SIDEBAR DESKTOP (igual que antes) */}
         <aside className="hidden w-64 flex-col border-r border-slate-800 bg-slate-900/50 backdrop-blur-xl md:flex">
           <SidebarLogo />
-          <SidebarNav />
+          <SidebarNav counts={{
+            '/disputes': counts.disputes,
+            '/verifications': counts.verifications,
+            '/reports': counts.reports,
+          }} />
         </aside>
 
         {/* MAIN CONTENT AREA */}

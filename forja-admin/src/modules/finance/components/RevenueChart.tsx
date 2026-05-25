@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import type{ AnalyticsPoint } from '../types/finance.types';
+import type { AnalyticsPoint } from '../types/finance.types';
 
 interface RevenueChartProps {
   data: AnalyticsPoint[];
@@ -49,7 +49,7 @@ export const RevenueChart = ({ data, isLoading }: RevenueChartProps) => {
           <YAxis stroke="#94a3b8" fontSize={12} tickFormatter={(val) => `$${val}`} />
           <Tooltip
             contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px' }}
-            formatter={(value: number, name: string) => [formatMXN(value), name === 'gmv' ? 'GMV' : 'Revenue Plataforma']}
+            formatter={(value: number | undefined, name: string | undefined) => [formatMXN(value ?? 0), name === 'gmv' ? 'GMV' : 'Revenue Plataforma']}
           />
           <Legend />
           <Line type="monotone" dataKey="gmv" stroke="#10b981" strokeWidth={2} dot={false} name="GMV" />
