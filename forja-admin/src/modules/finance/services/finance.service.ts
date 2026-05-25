@@ -32,3 +32,13 @@ export const processPendingTransfer = async (paymentId: string): Promise<{ statu
   const { data } = await api.post(`/admin/finance/process-pending-transfer/${paymentId}`);
   return data;
 };
+
+export const refundPayment = async (paymentId: string): Promise<{ status: string; message: string }> => {
+  const { data } = await api.post(`/admin/finance/refund/${paymentId}`);
+  return data;
+};
+
+export const releasePayment = async (paymentId: string): Promise<{ status: string; message: string }> => {
+  const { data } = await api.post(`/admin/finance/release/${paymentId}`);
+  return data;
+};

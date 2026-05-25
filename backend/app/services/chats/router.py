@@ -610,7 +610,7 @@ async def send_admin_message(
     return {"status": "success", "message": "Mensaje de administrador enviado"}
 
 class DisputeResolveRequest(BaseModel):
-    winner_role: str # "client" o "worker"
+    winner_role: str # "client", "worker", o "continue"
 
 @router.post("/admin/chat/{conversation_id}/resolve")
 async def resolve_dispute(
@@ -671,8 +671,65 @@ async def resolve_dispute(
             background_tasks.add_task(send_dispute_resolved_email, client.email, False, "client") # type: ignore
         if worker and worker.email: # type: ignore
             background_tasks.add_task(send_dispute_resolved_email, worker.email, True, "worker") # type: ignore
+            
+    elif resolve_data.winner_role == "continue":
+        resolution_msg = "La disputa ha sido cerrada por un administrador. Ambas partes pueden continuar con el trabajo. El pago permanece en escrow hasta su finalización."
+        
+        if client and client.email: # type: ignore
+            background_tasks.add_task(send_dispute_resolved_email, client.email, False, "client") # type: ignore
+        if worker and worker.email: # type: ignore
+            background_tasks.add_task(send_dispute_resolved_email, worker.email, False, "worker") # type: ignore
+            
+        convo.status = service_models.ConversationStatus.ACTIVE.value # type: ignore
+        convo.updated_at = datetime.datetime.utcnow() # type: ignore
+        
+        import uuid
+        new_msg = service_models.Message(
+            id=str(uuid.uuid4()),
+            conversation_id=conversation_id,
+            sender_id=str(current_user.id),
+            content=resolution_msg,
+            message_type=service_models.MessageType.SYSTEM.value,
+            status="pending",
+            created_at=datetime.datetime.utcnow()
+        )
+        db.add(new_msg)
+        db.commit()
+        
+        from app.admin.ws_manager import recalculate_and_broadcast
+        recalculate_and_broadcast(db)
+        
+        message_to_send = {
+            "id": new_msg.id,
+            "conversation_id": conversation_id,
+            "sender_id": new_msg.sender_id,
+            "content": new_msg.content,
+            "message_type": new_msg.message_type,
+            "created_at": new_msg.created_at.isoformat(),
+            "status": "pending"
+        }
+        
+        await manager.broadcast(conversation_id, message_to_send)
+        
+        try:
+            for user in [client, worker]:
+                if user and user.fcm_token:
+                    send_push_notification(
+                        fcm_token=str(user.fcm_token),
+                        title="Disputa Cerrada",
+                        body=resolution_msg,
+                        data={
+                            "type": "dispute_continued",
+                            "conversation_id": conversation_id,
+                            "sender_name": "Soporte Forja"
+                        }
+                    )
+        except Exception as e:
+            print(f"Error enviando Push de Continuación: {e}")
+            
+        return {"status": "success", "message": "Disputa cerrada, trabajo continúa"}
     else:
-        raise HTTPException(status_code=400, detail="El ganador debe ser 'client' o 'worker'")
+        raise HTTPException(status_code=400, detail="El ganador debe ser 'client', 'worker' o 'continue'")
         
     # 2. Reflejar el fin de la labor en el servicio principal
     if request_entry and request_entry.service:

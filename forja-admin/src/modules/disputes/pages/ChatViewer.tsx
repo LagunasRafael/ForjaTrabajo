@@ -92,14 +92,14 @@ export const ChatViewer = () => {
     }
   };
 
-  const handleResolve = async (winner: 'client' | 'worker') => {
+  const handleResolve = async (winner: 'client' | 'worker' | 'continue') => {
     if (!id) return;
     try {
       setIsResolving(true);
       await resolveDisputeApi(id, winner);
       toast.success('Disputa resuelta exitosamente');
       setShowResolveModal(false);
-      await loadMessages(id); // Recargar
+      await loadMessages(id);
     } catch (error) {
       toast.error('Error al resolver la disputa');
     } finally {
@@ -290,6 +290,15 @@ export const ChatViewer = () => {
                 >
                   <div className="font-semibold text-white group-hover:text-emerald-400">A favor del Trabajador (Pago)</div>
                   <div className="text-xs text-slate-400 mt-1">El dinero congelado será liberado al trabajador como pago por sus servicios.</div>
+                </button>
+
+                <button 
+                  onClick={() => handleResolve('continue')}
+                  disabled={isResolving}
+                  className="w-full text-left p-4 rounded-xl border border-slate-700 bg-slate-800 hover:border-amber-500 hover:bg-slate-800/80 transition-colors group"
+                >
+                  <div className="font-semibold text-white group-hover:text-amber-400">Continuar Trabajo (Sin cambios)</div>
+                  <div className="text-xs text-slate-400 mt-1">Cerrar la disputa y permitir que ambas partes continúen. El pago permanece en escrow.</div>
                 </button>
               </div>
             </div>

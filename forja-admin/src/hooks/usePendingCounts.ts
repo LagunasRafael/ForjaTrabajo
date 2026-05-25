@@ -1,5 +1,4 @@
-import { useWebSocketPendingCounts, PendingCounts } from './useWebSocketPendingCounts';
-
+import { useWebSocketPendingCounts } from './useWebSocketPendingCounts';
 export function usePendingCounts() {
   const { counts, isConnected } = useWebSocketPendingCounts();
 

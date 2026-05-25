@@ -227,7 +227,7 @@ class ServiceCard extends ConsumerWidget {
               // --- MENÚ DE 3 PUNTOS ---
               Positioned(
                 right: 8,
-                bottom: 8,
+                top: 8,
                 child: _ServiceMenu(serviceId: service.id, serviceOwnerId: service.clientId),
               ),
             ],
