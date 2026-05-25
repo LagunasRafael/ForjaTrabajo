@@ -10,12 +10,8 @@ class ApiClient {
   late Dio dio;
   final FlutterSecureStorage storage;
 
-  // 🌐 DIRECCIÓN IP DE TU PC PARA PROBAR EN CELULAR FÍSICO (Ej. Android/iOS)
-  // Reemplaza si cambia tu IP local
-
   static final String _baseUrl = 'https://forja-api-rw0r.onrender.com';
   static String get baseUrl => _baseUrl;
-  //static const String _baseUrl = "http://10.0.2.2:8000";
 
 
   factory ApiClient() => _instance;

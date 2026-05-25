@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja_trabajo/core/network/api_client.dart';
+import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart';
 
 class WalletStatus {
   final bool hasStripeAccount;
@@ -18,6 +19,12 @@ class WalletStatus {
 }
 
 final walletStatusProvider = FutureProvider<WalletStatus>((ref) async {
+  final authState = ref.watch(authProvider);
+
+  if (authState.user == null) {
+    return const WalletStatus();
+  }
+
   try {
     final response = await ApiClient().dio.get('/workers/stripe-status');
     final data = response.data;
