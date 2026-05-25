@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { Check, X, User, AlertTriangle } from 'lucide-react';
+import { Check, X, User } from 'lucide-react';
 import { useAutoRefresh } from '../../../hooks/useAutoRefresh';
 import api from '../../../api/client';
 

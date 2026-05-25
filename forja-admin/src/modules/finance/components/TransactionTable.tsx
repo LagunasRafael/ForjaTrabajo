@@ -107,7 +107,6 @@ export const TransactionTable = ({ payments, isLoading, onRefresh, onSelectPayme
   };
 
   const handleDownloadInvoice = (paymentId: string) => {
-    const token = localStorage.getItem('token');
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
     window.open(`${apiUrl}/payments/invoice/${paymentId}/pdf`, '_blank');
   };
