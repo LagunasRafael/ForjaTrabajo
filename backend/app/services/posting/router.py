@@ -165,4 +165,40 @@ def toggle_service_visibility(
     db.refresh(db_service)
     return db_service
 
+@router.get("/admin/reported-services")
+def get_reported_services(
+    db: Session = Depends(get_db),
+    current_user: auth_models.User = Depends(check_role([Role.ADMIN]))
+):
+    from sqlalchemy import func
+    from app.services.models import Report, ReportStatus, Category
+    
+    services = db.query(models.Service).filter(
+        models.Service.is_reported == True,
+        models.Service.is_active == True
+    ).all()
+    
+    result = []
+    for svc in services:
+        report_count = db.query(Report).filter(
+            Report.reported_service_id == svc.id,
+            Report.status == ReportStatus.PENDING
+        ).count()
+        
+        owner = db.query(auth_models.User).filter(auth_models.User.id == svc.client_id).first()
+        category = db.query(Category).filter(Category.id == svc.category_id).first()
+        
+        result.append({
+            "id": svc.id,
+            "title": svc.title,
+            "description": svc.description[:100] if svc.description else "",
+            "owner_name": owner.full_name if owner else "Usuario",
+            "category_name": category.name if category else "Sin categoría",
+            "is_active": svc.is_active,
+            "created_at": svc.created_at.isoformat() if svc.created_at else None,
+            "report_count": report_count,
+        })
+    
+    return result
+
     

@@ -94,6 +94,17 @@ def create_report(
         db.commit()
         db.refresh(report)
 
+        if data.reported_service_id:
+            service = db.query(service_models.Service).filter(
+                service_models.Service.id == data.reported_service_id
+            ).first()
+            if service:
+                service.is_reported = True
+                db.commit()
+
+        from app.admin.ws_manager import recalculate_and_broadcast
+        recalculate_and_broadcast(db)
+
         return {"status": "success", "message": "Reporte enviado. Un administrador lo revisara."}
     except HTTPException:
         raise
@@ -195,7 +206,22 @@ def resolve_report(
     report.admin_note = data.admin_note
     report.resolved_at = service_models.datetime.utcnow()
 
+    if report.reported_service_id:
+        pending = db.query(service_models.Report).filter(
+            service_models.Report.reported_service_id == report.reported_service_id,
+            service_models.Report.status == service_models.ReportStatus.PENDING
+        ).count()
+        if pending == 0:
+            service = db.query(service_models.Service).filter(
+                service_models.Service.id == report.reported_service_id
+            ).first()
+            if service:
+                service.is_reported = False
+
     db.commit()
     db.refresh(report)
+
+    from app.admin.ws_manager import recalculate_and_broadcast
+    recalculate_and_broadcast(db)
 
     return {"status": "success", "message": "Reporte resuelto", "report": _enrich_report(report, db)}

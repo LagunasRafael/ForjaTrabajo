@@ -547,10 +547,14 @@ def refund_payment(db: Session, payment_id: str):
                 logger.info("Refund: Refund creado exitosamente")
     except stripe.error.StripeError as e:
         logger.error("Refund: Error Stripe: %s", e)
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Error al procesar reembolso en Stripe: {str(e)}"
-        )
+        error_msg = str(e).lower()
+        if "does not have a successful charge to refund" in error_msg or "no such payment_intent" in error_msg:
+            logger.info("Refund: Stripe indica que no hay cargo exitoso, actualizando solo BD")
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=f"Error al procesar reembolso en Stripe: {str(e)}"
+            )
 
     # 2. Actualizar BD
     payment.status = models.PaymentStatus.REFUNDED # type: ignore

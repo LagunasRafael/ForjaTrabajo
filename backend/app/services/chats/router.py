@@ -415,6 +415,9 @@ async def open_dispute_endpoint(
         reason=dispute_data.reason
     )
     
+    from app.admin.ws_manager import recalculate_and_broadcast
+    recalculate_and_broadcast(db)
+    
     # Send email notification
     convo = db.query(service_models.Conversation).filter(service_models.Conversation.id == conversation_id).first()
     if convo:
@@ -711,6 +714,9 @@ async def resolve_dispute(
             print(f"[RESOLVE] capture_payment OK", flush=True)
         else:
             db.commit()
+    
+    from app.admin.ws_manager import recalculate_and_broadcast
+    recalculate_and_broadcast(db)
     
     # Broadcast websocket
     message_to_send = {

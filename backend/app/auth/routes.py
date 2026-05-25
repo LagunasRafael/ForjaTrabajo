@@ -58,6 +58,9 @@ def register(request: Request, user: schemas.UserCreate, background_tasks: Backg
     # 5. Enviar el correo usando Resend en segundo plano
     background_tasks.add_task(send_verification_email, new_user.email, verification_code) # type: ignore
     
+    from app.admin.ws_manager import recalculate_and_broadcast
+    recalculate_and_broadcast(db)
+    
     return new_user
 
 @router.post("/verify-code")
@@ -587,10 +590,13 @@ async def upload_identity_verification(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    return create_verification(
+    result = create_verification(
         db, str(current_user.id),
         ine_front, ine_back, selfie
     )
+    from app.admin.ws_manager import recalculate_and_broadcast
+    recalculate_and_broadcast(db)
+    return result
 
 @router.get("/verification-status", response_model=dict)
 def read_verification_status(
@@ -612,13 +618,19 @@ def approve_verification(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(check_role([Role.ADMIN]))
 ):
-    return approve_verification_admin(db, verification_id, str(current_user.id))
+    result = approve_verification_admin(db, verification_id, str(current_user.id))
+    from app.admin.ws_manager import recalculate_and_broadcast
+    recalculate_and_broadcast(db)
+    return result
 
 @router.post("/admin/verifications/{verification_id}/reject", response_model=dict)
 def reject_verification(
     verification_id: str,
-    payload: schemas.RejectVerificationRequest,
+    payload: schemas.VerificationRejectPayload,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(check_role([Role.ADMIN]))
 ):
-    return reject_verification_admin(db, verification_id, str(current_user.id), payload.reason)
+    result = reject_verification_admin(db, verification_id, str(current_user.id), payload.reason)
+    from app.admin.ws_manager import recalculate_and_broadcast
+    recalculate_and_broadcast(db)
+    return result

@@ -49,6 +49,7 @@ def _migrate():
         ("bio en users", "ALTER TABLE users ADD COLUMN IF NOT EXISTS bio VARCHAR(400) DEFAULT NULL"),
         ("platform_fee en payments", "ALTER TABLE payments ADD COLUMN IF NOT EXISTS platform_fee FLOAT DEFAULT 0.0"),
         ("platform_fee_cents en payments", "ALTER TABLE payments ADD COLUMN IF NOT EXISTS platform_fee_cents INTEGER DEFAULT 0"),
+        ("is_reported en services", "ALTER TABLE services ADD COLUMN IF NOT EXISTS is_reported BOOLEAN DEFAULT FALSE"),
     ]
     try:
         with engine.connect() as conn:

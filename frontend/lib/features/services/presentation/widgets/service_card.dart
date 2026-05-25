@@ -5,6 +5,7 @@ import 'package:forja_trabajo/features/services/domain/entities/service_entity.d
 import 'package:forja_trabajo/features/services/presentation/providers/category_provider.dart';
 import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart';
 import 'package:forja_trabajo/features/services/presentation/screens/shared/service_detail_screen.dart';
+import 'package:forja_trabajo/core/network/api_client.dart';
 
 class ServiceCard extends ConsumerWidget {
   final ServiceEntity service;
@@ -222,10 +223,114 @@ class ServiceCard extends ConsumerWidget {
                             fontWeight: FontWeight.bold)),
                   ),
                 ),
+
+              // --- MENÚ DE 3 PUNTOS ---
+              Positioned(
+                right: 8,
+                bottom: 8,
+                child: _ServiceMenu(serviceId: service.id, serviceOwnerId: service.clientId),
+              ),
             ],
           ),
         ),
       ),
+    );
+  }
+}
+
+class _ServiceMenu extends StatelessWidget {
+  final String serviceId;
+  final String? serviceOwnerId;
+
+  const _ServiceMenu({required this.serviceId, this.serviceOwnerId});
+
+  Future<void> _handleReport(BuildContext context) async {
+    final reasonController = TextEditingController();
+    String selectedReason = 'inappropriate_content';
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Row(children: [Icon(Icons.flag, color: Colors.orange), SizedBox(width: 8), Text('Reportar publicación')]),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('¿Por qué quieres reportar esta publicación?'),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: selectedReason,
+                  decoration: const InputDecoration(labelText: 'Motivo', border: OutlineInputBorder()),
+                  items: const [
+                    DropdownMenuItem(value: 'spam', child: Text('Spam')),
+                    DropdownMenuItem(value: 'inappropriate_content', child: Text('Contenido inapropiado')),
+                    DropdownMenuItem(value: 'scam', child: Text('Estafa')),
+                    DropdownMenuItem(value: 'harassment', child: Text('Acoso')),
+                    DropdownMenuItem(value: 'fake_profile', child: Text('Perfil falso')),
+                    DropdownMenuItem(value: 'other', child: Text('Otro')),
+                  ],
+                  onChanged: (v) { if (v != null) setDialogState(() => selectedReason = v); },
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: reasonController,
+                  maxLines: 3,
+                  decoration: const InputDecoration(hintText: 'Describe lo sucedido (opcional)...', border: OutlineInputBorder()),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Enviar reporte', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (result == true && context.mounted) {
+      try {
+        await ApiClient().reportUser(
+          reportedUserId: serviceOwnerId ?? '',
+          reportedServiceId: serviceId,
+          reason: selectedReason,
+          description: reasonController.text.isNotEmpty ? reasonController.text : null,
+        );
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Reporte enviado. Un administrador lo revisará.'), backgroundColor: Colors.green),
+        );
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: ${e.toString()}'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PopupMenuButton<String>(
+      icon: const Icon(Icons.more_vert, size: 20),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      onSelected: (val) {
+        if (val == 'report') _handleReport(context);
+      },
+      itemBuilder: (context) => [
+        const PopupMenuItem(
+          value: 'report',
+          child: Row(children: [
+            Icon(Icons.flag_outlined, size: 20, color: Colors.orange),
+            SizedBox(width: 10),
+            Text('Reportar publicación'),
+          ]),
+        ),
+      ],
     );
   }
 }

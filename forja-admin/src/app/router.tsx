@@ -15,6 +15,7 @@ import { DisputesPage } from '../modules/disputes/pages/DisputesPage';
 import { ChatViewer } from '../modules/disputes/pages/ChatViewer';
 import { VerificationsPage } from '../modules/verifications/pages/VerificationsPage';
 import { ReportsPage } from '../modules/reports/pages/ReportsPage';
+import { ReportedServicesPage } from '../modules/services/pages/ReportedServicesPage';
 
 export const router = createBrowserRouter([
   // 1. Ruta Pública (Login)
@@ -47,6 +48,10 @@ export const router = createBrowserRouter([
       {
         path: 'services',
         element: <ServicesPage />,
+      },
+      {
+        path: 'reported-services',
+        element: <ReportedServicesPage />,
       },
       { 
         path: 'services/:id', 
