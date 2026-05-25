@@ -93,8 +93,16 @@ export const SettingsPage = () => {
     if (passwords.new !== passwords.confirm) {
       return toast.error('Las contraseñas no coinciden');
     }
-    toast.success('Contraseña actualizada correctamente');
-    setPasswords({ current: '', new: '', confirm: '' });
+    try {
+      await api.post('/auth/change-password', {
+        current_password: passwords.current,
+        new_password: passwords.new,
+      });
+      toast.success('Contraseña actualizada correctamente');
+      setPasswords({ current: '', new: '', confirm: '' });
+    } catch (error) {
+      toast.error('Error al cambiar la contraseña. Verifica tu contraseña actual.');
+    }
   };
 
   return (
