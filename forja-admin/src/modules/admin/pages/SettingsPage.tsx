@@ -15,7 +15,7 @@ export const SettingsPage = () => {
   useEffect(() => {
     const fetchConfig = async () => {
       try {
-        const response = await api.get('/config');
+        const response = await api.get('/settings');
         setConfig({
           siteName: response.data.site_name,
           supportEmail: response.data.support_email,
@@ -42,7 +42,7 @@ export const SettingsPage = () => {
     setIsLoading(true);
 
     try {
-      await api.put('/config', {
+      await api.put('/settings', {
         site_name: config.siteName,
         support_email: config.supportEmail,
         maintenance_mode: config.maintenanceMode,
@@ -64,7 +64,7 @@ export const SettingsPage = () => {
     setConfig({ ...config, maintenanceMode: newValue });
 
     try {
-      await api.put('/config', { maintenance_mode: newValue });
+      await api.put('/settings', { maintenance_mode: newValue });
       localStorage.setItem('maintenance_mode', JSON.stringify(newValue));
       window.dispatchEvent(new Event('maintenance_changed'));
 
@@ -93,8 +93,16 @@ export const SettingsPage = () => {
     if (passwords.new !== passwords.confirm) {
       return toast.error('Las contraseñas no coinciden');
     }
-    toast.success('Contraseña actualizada correctamente');
-    setPasswords({ current: '', new: '', confirm: '' });
+    try {
+      await api.post('/auth/change-password', {
+        current_password: passwords.current,
+        new_password: passwords.new,
+      });
+      toast.success('Contraseña actualizada correctamente');
+      setPasswords({ current: '', new: '', confirm: '' });
+    } catch (error) {
+      toast.error('Error al cambiar la contraseña. Verifica tu contraseña actual.');
+    }
   };
 
   return (
