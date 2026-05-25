@@ -22,6 +22,7 @@ import 'package:forja_trabajo/features/chat/presentation/providers/chat_list_pro
 import 'package:forja_trabajo/features/chat/presentation/providers/chat_provider.dart';
 import 'package:forja_trabajo/features/chat/presentation/providers/unread_count_provider.dart';
 import 'package:forja_trabajo/features/notifications/presentation/providers/notification_provider.dart';
+import 'package:forja_trabajo/features/payments/presentation/providers/wallet_status_provider.dart';
 
 // 1. INSTANCIAS GLOBALES
 final apiClientProvider = Provider((ref) => ApiClient());
@@ -85,6 +86,7 @@ class AuthNotifier extends Notifier<AuthState> {
       // 🚀 FORZAR RECARGA DE CHATS: Al iniciar sesión limpiamos la caché vieja
       // para que el chatListProvider vuelva a hacer la petición con la nueva cuenta.
       ref.invalidate(chatListProvider);
+      ref.invalidate(walletStatusProvider);
       
       await fetchProfile();
       
@@ -122,6 +124,7 @@ class AuthNotifier extends Notifier<AuthState> {
       ref.invalidate(chatProvider);
       ref.invalidate(unreadCountProvider);
       ref.invalidate(notificationListProvider);
+      ref.invalidate(walletStatusProvider);
 
       final prefs = await SharedPreferences.getInstance();
       final dataSource = ref.read(authDataSourceProvider);

@@ -19,8 +19,27 @@ class WorkerMainLayout extends ConsumerStatefulWidget {
   ConsumerState<WorkerMainLayout> createState() => _WorkerMainLayoutState();
 }
 
-class _WorkerMainLayoutState extends ConsumerState<WorkerMainLayout> {
+class _WorkerMainLayoutState extends ConsumerState<WorkerMainLayout> with WidgetsBindingObserver {
   bool _walletBannerDismissed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && mounted) {
+      ref.invalidate(walletStatusProvider);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
