@@ -626,7 +626,7 @@ def approve_verification(
 @router.post("/admin/verifications/{verification_id}/reject", response_model=dict)
 def reject_verification(
     verification_id: str,
-    payload: schemas.VerificationRejectPayload,
+    payload: schemas.RejectVerificationRequest,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(check_role([Role.ADMIN]))
 ):
