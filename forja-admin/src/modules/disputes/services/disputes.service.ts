@@ -15,6 +15,6 @@ export const sendAdminMessageApi = async (id: string, content: string): Promise<
   await api.post(`/services/admin/chat/${id}/message`, { content });
 };
 
-export const resolveDisputeApi = async (id: string, winnerRole: 'client' | 'worker'): Promise<void> => {
+export const resolveDisputeApi = async (id: string, winnerRole: 'client' | 'worker' | 'continue'): Promise<void> => {
   await api.post(`/services/admin/chat/${id}/resolve`, { winner_role: winnerRole });
 };

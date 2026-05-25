@@ -60,10 +60,10 @@ def create_report(
             ).first()
             if not service:
                 raise HTTPException(status_code=404, detail="Servicio no encontrado")
-            if str(service.owner_id) == str(current_user.id):
+            if str(service.client_id) == str(current_user.id):
                 raise HTTPException(status_code=400, detail="No puedes reportar tu propio servicio")
             if not data.reported_user_id:
-                data.reported_user_id = str(service.owner_id)
+                data.reported_user_id = str(service.client_id)
 
         if data.reported_user_id and str(data.reported_user_id) == str(current_user.id):
             raise HTTPException(status_code=400, detail="No puedes reportarte a ti mismo")

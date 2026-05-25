@@ -1,5 +1,5 @@
 import type{ EscrowItem } from '../types/finance.types';
-import { processPendingTransfer } from '../services/finance.service';
+import { processPendingTransfer, refundPayment, releasePayment } from '../services/finance.service';
 import { toast } from 'sonner';
 
 interface EscrowMonitorProps {
@@ -22,6 +22,26 @@ export const EscrowMonitor = ({ items, isLoading, onRefresh }: EscrowMonitorProp
       onRefresh();
     } catch (error) {
       toast.error('Error al procesar la transferencia');
+    }
+  };
+
+  const handleRefund = async (paymentId: string) => {
+    try {
+      await refundPayment(paymentId);
+      toast.success('Reembolso procesado correctamente');
+      onRefresh();
+    } catch (error) {
+      toast.error('Error al procesar el reembolso');
+    }
+  };
+
+  const handleRelease = async (paymentId: string) => {
+    try {
+      await releasePayment(paymentId);
+      toast.success('Pago liberado correctamente');
+      onRefresh();
+    } catch (error) {
+      toast.error('Error al liberar el pago');
     }
   };
 
@@ -73,6 +93,20 @@ export const EscrowMonitor = ({ items, isLoading, onRefresh }: EscrowMonitorProp
                   <span className="inline-flex px-2 py-1 text-xs font-bold rounded-full border bg-blue-500/10 text-blue-400 border-blue-500/20">
                     En Escrow
                   </span>
+                </div>
+                <div className="flex items-center gap-2 ml-4">
+                  <button
+                    onClick={() => handleRefund(item.payment_id)}
+                    className="px-3 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-lg text-xs font-bold transition-all"
+                  >
+                    Reembolsar
+                  </button>
+                  <button
+                    onClick={() => handleRelease(item.payment_id)}
+                    className="px-3 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 rounded-lg text-xs font-bold transition-all"
+                  >
+                    Liberar
+                  </button>
                 </div>
               </div>
             ))}

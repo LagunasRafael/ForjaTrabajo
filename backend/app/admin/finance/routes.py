@@ -304,3 +304,41 @@ def process_pending_transfer(
     db.commit()
 
     return {"status": "success", "message": "Transferencia procesada"}
+
+
+@router.post("/refund/{payment_id}")
+def admin_refund_payment(
+    payment_id: str,
+    db: Session = Depends(get_db),
+    current_user: auth_models.User = Depends(get_current_user)
+):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="No tienes permiso")
+
+    import app.payments.services as payment_service
+    return payment_service.refund_payment(db, payment_id)
+
+
+@router.post("/release/{payment_id}")
+def admin_release_payment(
+    payment_id: str,
+    db: Session = Depends(get_db),
+    current_user: auth_models.User = Depends(get_current_user)
+):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="No tienes permiso")
+
+    import app.payments.services as payment_service
+    payment = db.query(payment_models.Payment).filter(
+        payment_models.Payment.id == payment_id
+    ).first()
+    
+    if not payment:
+        raise HTTPException(status_code=404, detail="Pago no encontrado")
+    
+    contract = payment.contract
+    if not contract or not contract.job:
+        raise HTTPException(status_code=400, detail="Contrato o job no encontrado")
+    
+    job = contract.job
+    return payment_service.capture_payment(db, job.id)
