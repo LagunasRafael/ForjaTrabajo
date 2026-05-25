@@ -1,0 +1,46 @@
+from sqlalchemy.orm import Session
+from typing import Optional
+from app.auth import models, schemas
+from app.auth.security import hash_password, verify_password 
+from app.core.roles import Role
+
+def get_user_by_email(db: Session, email: str) -> Optional[models.User]:
+    return db.query(models.User).filter(models.User.email == email).first()
+
+def get_user_by_phone(db: Session, phone: str):
+    if not phone:
+        return None
+    return db.query(models.User).filter(models.User.phone == phone).first()
+
+def get_user_by_id(db: Session, user_id: str) -> Optional[models.User]:
+    return db.query(models.User).filter(models.User.id == user_id).first()
+
+def create_user(db: Session, user_data: dict, verification_code: Optional[str] = None):
+    db_user = models.User(
+        email=user_data["email"],
+        hashed_password=hash_password(user_data["password"]),
+        full_name=user_data.get("full_name"),
+        role=user_data.get("role", Role.CLIENT),
+        phone=user_data.get("phone"),
+        is_email_verified=False,
+        verification_code=verification_code
+    )
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+    return db_user
+
+def authenticate_user(db: Session, identifier: str, password: str):
+    if "@" in identifier:
+        user = get_user_by_email(db, identifier)
+    else:
+        phone = "".join(filter(str.isdigit, identifier))
+        user = get_user_by_phone(db, phone)
+        
+    if not user:
+        return None
+    if not verify_password(password, str(user.hashed_password)):
+        return None
+    return user
+
+##

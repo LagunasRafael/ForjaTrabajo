@@ -1,0 +1,54 @@
+version: "3.8"
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: forja_db
+    restart: always
+    environment:
+      POSTGRES_USER: forja_user
+      POSTGRES_PASSWORD: forja_password
+      POSTGRES_DB: forjadb
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  api:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: forja_api
+    restart: always
+    depends_on:
+      - db
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./backend/.env
+    environment:
+      - DATABASE_URL=postgresql://forja_user:forja_password@db:5432/forjadb
+      - ENABLE_SCHEDULER=false
+      - PAYMENT_DUE_MINUTES=1440
+      - AUTO_RELEASE_MINUTES=4320
+    volumes:
+      - ./backend:/app
+      - /app/venv
+
+  cron:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: forja_cron
+    restart: always
+    depends_on:
+      - db
+    env_file:
+      - ./backend/.env
+    environment:
+      - DATABASE_URL=postgresql://forja_user:forja_password@db:5432/forjadb
+      - CRON_INTERVAL_MINUTES=5
+    command: python run_cron.py
+
+volumes:
+  postgres_data:
