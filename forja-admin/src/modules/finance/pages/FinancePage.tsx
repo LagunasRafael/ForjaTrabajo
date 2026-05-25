@@ -49,7 +49,7 @@ export const FinancePage = () => {
   const handleSaveCommission = async () => {
     setIsSavingCommission(true);
     try {
-      await api.put('/config', { commission_rate: commissionRate });
+      await api.put('/admin/finance/config', { commission_rate: commissionRate });
       toast.success('Comisión actualizada correctamente');
       fetchData();
     } catch (error) {
