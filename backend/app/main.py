@@ -38,33 +38,6 @@ except Exception as e:
 Base.metadata.create_all(bind=engine)
 print("Tablas creadas/verificadas con create_all.", flush=True)
 
-def _migrate():
-    migs = [
-        ("is_banned en users", "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_banned BOOLEAN DEFAULT FALSE"),
-        ("work_started_at en jobs", "ALTER TABLE jobs ADD COLUMN IF NOT EXISTS work_started_at TIMESTAMP"),
-        ("is_deleted_by_client en services", "ALTER TABLE services ADD COLUMN IF NOT EXISTS is_deleted_by_client BOOLEAN DEFAULT FALSE"),
-        ("is_deleted_by_worker en services", "ALTER TABLE services ADD COLUMN IF NOT EXISTS is_deleted_by_worker BOOLEAN DEFAULT FALSE"),
-        ("closed_reason en conversations", "ALTER TABLE conversations ADD COLUMN IF NOT EXISTS closed_reason VARCHAR(50)"),
-        ("reopened_at en conversations", "ALTER TABLE conversations ADD COLUMN IF NOT EXISTS reopened_at TIMESTAMP"),
-        ("bio en users", "ALTER TABLE users ADD COLUMN IF NOT EXISTS bio VARCHAR(400) DEFAULT NULL"),
-        ("platform_fee en payments", "ALTER TABLE payments ADD COLUMN IF NOT EXISTS platform_fee FLOAT DEFAULT 0.0"),
-        ("platform_fee_cents en payments", "ALTER TABLE payments ADD COLUMN IF NOT EXISTS platform_fee_cents INTEGER DEFAULT 0"),
-        ("is_reported en services", "ALTER TABLE services ADD COLUMN IF NOT EXISTS is_reported BOOLEAN DEFAULT FALSE"),
-    ]
-    try:
-        with engine.connect() as conn:
-            for name, sql in migs:
-                try:
-                    conn.execute(text(sql))
-                    conn.commit()
-                    print(f"Migracion ok: {name}", flush=True)
-                except Exception as e:
-                    conn.rollback()
-                    print(f"Migracion fallo ({name}): {e}", flush=True)
-    except Exception as e:
-        print(f"Error conectando para migracion: {e}", flush=True)
-_migrate()
-
 app = FastAPI(
     title="Forja Trabajo API",
     version="1.0.0"
