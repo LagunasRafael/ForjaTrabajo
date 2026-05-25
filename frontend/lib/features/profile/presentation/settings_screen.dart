@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:forja_trabajo/core/network/notification_service.dart';
 import 'package:forja_trabajo/features/services/presentation/screens/client/edit_profile_screen.dart';
 import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart';
 import 'package:forja_trabajo/features/auth/presentation/screens/login_screen.dart';
@@ -17,6 +18,7 @@ class SettingsScreen extends ConsumerStatefulWidget {
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _notificationsEnabled = true;
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -32,11 +34,28 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Future<void> _saveNotificationPreference(bool value) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('notifications_enabled', value);
-    setState(() {
-      _notificationsEnabled = value;
-    });
+    setState(() => _isLoading = true);
+    try {
+      if (value) {
+        final token = await NotificationService().enableNotifications();
+        if (token != null && token.isNotEmpty) {
+          final dataSource = ref.read(authDataSourceProvider);
+          await dataSource.updateFcmToken(token);
+        }
+      } else {
+        await NotificationService().disableNotifications();
+      }
+      setState(() => _notificationsEnabled = value);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al cambiar notificaciones: $e')),
+        );
+      }
+      setState(() => _notificationsEnabled = !value);
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   Future<void> _launchURL(String urlString) async {
@@ -103,7 +122,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             icon: Icons.notifications_none,
             title: "Notificaciones Push",
             value: _notificationsEnabled,
-            onChanged: _saveNotificationPreference,
+            onChanged: _isLoading ? null : _saveNotificationPreference,
           ),
 
           const SizedBox(height: 24),
@@ -226,7 +245,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       {required IconData icon,
       required String title,
       required bool value,
-      required ValueChanged<bool> onChanged}) {
+      required ValueChanged<bool>? onChanged}) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
@@ -291,7 +310,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 if (context.mounted) {
                   Navigator.pushReplacement(
                     context,
-                    MaterialPageRoute(builder: (context) => const LoginScreen()),
+                    MaterialPageRoute(
+                        builder: (context) => const LoginScreen()),
                   );
                 }
               },

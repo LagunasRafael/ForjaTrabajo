@@ -4,6 +4,8 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:forja_trabajo/core/network/api_client.dart';
 import 'package:forja_trabajo/features/chat/presentation/screens/shared_chat_screen.dart';
 import 'package:forja_trabajo/features/services/presentation/screens/client/offers_received_screen.dart';
 import 'package:forja_trabajo/features/notifications/presentation/screens/notifications_screen.dart';
@@ -31,7 +33,8 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     await localNotifications.initialize(const InitializationSettings(
       android: AndroidInitializationSettings('@mipmap/ic_launcher'),
     ));
-    final title = message.notification?.title ?? message.data['title'] ?? 'ForjaTrabajo';
+    final title =
+        message.notification?.title ?? message.data['title'] ?? 'ForjaTrabajo';
     final body = message.notification?.body ?? message.data['body'] ?? '';
     if (title != 'ForjaTrabajo' || body.isNotEmpty) {
       await localNotifications.show(
@@ -42,7 +45,8 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
           android: AndroidNotificationDetails(
             'forja_high_priority',
             'Alertas de Forja',
-            channelDescription: 'Notificaciones importantes de mensajes y trabajos',
+            channelDescription:
+                'Notificaciones importantes de mensajes y trabajos',
             importance: Importance.max,
             priority: Priority.high,
             icon: '@mipmap/ic_launcher',
@@ -57,9 +61,10 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
 class NotificationService {
   FirebaseMessaging get _messaging => FirebaseMessaging.instance;
-  
+
   // 🔌 Local Notifications Plugin
-  final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
+  final FlutterLocalNotificationsPlugin _localNotifications =
+      FlutterLocalNotificationsPlugin();
 
   String? _currentUserRole;
 
@@ -74,12 +79,14 @@ class NotificationService {
   );
 
   // 📢 Stream para avisar a las pantallas que algo cambió
-  static final StreamController<RemoteMessage> _onNotificationController = StreamController<RemoteMessage>.broadcast();
-  static Stream<RemoteMessage> get onNotification => _onNotificationController.stream;
+  static final StreamController<RemoteMessage> _onNotificationController =
+      StreamController<RemoteMessage>.broadcast();
+  static Stream<RemoteMessage> get onNotification =>
+      _onNotificationController.stream;
 
   Future<void> initNotifications({String? userRole}) async {
     _currentUserRole = userRole;
-    
+
     // 1. Solicitar permisos (FCM)
     final settings = await _messaging.requestPermission(
       alert: true,
@@ -96,7 +103,7 @@ class NotificationService {
         requestBadgePermission: true,
         requestSoundPermission: true,
       );
-      
+
       await _localNotifications.initialize(
         const InitializationSettings(android: androidInit, iOS: iosInit),
         onDidReceiveNotificationResponse: (response) {
@@ -106,9 +113,10 @@ class NotificationService {
 
       // Crear el canal en Android
       await _localNotifications
-          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+          .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>()
           ?.createNotificationChannel(_channel);
-      
+
       debugPrint('✅ Local Notifications inicializadas correctamente.');
     } catch (e) {
       debugPrint('❌ Error inicializando Local Notifications: $e');
@@ -118,13 +126,13 @@ class NotificationService {
     // 3. Foreground: mostrar notificación del sistema + banner visual + REFRESCAR PROVIDERS
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       if (!_shouldHandleMessage(message)) return;
-      
+
       debugPrint('🚀 [FCM] ¡NOTIFICACIÓN RECIBIDA EN FOREGROUND!');
       debugPrint('🚀 Tipo: ${message.data['type']} | ID: ${message.messageId}');
-      
+
       _showLocalNotification(message);
       _onNotificationController.add(message);
-      
+
       try {
         _showForegroundBanner(message);
       } catch (e) {
@@ -135,7 +143,7 @@ class NotificationService {
     // 4. Background tap: app abierta desde segundo plano
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
       if (!_shouldHandleMessage(message)) return;
-      
+
       debugPrint('📲 [FCM] APP ABIERTA DESDE NOTIFICACIÓN');
       _onNotificationController.add(message);
       try {
@@ -147,6 +155,28 @@ class NotificationService {
 
     // 5. Registrar handler de background
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  }
+
+  Future<String?> enableNotifications() async {
+    await initNotifications(userRole: _currentUserRole);
+    final token = await getToken();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('notifications_enabled', true);
+    return token;
+  }
+
+  Future<void> disableNotifications() async {
+    try {
+      await ApiClient().dio.put(
+        '/auth/fcm-token',
+        data: {'fcm_token': ''},
+      );
+      debugPrint('🔕 Token FCM limpiado del servidor');
+    } catch (e) {
+      debugPrint('Error al limpiar FCM token: $e');
+    }
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('notifications_enabled', false);
   }
 
   /// Verifica si la notificación debe manejarse según el rol del usuario.
@@ -164,22 +194,25 @@ class NotificationService {
 
     try {
       final id = DateTime.now().millisecondsSinceEpoch ~/ 100;
-      _localNotifications.show(
-        id,
-        title ?? 'ForjaTrabajo',
-        body ?? '',
-        NotificationDetails(
-          android: AndroidNotificationDetails(
-            _channel.id,
-            _channel.name,
-            channelDescription: _channel.description,
-            importance: Importance.max,
-            priority: Priority.high,
-            icon: '@mipmap/ic_launcher',
-          ),
-        ),
-      ).then((_) => debugPrint('✅ Notificación local mostrada con ID: $id'))
-       .catchError((e) => debugPrint('⚠️ Error mostrando local notification: $e'));
+      _localNotifications
+          .show(
+            id,
+            title ?? 'ForjaTrabajo',
+            body ?? '',
+            NotificationDetails(
+              android: AndroidNotificationDetails(
+                _channel.id,
+                _channel.name,
+                channelDescription: _channel.description,
+                importance: Importance.max,
+                priority: Priority.high,
+                icon: '@mipmap/ic_launcher',
+              ),
+            ),
+          )
+          .then((_) => debugPrint('✅ Notificación local mostrada con ID: $id'))
+          .catchError(
+              (e) => debugPrint('⚠️ Error mostrando local notification: $e'));
     } catch (e) {
       debugPrint('⚠️ Error en _showLocalNotification: $e');
     }
@@ -200,7 +233,9 @@ class NotificationService {
       final context = navigatorKey.currentContext;
       if (context == null || !context.mounted) return;
 
-      final title = message.notification?.title ?? message.data['title'] ?? 'ForjaTrabajo';
+      final title = message.notification?.title ??
+          message.data['title'] ??
+          'ForjaTrabajo';
       final body = message.notification?.body ?? message.data['body'] ?? '';
       final type = message.data['type'] ?? '';
 
@@ -233,7 +268,10 @@ class NotificationService {
                     color: const Color(0xFF1E1B4B),
                     borderRadius: BorderRadius.circular(12),
                     boxShadow: const [
-                      BoxShadow(color: Colors.black26, blurRadius: 10, offset: Offset(0, 4)),
+                      BoxShadow(
+                          color: Colors.black26,
+                          blurRadius: 10,
+                          offset: Offset(0, 4)),
                     ],
                   ),
                   child: Row(
@@ -304,122 +342,146 @@ class NotificationService {
       final navigator = navigatorKey.currentState;
       final context = navigatorKey.currentContext;
       if (navigator == null || context == null) {
-        debugPrint('⚠️ [NotificationService] Navigator o Context no disponibles.');
+        debugPrint(
+            '⚠️ [NotificationService] Navigator o Context no disponibles.');
         return;
       }
 
-    // Intentamos obtener el container de Riverpod de forma segura
-    ProviderContainer? container;
-    try {
-      container = ProviderScope.containerOf(context);
-    } catch (e) {
-      debugPrint('⚠️ [NotificationService] No se pudo obtener el ProviderContainer: $e');
-    }
+      // Intentamos obtener el container de Riverpod de forma segura
+      ProviderContainer? container;
+      try {
+        container = ProviderScope.containerOf(context);
+      } catch (e) {
+        debugPrint(
+            '⚠️ [NotificationService] No se pudo obtener el ProviderContainer: $e');
+      }
 
-    if (type == 'new_message' || type == 'new_offer' || type == 'admin_message' || type == 'dispute_opened') {
-      final conversationId = data['conversation_id'];
-      if (conversationId != null) {
-        // 🔄 Refrescar la lista de chats globalmente
-        if (container != null) {
-          container.read(chatListProvider.notifier).loadRealChats();
-        }
-        
-        navigator.push(
-          MaterialPageRoute(
-            builder: (_) => SharedChatScreen(
-              conversationId: conversationId,
-              otherUserName: data['sender_name'] ?? 'Chat Soporte',
+      if (type == 'new_message' ||
+          type == 'new_offer' ||
+          type == 'admin_message' ||
+          type == 'dispute_opened') {
+        final conversationId = data['conversation_id'];
+        if (conversationId != null) {
+          // 🔄 Refrescar la lista de chats globalmente
+          if (container != null) {
+            container.read(chatListProvider.notifier).loadRealChats();
+          }
+
+          navigator.push(
+            MaterialPageRoute(
+              builder: (_) => SharedChatScreen(
+                conversationId: conversationId,
+                otherUserName: data['sender_name'] ?? 'Chat Soporte',
+              ),
             ),
-          ),
-        );
-      }
-    } else if (type == 'new_application') {
-      final serviceId = data['service_id'];
-      if (serviceId != null) {
-        navigator.push(MaterialPageRoute(builder: (_) => OffersReceivedScreen(serviceId: serviceId)));
-      } else {
-        container?.read(clientNavProvider.notifier).state = 3;
-        container?.read(myRequestsTabProvider.notifier).state = 0;
-        navigator.push(MaterialPageRoute(builder: (_) => const MyRequestsScreen(initialIndex: 0)));
-      }
-    } else if (type == 'job_accepted' || type == 'in_progress') {
-      // ✅ Trabajador: Mis Empleos -> En Proceso (1)
-      container?.read(workerNavProvider.notifier).state = 1;
-      container?.read(workerJobsTabProvider.notifier).state = 1;
-      navigator.push(MaterialPageRoute(builder: (_) => const MyJobsScreen(initialIndex: 1)));
-    } else if (type == 'job_completed') {
-      // ✅ Trabajador: Mis Trabajos -> Historial (2)
-      container?.read(workerNavProvider.notifier).state = 1;
-      container?.read(workerJobsTabProvider.notifier).state = 2;
-      navigator.push(MaterialPageRoute(builder: (_) => const MyJobsScreen(initialIndex: 2)));
-    } else if (type == 'job_waiting_confirmation') {
-      // ✅ Cliente: Mis Trabajos -> En Proceso (1)
-      container?.read(clientNavProvider.notifier).state = 3;
-      container?.read(myRequestsTabProvider.notifier).state = 1;
-      navigator.push(MaterialPageRoute(builder: (_) => const MyRequestsScreen(initialIndex: 1)));
-    } else if (type == 'job_cancelled' || type == 'payment_expired') {
-      final targetRole = data['target_role'];
-      if (targetRole == 'client') {
-        container?.read(clientNavProvider.notifier).state = 3;
-        container?.read(myRequestsTabProvider.notifier).state = 0;
-        navigator.push(MaterialPageRoute(builder: (_) => const MyRequestsScreen(initialIndex: 0)));
-      } else {
-        container?.read(workerNavProvider.notifier).state = 1;
-        container?.read(workerJobsTabProvider.notifier).state = 2;
-        navigator.push(MaterialPageRoute(builder: (_) => const MyJobsScreen(initialIndex: 2)));
-      }
-    } else if (type == 'payment_deadline') {
-      // ✅ Cliente: ir a En Proceso para pagar
-      container?.read(clientNavProvider.notifier).state = 3;
-      container?.read(myRequestsTabProvider.notifier).state = 1;
-      navigator.push(MaterialPageRoute(builder: (_) => const MyRequestsScreen(initialIndex: 1)));
-    } else if (type == 'confirmation_deadline') {
-      // ✅ Trabajador: ir a En Proceso
-      container?.read(workerNavProvider.notifier).state = 1;
-      container?.read(workerJobsTabProvider.notifier).state = 1;
-      navigator.push(MaterialPageRoute(builder: (_) => const MyJobsScreen(initialIndex: 1)));
-    } else if (type == 'payment_held' || type == 'payment_released') {
-      // ✅ Trabajador: le avisamos que ya pagaron
-      final targetRole = data['target_role'];
-      if (targetRole == 'worker') {
+          );
+        }
+      } else if (type == 'new_application') {
+        final serviceId = data['service_id'];
+        if (serviceId != null) {
+          navigator.push(MaterialPageRoute(
+              builder: (_) => OffersReceivedScreen(serviceId: serviceId)));
+        } else {
+          container?.read(clientNavProvider.notifier).state = 3;
+          container?.read(myRequestsTabProvider.notifier).state = 0;
+          navigator.push(MaterialPageRoute(
+              builder: (_) => const MyRequestsScreen(initialIndex: 0)));
+        }
+      } else if (type == 'job_accepted' || type == 'in_progress') {
+        // ✅ Trabajador: Mis Empleos -> En Proceso (1)
         container?.read(workerNavProvider.notifier).state = 1;
         container?.read(workerJobsTabProvider.notifier).state = 1;
-        navigator.push(MaterialPageRoute(builder: (_) => const MyJobsScreen(initialIndex: 1)));
-      } else {
+        navigator.push(MaterialPageRoute(
+            builder: (_) => const MyJobsScreen(initialIndex: 1)));
+      } else if (type == 'job_completed') {
+        // ✅ Trabajador: Mis Trabajos -> Historial (2)
+        container?.read(workerNavProvider.notifier).state = 1;
+        container?.read(workerJobsTabProvider.notifier).state = 2;
+        navigator.push(MaterialPageRoute(
+            builder: (_) => const MyJobsScreen(initialIndex: 2)));
+      } else if (type == 'job_waiting_confirmation') {
+        // ✅ Cliente: Mis Trabajos -> En Proceso (1)
         container?.read(clientNavProvider.notifier).state = 3;
         container?.read(myRequestsTabProvider.notifier).state = 1;
-        navigator.push(MaterialPageRoute(builder: (_) => const MyRequestsScreen(initialIndex: 1)));
-      }
-    } else if (type == 'auto_released') {
-      final targetRole = data['target_role'];
-      if (targetRole == 'worker') {
-        container?.read(workerNavProvider.notifier).state = 1;
-        container?.read(workerJobsTabProvider.notifier).state = 2;
-        navigator.push(MaterialPageRoute(builder: (_) => const MyJobsScreen(initialIndex: 2)));
-      } else {
+        navigator.push(MaterialPageRoute(
+            builder: (_) => const MyRequestsScreen(initialIndex: 1)));
+      } else if (type == 'job_cancelled' || type == 'payment_expired') {
+        final targetRole = data['target_role'];
+        if (targetRole == 'client') {
+          container?.read(clientNavProvider.notifier).state = 3;
+          container?.read(myRequestsTabProvider.notifier).state = 0;
+          navigator.push(MaterialPageRoute(
+              builder: (_) => const MyRequestsScreen(initialIndex: 0)));
+        } else {
+          container?.read(workerNavProvider.notifier).state = 1;
+          container?.read(workerJobsTabProvider.notifier).state = 2;
+          navigator.push(MaterialPageRoute(
+              builder: (_) => const MyJobsScreen(initialIndex: 2)));
+        }
+      } else if (type == 'payment_deadline') {
+        // ✅ Cliente: ir a En Proceso para pagar
         container?.read(clientNavProvider.notifier).state = 3;
-        container?.read(myRequestsTabProvider.notifier).state = 2;
-        navigator.push(MaterialPageRoute(builder: (_) => const MyRequestsScreen(initialIndex: 2)));
-      }
-    } else if (type == 'payment_refunded') {
-      final targetRole = data['target_role'];
-      if (targetRole == 'client') {
-        container?.read(clientNavProvider.notifier).state = 3;
-        container?.read(myRequestsTabProvider.notifier).state = 2;
-        navigator.push(MaterialPageRoute(builder: (_) => const MyRequestsScreen(initialIndex: 2)));
-      } else {
+        container?.read(myRequestsTabProvider.notifier).state = 1;
+        navigator.push(MaterialPageRoute(
+            builder: (_) => const MyRequestsScreen(initialIndex: 1)));
+      } else if (type == 'confirmation_deadline') {
+        // ✅ Trabajador: ir a En Proceso
         container?.read(workerNavProvider.notifier).state = 1;
-        container?.read(workerJobsTabProvider.notifier).state = 2;
-        navigator.push(MaterialPageRoute(builder: (_) => const MyJobsScreen(initialIndex: 2)));
+        container?.read(workerJobsTabProvider.notifier).state = 1;
+        navigator.push(MaterialPageRoute(
+            builder: (_) => const MyJobsScreen(initialIndex: 1)));
+      } else if (type == 'payment_held' || type == 'payment_released') {
+        // ✅ Trabajador: le avisamos que ya pagaron
+        final targetRole = data['target_role'];
+        if (targetRole == 'worker') {
+          container?.read(workerNavProvider.notifier).state = 1;
+          container?.read(workerJobsTabProvider.notifier).state = 1;
+          navigator.push(MaterialPageRoute(
+              builder: (_) => const MyJobsScreen(initialIndex: 1)));
+        } else {
+          container?.read(clientNavProvider.notifier).state = 3;
+          container?.read(myRequestsTabProvider.notifier).state = 1;
+          navigator.push(MaterialPageRoute(
+              builder: (_) => const MyRequestsScreen(initialIndex: 1)));
+        }
+      } else if (type == 'auto_released') {
+        final targetRole = data['target_role'];
+        if (targetRole == 'worker') {
+          container?.read(workerNavProvider.notifier).state = 1;
+          container?.read(workerJobsTabProvider.notifier).state = 2;
+          navigator.push(MaterialPageRoute(
+              builder: (_) => const MyJobsScreen(initialIndex: 2)));
+        } else {
+          container?.read(clientNavProvider.notifier).state = 3;
+          container?.read(myRequestsTabProvider.notifier).state = 2;
+          navigator.push(MaterialPageRoute(
+              builder: (_) => const MyRequestsScreen(initialIndex: 2)));
+        }
+      } else if (type == 'payment_refunded') {
+        final targetRole = data['target_role'];
+        if (targetRole == 'client') {
+          container?.read(clientNavProvider.notifier).state = 3;
+          container?.read(myRequestsTabProvider.notifier).state = 2;
+          navigator.push(MaterialPageRoute(
+              builder: (_) => const MyRequestsScreen(initialIndex: 2)));
+        } else {
+          container?.read(workerNavProvider.notifier).state = 1;
+          container?.read(workerJobsTabProvider.notifier).state = 2;
+          navigator.push(MaterialPageRoute(
+              builder: (_) => const MyJobsScreen(initialIndex: 2)));
+        }
+      } else if (type == 'offer_responded' || type == 'new_offer') {
+        final conversationId = data['conversation_id'];
+        if (conversationId != null) {
+          navigator.push(MaterialPageRoute(
+              builder: (_) => SharedChatScreen(
+                  conversationId: conversationId,
+                  otherUserName: data['sender_name'] ?? 'Chat')));
+        }
+      } else {
+        navigator.push(
+            MaterialPageRoute(builder: (_) => const NotificationsScreen()));
       }
-    } else if (type == 'offer_responded' || type == 'new_offer') {
-      final conversationId = data['conversation_id'];
-      if (conversationId != null) {
-        navigator.push(MaterialPageRoute(builder: (_) => SharedChatScreen(conversationId: conversationId, otherUserName: data['sender_name'] ?? 'Chat')));
-      }
-    } else {
-      navigator.push(MaterialPageRoute(builder: (_) => const NotificationsScreen()));
-    }
     } catch (e) {
       debugPrint('❌ [FCM] Error navegando desde notificación: $e');
     }

@@ -85,9 +85,9 @@ class AuthNotifier extends Notifier<AuthState> {
       // 🚀 FORZAR RECARGA DE CHATS: Al iniciar sesión limpiamos la caché vieja
       // para que el chatListProvider vuelva a hacer la petición con la nueva cuenta.
       ref.invalidate(chatListProvider);
-      
+
       await fetchProfile();
-      
+
       // 🚀 LAZY INITIALIZATION
       Future.delayed(const Duration(seconds: 2), () {
         _syncFcmToken();
@@ -171,7 +171,7 @@ class AuthNotifier extends Notifier<AuthState> {
 
       // Ahora tenemos tokens guardados → podemos cargar el perfil completo
       await fetchProfile();
-      
+
       // 🚀 LAZY INITIALIZATION
       Future.delayed(const Duration(seconds: 3), () {
         _syncFcmToken();
@@ -313,10 +313,20 @@ class AuthNotifier extends Notifier<AuthState> {
 
   Future<void> _syncFcmToken() async {
     try {
+      final prefs = await SharedPreferences.getInstance();
+      final notificationsEnabled =
+          prefs.getBool('notifications_enabled') ?? true;
+      if (!notificationsEnabled) {
+        debugPrint(
+            '🔕 Notificaciones deshabilitadas por el usuario, saltando sync FCM');
+        return;
+      }
+
       final notificationService = NotificationService();
       await notificationService.initNotifications();
       final String? fcmToken = await notificationService.getToken();
-      debugPrint('📢 DEBUG SYNC: Token obtenido = ${fcmToken != null ? 'SI' : 'NO (NULL)'}');
+      debugPrint(
+          '📢 DEBUG SYNC: Token obtenido = ${fcmToken != null ? 'SI' : 'NO (NULL)'}');
       if (fcmToken != null) {
         debugPrint('📢 DEBUG SYNC: Enviando token al servidor...');
         final dataSource = ref.read(authDataSourceProvider);
