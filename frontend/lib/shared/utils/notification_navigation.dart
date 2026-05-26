@@ -128,8 +128,14 @@ void navigateFromNotification({
 
   // --- Wallet navigation (notification_card behavior) ---
   if (navigateToWallet && (type == 'payment_released' || type == 'auto_released' || type == 'payment_held')) {
-    navigator.pushNamedAndRemoveUntil('/worker_home', (route) => false);
-    navigator.push(MaterialPageRoute(builder: (_) => const WalletScreen()));
+    if (targetRole == 'client') {
+      container?.read(clientNavProvider.notifier).state = 3;
+      container?.read(myRequestsTabProvider.notifier).state = type == 'payment_held' ? 1 : 2;
+      navigator.pushNamedAndRemoveUntil('/client_home', (route) => false);
+    } else {
+      navigator.pushNamedAndRemoveUntil('/worker_home', (route) => false);
+      navigator.push(MaterialPageRoute(builder: (_) => const WalletScreen()));
+    }
     return;
   }
 
@@ -141,20 +147,20 @@ void navigateFromNotification({
 
   // --- ClearStack path for job types (notification_card behavior) ---
   if (clearStack) {
-    if (type == 'job_accepted' || type == 'job_waiting_confirmation' || type == 'job_completed' || type == 'job_cancelled' || type == 'payment_deadline' || type == 'confirmation_deadline') {
-      container?.read(workerNavProvider.notifier).state = 1;
-      container?.read(clientNavProvider.notifier).state = 3;
-      if (type == 'job_accepted' || type == 'job_waiting_confirmation' || type == 'confirmation_deadline') {
-        container?.read(myRequestsTabProvider.notifier).state = 1;
-      } else if (type == 'job_completed' || type == 'job_cancelled') {
-        container?.read(myRequestsTabProvider.notifier).state = 2;
+      if (type == 'job_accepted' || type == 'job_waiting_confirmation' || type == 'job_completed' || type == 'job_cancelled' || type == 'payment_deadline' || type == 'confirmation_deadline') {
+        container?.read(workerNavProvider.notifier).state = 1;
+        container?.read(clientNavProvider.notifier).state = 3;
+        if (type == 'job_accepted' || type == 'job_waiting_confirmation' || type == 'confirmation_deadline' || type == 'payment_deadline') {
+          container?.read(myRequestsTabProvider.notifier).state = 1;
+        } else if (type == 'job_completed' || type == 'job_cancelled') {
+          container?.read(myRequestsTabProvider.notifier).state = 2;
+        }
+        if (type == 'job_waiting_confirmation' || type == 'confirmation_deadline' || type == 'payment_deadline') {
+          navigator.pushNamedAndRemoveUntil('/client_home', (route) => false);
+        } else {
+          navigator.pushNamedAndRemoveUntil('/worker_home', (route) => false);
+        }
       }
-      if (type == 'job_waiting_confirmation' || type == 'confirmation_deadline') {
-        navigator.pushNamedAndRemoveUntil('/client_home', (route) => false);
-      } else {
-        navigator.pushNamedAndRemoveUntil('/worker_home', (route) => false);
-      }
-    }
     return;
   }
 

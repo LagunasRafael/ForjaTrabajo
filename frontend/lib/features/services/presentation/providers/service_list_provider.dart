@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja_trabajo/features/services/domain/entities/service_entity.dart';
-import 'package:forja_trabajo/features/services/data/repositories/service_repository_impl.dart';
+import 'package:forja_trabajo/features/services/presentation/providers/service_repository_provider.dart';
 import 'package:forja_trabajo/features/services/domain/usecases/services/create_services_usecase.dart';
 import 'package:forja_trabajo/features/services/domain/usecases/services/cancel_service_usecase.dart';
 import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart';

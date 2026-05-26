@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import '../../../services/data/models/category_model.dart';
+import '../../../services/domain/entities/category_entity.dart';
 
 class User {
   final String id;
@@ -14,7 +14,7 @@ class User {
   final bool isEmailVerified;
   final bool isIdentityVerified;
   final String? bio;
-  final List<CategoryModel>? categories;
+  final List<CategoryEntity>? categories;
   
   // 🛡️ Ayudantes de verificación de rol
   bool get isWorker => role.toLowerCase().contains('worker') || role.toLowerCase().contains('trabajador');
@@ -51,11 +51,19 @@ class User {
     final parsedLongitude = json['longitude'];
     final parsedBio = json['bio'];
     
-    List<CategoryModel>? parsedCategories;
+    List<CategoryEntity>? parsedCategories;
     if (json['categories'] != null) {
       try {
         parsedCategories = (json['categories'] as List<dynamic>)
-            .map((c) => CategoryModel.fromJson(c as Map<String, dynamic>))
+            .map((c) {
+              final m = c as Map<String, dynamic>;
+              return CategoryEntity(
+                id: m['id'] ?? '',
+                name: m['name'] ?? '',
+                description: m['description'] ?? '',
+                isActive: m['is_active'] ?? true,
+              );
+            })
             .toList();
       } catch (e) {
         debugPrint('🚨 [DEBUG PROD] Error parsing categories list: $e');
@@ -107,7 +115,7 @@ class User {
     double? latitude,
     double? longitude,
     String? bio,
-    List<CategoryModel>? categories,
+    List<CategoryEntity>? categories,
   }) {
     return User(
       id: id ?? this.id,

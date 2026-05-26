@@ -1,21 +1,21 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:audioplayers/audioplayers.dart';
 import 'package:url_launcher/url_launcher.dart';
-
+import 'chat_audio_player_widget.dart';
+import 'chat_gallery_viewer_screen.dart';
 
 class ChatBubble extends StatelessWidget {
   final String text;
   final bool isMe;
-  final String? time; 
+  final String? time;
   final String messageType;
   final String status;
   final VoidCallback? onRetry;
   final String? senderAvatarUrl;
 
   const ChatBubble({
-    super.key, 
-    required this.text, 
+    super.key,
+    required this.text,
     required this.isMe,
     this.time,
     this.messageType = 'text',
@@ -44,7 +44,6 @@ class ChatBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    // 📢 ESTILO PARA MENSAJES DE SISTEMA (ADMIN / DISPUTAS)
     if (messageType == 'system') {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 40),
@@ -91,8 +90,6 @@ class ChatBubble extends StatelessWidget {
                 _buildSmallAvatar(theme),
                 const SizedBox(width: 8),
               ],
-              
-              // LA BURBUJA DE TEXTO
               Flexible(
                 child: GestureDetector(
                   onTap: () {
@@ -103,7 +100,6 @@ class ChatBubble extends StatelessWidget {
                   child: Container(
                     padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
                     decoration: BoxDecoration(
-                      // Yo: Morado | El otro: Blanco
                       color: isMe ? const Color(0xFF4F46E5) : theme.colorScheme.surfaceVariant,
                       borderRadius: BorderRadius.only(
                         topLeft: const Radius.circular(16),
@@ -120,7 +116,6 @@ class ChatBubble extends StatelessWidget {
                       ],
                     ),
                     child: Column(
-                      // Hora a la izquierda si soy yo, a la derecha si es el otro
                       crossAxisAlignment: isMe ? CrossAxisAlignment.start : CrossAxisAlignment.end,
                       children: [
                         _buildContent(context),
@@ -130,20 +125,20 @@ class ChatBubble extends StatelessWidget {
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                 Text(
-                                   time!,
-                                   style: TextStyle(
-                                     color: isMe ? Colors.white70 : Colors.grey.shade500,
-                                     fontSize: 10,
-                                     fontWeight: FontWeight.w500,
-                                   ),
-                                 ),
-                                 if (isMe) ...[
-                                   const SizedBox(width: 4),
-                                   _buildStatusIcon(),
-                                 ]
+                                Text(
+                                  time!,
+                                  style: TextStyle(
+                                    color: isMe ? Colors.white70 : Colors.grey.shade500,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                if (isMe) ...[
+                                  const SizedBox(width: 4),
+                                  _buildStatusIcon(),
+                                ]
                               ],
-                            )
+                            ),
                           ),
                       ],
                     ),
@@ -176,18 +171,18 @@ class ChatBubble extends StatelessWidget {
   Widget _buildContent(BuildContext context) {
     final theme = Theme.of(context);
     if (messageType == 'gallery' || messageType == 'image' || messageType == 'video') {
-       final urls = text.split(',');
-       if (urls.length > 1) {
-          return _buildGalleryGrid(urls, context);
-       } else {
-          final singleUrl = urls.first;
-          final ext = singleUrl.split('?').first.toLowerCase();
-          final isVideo = messageType == 'video' || ext.endsWith('.mp4') || ext.endsWith('.mov') || ext.endsWith('.mkv');
-          if (isVideo) return _buildVideoPlaceholder();
-          return _buildImagePlaceholder(overrideUrl: singleUrl, context: context);
-       }
+      final urls = text.split(',');
+      if (urls.length > 1) {
+        return _buildGalleryGrid(urls, context);
+      } else {
+        final singleUrl = urls.first;
+        final ext = singleUrl.split('?').first.toLowerCase();
+        final isVideo = messageType == 'video' || ext.endsWith('.mp4') || ext.endsWith('.mov') || ext.endsWith('.mkv');
+        if (isVideo) return _buildVideoPlaceholder();
+        return _buildImagePlaceholder(overrideUrl: singleUrl, context: context);
+      }
     } else if (messageType == 'audio') {
-      return _buildAudioPlaceholder();
+      return AudioPlayerWidget(url: text, isMe: isMe);
     } else if (messageType == 'location') {
       return _buildLocationPlaceholder(theme);
     } else {
@@ -204,13 +199,13 @@ class ChatBubble extends StatelessWidget {
 
   void _openGallery(BuildContext context, List<String> urls, int initialIndex) {
     Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => _GalleryViewerScreen(urls: urls, initialIndex: initialIndex),
+      builder: (_) => GalleryViewerScreen(urls: urls, initialIndex: initialIndex),
     ));
   }
 
   Widget _buildGalleryGrid(List<String> urls, BuildContext context) {
     final int count = urls.length;
-    
+
     if (count == 1) {
       final url = urls.first;
       final ext = url.split('?').first.toLowerCase();
@@ -218,11 +213,11 @@ class ChatBubble extends StatelessWidget {
       if (isVideo) return _buildVideoPlaceholder();
       return _buildImagePlaceholder(overrideUrl: url, size: 200, context: context);
     }
-    
+
     const double spacing = 4.0;
     const double sizeBig = 244.0;
     const double sizeSmall = 120.0;
-    
+
     if (count == 2) {
       return SizedBox(
         width: sizeBig,
@@ -236,19 +231,17 @@ class ChatBubble extends StatelessWidget {
         ),
       );
     }
-    
+
     if (count == 3) {
       return SizedBox(
         width: sizeBig,
         height: sizeBig,
         child: Row(
           children: [
-            // Left item: tall
             Expanded(
               child: _buildGridThumbnail(urls[0], 0, urls, context, height: sizeBig),
             ),
             const SizedBox(width: spacing),
-            // Right items: 2 stacked
             Expanded(
               child: Column(
                 children: [
@@ -262,8 +255,7 @@ class ChatBubble extends StatelessWidget {
         ),
       );
     }
-    
-    // 4 or more items (2x2 grid)
+
     return SizedBox(
       width: sizeBig,
       height: sizeBig,
@@ -321,15 +313,15 @@ class ChatBubble extends StatelessWidget {
   }
 
   Widget _buildGridThumbnail(
-    String url, 
-    int index, 
-    List<String> urls, 
-    BuildContext context, 
-    {double? height}
-  ) {
+    String url,
+    int index,
+    List<String> urls,
+    BuildContext context, {
+    double? height,
+  }) {
     final ext = url.split('?').first.toLowerCase();
     final isVideo = ext.endsWith('.mp4') || ext.endsWith('.mov') || ext.endsWith('.mkv');
-    
+
     return GestureDetector(
       onTap: () {
         if (status == 'sending') return;
@@ -345,7 +337,7 @@ class ChatBubble extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            isVideo 
+            isVideo
                 ? _buildVideoThumbnail()
                 : _buildImageThumbnail(url),
             if (status == 'sending')
@@ -380,7 +372,7 @@ class ChatBubble extends StatelessWidget {
   Widget _buildImageThumbnail(String url) {
     bool isUrl = url.startsWith('http');
     bool isLocal = url.startsWith('/') || url.startsWith('C:') || url.startsWith('var/') || url.startsWith('file://');
-    
+
     if (isUrl) {
       return Image.network(
         url,
@@ -412,11 +404,11 @@ class ChatBubble extends StatelessWidget {
     final url = overrideUrl ?? text;
     bool isUrl = url.startsWith('http');
     bool isLocal = url.startsWith('/') || url.startsWith('C:') || url.startsWith('var/') || url.startsWith('file://');
-    
+
     Widget imageWidget;
     if (isUrl) {
       imageWidget = Image.network(
-        url, 
+        url,
         fit: BoxFit.cover,
         loadingBuilder: (context, child, loadingProgress) {
           if (loadingProgress == null) return child;
@@ -485,10 +477,6 @@ class ChatBubble extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  Widget _buildAudioPlaceholder() {
-    return _AudioPlayerWidget(url: text, isMe: isMe);
   }
 
   Widget _buildVideoPlaceholder({String? overrideUrl, double size = 200}) {
@@ -570,9 +558,9 @@ class ChatBubble extends StatelessWidget {
             color: theme.colorScheme.surfaceVariant,
             borderRadius: BorderRadius.circular(12),
             image: const DecorationImage(
-              image: AssetImage('assets/images/map_placeholder.png'), 
+              image: AssetImage('assets/images/map_placeholder.png'),
               fit: BoxFit.cover,
-            )
+            ),
           ),
           child: Center(
             child: Icon(Icons.location_on, size: 40, color: Colors.red.shade400),
@@ -581,257 +569,6 @@ class ChatBubble extends StatelessWidget {
         const SizedBox(height: 8),
         Text("Ubicación compartida", style: TextStyle(color: isMe ? Colors.white : Colors.black87, fontSize: 13, fontStyle: FontStyle.italic)),
       ],
-    );
-  }
-}
-
-class _AudioPlayerWidget extends StatefulWidget {
-  final String url;
-  final bool isMe;
-
-  const _AudioPlayerWidget({required this.url, required this.isMe});
-
-  @override
-  State<_AudioPlayerWidget> createState() => _AudioPlayerWidgetState();
-}
-
-class _AudioPlayerWidgetState extends State<_AudioPlayerWidget> {
-  final AudioPlayer _audioPlayer = AudioPlayer();
-  bool _isPlaying = false;
-  Duration _duration = Duration.zero;
-  Duration _position = Duration.zero;
-  bool _isLoading = true; 
-
-  @override
-  void initState() {
-    super.initState();
-    _initAudio();
-  }
-
-  Future<void> _initAudio() async {
-    _audioPlayer.onPlayerStateChanged.listen((state) {
-      if (mounted) {
-        setState(() {
-          _isPlaying = state == PlayerState.playing;
-        });
-      }
-    });
-
-    _audioPlayer.onDurationChanged.listen((newDuration) {
-      if (mounted) {
-        setState(() {
-          _duration = newDuration;
-          _isLoading = false; 
-        });
-      }
-    });
-
-    _audioPlayer.onPositionChanged.listen((newPosition) {
-      if (mounted) {
-        setState(() {
-          _position = newPosition;
-        });
-      }
-    });
-
-    bool isLocal = widget.url.startsWith('/') || 
-                   widget.url.startsWith('C:') || 
-                   widget.url.startsWith('var/') || 
-                   widget.url.startsWith('file://');
-    try {
-      if (isLocal) {
-        await _audioPlayer.setSourceDeviceFile(widget.url.replaceFirst('file://', ''));
-      } else {
-        await _audioPlayer.setSourceUrl(widget.url);
-      }
-      
-      Future.delayed(const Duration(seconds: 2), () {
-        if (mounted && _isLoading) {
-          setState(() => _isLoading = false);
-        }
-      });
-    } catch (e) {
-      print("🚨 Error precargando audio: $e");
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-    }
-  }
-
-  @override
-  void dispose() {
-    _audioPlayer.dispose();
-    super.dispose();
-  }
-
-  String _formatDuration(Duration d) {
-    final minutes = d.inMinutes;
-    final seconds = d.inSeconds % 60;
-    return "$minutes:${seconds.toString().padLeft(2, '0')}";
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 48,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          IconButton(
-            icon: Icon(
-              _isPlaying ? Icons.pause_circle_filled : Icons.play_circle_fill,
-              color: widget.isMe ? Colors.white : const Color(0xFF4F46E5),
-              size: 36,
-            ),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-            onPressed: () async {
-              if (_isPlaying) {
-                await _audioPlayer.pause();
-              } else {
-                bool isLocal = widget.url.startsWith('/') || 
-                               widget.url.startsWith('C:') || 
-                               widget.url.startsWith('var/') || 
-                               widget.url.startsWith('file://');
-                if (isLocal) {
-                  await _audioPlayer.play(DeviceFileSource(widget.url.replaceFirst('file://', '')));
-                } else {
-                  await _audioPlayer.play(UrlSource(widget.url));
-                }
-              }
-            },
-          ),
-          const SizedBox(width: 8),
-          SizedBox(
-            width: 120,
-            child: SliderTheme(
-              data: SliderTheme.of(context).copyWith(
-                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-                overlayShape: const RoundSliderOverlayShape(overlayRadius: 10),
-                trackHeight: 2,
-              ),
-              child: Slider(
-                min: 0,
-                max: _duration.inMilliseconds.toDouble() > 0 
-                    ? _duration.inMilliseconds.toDouble() 
-                    : 1,
-                value: _position.inMilliseconds.toDouble().clamp(
-                  0, 
-                  _duration.inMilliseconds.toDouble() > 0 
-                      ? _duration.inMilliseconds.toDouble() 
-                      : 1
-                ),
-                activeColor: widget.isMe ? Colors.white : const Color(0xFF4F46E5),
-                inactiveColor: widget.isMe ? Colors.white54 : Colors.grey.shade300,
-                onChanged: (value) async {
-                  await _audioPlayer.seek(Duration(milliseconds: value.toInt()));
-                },
-              ),
-            ),
-          ),
-          const SizedBox(width: 4),
-          SizedBox(
-            width: 40,
-            child: Text(
-              _isLoading 
-                  ? "..." 
-                  : (_isPlaying 
-                      ? _formatDuration(_position) 
-                      : _formatDuration(_duration)),
-              style: TextStyle(
-                color: widget.isMe ? Colors.white : Colors.black87, 
-                fontSize: 12,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _GalleryViewerScreen extends StatefulWidget {
-  final List<String> urls;
-  final int initialIndex;
-
-  const _GalleryViewerScreen({required this.urls, required this.initialIndex});
-
-  @override
-  State<_GalleryViewerScreen> createState() => _GalleryViewerScreenState();
-}
-
-class _GalleryViewerScreenState extends State<_GalleryViewerScreen> {
-  late PageController _pageController;
-  late int _currentIndex;
-
-  @override
-  void initState() {
-    super.initState();
-    _currentIndex = widget.initialIndex;
-    _pageController = PageController(initialPage: widget.initialIndex);
-  }
-
-  @override
-  void dispose() {
-    _pageController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        iconTheme: const IconThemeData(color: Colors.white),
-        elevation: 0,
-        title: Text(
-          "${_currentIndex + 1} de ${widget.urls.length}",
-          style: const TextStyle(color: Colors.white, fontSize: 16),
-        ),
-      ),
-      body: PageView.builder(
-        controller: _pageController,
-        itemCount: widget.urls.length,
-        onPageChanged: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
-        itemBuilder: (context, index) {
-          final url = widget.urls[index];
-          final ext = url.split('?').first.toLowerCase();
-          final isVideo = ext.endsWith('.mp4') || ext.endsWith('.mov') || ext.endsWith('.mkv');
-          
-          if (isVideo) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.play_circle_outline, size: 80, color: Colors.white),
-                  const SizedBox(height: 12),
-                  const Text(
-                    'Video - Toca para reproducir', 
-                    style: TextStyle(color: Colors.white70, fontSize: 14),
-                  ),
-                ],
-              ),
-            );
-          } else {
-            final isUrl = url.startsWith('http');
-            return InteractiveViewer(
-              panEnabled: true,
-              minScale: 0.5,
-              maxScale: 4.0,
-              child: Center(
-                child: isUrl
-                    ? Image.network(url, fit: BoxFit.contain)
-                    : Image.file(File(url.replaceFirst('file://', '')), fit: BoxFit.contain),
-              ),
-            );
-          }
-        },
-      ),
     );
   }
 }

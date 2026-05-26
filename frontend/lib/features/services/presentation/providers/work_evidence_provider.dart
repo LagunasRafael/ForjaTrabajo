@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja_trabajo/features/services/domain/entities/work_evidence_entity.dart';
-import 'package:forja_trabajo/features/services/data/repositories/service_repository_impl.dart';
+import 'package:forja_trabajo/features/services/presentation/providers/service_repository_provider.dart';
 
 final workEvidenceListProvider = FutureProvider.family<List<WorkEvidenceEntity>, String>((ref, serviceId) async {
   final repo = ref.watch(serviceRepositoryProvider);

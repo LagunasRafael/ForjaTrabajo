@@ -1,21 +1,13 @@
-export 'auth_state.dart';
-export 'auth_notifier.dart';
-
+import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
-
-// 🛠️ Core e Infraestructura
-import '../../../../core/network/api_client.dart';
-import '../../../../core/network/fcm_service.dart';
-import '../../data/datasources/auth_remote_data_source.dart';
-import '../../domain/repositories/auth_repository.dart';
-import '../../data/repositories/auth_repository_impl.dart';
-import '../../domain/models/user_model.dart';
-
-// 🚀 Providers de Servicios (Para limpieza de caché en Logout)
+import 'package:forja_trabajo/core/network/fcm_service.dart';
+import 'auth_state.dart';
+import 'auth_repository_provider.dart';
 import 'package:forja_trabajo/features/services/presentation/providers/job_management_provider.dart';
 import 'package:forja_trabajo/features/services/presentation/providers/service_list_provider.dart';
 import 'package:forja_trabajo/features/chat/presentation/providers/chat_list_provider.dart';
@@ -24,33 +16,6 @@ import 'package:forja_trabajo/features/chat/presentation/providers/unread_count_
 import 'package:forja_trabajo/features/notifications/presentation/providers/notification_provider.dart';
 import 'package:forja_trabajo/features/payments/presentation/providers/wallet_status_provider.dart';
 
-// 1. INSTANCIAS GLOBALES
-final apiClientProvider = Provider((ref) => ApiClient());
-
-final authRepositoryProvider = Provider<AuthRepository>((ref) {
-  final apiClient = ref.watch(apiClientProvider);
-  final dataSource = AuthRemoteDataSource(apiClient: apiClient);
-  return AuthRepositoryImpl(dataSource: dataSource);
-});
-
-// 2. LA CLASE DE ESTADO
-class AuthState {
-  final String status;
-  final String errorMessage;
-  final User? user;
-
-  AuthState({this.status = 'initial', this.errorMessage = '', this.user});
-
-  AuthState copyWith({String? status, String? errorMessage, User? user}) {
-    return AuthState(
-      status: status ?? this.status,
-      errorMessage: errorMessage ?? this.errorMessage,
-      user: user ?? this.user,
-    );
-  }
-}
-
-// 3. EL CONTROLADOR (NOTIFIER)
 class AuthNotifier extends Notifier<AuthState> {
   @override
   AuthState build() {
@@ -65,7 +30,6 @@ class AuthNotifier extends Notifier<AuthState> {
     if (hasToken) {
       await fetchProfile();
       state = state.copyWith(status: 'authenticated');
-      // 🚀 LAZY INITIALIZATION
       Future.delayed(const Duration(seconds: 2), () {
         _syncFcmToken();
       });
@@ -86,12 +50,9 @@ class AuthNotifier extends Notifier<AuthState> {
       await fetchProfile();
 
       state = state.copyWith(status: 'authenticated');
-      // 🚀 FORZAR RECARGA DE CHATS: Al iniciar sesión limpiamos la caché vieja
-      // para que el chatListProvider vuelva a hacer la petición con la nueva cuenta.
       ref.invalidate(chatListProvider);
       ref.invalidate(walletStatusProvider);
 
-      // 🚀 LAZY INITIALIZATION
       Future.delayed(const Duration(seconds: 2), () {
         _syncFcmToken();
       });
@@ -102,7 +63,6 @@ class AuthNotifier extends Notifier<AuthState> {
     }
   }
 
-  // 🚀 MÉTODO AÑADIDO: Para reenviar el código de verificación
   Future<void> resendEmail(String email) async {
     state = state.copyWith(status: 'loading', errorMessage: '');
     try {
@@ -173,10 +133,8 @@ class AuthNotifier extends Notifier<AuthState> {
       final dataSource = ref.read(authRepositoryProvider);
       await dataSource.verifyEmailCode(email, code);
 
-      // Ahora tenemos tokens guardados → podemos cargar el perfil completo
       await fetchProfile();
 
-      // 🚀 LAZY INITIALIZATION
       Future.delayed(const Duration(seconds: 3), () {
         _syncFcmToken();
       });
@@ -335,6 +293,3 @@ class AuthNotifier extends Notifier<AuthState> {
     }
   }
 }
-
-final authProvider =
-    NotifierProvider<AuthNotifier, AuthState>(() => AuthNotifier());

@@ -13,6 +13,8 @@ import 'package:forja_trabajo/features/chat/presentation/providers/chat_provider
 import 'package:forja_trabajo/features/chat/presentation/widgets/offer_bottom_sheet.dart';
 import 'package:forja_trabajo/features/chat/presentation/widgets/chat_media_preview.dart';
 import 'package:forja_trabajo/features/chat/presentation/widgets/spanish_asset_picker_delegate.dart';
+import 'package:forja_trabajo/features/chat/presentation/widgets/chat_input_action_menu.dart';
+import 'package:forja_trabajo/features/chat/presentation/widgets/chat_input_recorder_bar.dart';
 
 class ChatInputArea extends ConsumerStatefulWidget {
   final String conversationId;
@@ -57,7 +59,7 @@ class _ChatInputAreaState extends ConsumerState<ChatInputArea> {
   }
 
   void _onTyping(String text) {
-    setState(() {}); // Provoca rebuild para cambiar icono Mic/Send
+    setState(() {});
 
     final notifier = ref.read(chatProvider(widget.conversationId).notifier);
     if (text.isNotEmpty) {
@@ -76,7 +78,7 @@ class _ChatInputAreaState extends ConsumerState<ChatInputArea> {
     if (!widget.isEnabled) return;
     final text = _messageController.text.trim();
     if (text.isEmpty && _selectedMedia.isEmpty) return;
-    
+
     final notifier = ref.read(chatProvider(widget.conversationId).notifier);
     notifier.sendTyping(false);
     _typingDebounce?.cancel();
@@ -84,7 +86,7 @@ class _ChatInputAreaState extends ConsumerState<ChatInputArea> {
     if (_selectedMedia.isNotEmpty) {
       final paths = _selectedMedia.map((m) => m.path).toList();
       notifier.sendMediaBatch(paths, text.isNotEmpty ? text : null);
-      
+
       setState(() {
         _selectedMedia.clear();
         _selectedMediaTypes.clear();
@@ -99,119 +101,84 @@ class _ChatInputAreaState extends ConsumerState<ChatInputArea> {
     widget.onMessageSent?.call();
   }
 
-    void _showOfferDialog() {
-      final scaffoldContext = context;
+  void _showOfferDialog() {
+    final scaffoldContext = context;
 
-      showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder: (context) => OfferBottomSheet(
-          onSendOffer: (amount) async {
-            try {
-              await ref
-                  .read(chatProvider(widget.conversationId).notifier)
-                  .sendOffer(amount);
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => OfferBottomSheet(
+        onSendOffer: (amount) async {
+          try {
+            await ref
+                .read(chatProvider(widget.conversationId).notifier)
+                .sendOffer(amount);
 
-              widget.onMessageSent?.call();
+            widget.onMessageSent?.call();
 
-              if (scaffoldContext.mounted) {
-                ScaffoldMessenger.of(scaffoldContext).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      "Contraoferta de \$${amount.toStringAsFixed(0)} enviada",
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(color: Color(0xFF4F46E5)),
-                    ),
-                    backgroundColor: const Color(0xFFF0F0F0).withOpacity(1),
-                    behavior: SnackBarBehavior.floating,
-                    margin: EdgeInsets.only(
-                      bottom: MediaQuery.of(scaffoldContext).size.height - 820,
-                      left: 24,
-                      right: 24,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    duration: const Duration(seconds: 2),
+            if (scaffoldContext.mounted) {
+              ScaffoldMessenger.of(scaffoldContext).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    "Contraoferta de \$${amount.toStringAsFixed(0)} enviada",
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Color(0xFF4F46E5)),
                   ),
-                );
-              }
-            } catch (e) {
-              if (scaffoldContext.mounted) {
-                ScaffoldMessenger.of(scaffoldContext).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      "Error: $e",
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(color: Color(0xFF4F46E5)),
-                    ),
-                    backgroundColor: const Color(0xFFF0F0F0).withOpacity(1),
-                    behavior: SnackBarBehavior.floating,
-                    margin: EdgeInsets.only(
-                      bottom: MediaQuery.of(scaffoldContext).size.height - 220,
-                      left: 24,
-                      right: 24,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    duration: const Duration(seconds: 2),
+                  backgroundColor: const Color(0xFFF0F0F0).withOpacity(1),
+                  behavior: SnackBarBehavior.floating,
+                  margin: EdgeInsets.only(
+                    bottom: MediaQuery.of(scaffoldContext).size.height - 820,
+                    left: 24,
+                    right: 24,
                   ),
-                );
-              }
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  duration: const Duration(seconds: 2),
+                ),
+              );
             }
-          },
-        ),
-      );
-    }
+          } catch (e) {
+            if (scaffoldContext.mounted) {
+              ScaffoldMessenger.of(scaffoldContext).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    "Error: $e",
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Color(0xFF4F46E5)),
+                  ),
+                  backgroundColor: const Color(0xFFF0F0F0).withOpacity(1),
+                  behavior: SnackBarBehavior.floating,
+                  margin: EdgeInsets.only(
+                    bottom: MediaQuery.of(scaffoldContext).size.height - 220,
+                    left: 24,
+                    right: 24,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  duration: const Duration(seconds: 2),
+                ),
+              );
+            }
+          }
+        },
+      ),
+    );
+  }
 
-  void _showActionMenu(BuildContext context) {
+  void _showActionMenu() {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (context) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (widget.isClient && widget.canSendOffer)
-                ListTile(
-                  leading: const Icon(Icons.local_offer, color: Color(0xFF4F46E5)),
-                  title: const Text("Generar Oferta", style: TextStyle(fontWeight: FontWeight.bold)),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _showOfferDialog();
-                  },
-                ),
-              ListTile(
-                leading: const Icon(Icons.photo_library, color: Colors.blue),
-                title: const Text("Galería"),
-                onTap: () {
-                  Navigator.pop(context);
-                  _pickGallery();
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.location_on, color: Colors.green),
-                title: const Text("Compartir Ubicación"),
-                onTap: () {
-                  Navigator.pop(context);
-                  _sendLocation();
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.audiotrack, color: Colors.orange),
-                title: const Text("Enviar Audio"),
-                onTap: () {
-                  Navigator.pop(context);
-                  _pickAudio();
-                },
-              ),
-            ],
-          ),
-        ),
+      builder: (context) => ChatInputActionMenu(
+        isClient: widget.isClient,
+        canSendOffer: widget.canSendOffer,
+        onOffer: _showOfferDialog,
+        onGallery: _pickGallery,
+        onLocation: _sendLocation,
+        onAudio: _pickAudio,
       ),
     );
   }
@@ -232,7 +199,6 @@ class _ChatInputAreaState extends ConsumerState<ChatInputArea> {
 
   Future<void> _pickGallery() async {
     try {
-      // Solicitar permisos explícitamente antes de abrir la galería
       final PermissionState ps = await PhotoManager.requestPermissionExtend();
       if (!ps.isAuth) {
         if (mounted) {
@@ -269,7 +235,7 @@ class _ChatInputAreaState extends ConsumerState<ChatInputArea> {
           final file = await asset.file;
           if (file != null) {
             currentMedia.add(XFile(file.path));
-            
+
             if (asset.type == AssetType.video) {
               currentTypes.add('video');
               currentDurations.add(Duration(seconds: asset.duration));
@@ -306,18 +272,16 @@ class _ChatInputAreaState extends ConsumerState<ChatInputArea> {
     }
   }
 
-
-
   void _sendLocation() {
     final notifier = ref.read(chatProvider(widget.conversationId).notifier);
-    notifier.sendLocation(); 
+    notifier.sendLocation();
   }
 
   Future<void> _startRecording() async {
     if (_isRecording) return;
     try {
       print("🎤 Attempting to start recording...");
-      
+
       if (await _audioRecorder.isRecording()) {
         print("⚠️ Recorder is already active, stopping first...");
         await _audioRecorder.stop();
@@ -348,14 +312,14 @@ class _ChatInputAreaState extends ConsumerState<ChatInputArea> {
     try {
       if (!_isRecording && !_isLockedRecording) return;
       print("🎤 Stopping recording...");
-      
+
       bool active = await _audioRecorder.isRecording();
       if (!active) {
-         print("⚠️ Stop called but recorder was not active");
-         setState(() { _isRecording = false; _isLockedRecording = false; });
-         return;
+        print("⚠️ Stop called but recorder was not active");
+        setState(() { _isRecording = false; _isLockedRecording = false; });
+        return;
       }
-      
+
       final path = await _audioRecorder.stop();
       setState(() {
         _isRecording = false;
@@ -364,8 +328,7 @@ class _ChatInputAreaState extends ConsumerState<ChatInputArea> {
 
       if (path != null) {
         print("✅ Recording stopped, adding to preview list: $path");
-        
-        // 🧪 Obtener duración
+
         Duration? duration;
         try {
           final tempPlayer = AudioPlayer();
@@ -424,146 +387,101 @@ class _ChatInputAreaState extends ConsumerState<ChatInputArea> {
       mainAxisSize: MainAxisSize.min,
       children: [
         if (_selectedMedia.isNotEmpty)
-           ChatMediaPreview(
-              mediaList: _selectedMedia,
-              mediaTypes: _selectedMediaTypes,
-              mediaDurations: _selectedMediaDurations,
-              onRemove: (index) {
-                setState(() {
-                  _selectedMedia.removeAt(index);
-                  _selectedMediaTypes.removeAt(index);
-                  _selectedMediaDurations.removeAt(index);
-                  if (index < _selectedAssets.length) {
-                    _selectedAssets.removeAt(index);
-                  }
-                });
-              },
-           ),
+          ChatMediaPreview(
+            mediaList: _selectedMedia,
+            mediaTypes: _selectedMediaTypes,
+            mediaDurations: _selectedMediaDurations,
+            onRemove: (index) {
+              setState(() {
+                _selectedMedia.removeAt(index);
+                _selectedMediaTypes.removeAt(index);
+                _selectedMediaDurations.removeAt(index);
+                if (index < _selectedAssets.length) {
+                  _selectedAssets.removeAt(index);
+                }
+              });
+            },
+          ),
         Container(
           padding: const EdgeInsets.all(12),
           color: theme.colorScheme.surface,
           child: SafeArea(
-        child: Row(
-          children: [
-            if (_isLockedRecording)
-              Expanded(
-                child: Row(
-                  children: [
-                    TextButton.icon(
-                      icon: const Icon(Icons.delete_outline, color: Colors.red),
-                      label: const Text("Cancelar", style: TextStyle(color: Colors.red)),
-                      onPressed: _cancelRecording,
+            child: Row(
+              children: [
+                if (_isLockedRecording || _isRecording)
+                  Expanded(
+                    child: ChatInputRecorderBar(
+                      isLocked: _isLockedRecording,
+                      onCancel: _cancelRecording,
                     ),
-                    Expanded(
-                      child: Center(
-                         child: TweenAnimationBuilder<double>(
-                           tween: Tween(begin: 1.0, end: 0.0),
-                           duration: Duration(milliseconds: 800),
-                           builder: (context, value, child) => Opacity(
-                             opacity: value,
-                             child: const Text(
-                               "Grabando (Manos Libres)", 
-                               style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)
-                             ),
-                           ),
-                         ),
+                  )
+                else ...[
+                  Padding(
+                    padding: const EdgeInsets.only(right: 4.0),
+                    child: IconButton(
+                      icon: const Icon(Icons.add_circle_outline, color: Colors.grey, size: 28),
+                      onPressed: widget.isEnabled ? _showActionMenu : null,
+                    ),
+                  ),
+                  if (widget.isClient && widget.canSendOffer)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8.0),
+                      child: IconButton(
+                        icon: const Icon(Icons.local_offer_rounded, color: Color(0xFF10B981), size: 28),
+                        onPressed: widget.isEnabled ? _showOfferDialog : null,
+                        tooltip: 'Enviar Propuesta',
                       ),
                     ),
-                  ],
-                ),
-              )
-            else if (_isRecording)
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.mic, color: Colors.red),
-                      const SizedBox(width: 8),
-                      const Icon(Icons.lock_outline, size: 16, color: Colors.grey),
-                      const SizedBox(width: 4),
-                      TweenAnimationBuilder<double>(
-                        tween: Tween(begin: 1.0, end: 0.0),
-                        duration: const Duration(milliseconds: 800),
-                        builder: (context, value, child) {
-                          return Opacity(
-                            opacity: value,
-                            child: const Text("Desliza ⬆ para bloquear", style: TextStyle(color: Colors.red, fontSize: 13)),
-                          );
-                        },
-                        onEnd: () {},
+                  Expanded(
+                    child: TextField(
+                      controller: _messageController,
+                      onChanged: _onTyping,
+                      enabled: widget.isEnabled,
+                      decoration: InputDecoration(
+                        hintText: widget.isEnabled ? "Escribe un mensaje..." : "Chat finalizado",
+                        filled: true,
+                        fillColor: theme.colorScheme.surfaceVariant,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                       ),
-                    ],
+                    ),
                   ),
-                ),
-              )
-            else ...[
-              Padding(
-                padding: const EdgeInsets.only(right: 4.0),
-                child: IconButton(
-                  icon: const Icon(Icons.add_circle_outline, color: Colors.grey, size: 28),
-                  onPressed: widget.isEnabled ? () => _showActionMenu(context) : null,
-                ),
-              ),
-              if (widget.isClient && widget.canSendOffer)
-                Padding(
-                  padding: const EdgeInsets.only(right: 8.0),
-                  child: IconButton(
-                    icon: const Icon(Icons.local_offer_rounded, color: Color(0xFF10B981), size: 28),
-                    onPressed: widget.isEnabled ? _showOfferDialog : null,
-                    tooltip: 'Enviar Propuesta',
+                ],
+                const SizedBox(width: 8),
+                Container(
+                  decoration: BoxDecoration(
+                    color: _isRecording || _isLockedRecording ? Colors.red : const Color(0xFF4F46E5),
+                    shape: BoxShape.circle,
                   ),
-                ),
-              Expanded(
-                child: TextField(
-                  controller: _messageController,
-                  onChanged: _onTyping,
-                  enabled: widget.isEnabled,
-                  decoration: InputDecoration(
-                    hintText: widget.isEnabled ? "Escribe un mensaje..." : "Chat finalizado",
-                    filled: true,
-                    fillColor: theme.colorScheme.surfaceVariant,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  ),
-                ),
-              ),
-            ],
-            const SizedBox(width: 8),
-            Container(
-              decoration: BoxDecoration(
-                color: _isRecording || _isLockedRecording ? Colors.red : const Color(0xFF4F46E5), 
-                shape: BoxShape.circle
-              ),
-              child: GestureDetector(
-                onLongPress: widget.isEnabled && !hasInput && !_isLockedRecording ? _startRecording : null,
-                onLongPressEnd: widget.isEnabled && !hasInput && !_isLockedRecording ? (details) => _stopRecording() : null,
-                onPanUpdate: (!hasInput && _isRecording && !_isLockedRecording) 
-                     ? (details) {
-                          if (details.localPosition.dx < -30) {
+                  child: GestureDetector(
+                    onLongPress: widget.isEnabled && !hasInput && !_isLockedRecording ? _startRecording : null,
+                    onLongPressEnd: widget.isEnabled && !hasInput && !_isLockedRecording ? (details) => _stopRecording() : null,
+                    onPanUpdate: (!hasInput && _isRecording && !_isLockedRecording)
+                        ? (details) {
+                            if (details.localPosition.dx < -30) {
                               _cancelRecording();
-                          } else if (details.localPosition.dy < -50) {
+                            } else if (details.localPosition.dy < -50) {
                               setState(() { _isLockedRecording = true; });
+                            }
                           }
-                       }
-                     : null,
-                onTap: _isLockedRecording 
-                     ? () => _stopRecording() 
-                     : hasInput ? _onSend : null,
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Icon(
-                    (_isLockedRecording || hasInput) ? Icons.send_rounded : Icons.mic, 
-                    color: Colors.white, 
-                    size: 20
+                        : null,
+                    onTap: _isLockedRecording
+                        ? () => _stopRecording()
+                        : hasInput ? _onSend : null,
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Icon(
+                        (_isLockedRecording || hasInput) ? Icons.send_rounded : Icons.mic,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
                   ),
                 ),
-              ),
+              ],
             ),
-          ],
+          ),
         ),
-      ),
-    ),
       ],
     );
   }

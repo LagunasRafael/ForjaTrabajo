@@ -1,4 +1,4 @@
-import '../../../services/data/models/category_model.dart';
+import 'package:forja_trabajo/features/services/domain/entities/category_entity.dart';
 
 class JobSummaryModel {
   final String id;
@@ -51,7 +51,7 @@ class PublicProfileModel {
   final bool isIdentityVerified;
   final List<JobSummaryModel> completedJobs;
   final String? bio;
-  final List<CategoryModel> categories;
+  final List<CategoryEntity> categories;
 
   PublicProfileModel({
     required this.id,
@@ -84,7 +84,15 @@ class PublicProfileModel {
           .toList() ?? [],
       bio: json['bio'],
       categories: (json['categories'] as List<dynamic>?)
-          ?.map((c) => CategoryModel.fromJson(c as Map<String, dynamic>))
+          ?.map((c) {
+            final m = c as Map<String, dynamic>;
+            return CategoryEntity(
+              id: m['id'] ?? '',
+              name: m['name'] ?? '',
+              description: m['description'] ?? '',
+              isActive: m['is_active'] ?? true,
+            );
+          })
           .toList() ?? [],
     );
   }

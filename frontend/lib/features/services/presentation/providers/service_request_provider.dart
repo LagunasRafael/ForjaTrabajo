@@ -7,7 +7,7 @@ import '../../domain/usecases/service_requests/withdraw_postulation_usecase.dart
 
 import '../../domain/usecases/service_requests/accept_postulation_usecase.dart'; 
 
-import '../../data/repositories/service_repository_impl.dart';
+import '../../presentation/providers/service_repository_provider.dart';
 import 'service_offers_provider.dart'; 
 import 'service_list_provider.dart';
 import 'job_management_provider.dart';
