@@ -40,5 +40,3 @@ class OfferCreate(BaseModel):
 class OfferAction(BaseModel):
     action: str # "accept" o "reject"
 
-class DisputeCreate(BaseModel):
-    reason: str

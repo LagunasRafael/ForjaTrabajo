@@ -174,7 +174,7 @@ class AuthNotifier extends Notifier<AuthState> {
 
       // Ahora tenemos tokens guardados → podemos cargar el perfil completo
       await fetchProfile();
-      
+
       // 🚀 LAZY INITIALIZATION
       Future.delayed(const Duration(seconds: 3), () {
         _syncFcmToken();

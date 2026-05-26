@@ -43,7 +43,6 @@ def create_verification(db: Session, user_id: str, ine_front: UploadFile, ine_ba
         face_similarity = compare_faces_rekognition(bucket_name, ine_front_url, selfie_url)
 
     except Exception as e:
-        print(f"Error subiendo archivos: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=f"Error al procesar las imágenes: {str(e)}")
 
     verification = models.IdentityVerification(
@@ -90,7 +89,6 @@ def compare_faces_rekognition(bucket_name: str, source_url: str, target_url: str
         region = os.getenv('AWS_REGION', 'us-east-1').replace('"', '').replace("'", '').strip()
 
         if not access_key or not secret_key:
-            print("⚠️ AWS Rekognition: credenciales no configuradas.")
             return None
 
         client = boto3.client(
@@ -103,8 +101,6 @@ def compare_faces_rekognition(bucket_name: str, source_url: str, target_url: str
         source_key = urlparse(source_url).path.lstrip('/')
         target_key = urlparse(target_url).path.lstrip('/')
         
-        print(f"🔍 Rekognition: comparando {source_key} vs {target_key}")
-
         response = client.compare_faces(
             SourceImage={'S3Object': {'Bucket': bucket_name, 'Name': source_key}},
             TargetImage={'S3Object': {'Bucket': bucket_name, 'Name': target_key}},
@@ -113,14 +109,11 @@ def compare_faces_rekognition(bucket_name: str, source_url: str, target_url: str
 
         if response.get('FaceMatches'):
             similarity = response['FaceMatches'][0]['Similarity']
-            print(f"✅ Rekognition match: {similarity}%")
             return similarity
         else:
-            print(f"❌ Rekognition: no se detectó rostro en alguna imagen o similitud < 80%")
             return 0.0
 
     except Exception as e:
-        print(f"🔥 Rekognition error: {e}")
         return None
 
 

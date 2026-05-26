@@ -1,14 +1,14 @@
 import boto3
 import uuid
-from botocore.exceptions import NoCredentialsError
+import logging
 from fastapi import UploadFile
 from typing import Optional
 import os
 import io
-from dotenv import load_dotenv, find_dotenv
 from PIL import Image
 from urllib.parse import urlparse
-import traceback
+
+logger = logging.getLogger(__name__)
 
 # Eliminamos la carga global de credenciales porque falla en producción
 # si las variables tienen comillas o se leen muy pronto.
@@ -56,7 +56,7 @@ async def upload_file_to_s3(file: UploadFile) -> str:
         unique_filename = f"users/profile_{uuid.uuid4()}{file_extension}"
         
         # 5. Subimos a AWS S3
-        print(f"🚀 Intentando subir a S3: {unique_filename}...")
+        logger.info("Subiendo a S3: %s", unique_filename)
         s3_client.upload_fileobj(
             compressed_image_io, 
             bucket_name,
@@ -65,19 +65,14 @@ async def upload_file_to_s3(file: UploadFile) -> str:
                 "ContentType": "image/jpeg",
             }
         )
-        print("✅ ¡Subida exitosa a AWS S3!")
+        logger.info("Subida exitosa a AWS S3")
         
         # 6. Devolvemos la URL
         return f"https://{bucket_name}.s3.amazonaws.com/{unique_filename}"
 
     except Exception as e:
-        # 🚨 AQUÍ ATRAPAMOS AL FANTASMA
-        print("\n" + "="*50)
-        print("💥 ERROR CRÍTICO AL SUBIR LA IMAGEN A S3 💥")
-        print("="*50)
-        print(traceback.format_exc()) # Esto imprime la línea exacta del fallo
-        print("="*50 + "\n")
-        raise e # Volvemos a lanzar el error para que FastAPI responda 500
+        logger.error("Error critico al subir la imagen a S3", exc_info=True)
+        raise e
 
 def delete_old_file_from_s3(s3_url: str):
     try:
@@ -90,10 +85,10 @@ def delete_old_file_from_s3(s3_url: str):
         
         # 2. Le disparamos a S3 para que lo borre
         s3_client.delete_object(Bucket=bucket_name, Key=s3_key)
-        print(f"✅ Basura espacial eliminada de S3: {s3_key}")
+        logger.info("Archivo eliminado de S3: %s", s3_key)
         
     except Exception as e:
-        print(f"❌ Error al intentar borrar de S3: {e}")
+        logger.warning("Error al borrar de S3: %s", e)
 
 async def upload_service_evidence_to_s3(file: UploadFile, service_id: str) -> Optional[str]:
     """
@@ -117,10 +112,10 @@ async def upload_service_evidence_to_s3(file: UploadFile, service_id: str) -> Op
 
         # 2. Generamos la RUTA DINÁMICA
         file_extension = ".jpg"
-        # 👇 LA MAGIA ESTÁ AQUÍ: Estructura de carpetas limpia
+        # Ruta con estructura de carpetas limpia
         s3_key = f"servicios/{service_id}/evidencias/foto_{uuid.uuid4()}{file_extension}"
 
-        print(f"🚀 Subiendo evidencia a S3 en: {s3_key}...")
+        logger.info("Subiendo evidencia a S3: %s", s3_key)
         
         # 3. Subimos a AWS
         s3_client.upload_fileobj(
@@ -131,15 +126,14 @@ async def upload_service_evidence_to_s3(file: UploadFile, service_id: str) -> Op
                 "ContentType": "image/jpeg",
             }
         )
-        print("¡Imagenes cargadas exitosamente!")
+        logger.info("Imagenes cargadas exitosamente")
 
         # 4. Devolvemos la URL pública
         return f"https://{bucket_name}.s3.amazonaws.com/{s3_key}"
 
     except Exception as e:
-        print("💥 ERROR AL SUBIR EVIDENCIA A S3 💥")
-        print(traceback.format_exc())
-        return None # Retornamos None si falla, para que no truene todo el endpoint
+        logger.error("Error al subir evidencia a S3", exc_info=True)
+        return None
 
 async def upload_chat_media_to_s3(file: UploadFile, conversation_id: str) -> Optional[str]:
     """
@@ -168,7 +162,7 @@ async def upload_chat_media_to_s3(file: UploadFile, conversation_id: str) -> Opt
 
         s3_key = f"chats/{conversation_id}/media_{uuid.uuid4()}{ext}"
         
-        # 🟢 TRATAMIENTO PARA IMÁGENES (Compresión)
+        # Tratamiento para imagenes (Compresion)
         if ext in [".jpg", ".jpeg", ".png", ".webp"]:
             image_data = await file.read()
             image = Image.open(io.BytesIO(image_data))
@@ -187,7 +181,7 @@ async def upload_chat_media_to_s3(file: UploadFile, conversation_id: str) -> Opt
                 ExtraArgs={"ContentType": "image/jpeg"}
             )
         else:
-            # 🔵 TRATAMIENTO PARA AUDIO/VIDEO (Subida directa)
+            # Tratamiento para audio/video (Subida directa)
             await file.seek(0)
             upload_content_type = content_type if content_type else "application/octet-stream"
             s3_client.upload_fileobj(
@@ -200,6 +194,5 @@ async def upload_chat_media_to_s3(file: UploadFile, conversation_id: str) -> Opt
         return f"https://{bucket_name}.s3.amazonaws.com/{s3_key}"
 
     except Exception as e:
-        print("💥 ERROR AL SUBIR MEDIA DE CHAT A S3 💥")
-        print(traceback.format_exc())
+        logger.error("Error al subir media de chat a S3", exc_info=True)
         return None
