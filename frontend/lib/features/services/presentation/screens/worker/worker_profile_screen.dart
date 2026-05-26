@@ -11,7 +11,6 @@ import 'package:forja_trabajo/features/auth/presentation/widgets/profile_shared_
 import 'package:forja_trabajo/features/profile/presentation/settings_screen.dart';
 import 'package:forja_trabajo/features/services/presentation/screens/client/edit_profile_screen.dart';
 import 'package:forja_trabajo/features/profile/presentation/screens/user_profile_screen.dart';
-import 'package:forja_trabajo/features/services/presentation/screens/worker/my_jobs_screen.dart';
 import 'package:forja_trabajo/features/services/presentation/providers/nav_providers.dart';
 import 'package:forja_trabajo/features/profile/presentation/screens/identity_verification_screen.dart';
 import 'package:forja_trabajo/features/profile/presentation/providers/public_profile_provider.dart';

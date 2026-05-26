@@ -306,21 +306,7 @@ class _ChatInputAreaState extends ConsumerState<ChatInputArea> {
     }
   }
 
-  void _showMaxLimitError() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Límite alcanzado"),
-        content: const Text("Solo puedes enviar hasta 5 archivos por mensaje."),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Entendido"),
-          ),
-        ],
-      ),
-    );
-  }
+
 
   void _sendLocation() {
     final notifier = ref.read(chatProvider(widget.conversationId).notifier);

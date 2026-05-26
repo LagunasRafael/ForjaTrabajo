@@ -32,7 +32,7 @@ final chatTypingProvider = StateProvider.family<bool, String>((ref, conversation
 /// Provider principal del chat (Lista de mensajes)
 final chatProvider = StateNotifierProvider.family<ChatNotifier, List<MessageModel>, String>((ref, conversationId) {
   final repository = ref.watch(chatRepositoryProvider);
-  final auth = ref.watch(authProvider);
+  final auth = ref.read(authProvider);
   final userId = auth.user?.id ?? '';
   
   return ChatNotifier(
@@ -395,7 +395,7 @@ class ChatNotifier extends StateNotifier<List<MessageModel>> {
   Future<void> sendOffer(double amount) async {
     try {
       final response = await _repository.sendOffer(conversationId, amount);
-      if (response is Map<String, dynamic>) {
+      {
         final newOffer = MessageModel.fromJson(response);
         if (!state.any((m) => m.id == newOffer.id)) {
           state = [newOffer, ...state];
@@ -529,14 +529,14 @@ class ChatNotifier extends StateNotifier<List<MessageModel>> {
               ];
             }
           } catch (e) {
-            _setMediaError(imageTempId!);
+            _setMediaError(imageTempId);
           }
         } else {
-          _setMediaError(imageTempId!);
+          _setMediaError(imageTempId);
         }
       } catch (e) {
         print("🚨 Error subiendo imágenes: $e");
-        _setMediaError(imageTempId!);
+        _setMediaError(imageTempId);
       }
     }
 

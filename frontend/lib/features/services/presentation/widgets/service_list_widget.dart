@@ -52,7 +52,8 @@ class _ServiceListWidgetState extends ConsumerState<ServiceListWidget> {
             color: const Color(0xFF10B981),
             onRefresh: () async {
               setState(() => _visibleCount = 12);
-              await ref.refresh(serviceListProvider.future);
+              ref.invalidate(serviceListProvider);
+              await ref.read(serviceListProvider.future);
             },
             child: servicesAsync.when(
               data: (services) {

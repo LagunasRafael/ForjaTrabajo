@@ -2,7 +2,6 @@ import 'package:dio/dio.dart';
 import '../../../../core/network/api_client.dart';
 import '../../domain/models/user_model.dart';
 import 'package:flutter/foundation.dart';
-import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 
 class AuthRemoteDataSource {

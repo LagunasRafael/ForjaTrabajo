@@ -53,7 +53,6 @@ class _ServiceDetailScreenState extends ConsumerState<ServiceDetailScreen> {
     final serviceAsync = ref.watch(serviceDetailProvider(widget.service.id));
     final offersAsync = ref.watch(offersListProvider(_currentService.id));
     final categoriesAsync = ref.watch(categoryListProvider);
-    final theme = Theme.of(context);
 
     return serviceAsync.when(
       loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),

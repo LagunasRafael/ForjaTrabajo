@@ -3,7 +3,6 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../../../core/network/api_client.dart';
 import '../../domain/repositories/service_repository.dart';
 import '../../domain/entities/category_entity.dart';
 import '../../domain/entities/service_entity.dart';
@@ -15,7 +14,6 @@ import '../datasources/service_request_remote_data_source.dart';
 import '../datasources/job_remote_data_source.dart';
 import '../models/service_model.dart';
 import '../models/service_request_model.dart';
-import '../models/work_evidence_model.dart';
 import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart';
 import 'package:forja_trabajo/features/services/domain/entities/work_evidence_entity.dart';
 
