@@ -2,9 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja_trabajo/features/services/domain/entities/service_entity.dart';
 import 'package:forja_trabajo/features/services/presentation/providers/service_list_provider.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:forja_trabajo/core/network/notification_service.dart';
-import 'package:forja_trabajo/features/services/presentation/providers/job_management_provider.dart';
 
 // Providers
 import 'package:forja_trabajo/features/services/presentation/providers/nav_providers.dart';
@@ -42,22 +39,6 @@ class _MyRequestsScreenState extends ConsumerState<MyRequestsScreen>
 
   @override
   Widget build(BuildContext context) {
-    // 🔔 Escuchar eventos de notificación para refrescar la lista en tiempo real
-    ref.listen<AsyncValue<RemoteMessage>>(notificationEventProvider, (previous, next) {
-      next.whenData((message) {
-        final type = message.data['type'] ?? '';
-        if (type.toString().contains('job_') || 
-            type == 'in_progress' || 
-            type == 'new_application' || 
-            type == 'offer_responded' || 
-            type == 'new_offer') {
-          debugPrint('🔄 [MyRequestsScreen] Refrescando por notificación: $type');
-          ref.invalidate(myRequestsProvider);
-          ref.invalidate(workerJobsProvider);
-        }
-      });
-    });
-
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
@@ -103,7 +84,8 @@ class _MyRequestsScreenState extends ConsumerState<MyRequestsScreen>
     return RefreshIndicator(
       color: const Color(0xFF4F46E5),
       onRefresh: () async {
-        await ref.refresh(myRequestsProvider.future);
+        ref.invalidate(myRequestsProvider);
+        await ref.read(myRequestsProvider.future);
       },
       child: servicesAsync.when(
         data: (services) {

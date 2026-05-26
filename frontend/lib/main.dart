@@ -11,6 +11,8 @@ import 'package:timeago/timeago.dart' as timeago;
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_provider.dart';
 import 'core/network/notification_service.dart';
+import 'core/network/fcm_service.dart';
+import 'shared/utils/notification_listeners.dart';
 import 'features/auth/presentation/screens/login_screen.dart';
 import 'features/auth/presentation/screens/splash_screen.dart';
 import 'features/auth/presentation/screens/role_selection_screen.dart';
@@ -32,7 +34,7 @@ void main() async {
   timeago.setLocaleMessages('es', timeago.EsMessages());
 
   // Manejar notificación si la app fue abierta desde estado terminado
-  NotificationService().handleInitialMessage();
+  FcmService().handleInitialMessage();
 
   runApp(
     const ProviderScope(
@@ -46,6 +48,7 @@ class ForjaTrabajoApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(notificationListenerProvider);
     final themeMode = ref.watch(themeProvider);
 
     return MaterialApp(

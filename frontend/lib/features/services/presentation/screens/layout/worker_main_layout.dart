@@ -6,10 +6,8 @@ import 'package:forja_trabajo/features/payments/presentation/screens/wallet_scre
 import 'package:forja_trabajo/features/services/presentation/screens/worker/marketplace_screen.dart';
 import 'package:forja_trabajo/features/services/presentation/providers/nav_providers.dart';
 import 'package:forja_trabajo/features/chat/presentation/providers/unread_count_provider.dart';
-import 'package:forja_trabajo/features/notifications/presentation/providers/notification_provider.dart';
 import '../worker/my_jobs_screen.dart';
 import 'package:forja_trabajo/features/chat/presentation/screens/chat_list_screen.dart';
-import 'package:forja_trabajo/features/notifications/presentation/screens/notifications_screen.dart';
 import '../worker/worker_profile_screen.dart';
 
 class WorkerMainLayout extends ConsumerStatefulWidget {
@@ -45,7 +43,6 @@ class _WorkerMainLayoutState extends ConsumerState<WorkerMainLayout> with Widget
   Widget build(BuildContext context) {
     final currentIndex = ref.watch(workerNavProvider);
     final unreadChatCount = ref.watch(unreadCountProvider);
-    final unreadNotifCount = ref.watch(unreadNotificationCountProvider);
     final walletStatus = ref.watch(walletStatusProvider).valueOrNull;
     final theme = Theme.of(context);
 

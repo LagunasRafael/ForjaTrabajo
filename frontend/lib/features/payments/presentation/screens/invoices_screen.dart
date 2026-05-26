@@ -6,8 +6,6 @@ import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart';
 import '../providers/payment_provider.dart';
 import '../../domain/entities/payment.dart';
-import '../../data/datasources/payment_remote_data_source.dart';
-import 'package:forja_trabajo/injection_container.dart' as di;
 import 'package:forja_trabajo/core/network/api_client.dart';
 import 'package:dio/dio.dart';
 

@@ -5,12 +5,9 @@ import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:forja_trabajo/features/auth/presentation/screens/login_screen.dart';
 
 // 👇 IMPORTS PARA LIMPIEZA DE MEMORIA
 import 'package:forja_trabajo/features/services/presentation/providers/service_list_provider.dart';
-// Asumiendo que aquí gestionas el índice de la navegación
-// import 'package:forja_trabajo/features/home/presentation/providers/navigation_provider.dart';
 
 // =====================================================
 // 1. CONTENEDOR DE MENÚ (CARD)

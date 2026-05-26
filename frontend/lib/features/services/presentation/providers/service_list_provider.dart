@@ -3,9 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja_trabajo/features/services/domain/entities/service_entity.dart';
 import 'package:forja_trabajo/features/services/data/repositories/service_repository_impl.dart';
 import 'package:forja_trabajo/features/services/domain/usecases/services/create_services_usecase.dart';
-import 'package:forja_trabajo/features/services/domain/usecases/services/delete_services_usecase.dart';
-import 'package:forja_trabajo/features/services/domain/usecases/services/update_service_usecase.dart';
-import 'package:forja_trabajo/features/services/domain/usecases/services/cancel_service_usecase.dart'; 
+import 'package:forja_trabajo/features/services/domain/usecases/services/cancel_service_usecase.dart';
 import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart';
 import 'package:forja_trabajo/shared/widgets/location/marketplace_location_storage.dart';
 import 'category_provider.dart';
@@ -59,7 +57,7 @@ final serviceListProvider = FutureProvider<List<ServiceEntity>>((ref) async {
   final repository = ref.watch(serviceRepositoryProvider);
   final categoryId = ref.watch(selectedCategoryProvider);
   final query = ref.watch(searchQueryProvider);
-  final authState = ref.watch(authProvider);
+  final authState = ref.read(authProvider);
   final radiusKm = ref.watch(selectedRadiusKmProvider);
   final useFilter = ref.watch(useMarketplaceLocationFilterProvider);
 

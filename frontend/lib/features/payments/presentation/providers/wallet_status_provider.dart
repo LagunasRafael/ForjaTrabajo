@@ -19,7 +19,7 @@ class WalletStatus {
 }
 
 final walletStatusProvider = FutureProvider<WalletStatus>((ref) async {
-  final authState = ref.watch(authProvider);
+  final authState = ref.read(authProvider);
 
   if (authState.user == null) {
     return const WalletStatus();
