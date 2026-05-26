@@ -1,8 +1,5 @@
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-final getDeviceLocationUseCaseProvider = Provider((ref) => GetDeviceLocationUseCase());
 
 class GetDeviceLocationUseCase {
   
