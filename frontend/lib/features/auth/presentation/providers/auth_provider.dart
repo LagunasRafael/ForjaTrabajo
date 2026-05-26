@@ -10,6 +10,8 @@ import 'package:geocoding/geocoding.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/network/fcm_service.dart';
 import '../../data/datasources/auth_remote_data_source.dart';
+import '../../domain/repositories/auth_repository.dart';
+import '../../data/repositories/auth_repository_impl.dart';
 import '../../domain/models/user_model.dart';
 
 // 🚀 Providers de Servicios (Para limpieza de caché en Logout)
@@ -24,9 +26,10 @@ import 'package:forja_trabajo/features/payments/presentation/providers/wallet_st
 // 1. INSTANCIAS GLOBALES
 final apiClientProvider = Provider((ref) => ApiClient());
 
-final authDataSourceProvider = Provider((ref) {
+final authRepositoryProvider = Provider<AuthRepository>((ref) {
   final apiClient = ref.watch(apiClientProvider);
-  return AuthRemoteDataSource(apiClient: apiClient);
+  final dataSource = AuthRemoteDataSource(apiClient: apiClient);
+  return AuthRepositoryImpl(dataSource: dataSource);
 });
 
 // 2. LA CLASE DE ESTADO
@@ -55,7 +58,7 @@ class AuthNotifier extends Notifier<AuthState> {
   }
 
   Future<void> checkAuthStatus() async {
-    final dataSource = ref.read(authDataSourceProvider);
+    final dataSource = ref.read(authRepositoryProvider);
     final hasToken = await dataSource.hasValidToken();
 
     if (hasToken) {
@@ -73,7 +76,7 @@ class AuthNotifier extends Notifier<AuthState> {
   Future<void> loginUser(String identifier, String password) async {
     state = state.copyWith(status: 'loading', errorMessage: '');
     try {
-      final dataSource = ref.read(authDataSourceProvider);
+      final dataSource = ref.read(authRepositoryProvider);
       final token = await dataSource.login(identifier, password);
 
       final prefs = await SharedPreferences.getInstance();
@@ -102,7 +105,7 @@ class AuthNotifier extends Notifier<AuthState> {
   Future<void> resendEmail(String email) async {
     state = state.copyWith(status: 'loading', errorMessage: '');
     try {
-      final dataSource = ref.read(authDataSourceProvider);
+      final dataSource = ref.read(authRepositoryProvider);
       await dataSource.resendVerificationCode(email);
       state = state.copyWith(status: 'email_resent', errorMessage: '');
     } catch (e) {
@@ -124,7 +127,7 @@ class AuthNotifier extends Notifier<AuthState> {
       ref.invalidate(walletStatusProvider);
 
       final prefs = await SharedPreferences.getInstance();
-      final dataSource = ref.read(authDataSourceProvider);
+      final dataSource = ref.read(authRepositoryProvider);
 
       await dataSource.logout();
       await prefs.remove('token');
@@ -147,7 +150,7 @@ class AuthNotifier extends Notifier<AuthState> {
   }) async {
     state = state.copyWith(status: 'loading', errorMessage: '');
     try {
-      final dataSource = ref.read(authDataSourceProvider);
+      final dataSource = ref.read(authRepositoryProvider);
       await dataSource.register(
         fullName: fullName,
         email: email,
@@ -166,7 +169,7 @@ class AuthNotifier extends Notifier<AuthState> {
   Future<void> verifyEmail(String email, String code) async {
     state = state.copyWith(status: 'loading', errorMessage: '');
     try {
-      final dataSource = ref.read(authDataSourceProvider);
+      final dataSource = ref.read(authRepositoryProvider);
       await dataSource.verifyEmailCode(email, code);
 
       // Ahora tenemos tokens guardados → podemos cargar el perfil completo
@@ -185,7 +188,7 @@ class AuthNotifier extends Notifier<AuthState> {
 
   Future<void> fetchProfile() async {
     try {
-      final dataSource = ref.read(authDataSourceProvider);
+      final dataSource = ref.read(authRepositoryProvider);
       final userData = await dataSource.getUserProfile();
       state = state.copyWith(user: userData);
 
@@ -220,7 +223,7 @@ class AuthNotifier extends Notifier<AuthState> {
         Placemark place = placemarks.first;
         cityName = "${place.locality ?? ''}, ${place.administrativeArea ?? ''}";
       }
-      final dataSource = ref.read(authDataSourceProvider);
+      final dataSource = ref.read(authRepositoryProvider);
       await dataSource.updateLocation(
           userId: state.user!.id,
           lat: position.latitude,
@@ -238,7 +241,7 @@ class AuthNotifier extends Notifier<AuthState> {
 
   Future<void> updateProfilePicture(XFile imageFile) async {
     if (state.user == null) return;
-    final dataSource = ref.read(authDataSourceProvider);
+    final dataSource = ref.read(authRepositoryProvider);
     try {
       final newPhotoUrl =
           await dataSource.uploadProfilePicture(state.user!.id, imageFile);
@@ -256,7 +259,7 @@ class AuthNotifier extends Notifier<AuthState> {
     List<String>? categoryIds,
   }) async {
     if (state.user == null) return;
-    final dataSource = ref.read(authDataSourceProvider);
+    final dataSource = ref.read(authRepositoryProvider);
     try {
       await dataSource.updateProfileData(
         userId: state.user!.id,
@@ -274,7 +277,7 @@ class AuthNotifier extends Notifier<AuthState> {
   Future<void> forgotPassword(String email) async {
     state = state.copyWith(status: 'loading', errorMessage: '');
     try {
-      final dataSource = ref.read(authDataSourceProvider);
+      final dataSource = ref.read(authRepositoryProvider);
       await dataSource.forgotPassword(email);
       state = state.copyWith(status: 'reset_code_sent');
     } catch (e) {
@@ -287,7 +290,7 @@ class AuthNotifier extends Notifier<AuthState> {
   Future<void> verifyResetCode(String email, String code) async {
     state = state.copyWith(status: 'loading', errorMessage: '');
     try {
-      final dataSource = ref.read(authDataSourceProvider);
+      final dataSource = ref.read(authRepositoryProvider);
       await dataSource.verifyResetCode(email, code);
       state = state.copyWith(status: 'reset_code_verified');
     } catch (e) {
@@ -301,7 +304,7 @@ class AuthNotifier extends Notifier<AuthState> {
       String email, String code, String newPassword) async {
     state = state.copyWith(status: 'loading', errorMessage: '');
     try {
-      final dataSource = ref.read(authDataSourceProvider);
+      final dataSource = ref.read(authRepositoryProvider);
       await dataSource.resetPassword(email, code, newPassword);
       state = state.copyWith(status: 'password_reset_success');
     } catch (e) {
@@ -319,7 +322,7 @@ class AuthNotifier extends Notifier<AuthState> {
       debugPrint('📢 DEBUG SYNC: Token obtenido = ${fcmToken != null ? 'SI' : 'NO (NULL)'}');
       if (fcmToken != null) {
         debugPrint('📢 DEBUG SYNC: Enviando token al servidor...');
-        final dataSource = ref.read(authDataSourceProvider);
+        final dataSource = ref.read(authRepositoryProvider);
         await dataSource.updateFcmToken(fcmToken);
         fcmService.listenToTokenChanges((newToken) {
           debugPrint('📢 DEBUG SYNC: Token refrescado, enviando nuevo...');

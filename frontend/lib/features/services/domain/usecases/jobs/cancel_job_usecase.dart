@@ -1,12 +1,5 @@
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja_trabajo/features/services/domain/repositories/service_repository.dart';
-import 'package:forja_trabajo/features/services/data/repositories/service_repository_impl.dart';
-
-final cancelJobUseCaseProvider = Provider<CancelJobUseCase>((ref) {
-  final repository = ref.read(serviceRepositoryProvider);
-  return CancelJobUseCase(repository);
-});
 
 class CancelJobUseCase {
   final ServiceRepository repository;
