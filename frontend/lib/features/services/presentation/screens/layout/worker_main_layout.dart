@@ -6,10 +6,8 @@ import 'package:forja_trabajo/features/payments/presentation/screens/wallet_scre
 import 'package:forja_trabajo/features/services/presentation/screens/worker/marketplace_screen.dart';
 import 'package:forja_trabajo/features/services/presentation/providers/nav_providers.dart';
 import 'package:forja_trabajo/features/chat/presentation/providers/unread_count_provider.dart';
-import 'package:forja_trabajo/features/notifications/presentation/providers/notification_provider.dart';
 import '../worker/my_jobs_screen.dart';
 import 'package:forja_trabajo/features/chat/presentation/screens/chat_list_screen.dart';
-import 'package:forja_trabajo/features/notifications/presentation/screens/notifications_screen.dart';
 import '../worker/worker_profile_screen.dart';
 
 class WorkerMainLayout extends ConsumerStatefulWidget {
@@ -19,14 +17,32 @@ class WorkerMainLayout extends ConsumerStatefulWidget {
   ConsumerState<WorkerMainLayout> createState() => _WorkerMainLayoutState();
 }
 
-class _WorkerMainLayoutState extends ConsumerState<WorkerMainLayout> {
+class _WorkerMainLayoutState extends ConsumerState<WorkerMainLayout> with WidgetsBindingObserver {
   bool _walletBannerDismissed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && mounted) {
+      ref.invalidate(walletStatusProvider);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final currentIndex = ref.watch(workerNavProvider);
     final unreadChatCount = ref.watch(unreadCountProvider);
-    final unreadNotifCount = ref.watch(unreadNotificationCountProvider);
     final walletStatus = ref.watch(walletStatusProvider).valueOrNull;
     final theme = Theme.of(context);
 

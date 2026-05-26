@@ -306,10 +306,3 @@ class SkeletonCard extends StatelessWidget {
     );
   }
 }
-
-// Clase temporal para pasar los parámetros justos a CheckoutScreen
-class _TempContract {
-  final String id;
-  final num amount;
-  _TempContract({required this.id, required this.amount});
-}

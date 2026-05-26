@@ -139,19 +139,7 @@ export interface ServiceOffer {
   workerName: string;
 }
 
-// Mapper para transformar snake_case a camelCase
-const mapOfferFromApi = (dto: ServiceOfferDTO): ServiceOffer => ({
-  id: dto.id,
-  serviceId: dto.service_id,
-  workerId: dto.worker_id,
-  status: dto.status,
-  createdAt: dto.created_at,
-  description: dto.description,
-  proposedPrice: dto.proposed_price,
-  workerName: dto.worker_name || 'Trabajador',
-});
-
-// Función para el endpoint de ofertas que discutimos
+// Function for the offers endpoint
 export const getServiceOffers = async (serviceId: string): Promise<ServiceOffer[]> => {
   const { data } = await api.get<ServiceOfferDTO[]>(`/services/${serviceId}/offers`);
   

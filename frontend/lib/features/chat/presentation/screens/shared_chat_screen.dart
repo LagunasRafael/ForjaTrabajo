@@ -177,13 +177,10 @@ class _SharedChatScreenState extends ConsumerState<SharedChatScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    // 🔔 Escuchar eventos de notificación para refrescar en tiempo real (Resolución de Admin o Fin de Trabajo)
     ref.listen<AsyncValue<RemoteMessage>>(notificationEventProvider, (previous, next) {
       next.whenData((message) {
         final type = message.data['type'] ?? '';
         if (type == 'job_completed' || type == 'job_cancelled' || type == 'dispute_resolved') {
-          debugPrint('🔄 [ChatScreen] Refrescando por resolución: $type');
-          ref.invalidate(chatListProvider);
           ref.invalidate(chatProvider(widget.conversationId));
         }
       });
@@ -226,7 +223,7 @@ class _SharedChatScreenState extends ConsumerState<SharedChatScreen> {
     );
     
     // El chat solo se bloquea totalmente si está cerrado (CERRADO/CLOSED)
-    final isClosed = thisChat?.status?.toUpperCase() == 'CERRADO' || thisChat?.status?.toUpperCase() == 'CLOSED';
+    final isClosed = thisChat?.status.toUpperCase() == 'CERRADO' || thisChat?.status.toUpperCase() == 'CLOSED';
     final closedReason = thisChat?.closedReason;
     
     // ¿El servicio ya está en proceso con alguien? (MATCHED, etc)
@@ -246,7 +243,7 @@ class _SharedChatScreenState extends ConsumerState<SharedChatScreen> {
     // Calcular el prefijo dinámico para el subtítulo del Chat
     final subtitlePrefix = isClosed
         ? "Chat finalizado"
-        : (thisChat?.status?.toUpperCase() == 'EN DISPUTA')
+        : (thisChat?.status.toUpperCase() == 'EN DISPUTA')
             ? "En disputa por"
             : sStatus.contains('cancelled')
                 ? "Cancelado:"
@@ -361,24 +358,15 @@ class _SharedChatScreenState extends ConsumerState<SharedChatScreen> {
                   
                   String displayTime = "";
                   final rawTime = m.createdAt;
-                  
-                  if (rawTime != null) {
-                    try {
-                      DateTime dateTime;
-                      if (rawTime is DateTime) {
-                        dateTime = rawTime.toLocal();
-                      } else {
-                        dateTime = DateTime.parse(rawTime.toString()).toLocal();
-                      }
-                      final hour = dateTime.hour > 12 ? dateTime.hour - 12 : (dateTime.hour == 0 ? 12 : dateTime.hour);
-                      final minute = dateTime.minute.toString().padLeft(2, '0');
-                      final period = dateTime.hour >= 12 ? 'PM' : 'AM';
-                      displayTime = "$hour:$minute $period";
-                    } catch (e) {
-                      displayTime = rawTime.toString();
-                    }
-                  } else {
-                    displayTime = "--:--";
+
+                  try {
+                    final dateTime = rawTime.toLocal();
+                    final hour = dateTime.hour > 12 ? dateTime.hour - 12 : (dateTime.hour == 0 ? 12 : dateTime.hour);
+                    final minute = dateTime.minute.toString().padLeft(2, '0');
+                    final period = dateTime.hour >= 12 ? 'PM' : 'AM';
+                    displayTime = "$hour:$minute $period";
+                  } catch (e) {
+                    displayTime = rawTime.toString();
                   }
 
                   Widget messageWidget;

@@ -1,5 +1,3 @@
-import 'dart:io';
-import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,18 +8,18 @@ import 'package:geocoding/geocoding.dart';
 
 // 🛠️ Core e Infraestructura
 import '../../../../core/network/api_client.dart';
-import '../../../../core/network/notification_service.dart';
+import '../../../../core/network/fcm_service.dart';
 import '../../data/datasources/auth_remote_data_source.dart';
 import '../../domain/models/user_model.dart';
 
 // 🚀 Providers de Servicios (Para limpieza de caché en Logout)
 import 'package:forja_trabajo/features/services/presentation/providers/job_management_provider.dart';
-import 'package:forja_trabajo/features/services/presentation/providers/nav_providers.dart';
 import 'package:forja_trabajo/features/services/presentation/providers/service_list_provider.dart';
 import 'package:forja_trabajo/features/chat/presentation/providers/chat_list_provider.dart';
 import 'package:forja_trabajo/features/chat/presentation/providers/chat_provider.dart';
 import 'package:forja_trabajo/features/chat/presentation/providers/unread_count_provider.dart';
 import 'package:forja_trabajo/features/notifications/presentation/providers/notification_provider.dart';
+import 'package:forja_trabajo/features/payments/presentation/providers/wallet_status_provider.dart';
 
 // 1. INSTANCIAS GLOBALES
 final apiClientProvider = Provider((ref) => ApiClient());
@@ -81,12 +79,13 @@ class AuthNotifier extends Notifier<AuthState> {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('token', token);
 
+      await fetchProfile();
+
       state = state.copyWith(status: 'authenticated');
       // 🚀 FORZAR RECARGA DE CHATS: Al iniciar sesión limpiamos la caché vieja
       // para que el chatListProvider vuelva a hacer la petición con la nueva cuenta.
       ref.invalidate(chatListProvider);
-
-      await fetchProfile();
+      ref.invalidate(walletStatusProvider);
 
       // 🚀 LAZY INITIALIZATION
       Future.delayed(const Duration(seconds: 2), () {
@@ -122,6 +121,7 @@ class AuthNotifier extends Notifier<AuthState> {
       ref.invalidate(chatProvider);
       ref.invalidate(unreadCountProvider);
       ref.invalidate(notificationListProvider);
+      ref.invalidate(walletStatusProvider);
 
       final prefs = await SharedPreferences.getInstance();
       final dataSource = ref.read(authDataSourceProvider);
@@ -313,25 +313,15 @@ class AuthNotifier extends Notifier<AuthState> {
 
   Future<void> _syncFcmToken() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final notificationsEnabled =
-          prefs.getBool('notifications_enabled') ?? true;
-      if (!notificationsEnabled) {
-        debugPrint(
-            '🔕 Notificaciones deshabilitadas por el usuario, saltando sync FCM');
-        return;
-      }
-
-      final notificationService = NotificationService();
-      await notificationService.initNotifications();
-      final String? fcmToken = await notificationService.getToken();
-      debugPrint(
-          '📢 DEBUG SYNC: Token obtenido = ${fcmToken != null ? 'SI' : 'NO (NULL)'}');
+      final fcmService = FcmService();
+      await fcmService.initNotifications();
+      final String? fcmToken = await fcmService.getToken();
+      debugPrint('📢 DEBUG SYNC: Token obtenido = ${fcmToken != null ? 'SI' : 'NO (NULL)'}');
       if (fcmToken != null) {
         debugPrint('📢 DEBUG SYNC: Enviando token al servidor...');
         final dataSource = ref.read(authDataSourceProvider);
         await dataSource.updateFcmToken(fcmToken);
-        notificationService.listenToTokenChanges((newToken) {
+        fcmService.listenToTokenChanges((newToken) {
           debugPrint('📢 DEBUG SYNC: Token refrescado, enviando nuevo...');
           dataSource.updateFcmToken(newToken);
         });

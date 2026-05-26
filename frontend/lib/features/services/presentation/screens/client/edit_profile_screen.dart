@@ -5,7 +5,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:forja_trabajo/core/theme/app_theme.dart';
 import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart';
 import 'package:forja_trabajo/features/services/presentation/providers/category_provider.dart';
-import 'package:forja_trabajo/features/services/data/models/category_model.dart';
 
 class EditProfileScreen extends ConsumerStatefulWidget {
   const EditProfileScreen({super.key});

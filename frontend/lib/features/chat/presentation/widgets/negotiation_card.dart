@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja_trabajo/features/chat/domain/entities/message_entity.dart';
 import 'package:forja_trabajo/features/chat/presentation/providers/chat_provider.dart';
-import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart'; 
 import 'package:forja_trabajo/core/utils/formatters.dart';
 
 class NegotiationCard extends ConsumerStatefulWidget {
@@ -38,14 +37,6 @@ class _NegotiationCardState extends ConsumerState<NegotiationCard> {
   Future<void> _handleResponse(String action) async {
     setState(() => _isLoading = true);
     
-    // Access providers using ref.read for async operations
-    final user = ref.read(authProvider).user;
-    
-    // Usamos el rol que viene del chat (contextual) o el global como fallback
-    // Note: widget.myRole is now available
-    final myRole = widget.myRole ?? user?.role ?? 'client';
-    final isClient = myRole == 'client'; 
-
     await ref.read(chatProvider(widget.conversationId).notifier)
              .respondOffer(widget.message.id, action); // 👈 Ahora usa .id
     
@@ -59,7 +50,6 @@ class _NegotiationCardState extends ConsumerState<NegotiationCard> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     // La lógica universal: si YO lo mandé, es mi tarjeta (derecha/clara), 
     // si lo recibí, es la tarjeta del otro (izquierda/oscura).
     return widget.isMe 

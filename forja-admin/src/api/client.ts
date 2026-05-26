@@ -73,7 +73,7 @@ api.interceptors.response.use(
         localStorage.removeItem('token'); // Borramos el token vencido
         localStorage.removeItem('refresh_token');
         localStorage.removeItem('user');
-        window.location.href = '/login'; // Redirigimos al usuario
+        window.location.replace('/login'); // Redirigimos al usuario
         toast.error('Tu sesión ha expirado. Por favor ingresa nuevamente.');
       }
       return Promise.reject(error);

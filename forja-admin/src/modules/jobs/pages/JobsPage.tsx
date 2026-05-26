@@ -41,7 +41,6 @@ export const JobsPage = () => {
       <JobTable 
         jobs={jobs} 
         isLoading={isLoading} 
-        onDelete={(id) => setJobs(jobs.filter(j => j.id !== id))} 
       />
       
     </div>

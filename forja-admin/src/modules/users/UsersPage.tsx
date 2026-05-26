@@ -56,8 +56,9 @@ const UsersPage = () => {
     }
   };
 
-  const handleDeleteClick = (user: User) => {
-    setDeleteTarget(user);
+  const handleDeleteClick = (userId: string) => {
+    const user = users.find(u => u.id === userId);
+    if (user) setDeleteTarget(user);
   };
 
   const handleDeleteConfirm = async () => {
@@ -88,7 +89,7 @@ const UsersPage = () => {
         users={filteredUsers} 
         isLoading={isLoading} 
         onEdit={handleOpenEdit} 
-        onDelete={handleDeleteClick}
+        onDelete={handleDeleteClick as (userId: string) => void}
       />
       
       <UserFormSlideOver 

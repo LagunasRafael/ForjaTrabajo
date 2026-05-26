@@ -11,7 +11,6 @@ import 'package:forja_trabajo/features/auth/presentation/widgets/profile_shared_
 import 'package:forja_trabajo/features/profile/presentation/settings_screen.dart';
 import 'package:forja_trabajo/features/services/presentation/screens/client/edit_profile_screen.dart';
 import 'package:forja_trabajo/features/profile/presentation/screens/user_profile_screen.dart';
-import 'package:forja_trabajo/features/services/presentation/screens/worker/my_jobs_screen.dart';
 import 'package:forja_trabajo/features/services/presentation/providers/nav_providers.dart';
 import 'package:forja_trabajo/features/profile/presentation/screens/identity_verification_screen.dart';
 import 'package:forja_trabajo/features/profile/presentation/providers/public_profile_provider.dart';
@@ -26,8 +25,27 @@ class WorkerProfileScreen extends ConsumerStatefulWidget {
       _WorkerProfileScreenState();
 }
 
-class _WorkerProfileScreenState extends ConsumerState<WorkerProfileScreen> {
+class _WorkerProfileScreenState extends ConsumerState<WorkerProfileScreen> with WidgetsBindingObserver {
   bool _isSettingUpWallet = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && mounted) {
+      ref.invalidate(walletStatusProvider);
+    }
+  }
 
   Future<void> _setupWallet() async {
     final user = ref.read(authProvider).user;
@@ -43,10 +61,15 @@ class _WorkerProfileScreenState extends ConsumerState<WorkerProfileScreen> {
 
       final url = response.data['url'] as String;
 
+      if (url == '__ALREADY_COMPLETED__') {
+        ref.invalidate(walletStatusProvider);
+        return;
+      }
+
       if (mounted) {
         final uri = Uri.parse(url);
         if (await canLaunchUrl(uri)) {
-          await launchUrl(uri, mode: LaunchMode.externalApplication);
+          await launchUrl(uri, mode: LaunchMode.platformDefault);
         }
       }
     } catch (e) {

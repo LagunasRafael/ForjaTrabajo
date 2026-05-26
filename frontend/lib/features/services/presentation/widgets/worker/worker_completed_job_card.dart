@@ -152,7 +152,7 @@ class WorkerCompletedJobCard extends ConsumerWidget {
     final clientId = job.clientId;
     return GestureDetector(
       onTap: () {
-        if (clientId != null && clientId.isNotEmpty) {
+        if (clientId.isNotEmpty) {
           Navigator.of(context).push(
             MaterialPageRoute(
               builder: (_) => UserProfileScreen(userId: clientId),

@@ -102,6 +102,22 @@ def resend_verification_code(request: Request, data: schemas.ResendCodeRequest, 
     return {"status": "success", "message": "Nuevo código enviado"}
 
 
+@router.post("/change-password")
+def change_password(
+    data: schemas.ChangePasswordRequest,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    from app.auth.security import hash_password, verify_password
+    
+    if not verify_password(data.current_password, current_user.hashed_password):
+        raise HTTPException(status_code=400, detail="Contraseña actual incorrecta")
+    
+    current_user.hashed_password = hash_password(data.new_password)
+    db.commit()
+    
+    return {"status": "success", "message": "Contraseña actualizada exitosamente"}
+
 @router.post("/login", response_model=schemas.Token)
 @limiter.limit("5/minute")
 def login(request: Request, data: schemas.UserLogin, db: Session = Depends(get_db)):

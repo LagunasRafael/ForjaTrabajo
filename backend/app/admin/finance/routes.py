@@ -342,3 +342,32 @@ def admin_release_payment(
     
     job = contract.job
     return payment_service.capture_payment(db, job.id)
+
+
+class CommissionUpdateRequest(BaseModel):
+    commission_rate: float
+
+
+@router.put("/config")
+def update_commission_rate(
+    request: CommissionUpdateRequest,
+    db: Session = Depends(get_db),
+    current_user: auth_models.User = Depends(get_current_user)
+):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="No tienes permiso")
+
+    if request.commission_rate < 0 or request.commission_rate > 100:
+        raise HTTPException(status_code=400, detail="La comisión debe estar entre 0 y 100")
+
+    from app.settings.models import SiteConfig
+
+    config = db.query(SiteConfig).first()
+    if not config:
+        config = SiteConfig(commission_rate=request.commission_rate)
+        db.add(config)
+    else:
+        config.commission_rate = request.commission_rate
+
+    db.commit()
+    return {"status": "success", "commission_rate": config.commission_rate}

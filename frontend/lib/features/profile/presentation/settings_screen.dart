@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:forja_trabajo/core/network/notification_service.dart';
+import 'package:forja_trabajo/core/network/api_client.dart';
+import 'package:forja_trabajo/core/network/fcm_service.dart';
 import 'package:forja_trabajo/features/services/presentation/screens/client/edit_profile_screen.dart';
 import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart';
 import 'package:forja_trabajo/features/auth/presentation/screens/login_screen.dart';
@@ -37,13 +38,24 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     setState(() => _isLoading = true);
     try {
       if (value) {
-        final token = await NotificationService().enableNotifications();
+        final fcmService = FcmService();
+        await fcmService.initNotifications();
+        final token = await fcmService.getToken();
         if (token != null && token.isNotEmpty) {
           final dataSource = ref.read(authDataSourceProvider);
           await dataSource.updateFcmToken(token);
         }
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('notifications_enabled', true);
       } else {
-        await NotificationService().disableNotifications();
+        try {
+          await ApiClient().dio.put(
+            '/auth/fcm-token',
+            data: {'fcm_token': ''},
+          );
+        } catch (_) {}
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('notifications_enabled', false);
       }
       setState(() => _notificationsEnabled = value);
     } catch (e) {

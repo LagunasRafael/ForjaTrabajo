@@ -7,11 +7,7 @@ import 'package:forja_trabajo/features/chat/presentation/screens/shared_chat_scr
 import 'package:forja_trabajo/features/services/presentation/providers/service_request_provider.dart';
 import 'package:forja_trabajo/features/services/presentation/providers/service_list_provider.dart';
 import 'package:forja_trabajo/features/services/presentation/providers/service_offers_provider.dart';
-import 'package:forja_trabajo/features/services/presentation/providers/nav_providers.dart';
-import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart';
-import 'package:forja_trabajo/features/notifications/presentation/providers/notification_provider.dart';
 import 'package:forja_trabajo/features/profile/presentation/screens/user_profile_screen.dart';
-import 'package:forja_trabajo/features/services/presentation/providers/service_list_provider.dart';
 
 class CandidateCard extends ConsumerStatefulWidget {
   final dynamic offer;
@@ -36,7 +32,6 @@ class _CandidateCardState extends ConsumerState<CandidateCard> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final isAccepting = ref.watch(isAcceptingProvider(widget.offer.id));
 
     // Resolve service details dynamically and robustly!
