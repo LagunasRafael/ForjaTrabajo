@@ -14,7 +14,7 @@ export const UserMenu = () => {
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    window.location.href = '/login'; 
+    navigate('/login');
   };
 
   // 3. CERRAR AL HACER CLICK AFUERA
