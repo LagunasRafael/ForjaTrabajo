@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/service_model.dart';
 import '../models/work_evidence_model.dart';
-import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart';
+import 'package:forja_trabajo/core/providers/api_client_provider.dart';
 
 // 1. PROVIDER: Inyectamos el ApiClient centralizado
 final serviceRemoteDataSourceProvider = Provider((ref) {

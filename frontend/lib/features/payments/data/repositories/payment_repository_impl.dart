@@ -9,10 +9,25 @@ class PaymentRepositoryImpl implements PaymentRepository {
   PaymentRepositoryImpl({required this.remoteDataSource});
 
   @override
-  Future<Payment> processPayment(PaymentModel payment) async {
+  Future<Payment> processPayment(Payment payment) async {
     try {
-      final paymentModel = await remoteDataSource.processPayment(payment);
-      return paymentModel;
+      final paymentModel = payment is PaymentModel
+          ? payment
+          : PaymentModel(
+              id: payment.id,
+              contractId: payment.contractId,
+              amount: payment.amount,
+              amountCents: payment.amountCents,
+              status: payment.status,
+              date: payment.date,
+              paymentMethod: payment.paymentMethod,
+              stripePaymentIntentId: payment.stripePaymentIntentId,
+              serviceTitle: payment.serviceTitle,
+              serviceDescription: payment.serviceDescription,
+              serviceCategory: payment.serviceCategory,
+            );
+      final result = await remoteDataSource.processPayment(paymentModel);
+      return result;
     } catch (e) {
       throw Exception('Fallo en el repositorio de pagos: $e');
     }

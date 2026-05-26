@@ -1,21 +1,19 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../domain/repositories/service_repository.dart';
 import '../../domain/entities/category_entity.dart';
 import '../../domain/entities/service_entity.dart';
 import '../../domain/entities/service_request_entity.dart';
 import '../../domain/entities/job_entity.dart';
+import '../../domain/entities/work_evidence_entity.dart';
 import '../datasources/category_remote_data_source.dart';
 import '../datasources/service_remote_data_source.dart';
 import '../datasources/service_request_remote_data_source.dart';
 import '../datasources/job_remote_data_source.dart';
 import '../models/service_model.dart';
 import '../models/service_request_model.dart';
-import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart';
-import 'package:forja_trabajo/features/services/domain/entities/work_evidence_entity.dart';
 
 class ServiceRepositoryImpl implements ServiceRepository {
   final CategoryRemoteDataSource categoryDS;
@@ -233,16 +231,3 @@ class ServiceRepositoryImpl implements ServiceRepository {
     return model.toEntity();
   }
 }
-
-// --- PROVIDER ---
-final serviceRepositoryProvider = Provider<ServiceRepository>((ref) {
-  final apiClient = ref.watch(apiClientProvider); 
-  
-  return ServiceRepositoryImpl(
-    categoryDS: ref.watch(categoryRemoteDataSourceProvider),
-    serviceDS: ref.watch(serviceRemoteDataSourceProvider),
-    requestDS: ref.watch(serviceRequestRemoteDataSourceProvider),
-    jobDS: ref.watch(jobRemoteDataSourceProvider),
-    dio: apiClient.dio,
-  );
-});

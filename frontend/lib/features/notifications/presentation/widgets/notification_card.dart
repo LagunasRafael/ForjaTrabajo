@@ -132,6 +132,7 @@ class NotificationCard extends ConsumerWidget {
       conversationId: (type == 'new_message' || type == 'new_offer' || type == 'offer_responded') ? refId : null,
       serviceId: type == 'new_application' ? refId : null,
       senderName: otherName,
+      targetRole: notification.targetRole,
       container: container,
       clearStack: true,
       navigateToWallet: isWalletType,
