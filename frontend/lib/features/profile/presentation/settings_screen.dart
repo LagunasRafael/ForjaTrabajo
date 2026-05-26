@@ -42,8 +42,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         await fcmService.initNotifications();
         final token = await fcmService.getToken();
         if (token != null && token.isNotEmpty) {
-          final dataSource = ref.read(authDataSourceProvider);
-          await dataSource.updateFcmToken(token);
+        final apiClient = ApiClient();
+        await apiClient.dio.put(
+          '/auth/fcm-token',
+          data: {'fcm_token': token},
+        );
         }
         final prefs = await SharedPreferences.getInstance();
         await prefs.setBool('notifications_enabled', true);
