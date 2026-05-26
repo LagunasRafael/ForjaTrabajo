@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
-import '../providers/public_profile_provider.dart';
+import 'package:forja_trabajo/features/profile/presentation/providers/public_profile_provider.dart';
 import 'package:forja_trabajo/features/services/presentation/providers/service_list_provider.dart';
 import 'package:forja_trabajo/features/services/presentation/providers/job_management_provider.dart';
 
@@ -30,8 +30,8 @@ class _ReviewDialogState extends ConsumerState<ReviewDialog> {
     });
 
     try {
-      final dataSource = ref.read(profileRemoteDataSourceProvider);
-      await dataSource.leaveReview(
+      final repo = ref.read(profileRepositoryProvider);
+      await repo.leaveReview(
         widget.jobId,
         _rating,
         _commentController.text.trim(),

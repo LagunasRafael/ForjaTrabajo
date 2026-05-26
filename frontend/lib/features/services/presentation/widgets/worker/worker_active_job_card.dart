@@ -5,7 +5,7 @@ import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider
 import 'package:forja_trabajo/features/services/presentation/screens/shared/service_detail_screen.dart';
 import 'package:forja_trabajo/features/services/presentation/providers/job_management_provider.dart'; 
 import 'package:forja_trabajo/features/services/presentation/providers/service_list_provider.dart';
-import 'package:forja_trabajo/features/services/domain/usecases/jobs/complete_job_usecase.dart';
+import 'package:forja_trabajo/features/services/presentation/providers/complete_job_providers.dart';
 import 'package:forja_trabajo/features/chat/presentation/providers/chat_provider.dart';
 import 'package:forja_trabajo/features/chat/presentation/screens/shared_chat_screen.dart';
 import 'package:forja_trabajo/features/chat/presentation/providers/chat_list_provider.dart';
