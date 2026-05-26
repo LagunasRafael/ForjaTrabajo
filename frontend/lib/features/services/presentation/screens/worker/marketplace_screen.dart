@@ -12,27 +12,34 @@ class MarketplaceScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: const [
-              HeaderWidget(),
-              SizedBox(height: 20),
-              SearchBarWidget(),
-              SizedBox(height: 12),
-              LocationRadiusBar(),
-              SizedBox(height: 16),
-              CategorySelectorWidget(),
-              SizedBox(height: 16),
-              Expanded(
-                child: ServiceListWidget(),
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              color: isDark ? const Color(0xFF1E293B) : Colors.white,
+              child: const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  HeaderWidget(),
+                  SizedBox(height: 20),
+                  SearchBarWidget(),
+                  SizedBox(height: 12),
+                  LocationRadiusBar(),
+                  SizedBox(height: 16),
+                  CategorySelectorWidget(),
+                ],
               ),
-            ],
-          ),
+            ),
+            const Expanded(
+              child: ServiceListWidget(),
+            ),
+          ],
         ),
       ),
     );

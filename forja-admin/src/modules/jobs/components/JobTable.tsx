@@ -3,10 +3,9 @@ import type { JobPost, JobStatus } from '../types/job.types';
 interface JobTableProps {
   jobs: JobPost[];
   isLoading: boolean;
-  onDelete: (id: string) => void;
 }
 
-export const JobTable = ({ jobs, isLoading, onDelete }: JobTableProps) => {
+export const JobTable = ({ jobs, isLoading }: JobTableProps) => {
   
   const statusStyles: Record<JobStatus, { label: string; color: string; dot: string }> = {
     open: { label: 'Buscando', color: 'bg-blue-500/10 text-blue-400 ring-blue-500/20', dot: 'bg-blue-500' },

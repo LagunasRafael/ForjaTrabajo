@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useAutoRefresh } from '../../../hooks/useAutoRefresh';
 import api from '../../../api/client';
@@ -15,6 +16,7 @@ interface ReportedService {
 }
 
 export const ReportedServicesPage = () => {
+  const navigate = useNavigate();
   const [services, setServices] = useState<ReportedService[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -92,9 +94,7 @@ export const ReportedServicesPage = () => {
                   </td>
                   <td className="px-6 py-4">
                     <button
-                      onClick={() => {
-                        window.location.href = `/services/${service.id}`;
-                      }}
+                      onClick={() => navigate(`/services/${service.id}`)}
                       className="text-sm font-medium text-indigo-400 hover:text-indigo-300 transition-colors"
                     >
                       Ver detalle

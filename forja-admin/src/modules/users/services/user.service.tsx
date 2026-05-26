@@ -71,7 +71,7 @@ export const updateUserApi = async (id: string, formData: UserFormData): Promise
     payload.is_active = false;
     payload.is_banned = true;
   } else {
-    payload.is_active = formData.status === 'active';
+    payload.is_active = false;
   }
 
   const { data } = await api.put<UserDTO>(`/auth/users/${id}`, payload);

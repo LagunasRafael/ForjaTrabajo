@@ -14,7 +14,7 @@ export const ProfilePage = () => {
   const [isUploading, setIsUploading] = useState(false);
 
   // 2. CONFIGURAMOS EL FORMULARIO
-  const { register, handleSubmit, reset, formState: { errors, isDirty } } = useForm({
+  const { register, handleSubmit, reset, formState: { isDirty } } = useForm({
     defaultValues: {
       full_name: user.full_name || '',
       email: user.email || '',
