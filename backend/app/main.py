@@ -25,6 +25,12 @@ from app.services.models import Service
 from app.payments.models import Payment
 from app.settings.models import SiteConfig
 
+
+# Crear tablas
+print("📋 Tablas listas para crear:", Base.metadata.tables.keys(), flush=True)
+Base.metadata.create_all(bind=engine)
+print("Tablas creadas/verificadas con create_all.", flush=True)
+
 app = FastAPI(
     title="Forja Trabajo API",
     version="1.0.0"

@@ -40,7 +40,7 @@ export const ReportsPage = () => {
 
   useEffect(() => { loadReports(); }, [filter]);
 
-  useAutoRefresh(() => loadReports(), 30000);
+  useAutoRefresh(() => loadReports(), 60000);
 
   const loadReports = async () => {
     setIsLoading(true);

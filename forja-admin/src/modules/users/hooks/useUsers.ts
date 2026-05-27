@@ -24,7 +24,7 @@ export const useUsers = () => {
     fetchUsers();
   }, []);
 
-  useAutoRefresh(() => fetchUsers(), 30000);
+  useAutoRefresh(() => fetchUsers(), 60000);
 
   const fetchUsers = async () => {
     setIsLoading(true);

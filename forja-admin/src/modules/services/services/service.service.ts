@@ -39,10 +39,8 @@ interface ServiceDTO {
 }
 
 const mapServiceFromApi = (dto: ServiceDTO): ServiceEntity => {
-  // 🟢 AGREGA ESTE LOG TEMPORAL:
-  if (dto.status !== 'open') {
-    console.log(`🔍 Servicio [${dto.id}] -> Status en JSON:`, dto.status);
-  }
+  const validStatuses: JobStatus[] = ['open', 'in_progress', 'completed', 'matched', 'cancelled'];
+  const normalizedStatus = dto.status?.toLowerCase() || 'open';
 
   return {
     id: dto.id,
@@ -58,7 +56,7 @@ const mapServiceFromApi = (dto: ServiceDTO): ServiceEntity => {
     },
     imageUrls: dto.image_urls,
     clientId: dto.client_id,
-    status: (dto.status?.toLowerCase() || 'open') as JobStatus, // 🛡️ Blindaje: lo pasamos a minúsculas
+    status: validStatuses.includes(normalizedStatus as JobStatus) ? normalizedStatus as JobStatus : 'open',
     isActive: dto.is_active,
     createdAt: dto.created_at,
   };
@@ -95,17 +93,15 @@ export const deleteServiceAdmin = async (id: string): Promise<void> => {
 };
 
 // 🟢 CREAR: Traduce del Frontend al Backend
-export const createService = async (service: Partial<ServiceEntity> | any): Promise<ServiceEntity> => {
+export const createService = async (service: Partial<ServiceEntity>): Promise<ServiceEntity> => {
   const payload = {
     title: service.title,
     description: service.description,
-    // Soportamos ambos casos por si el componente aún envía snake_case
-    base_price: service.basePrice || service.base_price, 
-    category_id: service.categoryId || service.category_id,
-    // Si Juan Luis requiere ubicación por defecto en la prueba:
-    latitude: service.location?.lat || 19.69, 
-    longitude: service.location?.lng || -100.54,
-    exact_address: service.location?.address || "Ciudad Hidalgo, Centro"
+    base_price: service.basePrice,
+    category_id: service.categoryId,
+    latitude: service.location?.lat ?? 0,
+    longitude: service.location?.lng ?? 0,
+    exact_address: service.location?.address ?? ""
   };
 
   const { data } = await api.post<ServiceDTO>('/services', payload);
@@ -113,9 +109,6 @@ export const createService = async (service: Partial<ServiceEntity> | any): Prom
 };
 
 
-// --- AGREGAR EN service.service.ts ---
-
-// Lo que viene de FastAPI (ServiceRequest de Juan Luis)
 interface ServiceOfferDTO {
   id: string;
   service_id: string;
@@ -139,11 +132,9 @@ export interface ServiceOffer {
   workerName: string;
 }
 
-// Function for the offers endpoint
 export const getServiceOffers = async (serviceId: string): Promise<ServiceOffer[]> => {
   const { data } = await api.get<ServiceOfferDTO[]>(`/services/${serviceId}/offers`);
-  
-  // Transformamos la lista de DTOs a nuestra entidad de React
+
   return data.map(dto => ({
     id: dto.id,
     serviceId: dto.service_id,

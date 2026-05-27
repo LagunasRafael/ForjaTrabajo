@@ -64,7 +64,7 @@ export const DashboardPage = () => {
     loadDashboardData();
   }, []);
 
-  useAutoRefresh(() => loadDashboardData(), 30000);
+  useAutoRefresh(() => loadDashboardData(), 90000);
 
   // 📈 Preparación de datos para la gráfica circular
   const chartData = useMemo(() => [
