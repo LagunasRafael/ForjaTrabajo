@@ -172,11 +172,13 @@ def cancel_job(db: Session, job_id: str, user_id: str, user_role: str):
 
     job.status = models.JobStatus.CANCELLED
 
-    if job.request and job.request.service:
-        if is_worker:
-            job.request.service.status = models.JobStatus.OPEN
-        else:
-            job.request.service.status = models.JobStatus.CANCELLED
+    if job.request:
+        job.request.status = "expired"
+        if job.request.service:
+            if is_worker:
+                job.request.service.status = models.JobStatus.OPEN
+            else:
+                job.request.service.status = models.JobStatus.CANCELLED
 
     db.commit()
     db.refresh(job)

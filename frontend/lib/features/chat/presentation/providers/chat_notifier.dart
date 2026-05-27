@@ -252,9 +252,8 @@ class ChatNotifier extends StateNotifier<List<MessageModel>>
     }
   }
 
-  Future<void> sendLocation() async {
-    print("📍 Compartiendo ubicación...");
-    await sendMessage("Ubicación compartida", "location");
+  Future<void> sendLocation(String locationJson) async {
+    await sendMessage(locationJson, "location");
   }
 
   void resendMessage(String messageId) {

@@ -59,11 +59,11 @@ mixin ChatMediaMixin on StateNotifier<List<MessageModel>> {
 
     if (imagePaths.isNotEmpty && imageTempId != null) {
       try {
-        List<String> uploadedUrls = [];
-        for (final path in imagePaths) {
-          final url = await repository.uploadChatMedia(conversationId, path);
-          if (url != null) uploadedUrls.add(url);
-        }
+        final imageFutures = imagePaths.map((path) =>
+          repository.uploadChatMedia(conversationId, path)
+        ).toList();
+        final uploadedResults = await Future.wait(imageFutures);
+        final uploadedUrls = uploadedResults.where((u) => u != null).cast<String>().toList();
 
         if (uploadedUrls.isNotEmpty) {
           final content = uploadedUrls.join(',');
@@ -101,7 +101,7 @@ mixin ChatMediaMixin on StateNotifier<List<MessageModel>> {
       }
     }
 
-    for (final entry in audioTempIds.entries) {
+    final audioFutures = audioTempIds.entries.map((entry) async {
       final tempId = entry.key;
       final path = entry.value;
       try {
@@ -137,7 +137,8 @@ mixin ChatMediaMixin on StateNotifier<List<MessageModel>> {
         print("🚨 Error subiendo audio: $e");
         setMediaError(tempId);
       }
-    }
+    }).toList();
+    await Future.wait(audioFutures);
 
     if (caption != null && caption.isNotEmpty) {
       await sendMessage(caption, 'text');

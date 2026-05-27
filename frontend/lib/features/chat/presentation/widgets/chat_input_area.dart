@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:record/record.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -15,6 +14,7 @@ import 'package:forja_trabajo/features/chat/presentation/widgets/chat_media_prev
 import 'package:forja_trabajo/features/chat/presentation/widgets/spanish_asset_picker_delegate.dart';
 import 'package:forja_trabajo/features/chat/presentation/widgets/chat_input_action_menu.dart';
 import 'package:forja_trabajo/features/chat/presentation/widgets/chat_input_recorder_bar.dart';
+import 'package:forja_trabajo/features/chat/presentation/widgets/chat_location_picker.dart';
 
 class ChatInputArea extends ConsumerStatefulWidget {
   final String conversationId;
@@ -49,6 +49,7 @@ class _ChatInputAreaState extends ConsumerState<ChatInputArea> {
   bool _isRecording = false;
   bool _isLockedRecording = false;
   String? _recordPath;
+  bool _isUploading = false;
 
   @override
   void dispose() {
@@ -74,8 +75,8 @@ class _ChatInputAreaState extends ConsumerState<ChatInputArea> {
     }
   }
 
-  void _onSend() {
-    if (!widget.isEnabled) return;
+  Future<void> _onSend() async {
+    if (!widget.isEnabled || _isUploading) return;
     final text = _messageController.text.trim();
     if (text.isEmpty && _selectedMedia.isEmpty) return;
 
@@ -85,9 +86,10 @@ class _ChatInputAreaState extends ConsumerState<ChatInputArea> {
 
     if (_selectedMedia.isNotEmpty) {
       final paths = _selectedMedia.map((m) => m.path).toList();
-      notifier.sendMediaBatch(paths, text.isNotEmpty ? text : null);
-
+      setState(() { _isUploading = true; });
+      await notifier.sendMediaBatch(paths, text.isNotEmpty ? text : null);
       setState(() {
+        _isUploading = false;
         _selectedMedia.clear();
         _selectedMediaTypes.clear();
         _selectedMediaDurations.clear();
@@ -178,23 +180,8 @@ class _ChatInputAreaState extends ConsumerState<ChatInputArea> {
         onOffer: _showOfferDialog,
         onGallery: _pickGallery,
         onLocation: _sendLocation,
-        onAudio: _pickAudio,
       ),
     );
-  }
-
-  Future<void> _pickAudio() async {
-    FilePickerResult? result = await FilePicker.platform.pickFiles(
-      type: FileType.audio,
-    );
-
-    if (result != null && result.files.single.path != null && mounted) {
-      setState(() {
-        _selectedMedia = [XFile(result.files.single.path!)];
-        _selectedMediaTypes = ['audio'];
-        _selectedMediaDurations = [null];
-      });
-    }
   }
 
   Future<void> _pickGallery() async {
@@ -272,9 +259,26 @@ class _ChatInputAreaState extends ConsumerState<ChatInputArea> {
     }
   }
 
-  void _sendLocation() {
+  Future<void> _sendLocation() async {
     final notifier = ref.read(chatProvider(widget.conversationId).notifier);
-    notifier.sendLocation();
+    final scaffold = ScaffoldMessenger.of(context);
+    try {
+      scaffold.showSnackBar(const SnackBar(
+        content: Text('Obteniendo ubicación...'),
+        duration: Duration(seconds: 10),
+      ));
+      final locationJson = await ChatLocationPicker.pickAndEncodeLocation();
+      if (!mounted) return;
+      scaffold.hideCurrentSnackBar();
+      await notifier.sendLocation(locationJson);
+    } catch (e) {
+      if (!mounted) return;
+      scaffold.hideCurrentSnackBar();
+      scaffold.showSnackBar(SnackBar(
+        content: Text(e.toString().replaceFirst('Exception: ', '')),
+        backgroundColor: Colors.orange,
+      ));
+    }
   }
 
   Future<void> _startRecording() async {
@@ -454,7 +458,7 @@ class _ChatInputAreaState extends ConsumerState<ChatInputArea> {
                     shape: BoxShape.circle,
                   ),
                   child: GestureDetector(
-                    onLongPress: widget.isEnabled && !hasInput && !_isLockedRecording ? _startRecording : null,
+                    onLongPress: widget.isEnabled && !hasInput && !_isLockedRecording && !_isUploading ? _startRecording : null,
                     onLongPressEnd: widget.isEnabled && !hasInput && !_isLockedRecording ? (details) => _stopRecording() : null,
                     onPanUpdate: (!hasInput && _isRecording && !_isLockedRecording)
                         ? (details) {
@@ -467,14 +471,19 @@ class _ChatInputAreaState extends ConsumerState<ChatInputArea> {
                         : null,
                     onTap: _isLockedRecording
                         ? () => _stopRecording()
-                        : hasInput ? _onSend : null,
+                        : hasInput && !_isUploading ? _onSend : null,
                     child: Padding(
                       padding: const EdgeInsets.all(12),
-                      child: Icon(
-                        (_isLockedRecording || hasInput) ? Icons.send_rounded : Icons.mic,
-                        color: Colors.white,
-                        size: 20,
-                      ),
+                      child: _isUploading
+                        ? const SizedBox(
+                            width: 20, height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          )
+                        : Icon(
+                            (_isLockedRecording || hasInput) ? Icons.send_rounded : Icons.mic,
+                            color: Colors.white,
+                            size: 20,
+                          ),
                     ),
                   ),
                 ),

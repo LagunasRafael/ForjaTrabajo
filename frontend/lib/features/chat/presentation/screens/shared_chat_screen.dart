@@ -16,6 +16,8 @@ import 'package:forja_trabajo/features/chat/presentation/widgets/chat_typing_ind
 import 'package:forja_trabajo/features/chat/presentation/widgets/chat_negotiation_banner.dart';
 import 'package:forja_trabajo/features/services/presentation/screens/shared/service_detail_screen.dart';
 import 'package:forja_trabajo/features/services/domain/entities/service_entity.dart';
+import 'package:forja_trabajo/features/chat/presentation/widgets/chat_day_divider.dart';
+import 'package:forja_trabajo/features/chat/presentation/widgets/chat_empty_state.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 
 class SharedChatScreen extends ConsumerStatefulWidget {
@@ -62,6 +64,25 @@ class _SharedChatScreenState extends ConsumerState<SharedChatScreen> {
         duration: const Duration(milliseconds: 300),
       );
     }
+  }
+
+  bool _isSameDay(DateTime a, DateTime b) {
+    final da = a.toLocal();
+    final db = b.toLocal();
+    return da.year == db.year && da.month == db.month && da.day == db.day;
+  }
+
+  List<dynamic> _buildChatItems(List<MessageEntity> messages) {
+    final items = <dynamic>[];
+    DateTime? lastDate;
+    for (final msg in messages) {
+      if (lastDate == null || !_isSameDay(lastDate, msg.createdAt)) {
+        items.add(ChatDayDivider.fromDateTime(msg.createdAt));
+      }
+      items.add(msg);
+      lastDate = msg.createdAt;
+    }
+    return items;
   }
 
   MessageEntity? _getLastOffer(List<MessageEntity> messages) {
@@ -128,8 +149,6 @@ class _SharedChatScreenState extends ConsumerState<SharedChatScreen> {
     final hasActiveOffer = lastOffer != null &&
         lastOffer.status.toLowerCase() == 'pending' &&
         canSendOffer;
-    final messageCount = messages.length;
-
     final subtitlePrefix = isClosed
         ? "Chat finalizado"
         : (thisChat?.status.toUpperCase() == 'EN DISPUTA')
@@ -188,25 +207,30 @@ class _SharedChatScreenState extends ConsumerState<SharedChatScreen> {
       body: Column(
         children: [
           Expanded(
-            child: isInitialLoading
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    theme.brightness == Brightness.dark
+                        ? const Color(0xFF1E1B4B).withValues(alpha: 0.3)
+                        : const Color(0xFFE0E7FF),
+                    theme.brightness == Brightness.dark
+                        ? const Color(0xFF1E1B4B).withValues(alpha: 0.15)
+                        : const Color(0xFFC7D2FE),
+                    theme.colorScheme.surface,
+                  ],
+                ),
+              ),
+              child: isInitialLoading
               ? const Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                   ),
                 )
               : messages.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.chat_bubble_outline, size: 64, color: theme.colorScheme.onSurface.withOpacity(0.3)),
-                        const SizedBox(height: 16),
-                        const Text("No hay mensajes todavía", style: TextStyle(color: Colors.grey, fontSize: 16)),
-                        const SizedBox(height: 8),
-                        const Text("Di hola para comenzar", style: TextStyle(color: Colors.grey, fontSize: 14)),
-                      ],
-                    ),
-                  )
+                ? const ChatEmptyState()
                 : NotificationListener<ScrollNotification>(
                     onNotification: (ScrollNotification scrollInfo) {
                       if (scrollInfo.metrics.pixels >= scrollInfo.metrics.maxScrollExtent - 100) {
@@ -219,9 +243,10 @@ class _SharedChatScreenState extends ConsumerState<SharedChatScreen> {
                       reverse: true,
                       padding: const EdgeInsets.all(16),
                       cacheExtent: 1000,
-                      itemCount: messageCount + 1,
+                      itemCount: _buildChatItems(messages).length + 1,
                       itemBuilder: (context, index) {
-                        if (index == messageCount) {
+                        final displayItems = _buildChatItems(messages);
+                        if (index == displayItems.length) {
                           final notifier = ref.read(chatProvider(widget.conversationId).notifier);
                           if (notifier.isLoadingMore) {
                             return const Padding(
@@ -240,21 +265,15 @@ class _SharedChatScreenState extends ConsumerState<SharedChatScreen> {
                           return const SizedBox.shrink();
                         }
 
-                        final m = messages[index];
+                        final item = displayItems[index];
+                        if (item is ChatDayDivider) {
+                          return item;
+                        }
+
+                        final m = item as MessageEntity;
                         final isMyMessage = m.senderId == myId;
 
-                        String displayTime = "";
-                        final rawTime = m.createdAt;
-
-                        try {
-                          final dateTime = rawTime.toLocal();
-                          final hour = dateTime.hour > 12 ? dateTime.hour - 12 : (dateTime.hour == 0 ? 12 : dateTime.hour);
-                          final minute = dateTime.minute.toString().padLeft(2, '0');
-                          final period = dateTime.hour >= 12 ? 'PM' : 'AM';
-                          displayTime = "$hour:$minute $period";
-                        } catch (e) {
-                          displayTime = rawTime.toString();
-                        }
+                        String displayTime = m.displayTime;
 
                         Widget messageWidget;
 
@@ -323,9 +342,10 @@ class _SharedChatScreenState extends ConsumerState<SharedChatScreen> {
                       },
                     ),
                   ),
-          ),
+              ),
+            ),
 
-          if (isClient && hasActiveOffer)
+            if (isClient && hasActiveOffer)
             ChatNegotiationBanner(
               amount: lastOffer.content.toString(),
               conversationId: widget.conversationId,

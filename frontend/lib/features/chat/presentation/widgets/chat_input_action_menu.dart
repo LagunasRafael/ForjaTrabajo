@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja_trabajo/features/chat/presentation/widgets/chat_action_item.dart';
 
 class ChatInputActionMenu extends StatelessWidget {
   final bool isClient;
@@ -6,7 +7,6 @@ class ChatInputActionMenu extends StatelessWidget {
   final VoidCallback? onOffer;
   final VoidCallback? onGallery;
   final VoidCallback? onLocation;
-  final VoidCallback? onAudio;
 
   const ChatInputActionMenu({
     super.key,
@@ -15,49 +15,57 @@ class ChatInputActionMenu extends StatelessWidget {
     this.onOffer,
     this.onGallery,
     this.onLocation,
-    this.onAudio,
   });
 
   @override
   Widget build(BuildContext context) {
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (isClient && canSendOffer)
-              ListTile(
-                leading: const Icon(Icons.local_offer, color: Color(0xFF4F46E5)),
-                title: const Text("Generar Oferta", style: TextStyle(fontWeight: FontWeight.bold)),
-                onTap: () {
-                  Navigator.pop(context);
-                  onOffer?.call();
-                },
+            Text(
+              "Compartir",
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.onSurface,
               ),
-            ListTile(
-              leading: const Icon(Icons.photo_library, color: Colors.blue),
-              title: const Text("Galería"),
-              onTap: () {
-                Navigator.pop(context);
-                onGallery?.call();
-              },
             ),
-            ListTile(
-              leading: const Icon(Icons.location_on, color: Colors.green),
-              title: const Text("Compartir Ubicación"),
-              onTap: () {
-                Navigator.pop(context);
-                onLocation?.call();
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.audiotrack, color: Colors.orange),
-              title: const Text("Enviar Audio"),
-              onTap: () {
-                Navigator.pop(context);
-                onAudio?.call();
-              },
+            const SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                ChatActionItem(
+                  icon: Icons.photo_library,
+                  color: Colors.blue,
+                  label: "Galería",
+                  onTap: () {
+                    Navigator.pop(context);
+                    onGallery?.call();
+                  },
+                ),
+                ChatActionItem(
+                  icon: Icons.location_on,
+                  color: Colors.green,
+                  label: "Ubicación",
+                  onTap: () {
+                    Navigator.pop(context);
+                    onLocation?.call();
+                  },
+                ),
+                if (isClient && canSendOffer)
+                  ChatActionItem(
+                    icon: Icons.local_offer,
+                    color: const Color(0xFF4F46E5),
+                    label: "Oferta",
+                    onTap: () {
+                      Navigator.pop(context);
+                      onOffer?.call();
+                    },
+                  ),
+              ],
             ),
           ],
         ),

@@ -76,8 +76,9 @@ class _ServiceDetailScreenState extends ConsumerState<ServiceDetailScreen> {
               final currentStatus = o.status.toString().toLowerCase().trim();
               final isCanceled = currentStatus == 'canceled'; 
               final isRejected = currentStatus == 'rejected'; 
+              final isExpired = currentStatus == 'expired';
 
-              return isMyOffer && !isCanceled && !isRejected;
+              return isMyOffer && !isCanceled && !isRejected && !isExpired;
             });
           },
           orElse: () => false,

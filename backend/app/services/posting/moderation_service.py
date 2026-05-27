@@ -81,6 +81,13 @@ def cancel_service(db: Session, service_id: str, user_id: str, user_role: str):
                         pass
                 payment.status = PaymentStatus.FAILED
 
+    active_requests = db.query(models.ServiceRequest).filter(
+        models.ServiceRequest.service_id == service_id,
+        models.ServiceRequest.status.in_(["pending", "accepted"])
+    ).all()
+    for req in active_requests:
+        req.status = "expired"
+
     try:
         close_service_chats(db, service_id, models.ClosedReason.SERVICE_CANCELLED.value)
     except Exception as e:
