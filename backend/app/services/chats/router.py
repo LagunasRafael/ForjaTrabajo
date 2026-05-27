@@ -489,13 +489,17 @@ def get_all_conversations_admin(
     current_user: auth_models.User = Depends(check_role([Role.ADMIN]))
 ):
     """Devuelve todas las conversaciones para el visor de disputas del admin."""
-    conversations = db.query(service_models.Conversation).order_by(service_models.Conversation.updated_at.desc()).all()
-    
+    from sqlalchemy.orm import joinedload
+    conversations = db.query(service_models.Conversation).options(
+        joinedload(service_models.Conversation.request)
+        .joinedload(service_models.ServiceRequest.worker)
+    ).order_by(service_models.Conversation.updated_at.desc()).all()
+
     result = []
     for conv in conversations:
         client = db.query(auth_models.User).filter(auth_models.User.id == conv.client_id).first()
-        worker = db.query(auth_models.User).filter(auth_models.User.id == conv.worker_id).first()
-        
+        worker = conv.request.worker if conv.request else None
+
         result.append({
             "id": conv.id,
             "request_id": conv.request_id,
@@ -517,10 +521,13 @@ def get_conversation_messages_admin(
     messages = db.query(service_models.Message).filter(
         service_models.Message.conversation_id == conversation_id
     ).order_by(service_models.Message.created_at.asc()).all()
-    
+
+    sender_ids = list(set(msg.sender_id for msg in messages))
+    users = {u.id: u for u in db.query(auth_models.User).filter(auth_models.User.id.in_(sender_ids)).all()}
+
     result = []
     for msg in messages:
-        sender = db.query(auth_models.User).filter(auth_models.User.id == msg.sender_id).first()
+        sender = users.get(msg.sender_id)
         result.append({
             "id": msg.id,
             "sender_id": msg.sender_id,

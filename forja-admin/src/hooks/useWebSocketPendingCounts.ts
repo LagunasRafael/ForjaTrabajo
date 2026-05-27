@@ -45,13 +45,11 @@ export function useWebSocketPendingCounts() {
     if (!adminUserId) return;
 
     const wsUrl = `${getWsUrl()}/admin/ws/counts/${adminUserId}`;
-    console.log(`[AdminWS] Connecting to ${wsUrl}`);
 
     try {
       const ws = new WebSocket(wsUrl);
 
       ws.onopen = () => {
-        console.log('[AdminWS] Connected');
         setIsConnected(true);
         retryCountRef.current = 0;
       };
@@ -68,7 +66,6 @@ export function useWebSocketPendingCounts() {
       };
 
       ws.onclose = () => {
-        console.log('[AdminWS] Disconnected');
         setIsConnected(false);
 
         if (retryCountRef.current < maxRetries) {
@@ -80,9 +77,7 @@ export function useWebSocketPendingCounts() {
         }
       };
 
-      ws.onerror = (error) => {
-        console.error('[AdminWS] Error:', error);
-      };
+      ws.onerror = () => {};
 
       wsRef.current = ws;
     } catch (e) {

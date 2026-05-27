@@ -35,7 +35,7 @@ export const ReportedServicesPage = () => {
     fetchReportedServices();
   }, []);
 
-  useAutoRefresh(fetchReportedServices, 30000);
+  useAutoRefresh(fetchReportedServices, 60000);
 
   if (isLoading) {
     return (

@@ -13,7 +13,7 @@ export const JobsPage = () => {
     loadJobs();
   }, []);
 
-  useAutoRefresh(() => loadJobs(), 30000);
+  useAutoRefresh(() => loadJobs(), 60000);
 
   const loadJobs = async () => {
     try {
