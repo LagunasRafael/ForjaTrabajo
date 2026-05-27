@@ -1,5 +1,4 @@
 import logging
-import uuid
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 from app.payments.stripe_client import stripe
@@ -36,14 +35,14 @@ def refund_payment(db: Session, payment_id: str):
                 logger.info("Refund: Cancelando PaymentIntent...")
                 stripe.PaymentIntent.cancel(
                     payment.stripe_payment_intent_id,
-                    idempotency_key=f"cancel_refund_{payment.id}_{uuid.uuid4().hex}",
+                    idempotency_key=f"cancel_refund_{payment.id}",
                 )
                 logger.info("Refund: PaymentIntent cancelado exitosamente")
             else:
                 logger.info("Refund: Creando refund para PaymentIntent...")
                 stripe.Refund.create(
                     payment_intent=payment.stripe_payment_intent_id,
-                    idempotency_key=f"refund_{payment.id}_{uuid.uuid4().hex}",
+                    idempotency_key=f"refund_{payment.id}",
                 )
                 logger.info("Refund: Refund creado exitosamente")
     except stripe.error.StripeError as e:
