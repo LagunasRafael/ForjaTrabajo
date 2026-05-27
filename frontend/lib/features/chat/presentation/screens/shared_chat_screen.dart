@@ -74,13 +74,12 @@ class _SharedChatScreenState extends ConsumerState<SharedChatScreen> {
 
   List<dynamic> _buildChatItems(List<MessageEntity> messages) {
     final items = <dynamic>[];
-    DateTime? lastDate;
-    for (final msg in messages) {
-      if (lastDate == null || !_isSameDay(lastDate, msg.createdAt)) {
+    for (int i = 0; i < messages.length; i++) {
+      final msg = messages[i];
+      items.add(msg);
+      if (i + 1 >= messages.length || !_isSameDay(msg.createdAt, messages[i + 1].createdAt)) {
         items.add(ChatDayDivider.fromDateTime(msg.createdAt));
       }
-      items.add(msg);
-      lastDate = msg.createdAt;
     }
     return items;
   }
@@ -304,7 +303,8 @@ class _SharedChatScreenState extends ConsumerState<SharedChatScreen> {
                           );
                         }
 
-                        if (index == 0 && isMyMessage) {
+                        final firstMsgIndex = displayItems.indexWhere((i) => i is MessageEntity);
+                        if (index == firstMsgIndex && isMyMessage) {
                           String statusText = "Enviado";
                           Color statusColor = Colors.grey.shade600;
 

@@ -114,7 +114,7 @@ mixin ChatWebSocketMixin on StateNotifier<List<MessageModel>> {
           tempIdx = state.indexWhere((m) => m.id.startsWith('temp_') && m.content == newMessage.content);
         }
         
-        if (tempIdx == -1 && ['image', 'gallery', 'audio'].contains(newMessage.messageType)) {
+        if (tempIdx == -1 && ['image', 'gallery', 'audio', 'video'].contains(newMessage.messageType)) {
           tempIdx = state.indexWhere((m) => m.id.startsWith('temp_') && 
             (m.messageType == newMessage.messageType || 
              (newMessage.messageType == 'gallery' && m.messageType == 'image') ||
