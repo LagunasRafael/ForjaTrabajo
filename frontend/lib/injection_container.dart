@@ -28,8 +28,4 @@ Future<void> init() async {
   connectTimeout: const Duration(seconds: 60),
   receiveTimeout: const Duration(seconds: 60),
 )));
-
-  // Use cases
- 
-  
 }
