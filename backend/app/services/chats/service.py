@@ -389,7 +389,10 @@ def handle_offer_action(db: Session, message_id: str, action: str, user_id: str)
         )
         db.add(new_job)
 
-        # 5. El chat permanece ABIERTO para coordinar el trabajo
+        # 5. Cerrar los chats de los otros postulantes
+        close_service_chats(db, str(service_entry.id), models.ClosedReason.WORKER_NOT_SELECTED.value, exclude_request_id=str(request.id))
+
+        # 6. El chat del seleccionado permanece ABIERTO para coordinar el trabajo
         convo.status = models.ConversationStatus.OPEN.value # type: ignore
 
     elif action == "reject":

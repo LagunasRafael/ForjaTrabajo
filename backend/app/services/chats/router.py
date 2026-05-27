@@ -3,7 +3,7 @@ from app.services.chats.websocket_routes import router as websocket_router
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 import logging
-
+from typing import List
 from app.db.database import get_db
 from app.auth.security import get_current_user, check_role
 from app.core.roles import Role
