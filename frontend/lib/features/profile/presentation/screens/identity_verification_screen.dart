@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../data/datasources/verification_remote_data_source.dart';
+import 'package:forja_trabajo/features/profile/presentation/providers/public_profile_provider.dart';
 import '../widgets/camera_capture_screen.dart';
 import '../widgets/camera_guide_overlay.dart';
 
@@ -27,8 +27,8 @@ class _IdentityVerificationScreenState extends ConsumerState<IdentityVerificatio
 
   Future<void> _loadStatus() async {
     try {
-      final ds = ref.read(verificationDataSourceProvider);
-      final status = await ds.getVerificationStatus();
+      final repo = ref.read(profileRepositoryProvider);
+      final status = await repo.getVerificationStatus();
       if (mounted && status['verification'] != null) {
         setState(() => _result = status);
       }
@@ -78,8 +78,8 @@ class _IdentityVerificationScreenState extends ConsumerState<IdentityVerificatio
 
     setState(() => _isSubmitting = true);
     try {
-      final ds = ref.read(verificationDataSourceProvider);
-      final result = await ds.uploadVerification(
+      final repo = ref.read(profileRepositoryProvider);
+      final result = await repo.uploadVerification(
         ineFront: _ineFront!,
         ineBack: _ineBack!,
         selfie: _selfie!,

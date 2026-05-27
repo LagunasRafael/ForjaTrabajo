@@ -1,8 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../domain/entities/category_entity.dart';
-import '../../data/repositories/service_repository_impl.dart';
 import '../../domain/repositories/service_repository.dart';
+import '../../presentation/providers/service_repository_provider.dart';
 
 // 1. Estado de la categoría seleccionada
 final selectedCategoryProvider = StateProvider<String?>((ref) => null);

@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:forja_trabajo/core/network/notification_service.dart';
 import 'package:forja_trabajo/features/chat/presentation/providers/chat_provider.dart'; 
 import '../../domain/entities/chat_summary_entity.dart';
 import '../../domain/repositories/chat_repository.dart';
@@ -14,29 +13,8 @@ final chatListProvider = StateNotifierProvider.autoDispose<ChatListNotifier, Asy
 class ChatListNotifier extends StateNotifier<AsyncValue<List<ChatSummaryEntity>>> {
   final ChatRepository repository;
 
-  StreamSubscription? _notifSubscription;
-
   ChatListNotifier(this.repository) : super(const AsyncValue.loading()) {
     loadRealChats();
-    _listenToNotifications();
-  }
-
-  void _listenToNotifications() {
-    _notifSubscription = NotificationService.onNotification.listen((message) {
-      final type = message.data['type'];
-      print("🔔 [ChatListProvider] Notificación recibida: $type");
-      
-      if (type == 'new_message' || type == 'admin_message' || type == 'dispute_opened' || type == 'new_offer') {
-        print("🔄 [ChatListProvider] Recargando lista de chats...");
-        loadRealChats();
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _notifSubscription?.cancel();
-    super.dispose();
   }
 
   Future<void> loadRealChats() async {

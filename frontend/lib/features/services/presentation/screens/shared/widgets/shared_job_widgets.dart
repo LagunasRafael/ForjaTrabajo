@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:forja_trabajo/features/services/domain/usecases/jobs/cancel_job_usecase.dart';
+import 'package:forja_trabajo/features/services/presentation/providers/cancel_job_providers.dart';
 import 'package:forja_trabajo/core/network/api_client.dart';
 
 // 🚀 PROVIDER DE ESTADO DE CANCELACIÓN (Lo ponemos aquí para que el Lego sea independiente)

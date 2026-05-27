@@ -6,10 +6,8 @@ import 'package:forja_trabajo/features/payments/presentation/screens/wallet_scre
 import 'package:forja_trabajo/features/services/presentation/screens/worker/marketplace_screen.dart';
 import 'package:forja_trabajo/features/services/presentation/providers/nav_providers.dart';
 import 'package:forja_trabajo/features/chat/presentation/providers/unread_count_provider.dart';
-import 'package:forja_trabajo/features/notifications/presentation/providers/notification_provider.dart';
 import '../worker/my_jobs_screen.dart';
 import 'package:forja_trabajo/features/chat/presentation/screens/chat_list_screen.dart';
-import 'package:forja_trabajo/features/notifications/presentation/screens/notifications_screen.dart';
 import '../worker/worker_profile_screen.dart';
 
 class WorkerMainLayout extends ConsumerStatefulWidget {
@@ -45,7 +43,6 @@ class _WorkerMainLayoutState extends ConsumerState<WorkerMainLayout> with Widget
   Widget build(BuildContext context) {
     final currentIndex = ref.watch(workerNavProvider);
     final unreadChatCount = ref.watch(unreadCountProvider);
-    final unreadNotifCount = ref.watch(unreadNotificationCountProvider);
     final walletStatus = ref.watch(walletStatusProvider).valueOrNull;
     final theme = Theme.of(context);
 
@@ -56,66 +53,75 @@ class _WorkerMainLayoutState extends ConsumerState<WorkerMainLayout> with Widget
       const WorkerProfileScreen(),
     ];
 
-    final showBanner = walletStatus != null && !walletStatus.isReady && !_walletBannerDismissed;
+    final showBanner = walletStatus != null &&
+        !walletStatus.isReady &&
+        !_walletBannerDismissed;
 
-    return Scaffold(
-      body: IndexedStack(
-        index: currentIndex,
-        children: screens,
+    return Theme(
+      data: theme.copyWith(
+        snackBarTheme: const SnackBarThemeData(
+          behavior: SnackBarBehavior.fixed,
+        ),
       ),
-      bottomNavigationBar: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (showBanner)
-            _walletBanner(context),
-          NavigationBar(
-            selectedIndex: currentIndex,
-            onDestinationSelected: (index) {
-              ref.read(workerNavProvider.notifier).state = index;
-            },
-            backgroundColor: theme.colorScheme.surface,
-            elevation: 3,
-            indicatorColor: theme.colorScheme.primary.withOpacity(0.15),
-            destinations: [
-              const NavigationDestination(
-                icon: Icon(Icons.search),
-                selectedIcon: Icon(Icons.search, color: Color(0xFF1E1B4B)),
-                label: 'Explorar',
-              ),
-              NavigationDestination(
-                icon: Badge(
-                  isLabelVisible: unreadChatCount > 0,
-                  label: Text(
-                    unreadChatCount > 9 ? '9+' : '$unreadChatCount',
-                    style: const TextStyle(color: Colors.white, fontSize: 10),
-                  ),
-                  backgroundColor: const Color(0xFFEF4444),
-                  child: const Icon(Icons.chat_bubble_outline),
+      child: Scaffold(
+        body: IndexedStack(
+          index: currentIndex,
+          children: screens,
+        ),
+        bottomNavigationBar: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (showBanner) _walletBanner(context),
+            NavigationBar(
+              selectedIndex: currentIndex,
+              onDestinationSelected: (index) {
+                ref.read(workerNavProvider.notifier).state = index;
+              },
+              backgroundColor: theme.colorScheme.surface,
+              elevation: 3,
+              indicatorColor: theme.colorScheme.primary.withOpacity(0.15),
+              destinations: [
+                const NavigationDestination(
+                  icon: Icon(Icons.search),
+                  selectedIcon: Icon(Icons.search, color: Color(0xFF1E1B4B)),
+                  label: 'Explorar',
                 ),
-                selectedIcon: Badge(
-                  isLabelVisible: unreadChatCount > 0,
-                  label: Text(
-                    unreadChatCount > 9 ? '9+' : '$unreadChatCount',
-                    style: const TextStyle(color: Colors.white, fontSize: 10),
+                NavigationDestination(
+                  icon: Badge(
+                    isLabelVisible: unreadChatCount > 0,
+                    label: Text(
+                      unreadChatCount > 9 ? '9+' : '$unreadChatCount',
+                      style: const TextStyle(color: Colors.white, fontSize: 10),
+                    ),
+                    backgroundColor: const Color(0xFFEF4444),
+                    child: const Icon(Icons.chat_bubble_outline),
                   ),
-                  backgroundColor: const Color(0xFFEF4444),
-                  child: const Icon(Icons.chat_bubble, color: Color(0xFF1E1B4B)),
+                  selectedIcon: Badge(
+                    isLabelVisible: unreadChatCount > 0,
+                    label: Text(
+                      unreadChatCount > 9 ? '9+' : '$unreadChatCount',
+                      style: const TextStyle(color: Colors.white, fontSize: 10),
+                    ),
+                    backgroundColor: const Color(0xFFEF4444),
+                    child:
+                        const Icon(Icons.chat_bubble, color: Color(0xFF1E1B4B)),
+                  ),
+                  label: 'Mensajes',
                 ),
-                label: 'Mensajes',
-              ),
-              const NavigationDestination(
-                icon: Icon(Icons.work_outline),
-                selectedIcon: Icon(Icons.work, color: Color(0xFF1E1B4B)),
-                label: 'Mis Trabajos',
-              ),
-              const NavigationDestination(
-                icon: Icon(Icons.person_outline),
-                selectedIcon: Icon(Icons.person, color: Color(0xFF1E1B4B)),
-                label: 'Perfil',
-              ),
-            ],
-          ),
-        ],
+                const NavigationDestination(
+                  icon: Icon(Icons.work_outline),
+                  selectedIcon: Icon(Icons.work, color: Color(0xFF1E1B4B)),
+                  label: 'Mis Trabajos',
+                ),
+                const NavigationDestination(
+                  icon: Icon(Icons.person_outline),
+                  selectedIcon: Icon(Icons.person, color: Color(0xFF1E1B4B)),
+                  label: 'Perfil',
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -141,7 +147,10 @@ class _WorkerMainLayoutState extends ConsumerState<WorkerMainLayout> with Widget
               ),
               child: const Text(
                 'Configura tu billetera para postularte',
-                style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500),
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500),
               ),
             ),
           ),

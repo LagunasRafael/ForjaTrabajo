@@ -170,7 +170,7 @@ class ChatContextMenu {
     if (result == true && context.mounted) {
       try {
         final otherUserId = chat.otherUserId;
-        if (otherUserId == null || otherUserId.isEmpty) {
+        if (otherUserId.isEmpty) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('No se pudo identificar al usuario'), backgroundColor: Colors.red),
           );

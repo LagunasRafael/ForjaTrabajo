@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/network/api_client.dart';
-import '../../presentation/providers/public_profile_provider.dart';
+import '../../../../core/providers/api_client_provider.dart';
 
 final verificationDataSourceProvider = Provider((ref) {
   final apiClient = ref.watch(apiClientProvider);

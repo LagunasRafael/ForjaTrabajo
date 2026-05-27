@@ -1,3 +1,9 @@
+import logging
+from pathlib import Path
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -6,10 +12,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.middleware import SlowAPIMiddleware
 from slowapi.errors import RateLimitExceeded
-import logging
-import os
 from dotenv import load_dotenv
-from pathlib import Path
 
 # Cargar variables de entorno desde .env (ruta absoluta)
 load_dotenv(dotenv_path=Path(__file__).resolve().parent.parent / ".env")
@@ -36,7 +39,7 @@ app = FastAPI(
 
 from app.core.config import CORS_ORIGINS
 
-# 🔥 CORS
+# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ORIGINS,
@@ -47,43 +50,38 @@ app.add_middleware(
 
 from app.core.rate_limit import limiter
 
-# 🚦 Rate Limiting (Protección contra fuerza bruta y SPAM)
+# Rate Limiting (Proteccion contra fuerza bruta y SPAM)
 app.state.limiter = limiter # type: ignore
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
 app.add_middleware(SlowAPIMiddleware)
-
-# Configuración del Logger
-logging.basicConfig(level=logging.ERROR)
-logger = logging.getLogger(__name__)
 
 # --- MANEJADORES GLOBALES DE ERRORES ---
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    logger.error(f"❌ Error inesperado no manejado: {exc}", exc_info=True)
+    logger.error("Error inesperado no manejado: %s", exc, exc_info=True)
     return JSONResponse(
         status_code=500,
-        content={"detail": "Ocurrió un error interno en el servidor. Intenta más tarde."},
+        content={"detail": "Ocurrio un error interno en el servidor. Intenta mas tarde."},
     )
 
 @app.exception_handler(SQLAlchemyError)
 async def sqlalchemy_exception_handler(request: Request, exc: SQLAlchemyError):
     error_msg = str(exc)
-    logger.error(f"🛢️ Error de Base de Datos: {error_msg}", exc_info=True)
+    logger.error("Error de Base de Datos: %s", error_msg, exc_info=True)
     return JSONResponse(
         status_code=500,
-        content={"detail": f"Error en la operación de base de datos: {error_msg}"},
+        content={"detail": f"Error en la operacion de base de datos: {error_msg}"},
     )
 
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    # Simplificamos los errores para el cliente
     errors = [{"campo": err["loc"][-1], "mensaje": err["msg"]} for err in exc.errors()]
-    logger.error(f"⚠️ Error de Validación (422): {errors}")
+    logger.error("Error de Validacion (422): %s", errors)
     return JSONResponse(
         status_code=422,
-        content={"detail": "Datos de entrada inválidos", "errores": errors},
+        content={"detail": "Datos de entrada invalidos", "errores": errors},
     )
 
 # Scheduler automático (APScheduler)
@@ -91,6 +89,19 @@ from app.services.scheduler import start_scheduler, stop_scheduler
 
 @app.on_event("startup")
 def on_startup():
+    # Crear tablas (solo corre en el worker, no en el reloader padre)
+    logger.info("Tablas listas para crear: %s", Base.metadata.tables.keys())
+    from sqlalchemy import text
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("DROP TABLE IF EXISTS reports CASCADE"))
+            conn.commit()
+            logger.info("Tabla reports eliminada para recrear desde modelo.")
+    except Exception as e:
+        logger.warning("Aviso (no critico): %s", e)
+    Base.metadata.create_all(bind=engine)
+    logger.info("Tablas creadas/verificadas con create_all.")
+
     start_scheduler()
 
 @app.on_event("shutdown")
@@ -99,7 +110,6 @@ def on_shutdown():
 
 # Routers
 app.include_router(router)
-
 
 @app.get("/")
 def root():

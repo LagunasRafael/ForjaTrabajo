@@ -1,18 +1,18 @@
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'dart:io' show Platform;
 import 'package:forja_trabajo/core/network/notification_service.dart';
-import 'package:forja_trabajo/core/utils/api_config.dart';
 
 class ApiClient {
   static final ApiClient _instance = ApiClient._internal();
   late Dio dio;
   final FlutterSecureStorage storage;
 
+  // 🌐 DIRECCIÓN IP DE TU PC PARA PROBAR EN CELULAR FÍSICO (Ej. Android/iOS)
+  // Reemplaza si cambia tu IP local
+
   static final String _baseUrl = 'https://forja-api-rw0r.onrender.com';
   static String get baseUrl => _baseUrl;
-
+  //static const String _baseUrl = "http://10.0.2.2:8000";
 
   factory ApiClient() => _instance;
 

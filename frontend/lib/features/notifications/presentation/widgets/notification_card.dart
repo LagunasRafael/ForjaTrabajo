@@ -1,13 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:timeago/timeago.dart' as timeago;
-import 'package:forja_trabajo/features/chat/presentation/screens/shared_chat_screen.dart';
-import 'package:forja_trabajo/features/services/presentation/screens/client/offers_received_screen.dart';
 import '../../domain/entities/notification_entity.dart';
 import '../providers/notification_provider.dart';
-import 'package:forja_trabajo/features/services/presentation/providers/nav_providers.dart';
 import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart';
-import 'package:forja_trabajo/features/payments/presentation/screens/wallet_screen.dart';
+import 'package:forja_trabajo/shared/utils/notification_navigation.dart';
 
 class NotificationCard extends ConsumerWidget {
   final NotificationEntity notification;
@@ -45,10 +42,10 @@ class NotificationCard extends ConsumerWidget {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: _getColorForType(notification.type).withValues(alpha: 0.15),
+                    color: colorForNotificationType(notification.type).withValues(alpha: 0.15),
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(_getIconForType(notification.type), color: _getColorForType(notification.type), size: 26),
+                  child: Icon(iconForNotificationType(notification.type), color: colorForNotificationType(notification.type), size: 26),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -104,120 +101,42 @@ class NotificationCard extends ConsumerWidget {
   }
 
   void _handleTap(BuildContext context, WidgetRef ref) {
-    // Marcar como leída
     if (!notification.isRead) {
       final role = ref.read(authProvider).user?.role;
       ref.read(notificationListProvider(role).notifier).markAsRead(notification.id);
     }
-    
-    // NAVEGACIÓN SEGÚN EL TIPO
+
     final type = notification.type;
     final refId = notification.referenceId;
 
-    if (type == 'new_message' || type == 'new_offer' || type == 'offer_responded') {
-      if (refId != null) {
-        // Extraer nombre del remitente desde el body/title de la notificación
-        String otherName = 'Usuario';
-        final body = notification.body ?? '';
-        final title = notification.title;
-        if (type == 'new_offer' || type == 'offer_responded') {
-          // body: "Juan ha realizado una contraoferta..." o "Juan aceptó tu contraoferta..."
-          final namePart = body.split(RegExp(r'\s+(ha realizado|aceptó|rechazó)\s+'));
-          if (namePart.length >= 2) {
-            otherName = namePart[0].trim();
-          }
-        } else if (type == 'new_message') {
-          // title: "Nuevo mensaje de Juan"
-          final namePart = title.split(' de ');
-          if (namePart.length >= 2) {
-            otherName = namePart.sublist(1).join(' de ').trim();
-          }
-        }
-        Navigator.push(context, MaterialPageRoute(
-          builder: (_) => SharedChatScreen(
-            conversationId: refId,
-            otherUserName: otherName,
-          ),
-        ));
+    String otherName = 'Usuario';
+    if (type == 'new_offer' || type == 'offer_responded') {
+      final body = notification.body ?? '';
+      final namePart = body.split(RegExp(r'\s+(ha realizado|aceptó|rechazó)\s+'));
+      if (namePart.length >= 2) {
+        otherName = namePart[0].trim();
       }
-    } else if (type == 'new_application') {
-      if (refId != null) {
-        Navigator.push(context, MaterialPageRoute(
-          builder: (_) => OffersReceivedScreen(serviceId: refId),
-        ));
+    } else if (type == 'new_message') {
+      final namePart = notification.title.split(' de ');
+      if (namePart.length >= 2) {
+        otherName = namePart.sublist(1).join(' de ').trim();
       }
-    } else if (type == 'job_accepted' || 
-               type == 'job_waiting_confirmation' || 
-               type == 'job_completed' || 
-               type == 'job_cancelled' ||
-               type == 'payment_deadline' ||
-               type == 'confirmation_deadline') {
-                  
-      ref.read(workerNavProvider.notifier).state = 1;
-      ref.read(clientNavProvider.notifier).state = 3;
-      
-      if (type == 'job_accepted' || type == 'job_waiting_confirmation' || type == 'confirmation_deadline') {
-         ref.read(myRequestsTabProvider.notifier).state = 1;
-      } else if (type == 'job_completed' || type == 'job_cancelled') {
-         ref.read(myRequestsTabProvider.notifier).state = 2;
-      }
-
-      if (type == 'job_waiting_confirmation' || type == 'confirmation_deadline') {
-        Navigator.pushNamedAndRemoveUntil(context, '/client_home', (route) => false);
-      } else {
-        Navigator.pushNamedAndRemoveUntil(context, '/worker_home', (route) => false);
-      }
-    } else if (type == 'payment_released' || type == 'auto_released' || type == 'payment_held') {
-      Navigator.pushNamedAndRemoveUntil(context, '/worker_home', (route) => false);
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => const WalletScreen(),
-        ),
-      );
-    } else if (type == 'payment_expired') {
-      Navigator.pushNamedAndRemoveUntil(context, '/client_home', (route) => false);
     }
-  }
 
-  IconData _getIconForType(String type) {
-    switch (type) {
-      case 'new_application': return Icons.person_add;
-      case 'job_accepted': return Icons.check_circle;
-      case 'job_waiting_confirmation': return Icons.hourglass_bottom;
-      case 'job_completed': return Icons.verified;
-      case 'job_cancelled': return Icons.cancel;
-      case 'new_message': return Icons.chat_bubble;
-      case 'new_offer': return Icons.local_offer;
-      case 'offer_responded': return Icons.handshake;
-      case 'payment_released': return Icons.account_balance_wallet;
-      case 'payment_held': return Icons.lock;
-      case 'payment_deadline': return Icons.timer;
-      case 'confirmation_deadline': return Icons.hourglass_top;
-      case 'payment_expired': return Icons.timer_off;
-      case 'auto_released': return Icons.rocket_launch;
-      default: return Icons.notifications;
-    }
-  }
+    final container = ProviderScope.containerOf(context);
+    final isWalletType = type == 'payment_released' || type == 'auto_released' || type == 'payment_held';
 
-  Color _getColorForType(String type) {
-    switch (type) {
-      case 'new_application': return Colors.blue;
-      case 'job_accepted': return Colors.green;
-      case 'job_waiting_confirmation': return Colors.orange;
-      case 'job_completed': return Colors.teal;
-      case 'job_cancelled': return Colors.red;
-      case 'new_message': return Colors.indigo;
-      case 'new_offer': return Colors.amber;
-      case 'offer_responded': return Colors.deepPurple;
-      case 'payment_released': return const Color(0xFF7F13EC);
-      case 'payment_held': return const Color(0xFF4F46E5);
-      case 'payment_deadline': return Colors.red;
-      case 'confirmation_deadline': return Colors.orange;
-      case 'payment_expired': return Colors.red.shade700;
-      case 'auto_released': return const Color(0xFF10B981);
-      default: return Colors.grey;
-    }
+    navigateFromNotification(
+      context: context,
+      type: type,
+      conversationId: (type == 'new_message' || type == 'new_offer' || type == 'offer_responded') ? refId : null,
+      serviceId: type == 'new_application' ? refId : null,
+      senderName: otherName,
+      targetRole: notification.targetRole,
+      container: container,
+      clearStack: true,
+      navigateToWallet: isWalletType,
+    );
   }
 
   String _formatBody(String body) {
