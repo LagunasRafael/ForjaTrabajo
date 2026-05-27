@@ -16,6 +16,9 @@ import 'package:forja_trabajo/features/chat/presentation/providers/unread_count_
 import 'package:forja_trabajo/features/notifications/presentation/providers/notification_provider.dart';
 import 'package:forja_trabajo/features/payments/presentation/providers/wallet_status_provider.dart';
 
+final authProvider =
+    NotifierProvider<AuthNotifier, AuthState>(() => AuthNotifier());
+
 class AuthNotifier extends Notifier<AuthState> {
   @override
   AuthState build() {
