@@ -1,4 +1,5 @@
 from fastapi import APIRouter
+from pydantic import BaseModel
 from app.services.chats.message_routes import router as message_router
 from app.services.chats.conversation_routes import router as conversation_router
 from app.services.chats.offer_routes import router as offer_router
