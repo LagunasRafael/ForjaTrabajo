@@ -3,6 +3,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:forja_trabajo/shared/utils/notification_navigation.dart';
 
 final FlutterLocalNotificationsPlugin _localNotifications =
@@ -21,6 +22,14 @@ const AndroidNotificationChannel _channel = AndroidNotificationChannel(
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
   debugPrint("📬 Background message: ${message.messageId}");
+
+  final prefs = await SharedPreferences.getInstance();
+  final enabled = prefs.getBool('notifications_enabled') ?? true;
+  if (!enabled) {
+    debugPrint('🔕 Notificaciones desactivadas, ignorando background message');
+    return;
+  }
+
   try {
     final localNotifications = FlutterLocalNotificationsPlugin();
     await localNotifications.initialize(const InitializationSettings(

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja_trabajo/features/chat/domain/repositories/chat_repository.dart';
@@ -16,11 +17,19 @@ mixin ChatWebSocketMixin on StateNotifier<List<MessageModel>> {
 
   WebSocketChannel? wsChannel;
   bool wsReconnecting = false;
+  int _wsRetryCount = 0;
+  StreamSubscription? _wsStreamSubscription;
 
   bool get isConnected => wsChannel != null && !wsReconnecting;
 
   void wsConnect() {
     if (isDisposed || wsReconnecting || userId.isEmpty || conversationId.isEmpty) return;
+
+    // Cerrar conexión anterior antes de crear una nueva
+    _wsStreamSubscription?.cancel();
+    _wsStreamSubscription = null;
+    wsChannel?.sink.close();
+    wsChannel = null;
 
     final apiBase = ApiClient.baseUrl;
     final wsBaseUrl = apiBase
@@ -33,8 +42,9 @@ mixin ChatWebSocketMixin on StateNotifier<List<MessageModel>> {
     try {
       wsChannel = WebSocketChannel.connect(Uri.parse(wsUrl));
 
-      wsChannel!.stream.listen(
+      _wsStreamSubscription = wsChannel!.stream.listen(
         (message) {
+          _wsRetryCount = 0;
           print("📥 [WS] Raw recibido: $message");
           wsHandleIncoming(message);
         },
@@ -114,7 +124,7 @@ mixin ChatWebSocketMixin on StateNotifier<List<MessageModel>> {
           tempIdx = state.indexWhere((m) => m.id.startsWith('temp_') && m.content == newMessage.content);
         }
         
-        if (tempIdx == -1 && ['image', 'gallery', 'audio'].contains(newMessage.messageType)) {
+        if (tempIdx == -1 && ['image', 'gallery', 'audio', 'video'].contains(newMessage.messageType)) {
           tempIdx = state.indexWhere((m) => m.id.startsWith('temp_') && 
             (m.messageType == newMessage.messageType || 
              (newMessage.messageType == 'gallery' && m.messageType == 'image') ||
@@ -144,8 +154,25 @@ mixin ChatWebSocketMixin on StateNotifier<List<MessageModel>> {
 
   void wsReconnect() {
     if (!mounted || wsReconnecting) return;
+    if (_wsRetryCount >= 15) {
+      print("🚨 [WS] Máximo de reintentos alcanzado (15)");
+      return;
+    }
     wsReconnecting = true;
-    Future.delayed(const Duration(seconds: 3), () {
+    _wsRetryCount++;
+
+    // Cerrar conexión anterior antes de reintentar
+    _wsStreamSubscription?.cancel();
+    _wsStreamSubscription = null;
+    wsChannel?.sink.close();
+    wsChannel = null;
+
+    int delayMs = 1000 * (1 << _wsRetryCount);
+    if (delayMs > 30000) delayMs = 30000;
+    final delay = Duration(milliseconds: delayMs);
+    print("🔄 [WS] Reintentando en ${delay.inMilliseconds}ms (intento $_wsRetryCount/15)");
+
+    Future.delayed(delay, () {
       if (mounted) {
         wsReconnecting = false;
         wsConnect();
@@ -154,7 +181,10 @@ mixin ChatWebSocketMixin on StateNotifier<List<MessageModel>> {
   }
 
   void wsDisconnect() {
+    _wsStreamSubscription?.cancel();
+    _wsStreamSubscription = null;
     wsChannel?.sink.close();
+    wsChannel = null;
   }
 
   void sendTyping(bool isTyping) {

@@ -22,6 +22,7 @@ def create_service_request(
     request_data: schemas.ServiceRequestCreate, db: Session = Depends(get_db),
     current_user: auth_models.User = Depends(check_role([Role.WORKER]))
 ):
+    process_expired_payments(db)
     return service.create_service_request(db, request_data, worker_id=current_user.id)
 
 
@@ -42,6 +43,7 @@ def withdraw_postulation(request_id: str, db: Session = Depends(get_db), current
 @router.get("/worker/my-applications")
 def get_my_applications(db: Session = Depends(get_db), current_user: auth_models.User = Depends(get_current_user)):
     try:
+        process_expired_payments(db)
         return service.get_worker_applications(db, str(current_user.id))
     except Exception as e:
         logger.error(f"Error en get_my_applications: {e}")

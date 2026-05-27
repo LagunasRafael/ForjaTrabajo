@@ -14,14 +14,22 @@ mixin ChatMediaMixin on StateNotifier<List<MessageModel>> {
   Future<void> sendMediaBatch(List<String> paths, String? caption) async {
     if (paths.isEmpty) return;
 
+    const videoExts = ['mp4', 'mov', 'mkv'];
+    const audioExts = ['m4a', 'mp3', 'ogg', 'wav', 'aac', 'opus'];
+
     final audioPaths = paths.where((p) {
       final ext = p.split('.').last.toLowerCase();
-      return ['m4a', 'mp3', 'ogg', 'wav', 'aac', 'opus'].contains(ext);
+      return audioExts.contains(ext);
+    }).toList();
+
+    final videoPaths = paths.where((p) {
+      final ext = p.split('.').last.toLowerCase();
+      return videoExts.contains(ext);
     }).toList();
 
     final imagePaths = paths.where((p) {
       final ext = p.split('.').last.toLowerCase();
-      return !['m4a', 'mp3', 'ogg', 'wav', 'aac', 'opus'].contains(ext);
+      return ![...audioExts, ...videoExts].contains(ext);
     }).toList();
 
     String? imageTempId;
@@ -57,13 +65,29 @@ mixin ChatMediaMixin on StateNotifier<List<MessageModel>> {
       audioTempIds[tempId] = path;
     }
 
+    final videoTempIds = <String, String>{};
+    for (final path in videoPaths) {
+      final tempId = 'temp_video_${DateTime.now().millisecondsSinceEpoch}_${path.hashCode}';
+      final optimistic = MessageModel(
+        id: tempId,
+        conversationId: conversationId,
+        senderId: userId,
+        content: path,
+        messageType: 'video',
+        createdAt: DateTime.now().toUtc(),
+        status: 'sending',
+      );
+      state = [optimistic, ...state];
+      videoTempIds[tempId] = path;
+    }
+
     if (imagePaths.isNotEmpty && imageTempId != null) {
       try {
-        List<String> uploadedUrls = [];
-        for (final path in imagePaths) {
-          final url = await repository.uploadChatMedia(conversationId, path);
-          if (url != null) uploadedUrls.add(url);
-        }
+        final imageFutures = imagePaths.map((path) =>
+          repository.uploadChatMedia(conversationId, path)
+        ).toList();
+        final uploadedResults = await Future.wait(imageFutures);
+        final uploadedUrls = uploadedResults.where((u) => u != null).cast<String>().toList();
 
         if (uploadedUrls.isNotEmpty) {
           final content = uploadedUrls.join(',');
@@ -101,7 +125,7 @@ mixin ChatMediaMixin on StateNotifier<List<MessageModel>> {
       }
     }
 
-    for (final entry in audioTempIds.entries) {
+    final audioFutures = audioTempIds.entries.map((entry) async {
       final tempId = entry.key;
       final path = entry.value;
       try {
@@ -137,7 +161,47 @@ mixin ChatMediaMixin on StateNotifier<List<MessageModel>> {
         print("🚨 Error subiendo audio: $e");
         setMediaError(tempId);
       }
-    }
+    }).toList();
+    await Future.wait(audioFutures);
+
+    final videoFutures = videoTempIds.entries.map((entry) async {
+      final tempId = entry.key;
+      final path = entry.value;
+      try {
+        final url = await repository.uploadChatMedia(conversationId, path);
+        if (url != null) {
+          try {
+            final saved = await repository.sendMessageRest(conversationId, url, 'video');
+            final idx = state.indexWhere((m) => m.id == tempId);
+            if (idx != -1 && mounted) {
+              state = [
+                for (int i = 0; i < state.length; i++)
+                  if (i == idx)
+                    MessageModel(
+                      id: saved.id,
+                      conversationId: conversationId,
+                      senderId: userId,
+                      content: url,
+                      messageType: 'video',
+                      createdAt: saved.createdAt,
+                      status: 'sent',
+                    )
+                  else
+                    state[i],
+              ];
+            }
+          } catch (e) {
+            setMediaError(tempId);
+          }
+        } else {
+          setMediaError(tempId);
+        }
+      } catch (e) {
+        print("🚨 Error subiendo video: $e");
+        setMediaError(tempId);
+      }
+    }).toList();
+    await Future.wait(videoFutures);
 
     if (caption != null && caption.isNotEmpty) {
       await sendMessage(caption, 'text');

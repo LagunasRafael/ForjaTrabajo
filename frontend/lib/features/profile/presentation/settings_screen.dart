@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:forja_trabajo/core/network/api_client.dart';
-import 'package:forja_trabajo/core/network/fcm_service.dart';
+import 'package:forja_trabajo/core/network/notification_controller.dart';
 import 'package:forja_trabajo/features/services/presentation/screens/client/edit_profile_screen.dart';
 import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart';
 import 'package:forja_trabajo/features/auth/presentation/screens/login_screen.dart';
@@ -18,76 +16,13 @@ class SettingsScreen extends ConsumerStatefulWidget {
 }
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
-  bool _notificationsEnabled = true;
   bool _isLoading = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadPreferences();
-  }
-
-  Future<void> _loadPreferences() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _notificationsEnabled = prefs.getBool('notifications_enabled') ?? true;
-    });
-  }
-
-  Future<void> _saveNotificationPreference(bool value) async {
-    setState(() => _isLoading = true);
-    try {
-      if (value) {
-        final fcmService = FcmService();
-        await fcmService.initNotifications();
-        final token = await fcmService.getToken();
-        if (token != null && token.isNotEmpty) {
-        final apiClient = ApiClient();
-        await apiClient.dio.put(
-          '/auth/fcm-token',
-          data: {'fcm_token': token},
-        );
-        }
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setBool('notifications_enabled', true);
-      } else {
-        try {
-          await ApiClient().dio.put(
-            '/auth/fcm-token',
-            data: {'fcm_token': ''},
-          );
-        } catch (_) {}
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setBool('notifications_enabled', false);
-      }
-      setState(() => _notificationsEnabled = value);
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al cambiar notificaciones: $e')),
-        );
-      }
-      setState(() => _notificationsEnabled = !value);
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _launchURL(String urlString) async {
-    final url = Uri.parse(urlString);
-    if (!await launchUrl(url)) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No se pudo abrir el enlace')),
-        );
-      }
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
     final themeMode = ref.watch(themeProvider);
     final isDarkMode = themeMode == ThemeMode.dark;
+    final notificationsEnabled = ref.watch(notificationControllerProvider);
 
     final theme = Theme.of(context);
 
@@ -136,8 +71,31 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           _buildSwitchTile(
             icon: Icons.notifications_none,
             title: "Notificaciones Push",
-            value: _notificationsEnabled,
-            onChanged: _isLoading ? null : _saveNotificationPreference,
+            value: notificationsEnabled,
+            onChanged: _isLoading
+                ? null
+                : (val) async {
+                    setState(() => _isLoading = true);
+                    try {
+                      final controller =
+                          ref.read(notificationControllerProvider.notifier);
+                      if (val) {
+                        await controller.enable();
+                      } else {
+                        await controller.disable();
+                      }
+                    } catch (e) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                              content:
+                                  Text('Error al cambiar notificaciones: $e')),
+                        );
+                      }
+                    } finally {
+                      if (mounted) setState(() => _isLoading = false);
+                    }
+                  },
           ),
 
           const SizedBox(height: 24),
@@ -209,6 +167,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _launchURL(String urlString) async {
+    final url = Uri.parse(urlString);
+    if (!await launchUrl(url)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No se pudo abrir el enlace')),
+        );
+      }
+    }
   }
 
   // --- WIDGETS REUTILIZABLES PARA ESTA PANTALLA ---

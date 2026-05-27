@@ -102,20 +102,13 @@ class Service(Base):
     @property
     def worker_name(self):
         for request in self.requests:
-            if request.job:
+            if request.job and request.job.status != JobStatus.CANCELLED:
                 if request.worker:
                     name = request.worker.full_name
                     if name:
                         return name
                     if request.worker.email:
                         return request.worker.email.split('@')[0]
-        for request in self.requests:
-            if request.worker:
-                name = request.worker.full_name
-                if name:
-                    return name
-                if request.worker.email:
-                    return request.worker.email.split('@')[0]
         return None
 
     @property
@@ -226,6 +219,7 @@ class MessageType(str, enum.Enum):
     TEXT = "text" 
     OFFER = "offer" 
     SYSTEM = "system" 
+    AUDIO = "audio" 
 
 class Conversation(Base):
     __tablename__ = "conversations"
