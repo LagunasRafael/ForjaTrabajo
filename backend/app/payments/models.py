@@ -20,6 +20,7 @@ class PaymentStatus(str, enum.Enum):
     FAILED = "failed"
     REFUNDED = "refunded"
     PENDING_TRANSFER = "pending_transfer"
+    DISPUTED = "disputed"
 
 class Contract(Base):
     __tablename__ = "contracts"

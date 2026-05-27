@@ -28,6 +28,13 @@ class UserCreate(UserBase):
             raise ValueError("La contraseña no puede exceder los 72 bytes")
         return v
 
+    @field_validator("role")
+    @classmethod
+    def prevent_admin_registration(cls, v: Optional[Role]):
+        if v == Role.ADMIN:
+            raise ValueError("No puedes registrarte como administrador")
+        return v
+
 # 3. Esquema para Respuesta: Aquí SÍ mostramos el ID y otros datos internos
 class UserResponse(UserBase):
     model_config = ConfigDict(from_attributes=True)
@@ -69,7 +76,7 @@ class TokenRefresh(BaseModel):
 
 class UserUpdate(BaseModel):
     full_name: Optional[str] = None
-    role: Optional[str] = None
+    role: Optional[Role] = None
     is_active: Optional[bool] = None
     is_banned: Optional[bool] = None
     phone: Optional[str] = Field(None, min_length=10, max_length=10, pattern=r"^\d{10}$")

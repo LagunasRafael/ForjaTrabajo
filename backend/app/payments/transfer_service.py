@@ -1,5 +1,4 @@
 import logging
-import uuid
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 from app.payments.stripe_client import stripe
@@ -45,7 +44,7 @@ def capture_payment(db: Session, job_id: str):
             logger.info("Capturando PaymentIntent: %s", payment.stripe_payment_intent_id)
             captured_intent = stripe.PaymentIntent.capture(
                 str(payment.stripe_payment_intent_id),
-                idempotency_key=f"capture_{payment.stripe_payment_intent_id}_{uuid.uuid4().hex}",
+                idempotency_key=f"capture_{payment.stripe_payment_intent_id}",
             )
             logger.info("Capture exitoso, status: %s", captured_intent.status)
         except stripe.error.StripeError as e:
@@ -99,7 +98,7 @@ def _transfer_to_worker(db: Session, job, payment):
             currency="mxn",
             destination=worker.stripe_account_id,
             transfer_group=f"payment_{payment.id}",
-            idempotency_key=f"transfer_{payment.id}_{uuid.uuid4().hex}",
+            idempotency_key=f"transfer_{payment.id}",
         )
         payment.status = models.PaymentStatus.RELEASED
         logger.info(
@@ -150,7 +149,7 @@ def process_pending_transfers_for_worker(db: Session, worker_id: str):
                 currency="mxn",
                 destination=worker.stripe_account_id,
                 transfer_group=f"payment_{payment.id}",
-                idempotency_key=f"pending_transfer_{payment.id}_{uuid.uuid4().hex}",
+                idempotency_key=f"pending_transfer_{payment.id}",
             )
             payment.platform_fee = round(fee_cents / 100, 2)
             payment.platform_fee_cents = fee_cents

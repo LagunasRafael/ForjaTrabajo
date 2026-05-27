@@ -1,6 +1,5 @@
 import logging
 from datetime import datetime
-import uuid
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 from app.payments.stripe_client import stripe
@@ -120,7 +119,7 @@ def create_payment_intent(db: Session, job_id: str, amount: float):
             amount=amount_cents,
             currency="mxn",
             capture_method="manual",
-            idempotency_key=f"create_intent_{job.id}_{uuid.uuid4().hex}",
+            idempotency_key=f"create_intent_{job.id}",
             metadata={
                 "job_id": str(job.id),
                 "contract_id": str(contract.id)
