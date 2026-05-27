@@ -12,7 +12,7 @@ router = APIRouter()
 
 
 @router.put("/{service_id}", response_model=schemas.Service)
-def update_service(
+def update_service_route(
     service_id: str, service_data: schemas.ServiceUpdate, db: Session = Depends(get_db),
     current_user: auth_models.User = Depends(get_current_user),
 ):

@@ -8,7 +8,7 @@ class CreateServiceFormState {
   final double? longitude;
   final List<File> images;
 
-  const CreateServiceFormState({
+  CreateServiceFormState({
     this.step = 0,
     this.categoryId,
     this.latitude,
@@ -30,7 +30,7 @@ class CreateServiceFormState {
 }
 
 class CreateServiceFormNotifier extends StateNotifier<CreateServiceFormState> {
-  CreateServiceFormNotifier() : super(const CreateServiceFormState());
+  CreateServiceFormNotifier() : super(CreateServiceFormState());
 
   void setStep(int step) => state = state.copyWith(step: step);
   void setCategory(String id) => state = state.copyWith(categoryId: id);

@@ -476,3 +476,33 @@ def delete_conversation(db: Session, conversation_id: str, user_id: str):
     db.commit()
     return {"message": "Conversación eliminada correctamente"}
 
+
+def open_dispute(db: Session, conversation_id: str, user_id: str, reason: str):
+    """Escala una conversación a estado de DISPUTA y agrega un mensaje de sistema."""
+    convo = db.query(models.Conversation).filter(models.Conversation.id == conversation_id).first()
+    if not convo:
+        raise HTTPException(status_code=404, detail="Conversación no encontrada")
+
+    if str(convo.client_id) != str(user_id) and str(convo.worker_id) != str(user_id):
+        raise HTTPException(status_code=403, detail="No perteneces a esta conversación")
+
+    convo.status = models.ConversationStatus.DISPUTE.value # type: ignore
+    convo.updated_at = datetime.utcnow()
+
+    system_msg = add_system_message(
+        db=db,
+        conversation_id=conversation_id,
+        sender_id=user_id,
+        content=f"Disputa abierta: {reason}"
+    )
+
+    broadcast_event(conversation_id, {
+        "type": "dispute_opened",
+        "conversation_id": conversation_id,
+        "status": "DISPUTE",
+        "reason": reason
+    })
+
+    db.commit()
+    return {"system_message": system_msg, "conversation": convo}
+

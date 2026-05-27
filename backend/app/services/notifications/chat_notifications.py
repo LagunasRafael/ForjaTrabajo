@@ -75,6 +75,9 @@ def notify_new_offer(db: Session, conversation_id: str, receiver_id: str, sender
                     notification_type="new_offer", reference_id=str(conversation_id)
                 )
 
+            convo = db.query(models.Conversation).filter(models.Conversation.id == conversation_id).first()
+            role = "client" if convo and str(convo.client_id) == str(receiver_id) else "worker"
+
             if receiver.fcm_token:
                 send_push_notification(
                     fcm_token=str(receiver.fcm_token),
