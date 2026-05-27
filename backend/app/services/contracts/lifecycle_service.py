@@ -121,6 +121,8 @@ def complete_job(db: Session, job_id: str, user_id: str):
         return job
 
     elif is_client:
+        capture_payment(db, str(job.id))
+
         job.status = models.JobStatus.COMPLETED
         job.completed_at = datetime.utcnow()
         job.auto_release_at = None
@@ -131,11 +133,6 @@ def complete_job(db: Session, job_id: str, user_id: str):
 
         db.commit()
         db.refresh(job)
-
-        try:
-            capture_payment(db, str(job.id))
-        except Exception as e:
-            logger.warning(f"No se pudo liberar el pago automaticamente: {e}")
 
         notif_service.notify_job_completed(db, job)
 

@@ -4,6 +4,7 @@ from typing import List
 from app.auth import schemas, models
 from app.db.database import get_db
 from app.auth.security import get_current_user
+from app.core.roles import Role
 from app.utils.s3 import upload_file_to_s3, delete_old_file_from_s3
 from app.services.models import Category as DBCategory
 import logging
@@ -23,25 +24,27 @@ def read_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
 def update_user(
     user_id: str, 
     user_data: schemas.UserUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
 ):
     db_user = db.query(models.User).filter(models.User.id == user_id).first()
     
     if not db_user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado")
+
+    is_self = str(current_user.id) == str(user_id)
+    is_admin = (current_user.role.value if hasattr(current_user.role, 'value') else current_user.role) == Role.ADMIN
+
+    if not is_self and not is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes permiso para modificar este usuario"
+        )
     
     if user_data.full_name is not None:
         db_user.full_name = user_data.full_name
     if user_data.phone is not None:
         db_user.phone = user_data.phone
-    if user_data.is_active is not None:
-        db_user.is_active = user_data.is_active
-        if user_data.is_active:
-            db_user.is_banned = False
-    if user_data.is_banned is not None:
-        db_user.is_banned = user_data.is_banned
-        if user_data.is_banned:
-            db_user.is_active = False
     if user_data.bio is not None:
         db_user.bio = user_data.bio
     if user_data.category_ids is not None:
@@ -53,6 +56,18 @@ def update_user(
         categories_to_add = db.query(DBCategory).filter(DBCategory.id.in_(user_data.category_ids)).all()
         db_user.categories = categories_to_add
 
+    if is_admin:
+        if user_data.role is not None:
+            db_user.role = user_data.role
+        if user_data.is_active is not None:
+            db_user.is_active = user_data.is_active
+            if user_data.is_active:
+                db_user.is_banned = False
+        if user_data.is_banned is not None:
+            db_user.is_banned = user_data.is_banned
+            if user_data.is_banned:
+                db_user.is_active = False
+
     db.commit()
     db.refresh(db_user)
     
@@ -62,8 +77,16 @@ def update_user(
 @router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_user(
     user_id: str, 
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
 ):
+    is_admin = (current_user.role.value if hasattr(current_user.role, 'value') else current_user.role) == Role.ADMIN
+    if not is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Solo los administradores pueden eliminar usuarios"
+        )
+
     db_user = db.query(models.User).filter(models.User.id == user_id).first()
     
     if not db_user:

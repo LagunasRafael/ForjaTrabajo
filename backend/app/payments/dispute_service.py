@@ -51,6 +51,11 @@ def resolve_dispute(db: Session, conversation_id: str, resolution: str):
         raise HTTPException(status_code=400, detail="Resolución inválida. Use 'refund' o 'release'")
 
     convo.status = ConversationStatus.CLOSED.value
-    db.commit()
+    try:
+        db.commit()
+        logger.info("Disputa resuelta: %s — %s", conversation_id, resolution)
+    except Exception as e:
+        db.rollback()
+        logger.error("Error al guardar estado final de disputa %s: %s", conversation_id, e)
 
     return {"status": "success", "message": f"Disputa resuelta como: {resolution}"}
