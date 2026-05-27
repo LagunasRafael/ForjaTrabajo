@@ -40,7 +40,7 @@ export const VerificationsPage = () => {
     loadVerifications();
   }, []);
 
-  useAutoRefresh(() => loadVerifications(), 30000);
+  useAutoRefresh(() => loadVerifications(), 60000);
 
   const handleApprove = async (id: string) => {
     try {

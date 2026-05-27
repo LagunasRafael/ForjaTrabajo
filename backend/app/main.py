@@ -25,16 +25,6 @@ from app.settings.models import SiteConfig
 
 # Crear tablas
 print("📋 Tablas listas para crear:", Base.metadata.tables.keys(), flush=True)
-
-from sqlalchemy import text
-try:
-    with engine.connect() as conn:
-        conn.execute(text("DROP TABLE IF EXISTS reports CASCADE"))
-        conn.commit()
-        print("Tabla reports eliminada para recrear desde modelo.", flush=True)
-except Exception as e:
-    print(f"Aviso (no critico): {e}", flush=True)
-
 Base.metadata.create_all(bind=engine)
 print("Tablas creadas/verificadas con create_all.", flush=True)
 
