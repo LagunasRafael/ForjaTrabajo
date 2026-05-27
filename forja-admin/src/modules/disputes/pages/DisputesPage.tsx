@@ -14,7 +14,7 @@ export const DisputesPage = () => {
     loadConversations();
   }, []);
 
-  useAutoRefresh(() => loadConversations(), 30000);
+  useAutoRefresh(() => loadConversations(), 60000);
 
   const loadConversations = async () => {
     try {

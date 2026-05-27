@@ -24,8 +24,7 @@ class AdminWSManager:
         for conn in self.active_connections:
             try:
                 await conn.send_json(payload)
-            except Exception as e:
-                logger.warning(f"Error broadcasting to admin: {e}")
+            except Exception:
                 dead.append(conn)
         for d in dead:
             if d in self.active_connections:
@@ -63,7 +62,5 @@ def recalculate_and_broadcast(db: Session):
         loop = asyncio.get_event_loop()
         if loop.is_running():
             asyncio.ensure_future(admin_manager.broadcast(payload))
-        else:
-            logger.warning("Cannot broadcast: no running event loop")
-    except Exception as e:
-        logger.warning(f"Could not broadcast admin counts: {e}")
+    except Exception:
+        pass
