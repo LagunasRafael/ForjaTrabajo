@@ -1,7 +1,6 @@
 import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
-from sqlalchemy.pool import NullPool
 
 # Leemos la URL de la base de datos desde el archivo .env o variables del sistema
 # Si no existe, usamos la base de datos SQLite local de siempre
@@ -13,8 +12,15 @@ if DATABASE_URL.startswith("sqlite"):
     connect_args = {"check_same_thread": False}
     engine = create_engine(DATABASE_URL, connect_args=connect_args)
 else:
-    # Supabase/PgBouncer ya maneja el pool, deshabilitamos el de SQLAlchemy
-    engine = create_engine(DATABASE_URL, poolclass=NullPool, pool_pre_ping=True)
+    # Supabase/PgBouncer — pool pequeño para no saturar el límite de 15 conexiones
+    engine = create_engine(
+        DATABASE_URL,
+        pool_size=3,
+        max_overflow=2,
+        pool_pre_ping=True,
+        pool_recycle=1800,
+        connect_args={"connect_timeout": 10},
+    )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

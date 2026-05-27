@@ -8,7 +8,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 10000, // 10 segundos de espera máxima
+  timeout: 30000, // 30 segundos de espera máxima
 });
 
 // 2. Interceptor de SOLICITUD (Request)

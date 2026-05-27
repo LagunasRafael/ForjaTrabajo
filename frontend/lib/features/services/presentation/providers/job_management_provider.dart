@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja_trabajo/features/services/domain/entities/service_entity.dart';
 
-import '../../data/repositories/service_repository_impl.dart';
+import '../../presentation/providers/service_repository_provider.dart';
 
 final submittedForConfirmationProvider = StateProvider.family<bool, String>((ref, id) => false);
 

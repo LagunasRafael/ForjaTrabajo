@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session
 from datetime import datetime
 from app.services import models as service_models
 from app.payments import models as payment_models
-from app.payments.services import capture_payment, refund_payment
+from app.payments.services import capture_payment
 from app.services.notifications.service import notify_payment_expired, notify_auto_released
 from app.services.chats.service import close_chat
 import stripe

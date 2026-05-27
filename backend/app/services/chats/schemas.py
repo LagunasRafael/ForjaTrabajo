@@ -42,3 +42,4 @@ class OfferAction(BaseModel):
 
 class DisputeCreate(BaseModel):
     reason: str
+

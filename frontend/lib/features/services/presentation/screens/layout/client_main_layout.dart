@@ -25,76 +25,85 @@ class ClientMainLayout extends ConsumerWidget {
       const ClientProfileScreen(), // 4
     ];
 
-final isKeyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
+    final isKeyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
 
-return Scaffold(
-  body: IndexedStack(
-    index: currentIndex,
-    children: screens,
-  ),
-
-      // ✅ BOTÓN FLOTANTE (Solo para Cliente)
-      floatingActionButton: isKeyboardOpen
-      ? null
-      : FloatingActionButton(
-          backgroundColor: const Color(0xFF1E1B4B),
-          elevation: 6,
-          shape: const CircleBorder(),
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const CreateServiceScreen(),
-              ),
-            );
-          },
-          child: const Icon(Icons.add, color: Colors.white, size: 32),
+    return Theme(
+      data: theme.copyWith(
+        snackBarTheme: const SnackBarThemeData(
+          behavior: SnackBarBehavior.fixed,
         ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      ),
+      child: Scaffold(
+        body: IndexedStack(
+          index: currentIndex,
+          children: screens,
+        ),
 
-      // ✅ BARRA CON RECORTE (Notch)
-      bottomNavigationBar: BottomAppBar(
-        shape: const CircularNotchedRectangle(),
-        notchMargin: 8.0,
-        color: theme.colorScheme.surface,
-        elevation: 10,
-        shadowColor: Colors.black.withValues(alpha: 0.4),
-        child: SizedBox(
-          height: 60,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: <Widget>[
-              Expanded(
-                  child: _buildNavItem(
-                      Icons.home_filled, 'Explorar', 0, ref, currentIndex, theme,
-                      badgeCount: 0)),
-              Expanded(
-                  child: _buildNavItem(
-                      Icons.chat_bubble_rounded, 'Mensajes', 1, ref, currentIndex, theme,
-                      badgeCount: unreadCount)),
+        // ✅ BOTÓN FLOTANTE (Solo para Cliente)
+        floatingActionButton: isKeyboardOpen
+            ? null
+            : FloatingActionButton(
+                backgroundColor: const Color(0xFF1E1B4B),
+                elevation: 6,
+                shape: const CircleBorder(),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const CreateServiceScreen(),
+                    ),
+                  );
+                },
+                child: const Icon(Icons.add, color: Colors.white, size: 32),
+              ),
+        floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
 
-              const SizedBox(width: 48), // 👈 El hueco para el botón
+        // ✅ BARRA CON RECORTE (Notch)
+        bottomNavigationBar: BottomAppBar(
+          shape: const CircularNotchedRectangle(),
+          notchMargin: 8.0,
+          color: theme.colorScheme.surface,
+          elevation: 10,
+          shadowColor: Colors.black.withValues(alpha: 0.4),
+          child: SizedBox(
+            height: 60,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: <Widget>[
+                Expanded(
+                    child: _buildNavItem(Icons.home_filled, 'Explorar', 0, ref,
+                        currentIndex, theme,
+                        badgeCount: 0)),
+                Expanded(
+                    child: _buildNavItem(Icons.chat_bubble_rounded, 'Mensajes',
+                        1, ref, currentIndex, theme,
+                        badgeCount: unreadCount)),
 
-              Expanded(
-                  child: _buildNavItem(
-                      Icons.work, 'Mis Trabajos', 3, ref, currentIndex, theme,
-                      badgeCount: 0)),
-              Expanded(
-                  child: _buildNavItem(
-                      Icons.person, 'Perfil', 4, ref, currentIndex, theme,
-                      badgeCount: 0)),
-            ],
+                const SizedBox(width: 48), // 👈 El hueco para el botón
+
+                Expanded(
+                    child: _buildNavItem(
+                        Icons.work, 'Mis Trabajos', 3, ref, currentIndex, theme,
+                        badgeCount: 0)),
+                Expanded(
+                    child: _buildNavItem(
+                        Icons.person, 'Perfil', 4, ref, currentIndex, theme,
+                        badgeCount: 0)),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildNavItem(
-      IconData icon, String label, int index, WidgetRef ref, int currentIndex, ThemeData theme,
+  Widget _buildNavItem(IconData icon, String label, int index, WidgetRef ref,
+      int currentIndex, ThemeData theme,
       {int badgeCount = 0}) {
     final isSelected = currentIndex == index;
-    final color = isSelected ? const Color(0xFF1E1B4B) : theme.colorScheme.onSurface.withOpacity(0.5);
+    final color = isSelected
+        ? const Color(0xFF1E1B4B)
+        : theme.colorScheme.onSurface.withOpacity(0.5);
 
     Widget iconWidget = Icon(icon, color: color, size: 26);
 

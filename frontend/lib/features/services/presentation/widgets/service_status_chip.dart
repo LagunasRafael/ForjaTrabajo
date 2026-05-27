@@ -70,30 +70,4 @@ class ServiceStatusChip extends StatelessWidget {
     );
   }
 
-  String _translateStatus(dynamic status) {
-    // 1. Lo convertimos a texto a la fuerza cortando el "JobStatus."
-    final statusString = status.toString().split('.').last.toLowerCase();
-
-    // 2. Lo traducimos a un español presentable
-    switch (statusString) {
-      case 'open':
-        return 'Disponible';
-      case 'inprogress':
-      case 'in_progress':
-        return 'En Progreso';
-      case 'matched':
-        return 'En Progreso';
-      case 'waiting_confirmation':
-        return 'Esperando Confirmación';
-      case 'disputed':
-        return 'En Disputa';
-      case 'completed':
-        return 'Completado';
-      case 'cancelled':
-        return 'Cancelado';
-      default:
-        return 'Pendiente';
-    }
-  }
-  
 }

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja_trabajo/features/services/domain/entities/service_entity.dart';
 import 'package:forja_trabajo/features/services/presentation/widgets/service_status_chip.dart';
-import 'package:forja_trabajo/features/services/data/repositories/service_repository_impl.dart';
+import 'package:forja_trabajo/features/services/presentation/providers/service_repository_provider.dart';
 import 'package:forja_trabajo/features/services/presentation/providers/job_management_provider.dart';
 import 'package:forja_trabajo/features/profile/presentation/widgets/review_dialog.dart' as forja_review;
 import 'package:forja_trabajo/features/profile/presentation/screens/user_profile_screen.dart';
@@ -152,7 +152,7 @@ class WorkerCompletedJobCard extends ConsumerWidget {
     final clientId = job.clientId;
     return GestureDetector(
       onTap: () {
-        if (clientId != null && clientId.isNotEmpty) {
+        if (clientId.isNotEmpty) {
           Navigator.of(context).push(
             MaterialPageRoute(
               builder: (_) => UserProfileScreen(userId: clientId),

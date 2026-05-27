@@ -68,12 +68,6 @@ class ClientProfileScreen extends ConsumerWidget {
                     onTap: () {
                       Navigator.pushNamed(context, '/client/invoices');
                     }),
-                ProfileMenuOption(
-                    icon: LucideIcons.creditCard,
-                    title: 'Métodos de Pago',
-                    onTap: () {
-                      Navigator.pushNamed(context, '/client/payment-methods');
-                    }),
                 if (user?.isIdentityVerified != true &&
                     verificationAsync.valueOrNull?['has_pending_verification'] != true)
                   ProfileMenuOption(
