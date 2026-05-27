@@ -4,6 +4,30 @@ from app.services.chats.message_routes import router as message_router
 from app.services.chats.conversation_routes import router as conversation_router
 from app.services.chats.offer_routes import router as offer_router
 from app.services.chats.websocket_routes import router as websocket_router
+from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
+from sqlalchemy.orm import Session
+from typing import List, Dict
+import json
+import logging
+
+from app.db.database import get_db
+from app.auth.security import get_current_user, check_role
+from app.core.roles import Role
+from app.auth import models as auth_models
+from app.services.chats import schemas
+from app.services.chats import service 
+from app.services.chats.ws_manager import manager
+from app.services import models as service_models
+from app.payments import models as payment_models
+from app.payments.services import refund_payment, capture_payment
+from app.utils.s3 import upload_chat_media_to_s3
+from app.services.notifications import service as notif_service
+from fastapi import UploadFile, File, BackgroundTasks
+from app.utils.email import send_dispute_opened_email, send_dispute_resolved_email
+from app.utils.notifications import send_push_notification
+
+logger = logging.getLogger(__name__)
+
 
 router = APIRouter()
 
@@ -749,7 +773,7 @@ async def resolve_dispute(
     if resolve_data.winner_role == "client":
         if payment:
             print(f"[RESOLVE] Llamando refund_payment({payment.id})...", flush=True)
-            refund_payment(db, payment.id)
+            refund_payment(db, payment.id) # type: ignore
             print(f"[RESOLVE] refund_payment OK", flush=True)
         else:
             db.commit()
