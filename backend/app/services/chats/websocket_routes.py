@@ -1,3 +1,4 @@
+import asyncio
 import json
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 from sqlalchemy.orm import Session
@@ -30,7 +31,11 @@ async def websocket_endpoint(websocket: WebSocket, conversation_id: str, user_id
 
     try:
         while True:
-            data = await websocket.receive_text()
+            try:
+                data = await asyncio.wait_for(websocket.receive_text(), timeout=120)
+            except asyncio.TimeoutError:
+                logger.debug("WS timeout: convo=%s", conversation_id)
+                break
             logger.debug("WS received: convo=%s", conversation_id)
 
             # 2. Procesar el mensaje con una nueva sesión corta
@@ -54,12 +59,15 @@ async def websocket_endpoint(websocket: WebSocket, conversation_id: str, user_id
                         "conversation_id": conversation_id
                     }
                     if conversation_id in manager.active_connections:
+                        dead_connections = []
                         for connection in manager.active_connections[conversation_id]:
                             if connection != websocket:
                                 try:
                                     await connection.send_json(typing_event)
                                 except Exception:
-                                    pass
+                                    dead_connections.append(connection)
+                        for dead_conn in dead_connections:
+                            manager.disconnect(dead_conn, conversation_id)
                     continue
 
                 content = payload.get("content", "")
@@ -131,7 +139,7 @@ async def websocket_endpoint(websocket: WebSocket, conversation_id: str, user_id
 
     except WebSocketDisconnect:
         logger.debug("WS disconnected: convo=%s", conversation_id)
-        manager.disconnect(websocket, conversation_id)
     except Exception as e:
         logger.warning("WS error: %s", e)
+    finally:
         manager.disconnect(websocket, conversation_id)

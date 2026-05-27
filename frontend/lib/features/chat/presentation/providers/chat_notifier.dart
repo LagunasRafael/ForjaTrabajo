@@ -61,12 +61,11 @@ class ChatNotifier extends StateNotifier<List<MessageModel>>
       } catch (e) {
         print("⚠️ [Chat] Error al marcar como leído (no crítico): $e");
       }
-      
-      wsConnect();
     } catch (e) {
       print("🚨 [Chat] Error crítico cargando historial: $e");
-      wsConnect(); 
     }
+    
+    wsConnect();
   }
 
   Future<void> sendMessage(String content, String type) async {

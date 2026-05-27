@@ -659,6 +659,15 @@ async def resolve_dispute(
     }
     
     await manager.broadcast(conversation_id, message_to_send)
+
+    # Broadcast evento conversation_closed para que Flutter refresque la lista
+    await manager.broadcast(conversation_id, {
+        "type": "conversation_closed",
+        "conversation_id": conversation_id,
+        "status": "CLOSED",
+        "closed_reason": service_models.ClosedReason.DISPUTE_RESOLVED.value
+    })
+
     print(f"RESOLUTION broadcasted to {conversation_id}")
 
     # 🔔 Notificar por Push la resolución final
