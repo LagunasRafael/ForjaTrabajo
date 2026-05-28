@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 
 import 'package:forja_trabajo/core/theme/app_theme.dart';
 import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart';
@@ -163,25 +162,11 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                 // Animated logo
                 ScaleTransition(
                   scale: _scaleAnimation,
-                  child: Transform.rotate(
-                    angle: 0.05,
-                    child: Container(
-                      width: 96,
-                      height: 96,
-                      decoration: BoxDecoration(
-                        color: AppTheme.primaryColor,
-                        borderRadius: BorderRadius.circular(24),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppTheme.primaryColor.withOpacity(0.4),
-                            blurRadius: 30,
-                            offset: const Offset(0, 10),
-                          ),
-                        ],
-                      ),
-                      child: const Icon(LucideIcons.hammer,
-                          color: Colors.white, size: 48),
-                    ),
+                  child: Image.asset(
+                    'assets/images/logo.png',
+                    width: 96,
+                    height: 96,
+                    fit: BoxFit.contain,
                   ),
                 ),
                 const SizedBox(height: 32),
