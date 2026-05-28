@@ -84,8 +84,8 @@ class _WorkerMyJobsScreenState extends ConsumerState<MyJobsScreen> with SingleTi
           labelStyle: const TextStyle(fontWeight: FontWeight.bold),
           tabs: const [
             Tab(text: 'Postulaciones'),
-            Tab(text: 'En Curso'),
-            Tab(text: 'Historial'),
+            Tab(text: 'En Proceso'),
+            Tab(text: 'Finalizados'),
           ],
         ),
       ),

@@ -206,13 +206,16 @@ class UserProfileScreen extends ConsumerWidget {
                 ),
               );
             }
-            return SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (context, index) {
-                  final review = reviews[index];
-                  return _buildReviewCard(review);
-                },
-                childCount: reviews.length,
+            return SliverPadding(
+              padding: const EdgeInsets.only(bottom: 44),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) {
+                    final review = reviews[index];
+                    return _buildReviewCard(review);
+                  },
+                  childCount: reviews.length,
+                ),
               ),
             );
           },
