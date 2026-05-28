@@ -129,72 +129,66 @@ class WorkerCompletedJobCard extends ConsumerWidget {
               child: Divider(height: 1, thickness: 1),
             ),
 
-            Row(
-              children: [
-
-                Expanded(
-                  child: Row(
-                    children: [
-                      const Icon(Icons.payments_outlined, size: 18, color: Colors.grey),
-                      const SizedBox(width: 8),
-                      Flexible(
+            if (job.status != JobStatus.cancelled)
+              _buildEarningsBreakdown(),
+            if (job.status == JobStatus.cancelled)
+              Row(
+                children: [
+                  const Icon(Icons.payments_outlined, size: 18, color: Colors.grey),
+                  const SizedBox(width: 8),
+                  Text(
+                    "Precio pactado: \$${job.basePrice.toStringAsFixed(0)}",
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF4B5563),
+                    ),
+                  ),
+                ],
+              ),
+            if (job.status != JobStatus.cancelled)
+              Align(
+                alignment: Alignment.centerRight,
+                child: job.alreadyReviewed
+                    ? Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? const Color(0xFF1E293B)
+                              : Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                         child: Text(
-                          job.status == JobStatus.cancelled
-                              ? "Precio pactado: \$${job.basePrice.toStringAsFixed(0)}"
-                              : "Ganancia: \$${job.basePrice.toStringAsFixed(0)}",
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF4B5563)
+                          "Ya calificaste",
+                          style: TextStyle(
+                            color: Theme.of(context).brightness == Brightness.dark
+                                ? Colors.grey.shade400
+                                : Colors.grey,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
                           ),
+                        ),
+                      )
+                    : TextButton.icon(
+                        onPressed: () {
+                          showDialog(
+                            context: context,
+                            builder: (dialogContext) => ProviderScope(
+                              parent: ProviderScope.containerOf(context),
+                              child: forja_review.ReviewDialog(
+                                jobId: job.id,
+                                revieweeName: job.authorName ?? 'el cliente',
+                              ),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.star_outline, size: 16, color: Color(0xFF6366F1)),
+                        label: const Text(
+                          "Calificar",
+                          style: TextStyle(color: Color(0xFF6366F1), fontWeight: FontWeight.bold)
                         ),
                       ),
-                    ],
-                  ),
-                ),
-                if (job.status != JobStatus.cancelled)
-                  job.alreadyReviewed
-                      ? Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).brightness == Brightness.dark
-                                ? const Color(0xFF1E293B)
-                                : Colors.grey.shade100,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            "Ya calificaste",
-                            style: TextStyle(
-                              color: Theme.of(context).brightness == Brightness.dark
-                                  ? Colors.grey.shade400
-                                  : Colors.grey,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        )
-                      : TextButton.icon(
-                          onPressed: () {
-                            showDialog(
-                              context: context,
-                              builder: (dialogContext) => ProviderScope(
-                                parent: ProviderScope.containerOf(context),
-                                child: forja_review.ReviewDialog(
-                                  jobId: job.id,
-                                  revieweeName: job.authorName ?? 'el cliente',
-                                ),
-                              ),
-                            );
-                          },
-                          icon: const Icon(Icons.star_outline, size: 16, color: Color(0xFF6366F1)),
-                          label: const Text(
-                            "Calificar",
-                            style: TextStyle(color: Color(0xFF6366F1), fontWeight: FontWeight.bold)
-                          ),
-                        ),
-              ],
-            ),
+              ),
           ],
         ),
       ),
@@ -204,6 +198,63 @@ class WorkerCompletedJobCard extends ConsumerWidget {
 
   String _formatDate(DateTime date) {
     return "${date.day}/${date.month}/${date.year}";
+  }
+
+  Widget _buildEarningsBreakdown() {
+    final original = job.basePrice;
+    final platform = job.platformFee ?? (job.basePrice * 0.1);
+    final stripe = job.stripeFee ?? 0.0;
+    final net = job.netPayout ?? (original - platform - stripe);
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF0FDF4),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFBBF7D0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text("Precio original", style: TextStyle(fontSize: 13, color: Colors.grey.shade600)),
+              Text("\$${original.toStringAsFixed(2)}", style: const TextStyle(fontSize: 13, color: Color(0xFF4B5563))),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text("Comisión Forja", style: TextStyle(fontSize: 13, color: Colors.grey.shade600)),
+              Text("-\$${platform.toStringAsFixed(2)}", style: const TextStyle(fontSize: 13, color: Color(0xFFDC2626))),
+            ],
+          ),
+          if (stripe > 0) ...[
+            const SizedBox(height: 4),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text("Comisión Stripe", style: TextStyle(fontSize: 13, color: Colors.grey.shade600)),
+                Text("-\$${stripe.toStringAsFixed(2)}", style: const TextStyle(fontSize: 13, color: Color(0xFFDC2626))),
+              ],
+            ),
+          ],
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 6),
+            child: Divider(height: 1, thickness: 1),
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text("Tu ganancia", style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFF16A34A))),
+              Text("\$${net.toStringAsFixed(2)}", style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFF16A34A))),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildClientInfo(BuildContext context) {

@@ -7,6 +7,8 @@ class PaymentModel extends Payment {
     required super.amount,
     required super.amountCents,
     super.platformFee,
+    super.stripeFee,
+    super.netPayout,
     required super.status,
     required super.date,
     required super.paymentMethod,
@@ -25,6 +27,8 @@ class PaymentModel extends Payment {
       amount: (json['amount'] as num).toDouble(),
       amountCents: json['amount_cents'] ?? 0,
       platformFee: (json['platform_fee'] as num?)?.toDouble() ?? 0.0,
+      stripeFee: (json['stripe_fee'] as num?)?.toDouble() ?? 0.0,
+      netPayout: (json['net_payout'] as num?)?.toDouble(),
       status: json['status'] ?? 'pending',
       date: json['created_at'] != null 
           ? DateTime.parse(json['created_at']) 
