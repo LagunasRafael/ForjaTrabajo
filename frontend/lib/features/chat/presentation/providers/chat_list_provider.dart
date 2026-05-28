@@ -12,9 +12,24 @@ final chatListProvider = StateNotifierProvider.autoDispose<ChatListNotifier, Asy
 
 class ChatListNotifier extends StateNotifier<AsyncValue<List<ChatSummaryEntity>>> {
   final ChatRepository repository;
+  Timer? _refreshTimer;
 
   ChatListNotifier(this.repository) : super(const AsyncValue.loading()) {
     loadRealChats();
+    _startAutoRefresh();
+  }
+
+  void _startAutoRefresh() {
+    _refreshTimer?.cancel();
+    _refreshTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+      loadRealChats();
+    });
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> loadRealChats() async {
