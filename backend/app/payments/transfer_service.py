@@ -68,11 +68,38 @@ def capture_payment(db: Session, job_id: str):
     return payment
 
 
+def _get_stripe_fee_cents(payment) -> int:
+    """
+    Obtiene la comisión exacta cobrada por Stripe para este pago,
+    con un fallback matemático en caso de error.
+    """
+    if not payment.stripe_payment_intent_id:
+        return 0
+    try:
+        intent = stripe.PaymentIntent.retrieve(
+            str(payment.stripe_payment_intent_id),
+            expand=["latest_charge.balance_transaction"]
+        )
+        charge = intent.latest_charge
+        balance_transaction = charge.balance_transaction if charge else None
+        if balance_transaction:
+            logger.info("Stripe real fee: %s cents", balance_transaction.fee)
+            return int(balance_transaction.fee)
+    except Exception as e:
+        logger.error("Error obteniendo comision real de Stripe: %s. Usando fallback.", e)
+    
+    # Fallback matemático (3.6% + $3.00 MXN + 16% IVA)
+    estimated_base = int(payment.amount_cents * 0.036 + 300)
+    estimated_total = int(estimated_base * 1.16)
+    logger.info("Stripe estimated fee: %s cents", estimated_total)
+    return estimated_total
+
+
 def _transfer_to_worker(db: Session, job, payment):
     """
     Transfiere los fondos capturados desde la cuenta de la plataforma
     a la cuenta Stripe Connect Express del trabajador, descontando
-    la comisión de la plataforma.
+    la comisión de la plataforma Y la comisión cobrada por Stripe.
     Si el worker no tiene Stripe configurado O la transferencia falla,
     el pago queda como PENDING_TRANSFER y se reintenta automáticamente
     cuando el worker consulte su estado de Stripe.
@@ -89,7 +116,13 @@ def _transfer_to_worker(db: Session, job, payment):
         return
 
     fee_rate = get_commission_rate(db)
-    transfer_cents = payment.amount_cents - int(payment.amount_cents * fee_rate)
+    platform_fee_cents = payment.platform_fee_cents or int(payment.amount_cents * fee_rate)
+    stripe_fee_cents = _get_stripe_fee_cents(payment)
+
+    transfer_cents = payment.amount_cents - platform_fee_cents - stripe_fee_cents
+    if transfer_cents < 0:
+        transfer_cents = 0
+
     transfer_amount = round(transfer_cents / 100, 2)
 
     try:
@@ -103,7 +136,8 @@ def _transfer_to_worker(db: Session, job, payment):
         payment.status = models.PaymentStatus.RELEASED
         logger.info(
             f"Transferencia de ${transfer_amount} al worker "
-            f"{worker.id} (comisión ${payment.platform_fee or 0})"
+            f"{worker.id} (comisión plataforma: ${payment.platform_fee or 0}, "
+            f"comisión stripe: ${round(stripe_fee_cents / 100, 2)})"
         )
     except stripe.error.StripeError as e:
         payment.status = models.PaymentStatus.PENDING_TRANSFER
@@ -142,8 +176,13 @@ def process_pending_transfers_for_worker(db: Session, worker_id: str):
     fee_rate = get_commission_rate(db)
     for payment in pending_payments:
         try:
-            fee_cents = int(payment.amount_cents * fee_rate)
-            transfer_cents = payment.amount_cents - fee_cents
+            platform_fee_cents = payment.platform_fee_cents or int(payment.amount_cents * fee_rate)
+            stripe_fee_cents = _get_stripe_fee_cents(payment)
+
+            transfer_cents = payment.amount_cents - platform_fee_cents - stripe_fee_cents
+            if transfer_cents < 0:
+                transfer_cents = 0
+
             stripe.Transfer.create(
                 amount=transfer_cents,
                 currency="mxn",
@@ -151,8 +190,9 @@ def process_pending_transfers_for_worker(db: Session, worker_id: str):
                 transfer_group=f"payment_{payment.id}",
                 idempotency_key=f"pending_transfer_{payment.id}",
             )
-            payment.platform_fee = round(fee_cents / 100, 2)
-            payment.platform_fee_cents = fee_cents
+            
+            payment.platform_fee = round(platform_fee_cents / 100, 2)
+            payment.platform_fee_cents = platform_fee_cents
             payment.status = models.PaymentStatus.RELEASED
             contract = payment.contract
             if contract:
@@ -160,7 +200,8 @@ def process_pending_transfers_for_worker(db: Session, worker_id: str):
             logger.info(
                 f"Transferencia pendiente completada para pago {payment.id} "
                 f"(${round(transfer_cents / 100, 2)} al worker, "
-                f"comisión ${payment.platform_fee})"
+                f"comisión plataforma ${payment.platform_fee}, "
+                f"comisión stripe ${round(stripe_fee_cents / 100, 2)})"
             )
         except stripe.error.StripeError as e:
             logger.error(
