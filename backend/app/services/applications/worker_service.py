@@ -19,6 +19,8 @@ def get_worker_applications(db: Session, worker_id: str):
             srv = req.service if req else None
             if not srv:
                 continue
+            if srv.is_deleted_by_worker:
+                continue
 
             existing_review = db.query(Review).filter(
                 Review.job_id == job.id,

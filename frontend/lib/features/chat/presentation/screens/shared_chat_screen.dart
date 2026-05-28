@@ -171,7 +171,9 @@ class _SharedChatScreenState extends ConsumerState<SharedChatScreen> {
         otherUserName: widget.otherUserName,
         otherUserAvatarUrl: widget.otherUserAvatarUrl,
         otherUserId: widget.otherUserId,
-        onOpenDispute: () => showDisputeDialog(context, ref, widget.conversationId),
+        onOpenDispute: (thisChat?.hasPaid ?? false)
+            ? () => showDisputeDialog(context, ref, widget.conversationId)
+            : null,
         onTapService: () {
           final sId = (widget.service is Map && widget.service['id'] != null) ? widget.service['id'] : thisChat?.serviceId;
           final sTitle = (widget.service is Map && widget.service['title'] != null) ? widget.service['title'] : (thisChat?.serviceName ?? 'Servicio');

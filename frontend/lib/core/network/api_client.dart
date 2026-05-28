@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:forja_trabajo/core/network/notification_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiClient {
   static final ApiClient _instance = ApiClient._internal();
@@ -10,9 +11,9 @@ class ApiClient {
   // 🌐 DIRECCIÓN IP DE TU PC PARA PROBAR EN CELULAR FÍSICO (Ej. Android/iOS)
   // Reemplaza si cambia tu IP local
 
-  //static final String _baseUrl = 'https://forja-api-rw0r.onrender.com';
+  static final String _baseUrl = 'https://forja-api-rw0r.onrender.com';
   static String get baseUrl => _baseUrl;
-  static const String _baseUrl = "https://forja-api-rw0r.onrender.com";
+  //static const String _baseUrl = "http://10.0.2.2:8000";
 
   factory ApiClient() => _instance;
 
@@ -22,7 +23,6 @@ class ApiClient {
         baseUrl: baseUrl,
         connectTimeout: const Duration(seconds: 10),
         receiveTimeout: const Duration(seconds: 30),
-        sendTimeout: const Duration(seconds: 60),
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
@@ -80,6 +80,11 @@ class ApiClient {
 
                   // Guardamos los nuevos tokens
                   await storage.write(key: 'jwt_token', value: newAccessToken);
+                  
+                  // Sincronizamos con SharedPreferences para los componentes viejos
+                  final prefs = await SharedPreferences.getInstance();
+                  await prefs.setString('token', newAccessToken);
+
                   if (newRefreshToken != null) {
                     await storage.write(
                         key: 'refresh_token', value: newRefreshToken);

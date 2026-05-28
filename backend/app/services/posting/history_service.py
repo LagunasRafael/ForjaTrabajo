@@ -18,6 +18,7 @@ def get_my_services(db: Session, user_id: str):
         )
         .filter(
             models.Service.client_id == user_id,
+            models.Service.is_deleted_by_client == False,
         )
         .all()
     )
