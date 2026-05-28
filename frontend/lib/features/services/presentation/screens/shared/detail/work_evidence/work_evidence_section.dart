@@ -4,11 +4,13 @@ import 'package:forja_trabajo/features/services/domain/entities/service_entity.d
 import 'package:forja_trabajo/features/services/domain/entities/work_evidence_entity.dart';
 import 'package:forja_trabajo/features/services/presentation/providers/work_evidence_provider.dart';
 import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart';
+import 'package:forja_trabajo/shared/widgets/image_gallery_picker.dart';
 import 'widgets/work_evidence_header.dart';
 import 'widgets/work_evidence_empty_state.dart';
-import 'widgets/work_evidence_grid.dart';
 import 'widgets/work_evidence_upload_button.dart';
 import 'widgets/work_evidence_limit_message.dart';
+import 'dialogs/work_evidence_preview_dialog.dart';
+import 'dialogs/delete_evidence_dialog.dart';
 
 class WorkEvidenceSection extends ConsumerWidget {
   final ServiceEntity service;
@@ -30,7 +32,7 @@ class WorkEvidenceSection extends ConsumerWidget {
       children: [
         WorkEvidenceHeader(isDark: isDark),
         evidencesAsync.when(
-          data: (evidences) => _buildContent(evidences, isWorker, isActive, currentUserId, isDark),
+          data: (evidences) => _buildContent(context, ref, evidences, isWorker, isActive, currentUserId, isDark),
           loading: () => const Center(child: CircularProgressIndicator(strokeWidth: 2)),
           error: (e, _) => Text("Error al cargar evidencias", style: TextStyle(color: Colors.red, fontSize: 13)),
         ),
@@ -39,6 +41,8 @@ class WorkEvidenceSection extends ConsumerWidget {
   }
 
   Widget _buildContent(
+    BuildContext context,
+    WidgetRef ref,
     List<WorkEvidenceEntity> evidences,
     bool isWorker,
     bool isActive,
@@ -51,11 +55,24 @@ class WorkEvidenceSection extends ConsumerWidget {
         if (evidences.isEmpty)
           WorkEvidenceEmptyState(isDark: isDark)
         else
-          WorkEvidenceGrid(
-            evidences: evidences,
-            serviceId: service.id,
-            currentUserId: currentUserId,
-            isActive: isActive,
+          ImageGalleryPicker(
+            images: evidences.map((e) => GalleryImageItem.url(e.imageUrl)).toList(),
+            axis: Axis.vertical,
+            crossAxisCount: 3,
+            itemSize: 80,
+            borderRadius: 8,
+            showAddButton: false,
+            canRemove: (i) => isActive && currentUserId == evidences[i].workerId,
+            onRemove: (i) => showDeleteEvidenceDialog(
+              context, ref,
+              serviceId: service.id,
+              evidenceId: evidences[i].id,
+            ),
+            onTapImage: (i) => showWorkEvidencePreviewDialog(
+              context,
+              evidences: evidences,
+              initialIndex: i,
+            ),
           ),
         const SizedBox(height: 12),
         if (evidences.length >= 8)

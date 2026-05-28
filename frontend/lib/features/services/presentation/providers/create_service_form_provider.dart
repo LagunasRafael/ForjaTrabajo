@@ -46,12 +46,16 @@ class CreateServiceFormNotifier extends StateNotifier<CreateServiceFormState> {
   void setCategory(String id) => state = state.copyWith(categoryId: id);
   void setLocation(double lat, double lng) => state = state.copyWith(latitude: lat, longitude: lng);
   void addImage(File image) => state = state.copyWith(images: [...state.images, image]);
+  void addImages(List<File> newImages) => state = state.copyWith(images: [...state.images, ...newImages]);
   void removeImage(int index) {
     final newImages = List<File>.from(state.images)..removeAt(index);
     state = state.copyWith(images: newImages);
   }
   void removeExistingImage(int index) {
     final url = state.existingImageUrls[index];
+    state = state.copyWith(removedImageUrls: [...state.removedImageUrls, url]);
+  }
+  void removeExistingImageByUrl(String url) {
     state = state.copyWith(removedImageUrls: [...state.removedImageUrls, url]);
   }
   void loadInitialData({String? categoryId, double? lat, double? lng, List<String>? existingImageUrls}) {

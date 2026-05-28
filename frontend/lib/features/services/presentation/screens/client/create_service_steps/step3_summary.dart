@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:forja_trabajo/features/services/presentation/widgets/client/step3_widgets.dart';
+import 'package:forja_trabajo/shared/widgets/image_gallery_picker.dart';
 
 class Step3Summary extends StatelessWidget {
   final String title;
@@ -69,29 +70,21 @@ class Step3Summary extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           
-          SizedBox(
-            height: 90,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: existingImageUrls.length + images.length + 1,
-              itemBuilder: (context, index) {
-                if (index == 0) {
-                  return AddPhotoButton(onTap: onAddImage); 
-                }
-                final adjusted = index - 1;
-                if (adjusted < existingImageUrls.length) {
-                  return NetworkImageThumbnail(
-                    imageUrl: existingImageUrls[adjusted], 
-                    onRemove: () => onRemoveExistingImage(adjusted)
-                  );
-                }
-                final localIndex = adjusted - existingImageUrls.length;
-                return ImageThumbnail(
-                  imageFile: images[localIndex], 
-                  onRemove: () => onRemoveImage(localIndex)
-                );
-              },
-            ),
+          ImageGalleryPicker(
+            images: [
+              for (final url in existingImageUrls) GalleryImageItem.url(url),
+              for (final file in images) GalleryImageItem.file(file),
+            ],
+            onAdd: onAddImage,
+            onRemove: (index) {
+              if (index < existingImageUrls.length) {
+                onRemoveExistingImage(index);
+              } else {
+                onRemoveImage(index - existingImageUrls.length);
+              }
+            },
+            itemSize: 80,
+            borderRadius: 16,
           ),
 
           const SizedBox(height: 40),

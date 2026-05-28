@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:image_picker/image_picker.dart';
+import 'package:wechat_assets_picker/wechat_assets_picker.dart';
 import '../../../domain/entities/service_entity.dart';
 import '../../providers/category_provider.dart';
 import '../../providers/service_list_provider.dart';
@@ -13,6 +13,7 @@ import 'create_service_steps/step2_location.dart';
 import 'create_service_steps/step3_summary.dart';
 import '../../providers/nav_providers.dart';
 import 'package:forja_trabajo/features/services/presentation/widgets/createservices/create_services_header.dart';
+import 'package:forja_trabajo/features/chat/presentation/widgets/spanish_asset_picker_delegate.dart';
 
 class CreateServiceScreen extends ConsumerStatefulWidget {
   final ServiceEntity? serviceToEdit;
@@ -29,6 +30,7 @@ class _CreateServiceScreenState extends ConsumerState<CreateServiceScreen> {
   late TextEditingController _titleCtrl, _descCtrl, _addressCtrl, _priceCtrl;
   bool get _isEditing => widget.serviceToEdit != null;
   ServiceEntity? _pendingResultService;
+  bool _isSubmitting = false;
 
   @override
   void initState() {
@@ -55,13 +57,45 @@ class _CreateServiceScreenState extends ConsumerState<CreateServiceScreen> {
     super.dispose();
   }
 
-  Future<void> _pickImage() async {
-    final image = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 70);
-    if (image != null) ref.read(createServiceFormProvider.notifier).addImage(File(image.path));
+  Future<void> _pickImages() async {
+    final formState = ref.read(createServiceFormProvider);
+    final totalImages = formState.existingImageUrls.length + formState.images.length;
+    final remaining = 8 - totalImages;
+    if (remaining <= 0) {
+      _showError("Máximo 8 fotos");
+      return;
+    }
+
+    final PermissionState ps = await PhotoManager.requestPermissionExtend();
+    if (!ps.isAuth) {
+      _showError("Permiso denegado para acceder a la galería");
+      return;
+    }
+
+    final List<AssetEntity>? result = await AssetPicker.pickAssets(
+      context,
+      pickerConfig: AssetPickerConfig(
+        maxAssets: remaining,
+        requestType: RequestType.image,
+        textDelegate: const SpanishAssetPickerTextDelegate(),
+      ),
+    );
+
+    if (result == null || result.isEmpty) return;
+    if (!mounted) return;
+
+    final files = <File>[];
+    for (final asset in result) {
+      final file = await asset.file;
+      if (file != null) files.add(file);
+    }
+    if (files.isNotEmpty) {
+      ref.read(createServiceFormProvider.notifier).addImages(files);
+    }
   }
 
-  /// Muestra un snackbar flotante premium en la parte superior de la pantalla
   void _showError(String message) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
@@ -127,25 +161,32 @@ class _CreateServiceScreenState extends ConsumerState<CreateServiceScreen> {
   }
 
   void _submitFinal() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token') ?? '';
-    if (token.isEmpty) return _showError("Sesión expirada.");
+    if (_isSubmitting) return;
+    setState(() => _isSubmitting = true);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token') ?? '';
+      if (token.isEmpty) {
+        if (mounted) _showError("Sesión expirada.");
+        return;
+      }
 
-    final serviceData = _buildServiceFromInputs();
-    final notifier = ref.read(serviceControllerProvider.notifier);
-    final formState = ref.read(createServiceFormProvider);
+      final serviceData = _buildServiceFromInputs();
+      final notifier = ref.read(serviceControllerProvider.notifier);
+      final formState = ref.read(createServiceFormProvider);
 
-    if (_isEditing) {
-      // Subir imágenes nuevas primero
-      final newUrls = formState.images.isNotEmpty
-          ? await notifier.uploadServiceImages(serviceData.id, formState.images, token)
-          : <String>[];
-      // Construir lista final: URLs conservadas + URLs nuevas
-      final finalUrls = [...formState.keptImageUrls, ...newUrls];
-      _pendingResultService = serviceData.copyWith(imageUrls: finalUrls);
-      await notifier.updateService(serviceData.copyWith(imageUrls: finalUrls), token);
-    } else {
-      await notifier.createService(serviceData, token, images: formState.images);
+      if (_isEditing) {
+        final newUrls = formState.images.isNotEmpty
+            ? await notifier.uploadServiceImages(serviceData.id, formState.images, token)
+            : <String>[];
+        final finalUrls = [...formState.keptImageUrls, ...newUrls];
+        _pendingResultService = serviceData.copyWith(imageUrls: finalUrls);
+        await notifier.updateService(serviceData.copyWith(imageUrls: finalUrls), token);
+      } else {
+        await notifier.createService(serviceData, token, images: formState.images);
+      }
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
     }
   }
 
@@ -226,11 +267,14 @@ class _CreateServiceScreenState extends ConsumerState<CreateServiceScreen> {
                       title: _titleCtrl.text, desc: _descCtrl.text,
                       address: _addressCtrl.text, price: _priceCtrl.text,
                       categoryId: formState.categoryId, categoriesAsync: categoriesAsync,
-                      isLoading: creationState.isLoading, images: formState.images,
-                      existingImageUrls: formState.existingImageUrls,
-                      onAddImage: _pickImage,
+                      isLoading: creationState.isLoading || _isSubmitting, images: formState.images,
+                      existingImageUrls: formState.keptImageUrls,
+                      onAddImage: _pickImages,
                       onRemoveImage: (i) => ref.read(createServiceFormProvider.notifier).removeImage(i),
-                      onRemoveExistingImage: (i) => ref.read(createServiceFormProvider.notifier).removeExistingImage(i),
+                      onRemoveExistingImage: (i) {
+                        final url = ref.read(createServiceFormProvider).keptImageUrls[i];
+                        ref.read(createServiceFormProvider.notifier).removeExistingImageByUrl(url);
+                      },
                       onSubmit: _submitFinal,
                       onEdit: () {
                         _pageController.jumpToPage(0);
