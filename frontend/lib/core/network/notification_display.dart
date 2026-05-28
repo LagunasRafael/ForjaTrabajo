@@ -5,6 +5,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:forja_trabajo/shared/utils/notification_navigation.dart';
+import 'package:forja_trabajo/features/notifications/presentation/widgets/sleek_notification_banner.dart';
 
 final FlutterLocalNotificationsPlugin _localNotifications =
     FlutterLocalNotificationsPlugin();
@@ -120,9 +121,9 @@ void showLocalNotification(RemoteMessage message) {
 }
 
 void showForegroundBanner(
-    RemoteMessage message, {
-    required GlobalKey<NavigatorState> navigatorKey,
-  }) {
+  RemoteMessage message, {
+  required GlobalKey<NavigatorState> navigatorKey,
+}) {
   try {
     final navigator = navigatorKey.currentState;
     if (navigator == null) return;
@@ -137,18 +138,21 @@ void showForegroundBanner(
 
     entry = OverlayEntry(
       builder: (ctx) => Positioned(
-        top: MediaQuery.of(ctx).padding.top + 16,
-        left: 16,
-        right: 16,
+        top: MediaQuery.of(ctx).padding.top + 12,
+        left: 0,
+        right: 0,
         child: Material(
           color: Colors.transparent,
           child: Dismissible(
             key: UniqueKey(),
-            direction: DismissDirection.horizontal,
+            direction: DismissDirection.up,
             onDismissed: (_) {
               if (entry.mounted) entry.remove();
             },
-            child: GestureDetector(
+            child: SleekNotificationBanner(
+              title: title,
+              body: body,
+              icon: notifIcon,
               onTap: () {
                 if (entry.mounted) entry.remove();
                 final navContext = navigatorKey.currentContext;
@@ -167,46 +171,9 @@ void showForegroundBanner(
                   container: container,
                 );
               },
-              child: Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1E1B4B),
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: const [
-                    BoxShadow(color: Colors.black26, blurRadius: 10, offset: Offset(0, 4)),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 42, height: 42,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF4F46E5),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(notifIcon, color: Colors.white, size: 20),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(title,
-                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
-                            maxLines: 1, overflow: TextOverflow.ellipsis,
-                          ),
-                          if (body.isNotEmpty)
-                            Text(body,
-                              style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 13),
-                              maxLines: 1, overflow: TextOverflow.ellipsis,
-                            ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              onDismissed: () {
+                if (entry.mounted) entry.remove();
+              },
             ),
           ),
         ),
@@ -215,10 +182,12 @@ void showForegroundBanner(
 
     overlay.insert(entry);
 
-    Future.delayed(const Duration(seconds: 4), () {
+    Future.delayed(const Duration(seconds: 5), () {
       if (entry.mounted) entry.remove();
     });
   } catch (e) {
     debugPrint('❌ [FCM] Error en banner: $e');
   }
 }
+
+

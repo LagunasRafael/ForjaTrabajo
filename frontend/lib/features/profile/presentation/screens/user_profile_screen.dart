@@ -260,7 +260,7 @@ class UserProfileScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      job.roleInJob == 'client' ? 'Como cliente' : 'Como trabajador',
+                      job.roleInJob == 'client' ? 'Como Cliente' : 'Como Trabajador',
                       style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                     ),
                   ],

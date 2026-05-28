@@ -107,7 +107,7 @@ class _ReviewDialogState extends ConsumerState<ReviewDialog> {
               controller: _commentController,
               maxLines: 3,
               decoration: const InputDecoration(
-                hintText: 'Escribe un comentario (opcional)',
+                hintText: 'Agrega un comentario (opcional)',
                 border: OutlineInputBorder(),
               ),
             ),
