@@ -124,35 +124,33 @@ void showForegroundBanner(
     required GlobalKey<NavigatorState> navigatorKey,
   }) {
   try {
-    final context = navigatorKey.currentContext;
-    if (context == null || !context.mounted) return;
+    final navigator = navigatorKey.currentState;
+    if (navigator == null) return;
 
-    final title =
-        message.notification?.title ?? message.data['title'] ?? 'ForjaTrabajo';
-    final body = message.notification?.body ?? message.data['body'] ?? '';
+    final title = message.data['title'] ?? 'ForjaTrabajo';
+    final body = message.data['body'] ?? '';
     final type = message.data['type'] ?? '';
+    final notifIcon = iconForNotificationType(type);
 
-    final IconData notifIcon = iconForNotificationType(type);
+    final overlay = navigator.overlay!;
+    late OverlayEntry entry;
 
-    final overlayState = Overlay.of(context);
-    late OverlayEntry overlayEntry;
-
-    overlayEntry = OverlayEntry(
-      builder: (context) => Positioned(
-        top: MediaQuery.of(context).padding.top + 16,
+    entry = OverlayEntry(
+      builder: (ctx) => Positioned(
+        top: MediaQuery.of(ctx).padding.top + 16,
         left: 16,
         right: 16,
         child: Material(
           color: Colors.transparent,
           child: Dismissible(
             key: UniqueKey(),
-            direction: DismissDirection.up,
+            direction: DismissDirection.horizontal,
             onDismissed: (_) {
-              if (overlayEntry.mounted) overlayEntry.remove();
+              if (entry.mounted) entry.remove();
             },
             child: GestureDetector(
               onTap: () {
-                if (overlayEntry.mounted) overlayEntry.remove();
+                if (entry.mounted) entry.remove();
                 final navContext = navigatorKey.currentContext;
                 if (navContext == null) return;
                 ProviderContainer? container;
@@ -175,17 +173,13 @@ void showForegroundBanner(
                   color: const Color(0xFF1E1B4B),
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: const [
-                    BoxShadow(
-                        color: Colors.black26,
-                        blurRadius: 10,
-                        offset: Offset(0, 4)),
+                    BoxShadow(color: Colors.black26, blurRadius: 10, offset: Offset(0, 4)),
                   ],
                 ),
                 child: Row(
                   children: [
                     Container(
-                      width: 42,
-                      height: 42,
+                      width: 42, height: 42,
                       decoration: BoxDecoration(
                         color: const Color(0xFF4F46E5),
                         borderRadius: BorderRadius.circular(12),
@@ -198,25 +192,14 @@ void showForegroundBanner(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text(
-                            title,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                          Text(title,
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                            maxLines: 1, overflow: TextOverflow.ellipsis,
                           ),
                           if (body.isNotEmpty)
-                            Text(
-                              body,
-                              style: TextStyle(
-                                color: Colors.white.withOpacity(0.8),
-                                fontSize: 13,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                            Text(body,
+                              style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 13),
+                              maxLines: 1, overflow: TextOverflow.ellipsis,
                             ),
                         ],
                       ),
@@ -230,14 +213,12 @@ void showForegroundBanner(
       ),
     );
 
-    overlayState.insert(overlayEntry);
+    overlay.insert(entry);
 
     Future.delayed(const Duration(seconds: 4), () {
-      if (overlayEntry.mounted) {
-        overlayEntry.remove();
-      }
+      if (entry.mounted) entry.remove();
     });
   } catch (e) {
-    debugPrint('❌ [FCM] Error en showForegroundBanner: $e');
+    debugPrint('❌ [FCM] Error en banner: $e');
   }
 }

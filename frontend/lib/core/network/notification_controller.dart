@@ -21,7 +21,7 @@ class NotificationController extends StateNotifier<bool> {
   Future<void> enable({String? userRole}) async {
     final fcm = FcmService();
     await fcm.enable(userRole: userRole);
-    await fcm.initNotifications(userRole: userRole);
+    await fcm.reinit(userRole: userRole);
     final token = await fcm.getToken();
     if (token != null && token.isNotEmpty) {
       final apiClient = ApiClient();
