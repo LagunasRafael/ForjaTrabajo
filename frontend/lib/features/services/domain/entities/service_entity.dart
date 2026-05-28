@@ -26,6 +26,9 @@ class ServiceEntity {
   final bool hasPaid;
   final DateTime? paymentDueAt;
   final DateTime? autoReleaseAt;
+  final double? platformFee;
+  final double? stripeFee;
+  final double? netPayout;
 
   ServiceEntity({
     required this.id,
@@ -53,6 +56,9 @@ class ServiceEntity {
     this.hasPaid = false,
     this.paymentDueAt,
     this.autoReleaseAt,
+    this.platformFee,
+    this.stripeFee,
+    this.netPayout,
   });
 
   ServiceEntity copyWith({
@@ -81,6 +87,9 @@ class ServiceEntity {
     bool? hasPaid,
     DateTime? paymentDueAt,
     DateTime? autoReleaseAt,
+    double? platformFee,
+    double? stripeFee,
+    double? netPayout,
   }) {
     return ServiceEntity(
       id: id ?? this.id,
@@ -108,6 +117,9 @@ class ServiceEntity {
       hasPaid: hasPaid ?? this.hasPaid,
       paymentDueAt: paymentDueAt ?? this.paymentDueAt,
       autoReleaseAt: autoReleaseAt ?? this.autoReleaseAt,
+      platformFee: platformFee ?? this.platformFee,
+      stripeFee: stripeFee ?? this.stripeFee,
+      netPayout: netPayout ?? this.netPayout,
     );
   }
 }

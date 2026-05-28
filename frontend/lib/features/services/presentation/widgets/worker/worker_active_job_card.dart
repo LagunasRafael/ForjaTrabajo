@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja_trabajo/features/services/domain/entities/service_entity.dart';
 import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart';
+import 'package:forja_trabajo/features/services/presentation/providers/service_offers_provider.dart';
 import 'package:forja_trabajo/features/services/presentation/screens/shared/service_detail_screen.dart';
 import 'package:forja_trabajo/features/services/presentation/providers/job_management_provider.dart'; 
 import 'package:forja_trabajo/features/services/presentation/providers/service_list_provider.dart';
@@ -290,7 +291,14 @@ class _PaymentStatusBadge extends StatelessWidget {
       bgColor = Colors.orange.shade50;
       icon = Icons.hourglass_top;
     } else if (isPaid) {
-      text = "Pago realizado, puedes comenzar el trabajo";
+      final double net = job.netPayout ?? (job.basePrice * 0.9);
+      final double plat = job.platformFee ?? (job.basePrice * 0.1);
+      final double stripeFee = job.stripeFee ?? 0.0;
+
+      text = "Pago realizado. Recibirás \$${net.toStringAsFixed(2)} MXN netos en tu banco.\n"
+             "(Inicial: \$${job.basePrice.toStringAsFixed(2)} | "
+             "Comisión Forja: -\$${plat.toStringAsFixed(2)} | "
+             "Tarifa Stripe: -\$${stripeFee.toStringAsFixed(2)})";
       bgColor = const Color(0xFF10B981).withOpacity(0.1);
       icon = Icons.check_circle;
     } else {

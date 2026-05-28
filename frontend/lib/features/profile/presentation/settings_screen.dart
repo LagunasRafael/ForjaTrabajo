@@ -5,6 +5,7 @@ import 'package:forja_trabajo/features/services/presentation/screens/client/edit
 import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart';
 import 'package:forja_trabajo/features/auth/presentation/screens/login_screen.dart';
 import 'package:forja_trabajo/features/profile/presentation/screens/legal_document_screen.dart';
+import 'package:forja_trabajo/features/auth/presentation/widgets/profile_shared_widgets.dart';
 import 'package:forja_trabajo/core/theme/theme_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -147,7 +148,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 24.0),
             child: ElevatedButton.icon(
               onPressed: () {
-                _showLogoutConfirmation(context, ref);
+                showModernLogoutDialog(context, ref);
               },
               icon: const Icon(Icons.logout, color: Colors.red),
               label: const Text("Cerrar Sesión",
@@ -252,67 +253,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         value: value,
         onChanged: onChanged,
       ),
-    );
-  }
-
-  void _showLogoutConfirmation(BuildContext context, WidgetRef ref) {
-    showDialog(
-      context: context,
-      builder: (BuildContext dialogContext) {
-        return AlertDialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Row(
-            children: [
-              Icon(Icons.warning_amber_rounded, color: Colors.orange),
-              SizedBox(width: 10),
-              Text("¿Cerrar sesión?",
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-            ],
-          ),
-          content: Text(
-            "¿Estás seguro de que deseas salir de tu cuenta? Tendrás que volver a ingresar tus credenciales la próxima vez.",
-            style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
-          ),
-          actions: [
-            // Botón de Cancelar
-            TextButton(
-              onPressed: () {
-                Navigator.of(dialogContext).pop(); // Solo cierra el diálogo
-              },
-              child: const Text("Cancelar",
-                  style: TextStyle(
-                      color: Colors.grey, fontWeight: FontWeight.bold)),
-            ),
-            // Botón de Confirmar Salida
-            ElevatedButton(
-              onPressed: () async {
-                Navigator.of(dialogContext)
-                    .pop(); // 1. Cerramos el diálogo primero
-                await ref
-                    .read(authProvider.notifier)
-                    .logoutUser(); // 2. Ejecutamos el cierre de sesión
-                if (context.mounted) {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => const LoginScreen()),
-                  );
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10)),
-              ),
-              child: const Text("Sí, salir",
-                  style: TextStyle(
-                      color: Colors.white, fontWeight: FontWeight.bold)),
-            ),
-          ],
-        );
-      },
     );
   }
 }
