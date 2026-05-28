@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 // 1. Configuración Base
 // Se usa una variable de entorno para que sea fácil cambiar entre Local y Producción
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000',
+  baseURL: import.meta.env.VITE_API_URL || 'https://forja-api-rw0r.onrender.com',
   headers: {
     'Content-Type': 'application/json',
   },
