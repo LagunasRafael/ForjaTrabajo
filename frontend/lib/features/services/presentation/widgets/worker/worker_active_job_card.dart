@@ -291,9 +291,9 @@ class _PaymentStatusBadge extends StatelessWidget {
       bgColor = Colors.orange.shade50;
       icon = Icons.hourglass_top;
     } else if (isPaid) {
-      final net = job.netPayout ?? (job.basePrice * 0.9);
-      final plat = job.platformFee ?? (job.basePrice * 0.1);
-      final stripeFee = job.stripeFee ?? 0.0;
+      final double net = job.netPayout ?? (job.basePrice * 0.9);
+      final double plat = job.platformFee ?? (job.basePrice * 0.1);
+      final double stripeFee = job.stripeFee ?? 0.0;
 
       text = "Pago realizado. Recibirás \$${net.toStringAsFixed(2)} MXN netos en tu banco.\n"
              "(Inicial: \$${job.basePrice.toStringAsFixed(2)} | "
