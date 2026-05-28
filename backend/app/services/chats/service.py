@@ -291,9 +291,9 @@ def get_user_chats(db: Session, user_id: str):
 
         # 10. Determinar si el servicio ha sido pagado
         has_paid = False
-        if service_request and service_request.job:
+        if request and request.job:
             contract = db.query(payment_models.Contract).filter(
-                payment_models.Contract.job_id == service_request.job.id
+                payment_models.Contract.job_id == request.job.id
             ).first()
             if contract:
                 payment = db.query(payment_models.Payment).filter(
