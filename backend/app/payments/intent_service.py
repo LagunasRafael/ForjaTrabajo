@@ -201,6 +201,12 @@ def confirm_escrow(db: Session, payment_intent_id: str):
 
     payment.status = models.PaymentStatus.HELD_IN_ESCROW
 
+    if payment.platform_fee == 0 or payment.platform_fee is None:
+        fee_rate = get_commission_rate(db)
+        fee_cents = int(payment.amount_cents * fee_rate)
+        payment.platform_fee = round(fee_cents / 100, 2)
+        payment.platform_fee_cents = fee_cents
+
     contract = db.query(models.Contract).filter(
         models.Contract.id == payment.contract_id
     ).first()

@@ -300,6 +300,12 @@ class InvoiceDetailSheetState extends ConsumerState<InvoiceDetailSheet> {
                     _buildDetailRow('Fecha', DateFormat('dd MMMM, yyyy HH:mm').format(widget.payment.date)),
                     _buildDetailRow('Método de Pago', widget.payment.paymentMethod.toUpperCase()),
                     _buildDetailRow('Estado', widget.payment.status.toUpperCase()),
+                    if (widget.payment.platformFee > 0) ...[
+                      const Divider(height: 24),
+                      _buildAmountRow('Subtotal', widget.payment.amount - widget.payment.platformFee),
+                      _buildAmountRow('Comisión Forja (5%)', widget.payment.platformFee,
+                        valueColor: const Color(0xFF64748B)),
+                    ],
                   ],
                 ),
               ),
@@ -308,15 +314,10 @@ class InvoiceDetailSheetState extends ConsumerState<InvoiceDetailSheet> {
               padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
               child: Column(
                 children: [
+                  const SizedBox(height: 4),
                   const Divider(height: 24),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text('Total Pagado', style: TextStyle(fontSize: 18, color: Color(0xFF64748B))),
-                      Text('\$${widget.payment.amount.toStringAsFixed(2)} MXN',
-                        style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Color(0xFF6366F1))),
-                    ],
-                  ),
+                  _buildAmountRow('Total Pagado', widget.payment.amount,
+                    valueStyle: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Color(0xFF6366F1))),
                   const SizedBox(height: 16),
                   SizedBox(
                     width: double.infinity,
@@ -358,6 +359,20 @@ class InvoiceDetailSheetState extends ConsumerState<InvoiceDetailSheet> {
             maxLines: maxLines,
             overflow: maxLines != null ? TextOverflow.ellipsis : null,
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAmountRow(String label, double amount, {Color? valueColor, TextStyle? valueStyle}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(fontSize: 16, color: Color(0xFF64748B))),
+          Text('\$${amount.toStringAsFixed(2)} MXN',
+            style: valueStyle ?? TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: valueColor ?? const Color(0xFF1E293B))),
         ],
       ),
     );

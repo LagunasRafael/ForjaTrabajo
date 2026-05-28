@@ -163,11 +163,15 @@ def create_payment_intent(
             detail=f"Error al crear PaymentIntent: {str(e)}"
         )
 
-    # 5. Guardar Payment en BD
+    # 5. Calcular comisión y guardar Payment en BD
+    fee_rate = services.get_commission_rate(db)
+    fee_cents = int(amount_cents * fee_rate)
     db_payment = models.Payment(
         contract_id=contract.id,
         amount=data.amount_mxn,
         amount_cents=amount_cents,
+        platform_fee=round(fee_cents / 100, 2),
+        platform_fee_cents=fee_cents,
         status=models.PaymentStatus.PENDING,
         payment_method="card",
         stripe_payment_intent_id=intent.id
@@ -366,6 +370,7 @@ def download_invoice_pdf(
         "id": payment.id,
         "contract_id": payment.contract_id,
         "amount": payment.amount,
+        "platform_fee": payment.platform_fee or 0,
         "status": payment.status.value if hasattr(payment.status, 'value') else payment.status,
         "service_title": svc.title if svc else "Servicio",
         "service_description": svc.description if svc else "",

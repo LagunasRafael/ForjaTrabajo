@@ -6,6 +6,7 @@ class PaymentModel extends Payment {
     required super.contractId,
     required super.amount,
     required super.amountCents,
+    super.platformFee,
     required super.status,
     required super.date,
     required super.paymentMethod,
@@ -23,6 +24,7 @@ class PaymentModel extends Payment {
       contractId: json['contract_id'] ?? '',
       amount: (json['amount'] as num).toDouble(),
       amountCents: json['amount_cents'] ?? 0,
+      platformFee: (json['platform_fee'] as num?)?.toDouble() ?? 0.0,
       status: json['status'] ?? 'pending',
       date: json['created_at'] != null 
           ? DateTime.parse(json['created_at']) 
