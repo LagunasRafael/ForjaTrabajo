@@ -3,6 +3,8 @@ class Payment {
   final double amount;
   final int amountCents;
   final double platformFee;
+  final double stripeFee;
+  final double? netPayout;
   final String contractId;
   final String status;
   final DateTime date;
@@ -19,6 +21,8 @@ class Payment {
     required this.amount,
     required this.amountCents,
     this.platformFee = 0.0,
+    this.stripeFee = 0.0,
+    this.netPayout,
     required this.contractId,
     required this.status,
     required this.date,
@@ -30,4 +34,9 @@ class Payment {
     this.serviceDescription,
     this.serviceCategory,
   });
+
+  double get netAmount =>
+      netPayout ?? (platformFee > 0 || stripeFee > 0
+          ? amount - platformFee - stripeFee
+          : amount * 0.9);
 }
