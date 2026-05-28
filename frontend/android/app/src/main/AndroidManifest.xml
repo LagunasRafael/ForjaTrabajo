@@ -14,7 +14,7 @@
     <application
         android:label="Forja Frabajo"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher"
+        android:icon="@mipmap/launcher_icon"
         android:usesCleartextTraffic="true"
         android:enableOnBackInvokedCallback="true"
         android:allowBackup="false">
