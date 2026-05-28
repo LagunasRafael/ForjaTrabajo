@@ -5,6 +5,7 @@ import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider
 import 'package:forja_trabajo/features/services/presentation/screens/shared/service_detail_screen.dart';
 import 'package:forja_trabajo/features/profile/presentation/widgets/review_dialog.dart' as forja_review;
 import 'package:forja_trabajo/features/payments/presentation/screens/invoices_screen.dart';
+import 'package:forja_trabajo/features/payments/presentation/providers/payment_provider.dart';
 // 🚀 Legos universales
 import 'package:forja_trabajo/features/services/presentation/screens/shared/widgets/shared_job_widgets.dart';
 import 'package:forja_trabajo/features/profile/presentation/screens/user_profile_screen.dart';
@@ -209,9 +210,21 @@ class _ClientCompletedActions extends ConsumerWidget {
     );
   }
   Future<void> _handleRequestInvoice(BuildContext context, WidgetRef ref) async {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const InvoicesScreen()),
+    final payments = await ref.read(paymentHistoryProvider.future);
+    final payment = payments.where((p) => p.serviceId == service.id).firstOrNull;
+    if (payment == null) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No se encontró factura para este servicio')),
+      );
+      return;
+    }
+    if (!context.mounted) return;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => InvoiceDetailSheet(payment: payment),
     );
   }
   Future<void> _handleRateWorker(BuildContext context, WidgetRef ref) async {
