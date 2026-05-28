@@ -7,6 +7,8 @@ class Payment {
   final DateTime date;
   final String paymentMethod;
   final String? stripePaymentIntentId;
+  final String? jobId;
+  final String? serviceId;
   final String? serviceTitle;
   final String? serviceDescription;
   final String? serviceCategory;
@@ -20,6 +22,8 @@ class Payment {
     required this.date,
     required this.paymentMethod,
     this.stripePaymentIntentId,
+    this.jobId,
+    this.serviceId,
     this.serviceTitle,
     this.serviceDescription,
     this.serviceCategory,

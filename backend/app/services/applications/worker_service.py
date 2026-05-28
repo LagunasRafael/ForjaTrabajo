@@ -77,8 +77,8 @@ def get_worker_applications(db: Session, worker_id: str):
                 "author_name": author_name,
                 "author_image_url": author_image_url,
                 "has_paid": has_paid,
-                "payment_due_at": job.payment_due_at.isoformat() if job.payment_due_at else None,
-                "auto_release_at": job.auto_release_at.isoformat() if job.auto_release_at else None,
+                "payment_due_at": (job.payment_due_at.isoformat() + "Z") if job.payment_due_at else None,
+                "auto_release_at": (job.auto_release_at.isoformat() + "Z") if job.auto_release_at else None,
             }
 
         postulations = db.query(models.ServiceRequest, models.Service).join(
