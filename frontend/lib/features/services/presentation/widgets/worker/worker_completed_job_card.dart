@@ -9,6 +9,8 @@ import 'package:forja_trabajo/features/profile/presentation/widgets/review_dialo
 import 'package:forja_trabajo/features/profile/presentation/screens/user_profile_screen.dart';
 import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart';
 import 'package:forja_trabajo/features/services/presentation/screens/shared/service_detail_screen.dart';
+import 'package:forja_trabajo/features/payments/presentation/screens/invoices_screen.dart';
+import 'package:forja_trabajo/features/payments/presentation/providers/payment_provider.dart';
 
 class WorkerCompletedJobCard extends ConsumerWidget {
   final ServiceEntity job;
@@ -146,49 +148,13 @@ class WorkerCompletedJobCard extends ConsumerWidget {
                   ),
                 ],
               ),
-            if (job.status != JobStatus.cancelled)
-              Align(
-                alignment: Alignment.centerRight,
-                child: job.alreadyReviewed
-                    ? Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).brightness == Brightness.dark
-                              ? const Color(0xFF1E293B)
-                              : Colors.grey.shade100,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          "Ya calificaste",
-                          style: TextStyle(
-                            color: Theme.of(context).brightness == Brightness.dark
-                                ? Colors.grey.shade400
-                                : Colors.grey,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      )
-                    : TextButton.icon(
-                        onPressed: () {
-                          showDialog(
-                            context: context,
-                            builder: (dialogContext) => ProviderScope(
-                              parent: ProviderScope.containerOf(context),
-                              child: forja_review.ReviewDialog(
-                                jobId: job.id,
-                                revieweeName: job.authorName ?? 'el cliente',
-                              ),
-                            ),
-                          );
-                        },
-                        icon: const Icon(Icons.star_outline, size: 16, color: Color(0xFF6366F1)),
-                        label: const Text(
-                          "Calificar",
-                          style: TextStyle(color: Color(0xFF6366F1), fontWeight: FontWeight.bold)
-                        ),
-                      ),
-              ),
+              
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: Divider(height: 1, thickness: 1),
+            ),
+            
+            _WorkerCompletedActions(job: job),
           ],
         ),
       ),
@@ -294,4 +260,109 @@ class WorkerCompletedJobCard extends ConsumerWidget {
     );
   }
 
+}
+
+class _WorkerCompletedActions extends ConsumerWidget {
+  final ServiceEntity job;
+  
+  const _WorkerCompletedActions({required this.job});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Row(
+      children: [
+        Expanded(
+          child: ElevatedButton.icon(
+            onPressed: () => _handleRequestInvoice(context, ref),
+            icon: const Icon(Icons.receipt_long, size: 18),
+            label: const Text("Pedir Factura", style: TextStyle(fontWeight: FontWeight.bold)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF2563EB), 
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              elevation: 0,
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        if (job.status != JobStatus.cancelled)
+          job.alreadyReviewed
+              ? Container(
+                  height: 48,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? const Color(0xFF1E293B)
+                        : Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    "Ya calificaste",
+                    style: TextStyle(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.grey.shade400
+                          : Colors.grey,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                )
+              : SizedBox(
+                  height: 48, width: 48,
+                  child: IconButton(
+                    icon: const Icon(Icons.star_rate_rounded, color: Colors.black54),
+                    onPressed: () => _handleRateClient(context, ref),
+                  ),
+                ),
+      ],
+    );
+  }
+
+  Future<void> _handleRequestInvoice(BuildContext context, WidgetRef ref) async {
+    try {
+      final payments = await ref.read(paymentHistoryProvider.future);
+      debugPrint("Pagos cargados: ${payments.length}");
+      for (var p in payments) {
+        debugPrint("- Pago: ID=${p.id}, serviceId=${p.serviceId}, jobId=${p.jobId}, amount=${p.amount}");
+      }
+      
+      final payment = payments.where((p) => p.serviceId == job.id || p.jobId == job.id || p.jobId == job.requestId).firstOrNull;
+      
+      if (payment == null) {
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No se encontró factura para este servicio')),
+        );
+        return;
+      }
+      if (!context.mounted) return;
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (_) => InvoiceDetailSheet(payment: payment),
+      );
+    } catch (e) {
+      debugPrint("Error fetching payments: $e");
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error al cargar la factura: $e')),
+      );
+    }
+  }
+
+  Future<void> _handleRateClient(BuildContext context, WidgetRef ref) async {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => ProviderScope(
+        parent: ProviderScope.containerOf(context),
+        child: forja_review.ReviewDialog(
+          jobId: job.id,
+          revieweeName: job.authorName ?? 'el cliente',
+        ),
+      ),
+    );
+  }
 }

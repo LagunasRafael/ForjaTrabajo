@@ -295,10 +295,7 @@ class _PaymentStatusBadge extends StatelessWidget {
       final double plat = job.platformFee ?? (job.basePrice * 0.1);
       final double stripeFee = job.stripeFee ?? 0.0;
 
-      text = "Pago realizado. Recibirás \$${net.toStringAsFixed(2)} MXN netos en tu banco.\n"
-             "(Inicial: \$${job.basePrice.toStringAsFixed(2)} | "
-             "Comisión Forja: -\$${plat.toStringAsFixed(2)} | "
-             "Tarifa Stripe: -\$${stripeFee.toStringAsFixed(2)})";
+      text = "Pago realizado. Ya puede comenzar con el trabajo";
       bgColor = const Color(0xFF10B981).withOpacity(0.1);
       icon = Icons.check_circle;
     } else {
