@@ -27,6 +27,9 @@ class ServiceModel extends ServiceEntity {
     super.hasPaid,
     super.paymentDueAt,
     super.autoReleaseAt,
+    super.platformFee,
+    super.stripeFee,
+    super.netPayout,
   });
 
   factory ServiceModel.fromJson(Map<String, dynamic> json) {
@@ -129,6 +132,9 @@ class ServiceModel extends ServiceEntity {
       hasPaid: entity.hasPaid,
       paymentDueAt: entity.paymentDueAt,
       autoReleaseAt: entity.autoReleaseAt,
+      platformFee: entity.platformFee,
+      stripeFee: entity.stripeFee,
+      netPayout: entity.netPayout,
     );
   }
 
@@ -158,6 +164,9 @@ class ServiceModel extends ServiceEntity {
       hasPaid: hasPaid,
       paymentDueAt: paymentDueAt,
       autoReleaseAt: autoReleaseAt,
+      platformFee: platformFee,
+      stripeFee: stripeFee,
+      netPayout: netPayout,
     );
   }
 }

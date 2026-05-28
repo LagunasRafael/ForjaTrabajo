@@ -174,6 +174,27 @@ class _InvoiceCard extends StatelessWidget {
   }
 }
 
+String _statusLabel(String status) {
+  switch (status.toLowerCase()) {
+    case 'released':
+    case 'completed':
+    case 'paid':
+      return 'Pagado';
+    case 'held_in_escrow':
+      return 'En Garantía';
+    case 'pending_transfer':
+      return 'En Transferencia';
+    case 'pending':
+      return 'Pendiente';
+    case 'refunded':
+      return 'Reembolsado';
+    case 'failed':
+      return 'Fallido';
+    default:
+      return status;
+  }
+}
+
 class _StatusTag extends StatelessWidget {
   final String status;
   const _StatusTag({required this.status});
@@ -182,17 +203,16 @@ class _StatusTag extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = status.toLowerCase();
     Color color = Colors.blue;
-    String label = status;
+    String label = _statusLabel(status);
 
     if (s == 'released' || s == 'completed' || s == 'paid') {
       color = const Color(0xFF16A34A);
-      label = 'Pagado';
-    } else if (s == 'held_in_escrow') {
+    } else if (s == 'held_in_escrow' || s == 'pending_transfer') {
       color = const Color(0xFFEA580C);
-      label = 'En Garantía';
-    } else if (s == 'refunded') {
+    } else if (s == 'pending') {
+      color = const Color(0xFFEAB308);
+    } else if (s == 'refunded' || s == 'failed') {
       color = const Color(0xFFDC2626);
-      label = 'Reembolsado';
     }
 
     return Container(
@@ -299,7 +319,7 @@ class InvoiceDetailSheetState extends ConsumerState<InvoiceDetailSheet> {
                     _buildDetailRow('ID de Transacción', '#${widget.payment.id.substring(0, 8).toUpperCase()}'),
                     _buildDetailRow('Fecha', DateFormat('dd MMMM, yyyy HH:mm').format(widget.payment.date)),
                     _buildDetailRow('Método de Pago', widget.payment.paymentMethod.toUpperCase()),
-                    _buildDetailRow('Estado', widget.payment.status.toUpperCase()),
+                    _buildDetailRow('Estado', _statusLabel(widget.payment.status)),
                     if (widget.payment.platformFee > 0) ...[
                       const Divider(height: 24),
                       _buildAmountRow('Subtotal', widget.payment.amount - widget.payment.platformFee),
