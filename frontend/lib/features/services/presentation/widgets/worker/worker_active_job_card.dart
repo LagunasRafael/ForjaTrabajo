@@ -44,6 +44,7 @@ class WorkerActiveJobCard extends ConsumerWidget {
                 onCancelSuccess: () {
                   ref.invalidate(workerJobsProvider);
                   ref.invalidate(serviceListProvider);
+                  ref.invalidate(offersListProvider(job.id));
                 },
                 reportUserId: job.clientId,
                 reportServiceId: job.id,
