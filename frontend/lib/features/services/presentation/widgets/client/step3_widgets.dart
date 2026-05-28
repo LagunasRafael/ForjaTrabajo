@@ -64,6 +64,41 @@ class ImageThumbnail extends StatelessWidget {
   }
 }
 
+class NetworkImageThumbnail extends StatelessWidget {
+  final String imageUrl;
+  final VoidCallback onRemove;
+
+  const NetworkImageThumbnail({super.key, required this.imageUrl, required this.onRemove});
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        Container(
+          width: 80,
+          margin: const EdgeInsets.only(right: 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            image: DecorationImage(image: NetworkImage(imageUrl), fit: BoxFit.cover),
+          ),
+        ),
+        Positioned(
+          right: 16,
+          top: 4,
+          child: GestureDetector(
+            onTap: onRemove,
+            child: Container(
+              padding: const EdgeInsets.all(2),
+              decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+              child: const Icon(Icons.close, size: 14, color: Colors.white),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class SummaryRow extends StatelessWidget {
   final IconData icon;
   final String label;

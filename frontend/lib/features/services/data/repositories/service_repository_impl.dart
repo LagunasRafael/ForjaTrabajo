@@ -76,6 +76,11 @@ class ServiceRepositoryImpl implements ServiceRepository {
   }
 
   @override
+  Future<List<String>> uploadServiceImages(String serviceId, List<File> images, String token) async {
+    return await serviceDS.uploadServiceImages(serviceId, images, token);
+  }
+
+  @override
   Future<List<ServiceEntity>> getMyServices() async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token') ?? '';

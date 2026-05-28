@@ -14,11 +14,14 @@ class Step3Summary extends StatelessWidget {
   final bool isLoading;
   
   final List<File> images;
+  final List<String> existingImageUrls;
   final VoidCallback onAddImage;
   final Function(int) onRemoveImage;
+  final Function(int) onRemoveExistingImage;
   
   final VoidCallback onSubmit;
   final VoidCallback onEdit;
+  final bool isEditing;
 
   const Step3Summary({
     super.key, 
@@ -30,10 +33,13 @@ class Step3Summary extends StatelessWidget {
     required this.categoriesAsync, 
     required this.isLoading, 
     required this.images,      
+    required this.existingImageUrls,
     required this.onAddImage,   
     required this.onRemoveImage, 
+    required this.onRemoveExistingImage,
     required this.onSubmit, 
-    required this.onEdit
+    required this.onEdit,
+    this.isEditing = false,
   });
 
   @override
@@ -58,7 +64,7 @@ class Step3Summary extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween, 
             children: [
               const Text("Evidencia visual", style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)), 
-              Text("${images.length} fotos", style: TextStyle(color: Colors.grey[400], fontWeight: FontWeight.bold))
+              Text("${existingImageUrls.length + images.length} fotos", style: TextStyle(color: Colors.grey[400], fontWeight: FontWeight.bold))
             ]
           ),
           const SizedBox(height: 16),
@@ -67,14 +73,22 @@ class Step3Summary extends StatelessWidget {
             height: 90,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
-              itemCount: images.length + 1,
+              itemCount: existingImageUrls.length + images.length + 1,
               itemBuilder: (context, index) {
                 if (index == 0) {
                   return AddPhotoButton(onTap: onAddImage); 
                 }
+                final adjusted = index - 1;
+                if (adjusted < existingImageUrls.length) {
+                  return NetworkImageThumbnail(
+                    imageUrl: existingImageUrls[adjusted], 
+                    onRemove: () => onRemoveExistingImage(adjusted)
+                  );
+                }
+                final localIndex = adjusted - existingImageUrls.length;
                 return ImageThumbnail(
-                  imageFile: images[index - 1], 
-                  onRemove: () => onRemoveImage(index - 1)
+                  imageFile: images[localIndex], 
+                  onRemove: () => onRemoveImage(localIndex)
                 );
               },
             ),
@@ -126,7 +140,7 @@ class Step3Summary extends StatelessWidget {
               icon: isLoading ? const SizedBox() : const Icon(Icons.check_circle_outline, color: Colors.white),
               label: isLoading 
                 ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) 
-                : const Text("Publicar Servicio", style: TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.w900)),
+                : Text(isEditing ? "Guardar Cambios" : "Publicar Servicio", style: const TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.w900)),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF4F46E5), 
                 padding: const EdgeInsets.symmetric(vertical: 18), 

@@ -28,6 +28,7 @@ class _CreateServiceScreenState extends ConsumerState<CreateServiceScreen> {
 
   late TextEditingController _titleCtrl, _descCtrl, _addressCtrl, _priceCtrl;
   bool get _isEditing => widget.serviceToEdit != null;
+  ServiceEntity? _pendingResultService;
 
   @override
   void initState() {
@@ -41,6 +42,7 @@ class _CreateServiceScreenState extends ConsumerState<CreateServiceScreen> {
     Future.microtask(() {
       ref.read(createServiceFormProvider.notifier).loadInitialData(
         categoryId: s?.categoryId, lat: s?.latitude, lng: s?.longitude,
+        existingImageUrls: s?.imageUrls,
       );
     });
   }
@@ -120,7 +122,7 @@ class _CreateServiceScreenState extends ConsumerState<CreateServiceScreen> {
       status: widget.serviceToEdit?.status ?? JobStatus.open,
       isActive: true,
       createdAt: DateTime.now(),
-      imageUrls: widget.serviceToEdit?.imageUrls ?? [],
+      imageUrls: const [],
     );
   }
 
@@ -134,7 +136,14 @@ class _CreateServiceScreenState extends ConsumerState<CreateServiceScreen> {
     final formState = ref.read(createServiceFormProvider);
 
     if (_isEditing) {
-      await notifier.updateService(serviceData, token);
+      // Subir imágenes nuevas primero
+      final newUrls = formState.images.isNotEmpty
+          ? await notifier.uploadServiceImages(serviceData.id, formState.images, token)
+          : <String>[];
+      // Construir lista final: URLs conservadas + URLs nuevas
+      final finalUrls = [...formState.keptImageUrls, ...newUrls];
+      _pendingResultService = serviceData.copyWith(imageUrls: finalUrls);
+      await notifier.updateService(serviceData.copyWith(imageUrls: finalUrls), token);
     } else {
       await notifier.createService(serviceData, token, images: formState.images);
     }
@@ -147,14 +156,14 @@ class _CreateServiceScreenState extends ConsumerState<CreateServiceScreen> {
       if (previous?.isLoading == true && !next.isLoading && !next.hasError) {
         ref.invalidate(serviceListProvider);
         ref.read(clientNavProvider.notifier).state = 0;
-        Navigator.pop(context);
+        Navigator.pop(context, _pendingResultService);
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text(
-              '¡Servicio publicado con éxito!',
+            content: Text(
+              _isEditing ? '¡Servicio actualizado con éxito!' : '¡Servicio publicado con éxito!',
               textAlign: TextAlign.center,
-              style: TextStyle(color: Color(0xFF4F46E5)),
+              style: const TextStyle(color: Color(0xFF4F46E5)),
             ),
             backgroundColor: const Color(0xFFF0F0F0),
             behavior: SnackBarBehavior.floating,
@@ -218,13 +227,16 @@ class _CreateServiceScreenState extends ConsumerState<CreateServiceScreen> {
                       address: _addressCtrl.text, price: _priceCtrl.text,
                       categoryId: formState.categoryId, categoriesAsync: categoriesAsync,
                       isLoading: creationState.isLoading, images: formState.images,
+                      existingImageUrls: formState.existingImageUrls,
                       onAddImage: _pickImage,
                       onRemoveImage: (i) => ref.read(createServiceFormProvider.notifier).removeImage(i),
+                      onRemoveExistingImage: (i) => ref.read(createServiceFormProvider.notifier).removeExistingImage(i),
                       onSubmit: _submitFinal,
                       onEdit: () {
                         _pageController.jumpToPage(0);
                         ref.read(createServiceFormProvider.notifier).setStep(0);
                       },
+                      isEditing: _isEditing,
                     ),
                   ],
                 ),
