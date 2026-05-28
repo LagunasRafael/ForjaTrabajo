@@ -223,13 +223,14 @@ class _WorkerProfileScreenState extends ConsumerState<WorkerProfileScreen> with 
                     icon: LucideIcons.history,
                     title: 'Historial de Trabajos',
                     onTap: () {
-                      ref.read(workerNavProvider.notifier).state = 1;
+                      ref.read(workerJobsTabProvider.notifier).state = 2;
+                      ref.read(workerNavProvider.notifier).state = 2;
                     }),
                 ProfileMenuOption(
                     icon: LucideIcons.clipboardList,
                     title: 'Mis Solicitudes',
                     onTap: () {
-                      ref.read(workerNavProvider.notifier).state = 1;
+                      ref.read(workerNavProvider.notifier).state = 2;
                     }),
                 if (user?.isIdentityVerified != true &&
                     verificationAsync.valueOrNull?[

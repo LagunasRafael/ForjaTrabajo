@@ -19,10 +19,6 @@ class ChatListScreen extends ConsumerWidget {
           backgroundColor: theme.colorScheme.surface,
           elevation: 0,
           title: Text("Mensajes", style: TextStyle(color: theme.colorScheme.onSurface, fontWeight: FontWeight.bold, fontSize: 22)),
-          actions: [
-            IconButton(icon: Icon(Icons.search, color: theme.colorScheme.onSurface), onPressed: () {}),
-            IconButton(icon: Icon(Icons.more_vert, color: theme.colorScheme.onSurface), onPressed: () {}),
-          ],
           bottom: const TabBar(
             labelColor: Color(0xFF4F46E5),
             unselectedLabelColor: Colors.grey,
