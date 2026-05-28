@@ -79,6 +79,9 @@ class ServiceModel extends ServiceEntity {
       hasPaid: json['has_paid'] ?? false,
       paymentDueAt: json['payment_due_at'] != null ? DateTime.parse(json['payment_due_at'].toString()) : null,
       autoReleaseAt: json['auto_release_at'] != null ? DateTime.parse(json['auto_release_at'].toString()) : null,
+      platformFee: parseDouble(json['platform_fee']),
+      stripeFee: parseDouble(json['stripe_fee']),
+      netPayout: parseDouble(json['net_payout']),
     );
   }
 
