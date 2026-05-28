@@ -60,6 +60,7 @@ class EscrowItem(BaseModel):
     created_at: datetime
     worker_name: str
     worker_has_stripe: bool
+    job_status: Optional[str] = None
 
 
 @router.get("/overview", response_model=FinanceOverview)
@@ -261,6 +262,7 @@ def get_escrow_monitor(
         worker_has_stripe = bool(_get_user_stripe_account_id(db, job.provider_id)) if job else False
         
         status_val = p.status.value if hasattr(p.status, 'value') else p.status
+        job_status_val = job.status.value if (job and hasattr(job.status, 'value')) else (job.status if job else None)
         
         result.append(EscrowItem(
             payment_id=p.id,
@@ -269,7 +271,8 @@ def get_escrow_monitor(
             status=status_val,
             created_at=p.created_at,
             worker_name=worker_name,
-            worker_has_stripe=worker_has_stripe
+            worker_has_stripe=worker_has_stripe,
+            job_status=job_status_val
         ))
 
     return result

@@ -212,6 +212,8 @@ class SharedCancelMenu extends ConsumerWidget {
       if (success && context.mounted) {
         onCancelSuccess(); 
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("⚠️ Trabajo cancelado."), backgroundColor: Colors.orange));
+      } else if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("❌ No se pudo cancelar el trabajo. Verifica tus permisos."), backgroundColor: Colors.red));
       }
     }
   }

@@ -80,36 +80,49 @@ export const EscrowMonitor = ({ items, isLoading, onRefresh }: EscrowMonitorProp
             Fondos Retenidos en Escrow ({heldInEscrow.length})
           </h4>
           <div className="space-y-2">
-            {heldInEscrow.map((item) => (
-              <div key={item.payment_id} className="flex items-center justify-between p-4 rounded-xl bg-slate-800/30 border border-slate-700/50">
-                <div className="flex-1">
-                  <p className="text-white font-medium">{item.service_title}</p>
-                  <p className="text-xs text-slate-400 mt-1">
-                    Worker: {item.worker_name} • {formatDate(item.created_at)}
-                  </p>
+            {heldInEscrow.map((item) => {
+              const isCancelled = item.job_status === 'cancelled';
+              return (
+                <div key={item.payment_id} className={`flex items-center justify-between p-4 rounded-xl bg-slate-800/30 border transition-all ${isCancelled ? 'border-red-500/40 bg-red-500/5 shadow-lg shadow-red-500/5' : 'border-slate-700/50'}`}>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="text-white font-medium">{item.service_title}</p>
+                      {isCancelled && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-black uppercase tracking-tighter rounded-full border bg-red-500/10 text-red-400 border-red-500/20 animate-pulse">
+                          <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                          </svg>
+                          Trabajo Cancelado
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-slate-400 mt-1">
+                      Worker: {item.worker_name} • {formatDate(item.created_at)}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-lg font-bold text-blue-400">{formatMXN(item.amount)}</p>
+                    <span className="inline-flex px-2 py-1 text-xs font-bold rounded-full border bg-blue-500/10 text-blue-400 border-blue-500/20">
+                      En Escrow
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 ml-4">
+                    <button
+                      onClick={() => handleRefund(item.payment_id)}
+                      className="px-3 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-lg text-xs font-bold transition-all"
+                    >
+                      Reembolsar
+                    </button>
+                    <button
+                      onClick={() => handleRelease(item.payment_id)}
+                      className="px-3 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 rounded-lg text-xs font-bold transition-all"
+                    >
+                      Liberar
+                    </button>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-lg font-bold text-blue-400">{formatMXN(item.amount)}</p>
-                  <span className="inline-flex px-2 py-1 text-xs font-bold rounded-full border bg-blue-500/10 text-blue-400 border-blue-500/20">
-                    En Escrow
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 ml-4">
-                  <button
-                    onClick={() => handleRefund(item.payment_id)}
-                    className="px-3 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-lg text-xs font-bold transition-all"
-                  >
-                    Reembolsar
-                  </button>
-                  <button
-                    onClick={() => handleRelease(item.payment_id)}
-                    className="px-3 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 rounded-lg text-xs font-bold transition-all"
-                  >
-                    Liberar
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
