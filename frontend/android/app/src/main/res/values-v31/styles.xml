@@ -3,7 +3,6 @@
     <style name="LaunchTheme" parent="Theme.AppCompat.Light.NoActionBar">
         <item name="android:windowSplashScreenBackground">@android:color/white</item>
         <item name="android:windowSplashScreenAnimatedIcon">@drawable/transparent_icon</item>
-        <item name="android:postSplashScreenTheme">@style/NormalTheme</item>
     </style>
 
     <style name="NormalTheme" parent="Theme.AppCompat.Light.NoActionBar">
