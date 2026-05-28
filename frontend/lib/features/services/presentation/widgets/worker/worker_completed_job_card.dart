@@ -77,7 +77,48 @@ class WorkerCompletedJobCard extends ConsumerWidget {
                   ),
                 ),
                 // 🚀 Usamos el Chip que ya tienes
-                ServiceStatusChip(status: job.status.toString().split('.').last),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ServiceStatusChip(status: job.status.toString().split('.').last),
+                    const SizedBox(width: 4),
+                      PopupMenuButton<String>(
+                      icon: const Icon(Icons.more_vert, color: Colors.grey),
+                      onSelected: (value) {
+                        if (value == 'delete') {
+                          // Aquí va la misma lógica que ya usabas al borrar
+                          ref.read(deletedServiceIdsProvider.notifier).update(
+                            (state) => {...state, job.id},
+                          );
+
+                          ref.invalidate(workerJobsProvider);
+                        }
+                      },
+                      itemBuilder: (context) => [
+                        const PopupMenuItem<String>(
+                          value: 'delete',
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.delete_outline,
+                                color: Colors.red,
+                                size: 20,
+                              ),
+                              SizedBox(width: 10),
+                              Text(
+                                "Borrar del historial",
+                                style: TextStyle(
+                                  color: Colors.red,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ],
             ),
             
@@ -90,13 +131,7 @@ class WorkerCompletedJobCard extends ConsumerWidget {
 
             Row(
               children: [
-                DeleteFromHistoryButton(
-                  serviceId: job.id,
-                  onDeleted: () {
-                    ref.read(deletedServiceIdsProvider.notifier).update((state) => {...state, job.id});
-                    ref.invalidate(workerJobsProvider);
-                  },
-                ),
+
                 Expanded(
                   child: Row(
                     children: [
