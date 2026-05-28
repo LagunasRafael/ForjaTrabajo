@@ -10,7 +10,6 @@ import 'package:forja_trabajo/features/services/presentation/widgets/delete_from
 import 'package:forja_trabajo/features/services/presentation/providers/service_list_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:forja_trabajo/features/services/presentation/providers/service_repository_provider.dart';
-// 🚀 Legos universales
 import 'package:forja_trabajo/features/services/presentation/screens/shared/widgets/shared_job_widgets.dart';
 import 'package:forja_trabajo/features/profile/presentation/screens/user_profile_screen.dart';
 class ClientCompletedJobCard extends ConsumerWidget {
@@ -94,19 +93,38 @@ class ClientCompletedJobCard extends ConsumerWidget {
       ),
     );
   }
+  String _formatDate(DateTime date) {
+    return "${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}";
+  }
+
   Widget _buildTitleAndStars(bool isDark, BuildContext context, WidgetRef ref) {
     return Row(
       children: [
         Expanded(
-          child: Text(
-            service.title,
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-              color: isDark ? Colors.white : Colors.black87,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                service.title,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: isDark ? Colors.white : Colors.black87,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                service.status == JobStatus.cancelled
+                    ? "Cancelado el ${_formatDate(service.createdAt)}"
+                    : "Finalizado el ${_formatDate(service.createdAt)}",
+                style: TextStyle(
+                  fontSize: 12,
+                  color: isDark ? Colors.grey.shade400 : Colors.grey.shade500,
+                ),
+              ),
+            ],
           ),
         ),
         PopupMenuButton<String>(
@@ -220,7 +238,7 @@ class ClientCompletedJobCard extends ConsumerWidget {
     return Text(
       service.summary ?? service.description,
       style: TextStyle(
-        color: isDark ? Colors.white70 : Colors.grey.shade700, // 🎨 Color adaptable
+        color: isDark ? Colors.white70 : Colors.grey.shade700,
         fontSize: 13, 
         height: 1.4
       ),

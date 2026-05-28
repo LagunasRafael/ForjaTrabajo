@@ -104,7 +104,7 @@ def build_my_services_response(db: Session, services: list) -> list:
             "image_urls": svc.image_urls or [],
             "status": svc.status.value if hasattr(svc.status, 'value') else str(svc.status),
             "is_active": svc.is_active,
-            "created_at": svc.created_at,
+            "created_at": getattr(svc, 'relevant_date', svc.created_at),
             "author_name": svc.author_name,
             "author_image_url": svc.author_image_url,
             "request_id": svc.request_id,

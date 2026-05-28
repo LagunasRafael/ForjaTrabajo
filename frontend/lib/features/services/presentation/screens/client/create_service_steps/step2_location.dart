@@ -28,6 +28,13 @@ class Step2Location extends StatefulWidget {
 class _Step2LocationState extends State<Step2Location> {
   final ScrollController _scrollCtrl = ScrollController();
   final GlobalKey _priceKey = GlobalKey();
+  late bool _isLocationLoading;
+
+  @override
+  void initState() {
+    super.initState();
+    _isLocationLoading = widget.lat == null || widget.lng == null;
+  }
 
   @override
   void dispose() {
@@ -75,6 +82,11 @@ class _Step2LocationState extends State<Step2Location> {
             lat: widget.lat,
             lng: widget.lng,
             onLocationCaptured: widget.onLocationCaptured,
+            onLoadingChanged: (loading) {
+              if (mounted) {
+                setState(() => _isLocationLoading = loading);
+              }
+            },
           ),
 
           const SizedBox(height: 32),
@@ -129,7 +141,11 @@ class _Step2LocationState extends State<Step2Location> {
           ),
 
           const SizedBox(height: 40),
-          StepActionButton(text: "Siguiente", onPressed: _handleNext),
+          StepActionButton(
+            text: "Siguiente", 
+            onPressed: _handleNext,
+            isLoading: _isLocationLoading,
+          ),
         ],
       ),
     );
