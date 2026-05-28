@@ -84,7 +84,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
         ref.invalidate(myRequestsProvider);
 
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('✅ Pago realizado con éxito'), backgroundColor: Colors.green),
+          const SnackBar(content: Text('Pago realizado con éxito'), backgroundColor: Colors.green),
         );
 
         ref.read(clientNavProvider.notifier).state = 3;
