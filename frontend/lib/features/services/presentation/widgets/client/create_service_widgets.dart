@@ -50,28 +50,44 @@ class ServiceTextField extends StatelessWidget {
 // --- Botón de Acción Principal ---
 class StepActionButton extends StatelessWidget {
   final String text;
-  final VoidCallback onPressed;
-  const StepActionButton({super.key, required this.text, required this.onPressed});
+  final VoidCallback? onPressed;
+  final bool isLoading;
+
+  const StepActionButton({
+    super.key, 
+    required this.text, 
+    this.onPressed,
+    this.isLoading = false,
+  });
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
-        onPressed: onPressed,
+        onPressed: isLoading ? null : onPressed,
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFF111827),
           padding: const EdgeInsets.symmetric(vertical: 18),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(text, style: const TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold)),
-            const SizedBox(width: 8),
-            const Icon(Icons.arrow_forward_rounded, color: Colors.white)
-          ],
-        ),
+        child: isLoading
+            ? const SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              )
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(text, style: const TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold)),
+                  const SizedBox(width: 8),
+                  const Icon(Icons.arrow_forward_rounded, color: Colors.white)
+                ],
+              ),
       ),
     );
   }

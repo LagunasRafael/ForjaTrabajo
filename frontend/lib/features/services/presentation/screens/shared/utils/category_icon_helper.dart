@@ -197,4 +197,20 @@ extension CategoryHelper on String {
   IconData get toCategoryIcon => _categoryData.icon;
 
   Color get toCategoryColor => _categoryData.color;
+
+  Color get toIconBackgroundColor {
+    final t = toLowerCase();
+    if (t.contains('fuga') || t.contains('plom') || t.contains('font')) return const Color(0xFFF3F4F6);
+    if (t.contains('eléctr') || t.contains('luz') || t.contains('electr')) return const Color(0xFFFEF3C7);
+    if (t.contains('pint')) return const Color(0xFFECFDF5);
+    return const Color(0xFFEEF2FF);
+  }
+
+  Color get toIconColor {
+    final t = toLowerCase();
+    if (t.contains('fuga') || t.contains('plom') || t.contains('font')) return const Color(0xFF2563EB);
+    if (t.contains('eléctr') || t.contains('luz') || t.contains('electr')) return const Color(0xFFD97706);
+    if (t.contains('pint')) return const Color(0xFF10B981);
+    return const Color(0xFF4F46E5);
+  }
 }

@@ -7,6 +7,7 @@ import 'package:forja_trabajo/features/services/presentation/screens/shared/serv
 import 'package:forja_trabajo/features/services/presentation/providers/job_management_provider.dart'; 
 import 'package:forja_trabajo/features/services/presentation/providers/service_list_provider.dart';
 import 'package:forja_trabajo/features/services/presentation/providers/complete_job_providers.dart';
+import 'package:forja_trabajo/features/services/presentation/providers/service_offers_provider.dart';
 import 'package:forja_trabajo/features/chat/presentation/providers/chat_provider.dart';
 import 'package:forja_trabajo/features/chat/presentation/screens/shared_chat_screen.dart';
 import 'package:forja_trabajo/features/chat/presentation/providers/chat_list_provider.dart';
@@ -290,7 +291,14 @@ class _PaymentStatusBadge extends StatelessWidget {
       bgColor = Colors.orange.shade50;
       icon = Icons.hourglass_top;
     } else if (isPaid) {
-      text = "Pago realizado, puedes comenzar el trabajo";
+      final net = job.netPayout ?? (job.basePrice * 0.9);
+      final plat = job.platformFee ?? (job.basePrice * 0.1);
+      final stripeFee = job.stripeFee ?? 0.0;
+
+      text = "Pago realizado. Recibirás \$${net.toStringAsFixed(2)} MXN netos en tu banco.\n"
+             "(Inicial: \$${job.basePrice.toStringAsFixed(2)} | "
+             "Comisión Forja: -\$${plat.toStringAsFixed(2)} | "
+             "Tarifa Stripe: -\$${stripeFee.toStringAsFixed(2)})";
       bgColor = const Color(0xFF10B981).withOpacity(0.1);
       icon = Icons.check_circle;
     } else {
