@@ -36,7 +36,7 @@ export function useWebSocketPendingCounts() {
   }, []);
 
   const getWsUrl = useCallback(() => {
-    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    const baseUrl = import.meta.env.VITE_API_URL || 'https://forja-api-rw0r.onrender.com';
     return baseUrl.replace('https://', 'wss://').replace('http://', 'ws://');
   }, []);
 

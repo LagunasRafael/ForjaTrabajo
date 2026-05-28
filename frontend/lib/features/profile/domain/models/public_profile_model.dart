@@ -67,6 +67,13 @@ class PublicProfileModel {
     this.categories = const [],
   });
 
+  String get translatedRole {
+    final r = role.toLowerCase();
+    if (r == 'client') return 'CLIENTE';
+    if (r == 'worker') return 'TRABAJADOR';
+    return role.toUpperCase();
+  }
+
   factory PublicProfileModel.fromJson(Map<String, dynamic> json) {
     return PublicProfileModel(
       id: json['id'] ?? '',

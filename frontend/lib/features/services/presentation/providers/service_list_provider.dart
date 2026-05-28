@@ -8,6 +8,8 @@ import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider
 import 'package:forja_trabajo/shared/widgets/location/marketplace_location_storage.dart';
 import 'category_provider.dart';
 
+final deletedServiceIdsProvider = StateProvider<Set<String>>((ref) => {});
+
 final searchQueryProvider = StateProvider<String>((ref) => "");
 
 final selectedRadiusKmProvider = StateProvider<double>((ref) => 25.0);

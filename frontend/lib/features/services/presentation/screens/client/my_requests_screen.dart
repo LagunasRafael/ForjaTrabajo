@@ -80,6 +80,7 @@ class _MyRequestsScreenState extends ConsumerState<MyRequestsScreen>
 
   Widget _buildRequestList(WidgetRef ref, JobStatus status) {
     final servicesAsync = ref.watch(myRequestsProvider);
+    final deletedIds = ref.watch(deletedServiceIdsProvider);
 
     return RefreshIndicator(
       color: const Color(0xFF4F46E5),
@@ -89,7 +90,7 @@ class _MyRequestsScreenState extends ConsumerState<MyRequestsScreen>
       },
       child: servicesAsync.when(
         data: (services) {
-          final filtered = services.where((s) {
+          final filtered = services.where((s) => !deletedIds.contains(s.id)).where((s) {
             if (status == JobStatus.matched) {
               return s.status == JobStatus.matched || s.status == JobStatus.waiting_confirmation || s.status == JobStatus.disputed;
             }

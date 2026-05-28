@@ -47,12 +47,16 @@ def get_payments_by_role(db: Session, current_user):
             "service_title": None,
             "service_description": None,
             "service_category": None,
+            "job_id": None,
+            "service_id": None,
         }
         contract = payment.contract
         if contract and contract.job:
             job = contract.job
+            payment_dict["job_id"] = job.id
             if job.request and job.request.service:
                 svc = job.request.service
+                payment_dict["service_id"] = svc.id
                 payment_dict["service_title"] = svc.title
                 payment_dict["service_description"] = svc.description
                 payment_dict["service_category"] = svc.category.name if svc.category else None

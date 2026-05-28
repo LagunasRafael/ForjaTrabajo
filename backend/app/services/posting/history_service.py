@@ -86,6 +86,8 @@ def build_my_services_response(db: Session, services: list) -> list:
                 final_price = float(request.job.final_price)
                 break
 
+        pay_due = getattr(svc, 'payment_due_at', None)
+        auto_rel = getattr(svc, 'auto_release_at', None)
         svc_dict = {
             "id": svc.id,
             "title": svc.title,
@@ -110,8 +112,8 @@ def build_my_services_response(db: Session, services: list) -> list:
             "worker_id": getattr(svc, 'worker_id', None),
             "already_reviewed": getattr(svc, 'already_reviewed', False),
             "has_paid": getattr(svc, 'has_paid', False),
-            "payment_due_at": getattr(svc, 'payment_due_at', None),
-            "auto_release_at": getattr(svc, 'auto_release_at', None),
+            "payment_due_at": pay_due.isoformat() + "Z" if pay_due else None,
+            "auto_release_at": auto_rel.isoformat() + "Z" if auto_rel else None,
         }
         result.append(svc_dict)
     return result

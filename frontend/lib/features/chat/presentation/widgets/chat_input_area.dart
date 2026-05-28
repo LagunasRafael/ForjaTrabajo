@@ -331,23 +331,18 @@ class _ChatInputAreaState extends ConsumerState<ChatInputArea> {
       });
 
       if (path != null) {
-        print("✅ Recording stopped, adding to preview list: $path");
+        setState(() { _isUploading = true; });
 
-        Duration? duration;
-        try {
-          final tempPlayer = AudioPlayer();
-          await tempPlayer.setSourceDeviceFile(path);
-          duration = await tempPlayer.getDuration();
-          await tempPlayer.dispose();
-        } catch (e) {
-          print("🚨 Error al obtener duración para previa: $e");
-        }
+        final notifier = ref.read(chatProvider(widget.conversationId).notifier);
+        notifier.sendTyping(false);
+        _typingDebounce?.cancel();
+
+        await notifier.sendMediaBatch([path], null);
 
         setState(() {
-          _selectedMedia.add(XFile(path));
-          _selectedMediaTypes.add('audio');
-          _selectedMediaDurations.add(duration);
+          _isUploading = false;
         });
+        widget.onMessageSent?.call();
       } else {
         print("⚠️ Recording stopped but path was null");
       }
@@ -357,6 +352,7 @@ class _ChatInputAreaState extends ConsumerState<ChatInputArea> {
       setState(() {
         _isRecording = false;
         _isLockedRecording = false;
+        _isUploading = false;
       });
     }
   }

@@ -169,7 +169,7 @@ class _InvoiceCard extends StatelessWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => _InvoiceDetailSheet(payment: payment),
+      builder: (context) => InvoiceDetailSheet(payment: payment),
     );
   }
 }
@@ -209,15 +209,15 @@ class _StatusTag extends StatelessWidget {
   }
 }
 
-class _InvoiceDetailSheet extends ConsumerStatefulWidget {
+class InvoiceDetailSheet extends ConsumerStatefulWidget {
   final Payment payment;
-  const _InvoiceDetailSheet({required this.payment});
+  const InvoiceDetailSheet({required this.payment});
 
   @override
-  ConsumerState<_InvoiceDetailSheet> createState() => _InvoiceDetailSheetState();
+  ConsumerState<InvoiceDetailSheet> createState() => InvoiceDetailSheetState();
 }
 
-class _InvoiceDetailSheetState extends ConsumerState<_InvoiceDetailSheet> {
+class InvoiceDetailSheetState extends ConsumerState<InvoiceDetailSheet> {
   bool _isDownloading = false;
 
   Future<void> _downloadPdf() async {
