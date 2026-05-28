@@ -320,12 +320,6 @@ class InvoiceDetailSheetState extends ConsumerState<InvoiceDetailSheet> {
                     _buildDetailRow('Fecha', DateFormat('dd MMMM, yyyy HH:mm').format(widget.payment.date)),
                     _buildDetailRow('Método de Pago', widget.payment.paymentMethod.toUpperCase()),
                     _buildDetailRow('Estado', _statusLabel(widget.payment.status)),
-                    if (widget.payment.platformFee > 0) ...[
-                      const Divider(height: 24),
-                      _buildAmountRow('Subtotal', widget.payment.amount - widget.payment.platformFee),
-                      _buildAmountRow('Comisión Forja (5%)', widget.payment.platformFee,
-                        valueColor: const Color(0xFF64748B)),
-                    ],
                   ],
                 ),
               ),
