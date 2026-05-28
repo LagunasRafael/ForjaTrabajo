@@ -80,7 +80,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       final controller =
                           ref.read(notificationControllerProvider.notifier);
                       if (val) {
-                        await controller.enable();
+                        final role = ref.read(authProvider).user?.role;
+                        await controller.enable(userRole: role);
                       } else {
                         await controller.disable();
                       }

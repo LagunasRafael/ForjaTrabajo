@@ -23,7 +23,7 @@ android {
     defaultConfig {
         applicationId = "com.example.forja_trabajo"
         
-        minSdk = 23
+        minSdk = flutter.minSdkVersion
         
         // 🟡 3. TRUCO DE ESTABILIDAD:
         // Compilamos con la 36 (para que Gradle no llore), 

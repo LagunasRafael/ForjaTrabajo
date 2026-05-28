@@ -134,6 +134,10 @@ class ServiceController extends StateNotifier<AsyncValue<void>> {
     }
   }
 
+  Future<List<String>> uploadServiceImages(String serviceId, List<File> images, String token) async {
+    return await ref.read(serviceRepositoryProvider).uploadServiceImages(serviceId, images, token);
+  }
+
   // --- ACTUALIZAR SERVICIO ---
   Future<void> updateService(ServiceEntity service, String token) async {
     state = const AsyncValue.loading();

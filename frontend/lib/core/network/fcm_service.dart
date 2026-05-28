@@ -32,10 +32,9 @@ class FcmService {
   }
 
   Future<void> initNotifications({String? userRole}) async {
+    _currentUserRole = userRole;
     if (_initialized) return;
     _initialized = true;
-
-    _currentUserRole = userRole;
 
     final prefs = await SharedPreferences.getInstance();
     _enabled = prefs.getBool('notifications_enabled') ?? true;
@@ -67,6 +66,11 @@ class FcmService {
     });
 
     FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+  }
+
+  Future<void> reinit({String? userRole}) async {
+    _initialized = false;
+    await initNotifications(userRole: userRole);
   }
 
   bool _shouldHandleMessage(RemoteMessage message) {
