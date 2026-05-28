@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja_trabajo/features/services/domain/entities/work_evidence_entity.dart';
 import 'package:forja_trabajo/features/services/presentation/providers/service_repository_provider.dart';
 
-final workEvidenceListProvider = FutureProvider.family<List<WorkEvidenceEntity>, String>((ref, serviceId) async {
+final workEvidenceListProvider = FutureProvider.autoDispose.family<List<WorkEvidenceEntity>, String>((ref, serviceId) async {
   final repo = ref.watch(serviceRepositoryProvider);
   return repo.getEvidences(serviceId);
 });

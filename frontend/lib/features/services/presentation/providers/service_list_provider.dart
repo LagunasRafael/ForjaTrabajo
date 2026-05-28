@@ -90,7 +90,7 @@ final serviceListProvider = FutureProvider<List<ServiceEntity>>((ref) async {
   );
 });
 
-final serviceDetailProvider = FutureProvider.family<ServiceEntity, String>((ref, id) async {
+final serviceDetailProvider = FutureProvider.autoDispose.family<ServiceEntity, String>((ref, id) async {
   return await ref.watch(serviceRepositoryProvider).getServiceById(id);
 });
 
