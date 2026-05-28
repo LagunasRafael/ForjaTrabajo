@@ -4,25 +4,47 @@ import 'package:forja_trabajo/features/services/domain/entities/service_entity.d
 import 'package:forja_trabajo/features/services/presentation/widgets/service_status_chip.dart';
 import 'package:forja_trabajo/features/services/presentation/widgets/delete_from_history_button.dart';
 import 'package:forja_trabajo/features/services/presentation/providers/job_management_provider.dart';
+import 'package:forja_trabajo/features/services/presentation/providers/service_list_provider.dart';
 import 'package:forja_trabajo/features/profile/presentation/widgets/review_dialog.dart' as forja_review;
 import 'package:forja_trabajo/features/profile/presentation/screens/user_profile_screen.dart';
+import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart';
+import 'package:forja_trabajo/features/services/presentation/screens/shared/service_detail_screen.dart';
 
 class WorkerCompletedJobCard extends ConsumerWidget {
   final ServiceEntity job;
 
   const WorkerCompletedJobCard({super.key, required this.job});
 
+  void _goToDetails(BuildContext context, WidgetRef ref) {
+    final user = ref.read(authProvider).user;
+    if (user == null) return;
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ServiceDetailScreen(
+          service: job,
+          currentUser: user,
+          categoryName: job.status == JobStatus.cancelled ? "Cancelado" : "Finalizado",
+        ),
+      ),
+    );
+  }
+
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface, 
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Padding(
+    return GestureDetector(
+      onTap: () => _goToDetails(context, ref),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface, 
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.grey.shade200),
+        ),
+        child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -70,7 +92,10 @@ class WorkerCompletedJobCard extends ConsumerWidget {
               children: [
                 DeleteFromHistoryButton(
                   serviceId: job.id,
-                  onDeleted: () => ref.invalidate(workerJobsProvider),
+                  onDeleted: () {
+                    ref.read(deletedServiceIdsProvider.notifier).update((state) => {...state, job.id});
+                    ref.invalidate(workerJobsProvider);
+                  },
                 ),
                 Expanded(
                   child: Row(
@@ -138,7 +163,8 @@ class WorkerCompletedJobCard extends ConsumerWidget {
           ],
         ),
       ),
-    );
+    ),
+  );
   }
 
   String _formatDate(DateTime date) {
