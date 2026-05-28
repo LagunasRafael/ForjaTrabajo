@@ -35,4 +35,5 @@ export interface EscrowItem {
   created_at: string;
   worker_name: string;
   worker_has_stripe: boolean;
+  job_status?: string;
 }
