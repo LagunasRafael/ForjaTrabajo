@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:forja_trabajo/core/network/notification_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiClient {
   static final ApiClient _instance = ApiClient._internal();
@@ -80,6 +81,11 @@ class ApiClient {
 
                   // Guardamos los nuevos tokens
                   await storage.write(key: 'jwt_token', value: newAccessToken);
+                  
+                  // Sincronizamos con SharedPreferences para los componentes viejos
+                  final prefs = await SharedPreferences.getInstance();
+                  await prefs.setString('token', newAccessToken);
+
                   if (newRefreshToken != null) {
                     await storage.write(
                         key: 'refresh_token', value: newRefreshToken);
