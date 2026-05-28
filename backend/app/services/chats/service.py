@@ -8,6 +8,7 @@ from sqlalchemy.orm import joinedload
 from app.auth import models as auth_models 
 from app.services.notifications import service as notif_service
 from app.core.config import PAYMENT_DUE_MINUTES
+from app.payments import models as payment_models
 import logging
 
 def close_chat(db: Session, conversation_id: str, reason: str):
@@ -288,7 +289,24 @@ def get_user_chats(db: Session, user_id: str):
         # 9. Obtener el estado de archivado por usuario
         is_archived = convo.is_archived_by_client if str(convo.client_id) == str(user_id) else convo.is_archived_by_worker
 
-        # 10. Armar el JSON exacto que espera Flutter
+        # 10. Determinar si el servicio ha sido pagado
+        has_paid = False
+        if service_request and service_request.job:
+            contract = db.query(payment_models.Contract).filter(
+                payment_models.Contract.job_id == service_request.job.id
+            ).first()
+            if contract:
+                payment = db.query(payment_models.Payment).filter(
+                    payment_models.Payment.contract_id == contract.id
+                ).order_by(payment_models.Payment.created_at.desc()).first()
+                if payment and payment.status in [
+                    payment_models.PaymentStatus.HELD_IN_ESCROW,
+                    payment_models.PaymentStatus.PENDING_TRANSFER,
+                    payment_models.PaymentStatus.RELEASED
+                ]:
+                    has_paid = True
+
+        # 11. Armar el JSON exacto que espera Flutter
         chat_list.append({
             "id": str(convo.id),
             "name": other_name,
@@ -305,7 +323,8 @@ def get_user_chats(db: Session, user_id: str):
             "isArchived": is_archived or False,
             "isHistory": is_history,
             "serviceStatus": str(request.service.status) if request and request.service else "OPEN",
-            "serviceId": str(request.service.id) if request and request.service else ""
+            "serviceId": str(request.service.id) if request and request.service else "",
+            "hasPaid": has_paid
         })
 
     return chat_list

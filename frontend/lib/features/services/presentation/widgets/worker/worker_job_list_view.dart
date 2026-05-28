@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja_trabajo/features/services/domain/entities/service_entity.dart';
 import 'package:forja_trabajo/features/services/presentation/providers/job_management_provider.dart';
+import 'package:forja_trabajo/features/services/presentation/providers/service_list_provider.dart';
 import 'package:forja_trabajo/shared/widgets/empty_state_widget.dart';
 import 'package:forja_trabajo/features/services/presentation/widgets/worker/worker_pending_job_card.dart';
 import 'package:forja_trabajo/features/services/presentation/widgets/worker/worker_active_job_card.dart';
@@ -43,11 +44,13 @@ class _WorkerJobListViewState extends ConsumerState<WorkerJobListView> {
   @override
   Widget build(BuildContext context) {
     final jobsAsync = ref.watch(workerJobsProvider);
+    final deletedIds = ref.watch(deletedServiceIdsProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return jobsAsync.when(
       data: (jobs) {
         final filtered = jobs.where((j) {
+          if (deletedIds.contains(j.id)) return false;
           if (widget.status == JobStatus.matched) {
             return j.status == JobStatus.matched || j.status == JobStatus.waiting_confirmation || j.status == JobStatus.disputed;
           }
