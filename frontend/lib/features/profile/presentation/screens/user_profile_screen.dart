@@ -81,7 +81,7 @@ class UserProfileScreen extends ConsumerWidget {
                   ),
                 const SizedBox(height: 4),
                 Text(
-                  profile.role.toUpperCase(),
+                  profile.translatedRole,
                   style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.w600, letterSpacing: 1.2),
                 ),
                 const SizedBox(height: 16),

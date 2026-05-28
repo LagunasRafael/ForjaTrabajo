@@ -24,7 +24,12 @@ class MessageModel extends MessageEntity {
           if (timeInt.toString().length <= 10) timeInt *= 1000;
           parsedDate = DateTime.fromMillisecondsSinceEpoch(timeInt).toUtc();
         } else {
-          parsedDate = DateTime.parse(rawTime.toString()).toUtc();
+          String timeStr = rawTime.toString();
+          // Si no tiene 'Z' ni '+', le añadimos 'Z' para indicar que es UTC (GMT+0)
+          if (!timeStr.endsWith('Z') && !timeStr.contains('+') && !RegExp(r'-\d{2}:\d{2}$').hasMatch(timeStr)) {
+            timeStr = '${timeStr}Z';
+          }
+          parsedDate = DateTime.parse(timeStr).toUtc();
         }
       } catch (e) {
         parsedDate = DateTime.now().toUtc();
