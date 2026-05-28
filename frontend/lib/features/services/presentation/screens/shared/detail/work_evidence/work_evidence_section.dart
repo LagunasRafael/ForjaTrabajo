@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja_trabajo/features/services/domain/entities/service_entity.dart';
@@ -12,20 +13,47 @@ import 'widgets/work_evidence_limit_message.dart';
 import 'dialogs/work_evidence_preview_dialog.dart';
 import 'dialogs/delete_evidence_dialog.dart';
 
-class WorkEvidenceSection extends ConsumerWidget {
+class WorkEvidenceSection extends ConsumerStatefulWidget {
   final ServiceEntity service;
 
   const WorkEvidenceSection({super.key, required this.service});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final evidencesAsync = ref.watch(workEvidenceListProvider(service.id));
+  ConsumerState<WorkEvidenceSection> createState() => _WorkEvidenceSectionState();
+}
+
+class _WorkEvidenceSectionState extends ConsumerState<WorkEvidenceSection> {
+  Timer? _pollingTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _startPolling();
+  }
+
+  void _startPolling() {
+    _pollingTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+      if (mounted) {
+        ref.invalidate(workEvidenceListProvider(widget.service.id));
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _pollingTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final evidencesAsync = ref.watch(workEvidenceListProvider(widget.service.id));
     final currentUser = ref.watch(authProvider).user;
-    final isWorker = currentUser?.id == service.workerId;
+    final isWorker = currentUser?.id == widget.service.workerId;
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final currentUserId = currentUser?.id;
-    final isActive = service.status == JobStatus.matched || service.status == JobStatus.waiting_confirmation;
+    final isActive = widget.service.status == JobStatus.matched || widget.service.status == JobStatus.waiting_confirmation;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -65,7 +93,7 @@ class WorkEvidenceSection extends ConsumerWidget {
             canRemove: (i) => isActive && currentUserId == evidences[i].workerId,
             onRemove: (i) => showDeleteEvidenceDialog(
               context, ref,
-              serviceId: service.id,
+              serviceId: widget.service.id,
               evidenceId: evidences[i].id,
             ),
             onTapImage: (i) => showWorkEvidencePreviewDialog(
@@ -79,7 +107,7 @@ class WorkEvidenceSection extends ConsumerWidget {
           const WorkEvidenceLimitMessage()
         else if (isWorker && isActive)
           WorkEvidenceUploadButton(
-            serviceId: service.id,
+            serviceId: widget.service.id,
             currentCount: evidences.length,
           ),
       ],
