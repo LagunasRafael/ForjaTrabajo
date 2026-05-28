@@ -8,10 +8,7 @@ class CancelJobUseCase {
 
   Future<bool> execute(String jobId) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('token') ?? '';
-      if (token.isEmpty) return false;
-      final job = await repository.cancelJob(jobId, token);
+      final job = await repository.cancelJob(jobId, '');
       return job.id.isNotEmpty; 
     } catch (e) {
       print("🚨 Error en CancelJobUseCase: $e");
