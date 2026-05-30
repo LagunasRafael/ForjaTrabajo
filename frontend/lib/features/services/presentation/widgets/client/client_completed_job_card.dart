@@ -5,7 +5,11 @@ import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider
 import 'package:forja_trabajo/features/services/presentation/screens/shared/service_detail_screen.dart';
 import 'package:forja_trabajo/features/profile/presentation/widgets/review_dialog.dart' as forja_review;
 import 'package:forja_trabajo/features/payments/presentation/screens/invoices_screen.dart';
-// 🚀 Legos universales
+import 'package:forja_trabajo/features/payments/presentation/providers/payment_provider.dart';
+import 'package:forja_trabajo/features/services/presentation/widgets/delete_from_history_button.dart';
+import 'package:forja_trabajo/features/services/presentation/providers/service_list_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:forja_trabajo/features/services/presentation/providers/service_repository_provider.dart';
 import 'package:forja_trabajo/features/services/presentation/screens/shared/widgets/shared_job_widgets.dart';
 import 'package:forja_trabajo/features/profile/presentation/screens/user_profile_screen.dart';
 class ClientCompletedJobCard extends ConsumerWidget {
@@ -68,14 +72,17 @@ class ClientCompletedJobCard extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildTitleAndStars(isDark),
+                    _buildTitleAndStars(isDark, context, ref),
                     const SizedBox(height: 6),
                     _buildWorkerInfo(context),
                      const SizedBox(height: 12),
                     _buildDescription(isDark),
-                    
-                    // 🚧 ACCIONES: Lógica aislada en su propia clase (sólo si no está cancelado)
-                    const SizedBox(height: 16),
+
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 12),
+                      child: Divider(height: 1, thickness: 1),
+                    ),
+
                     _ClientCompletedActions(service: service),
                   ],
                 ),
@@ -86,17 +93,110 @@ class ClientCompletedJobCard extends ConsumerWidget {
       ),
     );
   }
-  Widget _buildTitleAndStars(bool isDark) {
-    return Text(
-      service.title,
-      style: TextStyle(
-        fontWeight: FontWeight.bold,
-        fontSize: 16,
-        color: isDark ? Colors.white : Colors.black87,
-      ),
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
+  String _formatDate(DateTime date) {
+    return "${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}";
+  }
+
+  Widget _buildTitleAndStars(bool isDark, BuildContext context, WidgetRef ref) {
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                service.title,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: isDark ? Colors.white : Colors.black87,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                service.status == JobStatus.cancelled
+                    ? "Cancelado el ${_formatDate(service.createdAt)}"
+                    : "Finalizado el ${_formatDate(service.createdAt)}",
+                style: TextStyle(
+                  fontSize: 12,
+                  color: isDark ? Colors.grey.shade400 : Colors.grey.shade500,
+                ),
+              ),
+            ],
+          ),
+        ),
+        PopupMenuButton<String>(
+          icon: Icon(Icons.more_vert, color: isDark ? Colors.white54 : Colors.grey),
+          onSelected: (value) {
+            if (value == 'eliminar') {
+              _confirmDeleteFromHistory(context, ref);
+            }
+          },
+          itemBuilder: (_) => [
+            const PopupMenuItem(
+              value: 'eliminar',
+              child: Row(
+                children: [
+                  Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                  SizedBox(width: 8),
+                  Text('Eliminar del historial', style: TextStyle(color: Colors.red)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ],
     );
+  }
+
+  Future<void> _confirmDeleteFromHistory(BuildContext context, WidgetRef ref) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Eliminar del historial'),
+        content: const Text('¿Eliminar este servicio de tu historial?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Eliminar', style: TextStyle(color: Colors.red))),
+        ],
+      ),
+    );
+    if (confirm == true && context.mounted) {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final token = prefs.getString('token') ?? '';
+        if (token.isEmpty) {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Error: No hay sesión activa'), behavior: SnackBarBehavior.floating),
+            );
+          }
+          return;
+        }
+        final success = await ref.read(serviceRepositoryProvider).hideFromHistory(service.id, token);
+        if (context.mounted) {
+          if (success) {
+            ref.read(deletedServiceIdsProvider.notifier).update((state) => {...state, service.id});
+            ref.invalidate(myRequestsProvider);
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Eliminado del historial'), behavior: SnackBarBehavior.floating),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Error al eliminar. Intenta de nuevo.'), behavior: SnackBarBehavior.floating),
+            );
+          }
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error: $e'), behavior: SnackBarBehavior.floating),
+          );
+        }
+      }
+    }
   }
   Widget _buildWorkerInfo(BuildContext context) {
     final workerName = service.workerName ?? "Trabajador";
@@ -138,7 +238,7 @@ class ClientCompletedJobCard extends ConsumerWidget {
     return Text(
       service.summary ?? service.description,
       style: TextStyle(
-        color: isDark ? Colors.white70 : Colors.grey.shade700, // 🎨 Color adaptable
+        color: isDark ? Colors.white70 : Colors.grey.shade700,
         fontSize: 13, 
         height: 1.4
       ),
@@ -155,6 +255,7 @@ class _ClientCompletedActions extends ConsumerWidget {
   const _ClientCompletedActions({required this.service});
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final total = service.finalPrice ?? service.basePrice;
     return Row(
       children: [
         Expanded(
@@ -172,46 +273,55 @@ class _ClientCompletedActions extends ConsumerWidget {
           ),
         ),
         const SizedBox(width: 12),
-        service.alreadyReviewed
-            ? Container(
-                height: 48,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? const Color(0xFF1E293B)
-                      : Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  "Ya calificaste",
-                  style: TextStyle(
+        if (service.status != JobStatus.cancelled)
+          service.alreadyReviewed
+              ? Container(
+                  height: 48,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
                     color: Theme.of(context).brightness == Brightness.dark
-                        ? Colors.grey.shade400
-                        : Colors.grey,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
+                        ? const Color(0xFF1E293B)
+                        : Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    "Ya calificaste",
+                    style: TextStyle(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.grey.shade400
+                          : Colors.grey,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                )
+              : SizedBox(
+                  height: 48, width: 48,
+                  child: IconButton(
+                    icon: const Icon(Icons.star_rate_rounded, color: Colors.black54),
+                    onPressed: () => _handleRateWorker(context, ref),
                   ),
                 ),
-              )
-            : Container(
-                height: 48, width: 48,
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey.shade300),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: IconButton(
-                  icon: const Icon(Icons.star_rate_rounded, color: Colors.black54),
-                  onPressed: () => _handleRateWorker(context, ref),
-                ),
-              )
       ],
     );
   }
   Future<void> _handleRequestInvoice(BuildContext context, WidgetRef ref) async {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const InvoicesScreen()),
+    final payments = await ref.read(paymentHistoryProvider.future);
+    final payment = payments.where((p) => p.serviceId == service.id).firstOrNull;
+    if (payment == null) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No se encontró factura para este servicio')),
+      );
+      return;
+    }
+    if (!context.mounted) return;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => InvoiceDetailSheet(payment: payment),
     );
   }
   Future<void> _handleRateWorker(BuildContext context, WidgetRef ref) async {

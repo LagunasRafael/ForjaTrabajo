@@ -169,8 +169,29 @@ class _InvoiceCard extends StatelessWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => _InvoiceDetailSheet(payment: payment),
+      builder: (context) => InvoiceDetailSheet(payment: payment),
     );
+  }
+}
+
+String _statusLabel(String status) {
+  switch (status.toLowerCase()) {
+    case 'released':
+    case 'completed':
+    case 'paid':
+      return 'Pagado';
+    case 'held_in_escrow':
+      return 'En Garantía';
+    case 'pending_transfer':
+      return 'En Transferencia';
+    case 'pending':
+      return 'Pendiente';
+    case 'refunded':
+      return 'Reembolsado';
+    case 'failed':
+      return 'Fallido';
+    default:
+      return status;
   }
 }
 
@@ -182,17 +203,16 @@ class _StatusTag extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = status.toLowerCase();
     Color color = Colors.blue;
-    String label = status;
+    String label = _statusLabel(status);
 
     if (s == 'released' || s == 'completed' || s == 'paid') {
       color = const Color(0xFF16A34A);
-      label = 'Pagado';
-    } else if (s == 'held_in_escrow') {
+    } else if (s == 'held_in_escrow' || s == 'pending_transfer') {
       color = const Color(0xFFEA580C);
-      label = 'En Garantía';
-    } else if (s == 'refunded') {
+    } else if (s == 'pending') {
+      color = const Color(0xFFEAB308);
+    } else if (s == 'refunded' || s == 'failed') {
       color = const Color(0xFFDC2626);
-      label = 'Reembolsado';
     }
 
     return Container(
@@ -209,15 +229,15 @@ class _StatusTag extends StatelessWidget {
   }
 }
 
-class _InvoiceDetailSheet extends ConsumerStatefulWidget {
+class InvoiceDetailSheet extends ConsumerStatefulWidget {
   final Payment payment;
-  const _InvoiceDetailSheet({required this.payment});
+  const InvoiceDetailSheet({required this.payment});
 
   @override
-  ConsumerState<_InvoiceDetailSheet> createState() => _InvoiceDetailSheetState();
+  ConsumerState<InvoiceDetailSheet> createState() => InvoiceDetailSheetState();
 }
 
-class _InvoiceDetailSheetState extends ConsumerState<_InvoiceDetailSheet> {
+class InvoiceDetailSheetState extends ConsumerState<InvoiceDetailSheet> {
   bool _isDownloading = false;
 
   Future<void> _downloadPdf() async {
@@ -299,7 +319,7 @@ class _InvoiceDetailSheetState extends ConsumerState<_InvoiceDetailSheet> {
                     _buildDetailRow('ID de Transacción', '#${widget.payment.id.substring(0, 8).toUpperCase()}'),
                     _buildDetailRow('Fecha', DateFormat('dd MMMM, yyyy HH:mm').format(widget.payment.date)),
                     _buildDetailRow('Método de Pago', widget.payment.paymentMethod.toUpperCase()),
-                    _buildDetailRow('Estado', widget.payment.status.toUpperCase()),
+                    _buildDetailRow('Estado', _statusLabel(widget.payment.status)),
                   ],
                 ),
               ),
@@ -308,15 +328,10 @@ class _InvoiceDetailSheetState extends ConsumerState<_InvoiceDetailSheet> {
               padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
               child: Column(
                 children: [
+                  const SizedBox(height: 4),
                   const Divider(height: 24),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text('Total Pagado', style: TextStyle(fontSize: 18, color: Color(0xFF64748B))),
-                      Text('\$${widget.payment.amount.toStringAsFixed(2)} MXN',
-                        style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Color(0xFF6366F1))),
-                    ],
-                  ),
+                  _buildAmountRow('Total Pagado', widget.payment.amount,
+                    valueStyle: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Color(0xFF6366F1))),
                   const SizedBox(height: 16),
                   SizedBox(
                     width: double.infinity,
@@ -358,6 +373,20 @@ class _InvoiceDetailSheetState extends ConsumerState<_InvoiceDetailSheet> {
             maxLines: maxLines,
             overflow: maxLines != null ? TextOverflow.ellipsis : null,
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAmountRow(String label, double amount, {Color? valueColor, TextStyle? valueStyle}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(fontSize: 16, color: Color(0xFF64748B))),
+          Text('\$${amount.toStringAsFixed(2)} MXN',
+            style: valueStyle ?? TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: valueColor ?? const Color(0xFF1E293B))),
         ],
       ),
     );

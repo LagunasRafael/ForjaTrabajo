@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja_trabajo/features/services/domain/entities/service_entity.dart';
 import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart';
+import 'package:forja_trabajo/features/services/presentation/providers/service_offers_provider.dart';
 import 'package:forja_trabajo/features/services/presentation/screens/shared/service_detail_screen.dart';
 import 'package:forja_trabajo/features/services/presentation/providers/job_management_provider.dart'; 
 import 'package:forja_trabajo/features/services/presentation/providers/service_list_provider.dart';
 import 'package:forja_trabajo/features/services/presentation/providers/complete_job_providers.dart';
+import 'package:forja_trabajo/features/services/presentation/providers/service_offers_provider.dart';
 import 'package:forja_trabajo/features/chat/presentation/providers/chat_provider.dart';
 import 'package:forja_trabajo/features/chat/presentation/screens/shared_chat_screen.dart';
 import 'package:forja_trabajo/features/chat/presentation/providers/chat_list_provider.dart';
@@ -44,6 +46,7 @@ class WorkerActiveJobCard extends ConsumerWidget {
                 onCancelSuccess: () {
                   ref.invalidate(workerJobsProvider);
                   ref.invalidate(serviceListProvider);
+                  ref.invalidate(offersListProvider(job.id));
                 },
                 reportUserId: job.clientId,
                 reportServiceId: job.id,
@@ -288,7 +291,11 @@ class _PaymentStatusBadge extends StatelessWidget {
       bgColor = Colors.orange.shade50;
       icon = Icons.hourglass_top;
     } else if (isPaid) {
-      text = "Pago realizado, puedes comenzar el trabajo";
+      final double net = job.netPayout ?? (job.basePrice * 0.9);
+      final double plat = job.platformFee ?? (job.basePrice * 0.1);
+      final double stripeFee = job.stripeFee ?? 0.0;
+
+      text = "Pago realizado. Ya puede comenzar con el trabajo";
       bgColor = const Color(0xFF10B981).withOpacity(0.1);
       icon = Icons.check_circle;
     } else {

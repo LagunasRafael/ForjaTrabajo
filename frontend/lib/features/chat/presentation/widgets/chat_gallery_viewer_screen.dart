@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'chat_video_player_widget.dart';
 
 class GalleryViewerScreen extends StatefulWidget {
   final List<String> urls;
@@ -56,16 +57,9 @@ class _GalleryViewerScreenState extends State<GalleryViewerScreen> {
 
           if (isVideo) {
             return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.play_circle_outline, size: 80, color: Colors.white),
-                  const SizedBox(height: 12),
-                  const Text(
-                    'Video - Toca para reproducir',
-                    style: TextStyle(color: Colors.white70, fontSize: 14),
-                  ),
-                ],
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: ChatVideoPlayerWidget(url: url, isMe: false),
               ),
             );
           } else {

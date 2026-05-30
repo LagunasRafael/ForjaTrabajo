@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:forja_trabajo/core/network/api_client.dart';
 import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart';
 import 'package:forja_trabajo/features/payments/presentation/providers/wallet_status_provider.dart';
+import 'package:forja_trabajo/features/services/presentation/providers/service_repository_provider.dart';
 import '../../../../injection_container.dart' as di;
 import '../../data/models/payment_model.dart';
 import '../../domain/usescases/get_payment_history.dart';
@@ -14,19 +15,62 @@ import '../../domain/usescases/get_payment_history.dart';
 final walletProvider = FutureProvider<List<PaymentModel>>((ref) async {
   final useCase = di.sl<GetPaymentHistory>();
   final payments = await useCase();
-  return payments.map((p) => p is PaymentModel ? p : PaymentModel(
+  final repo = ref.watch(serviceRepositoryProvider);
+
+  List<PaymentModel> models = payments.map((p) => p is PaymentModel ? p : PaymentModel(
     id: p.id,
     contractId: p.contractId,
     amount: p.amount,
     amountCents: p.amountCents,
+    platformFee: p.platformFee,
+    stripeFee: p.stripeFee,
+    netPayout: p.netPayout,
     status: p.status,
     date: p.date,
     paymentMethod: p.paymentMethod,
     stripePaymentIntentId: p.stripePaymentIntentId,
+    jobId: p.jobId,
+    serviceId: p.serviceId,
     serviceTitle: p.serviceTitle,
     serviceDescription: p.serviceDescription,
     serviceCategory: p.serviceCategory,
   )).toList();
+
+  try {
+    final services = await repo.getMyApplications();
+    final serviceMap = {for (var s in services) s.id: s};
+    final clientServices = await repo.getMyServices();
+    for (var s in clientServices) {
+      serviceMap.putIfAbsent(s.id, () => s);
+    }
+
+    models = models.map((pm) {
+      if (pm.netPayout != null) return pm;
+      if (pm.serviceId == null) return pm;
+      final service = serviceMap[pm.serviceId];
+      if (service == null) return pm;
+      return PaymentModel(
+        id: pm.id,
+        contractId: pm.contractId,
+        amount: pm.amount,
+        amountCents: pm.amountCents,
+        platformFee: service.platformFee ?? pm.platformFee,
+        stripeFee: service.stripeFee ?? pm.stripeFee,
+        netPayout: service.netPayout,
+        status: pm.status,
+        date: pm.date,
+        paymentMethod: pm.paymentMethod,
+        stripePaymentIntentId: pm.stripePaymentIntentId,
+        jobId: pm.jobId,
+        serviceId: pm.serviceId,
+        serviceTitle: pm.serviceTitle ?? service.title,
+        serviceDescription: pm.serviceDescription,
+        serviceCategory: pm.serviceCategory,
+      );
+    }).toList();
+  } catch (_) {}
+
+  return models;
 });
 
 class WalletScreen extends ConsumerStatefulWidget {
@@ -117,7 +161,7 @@ class _WalletScreenState extends ConsumerState<WalletScreen> with WidgetsBinding
       body: paymentsAsync.when(
         data: (payments) {
           final completed = payments.where((p) => p.status == 'completed' || p.status == 'released').toList();
-          final total = completed.fold(0.0, (sum, p) => sum + p.amount);
+          final total = completed.fold(0.0, (sum, p) => sum + p.netAmount);
 
           return RefreshIndicator(
             onRefresh: () async {
@@ -301,7 +345,7 @@ class _WalletScreenState extends ConsumerState<WalletScreen> with WidgetsBinding
               ],
             ),
           ),
-          Text('\$${payment.amount.toStringAsFixed(2)}',
+          Text('\$${payment.netAmount.toStringAsFixed(2)}',
               style: GoogleFonts.inter(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,

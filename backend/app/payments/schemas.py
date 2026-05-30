@@ -34,6 +34,8 @@ class PaymentResponse(BaseModel):
     payment_method: str
     stripe_payment_intent_id: Optional[str] = None
     created_at: datetime
+    job_id: Optional[str] = None
+    service_id: Optional[str] = None
     service_title: Optional[str] = None
     service_description: Optional[str] = None
     service_category: Optional[str] = None

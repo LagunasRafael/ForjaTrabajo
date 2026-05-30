@@ -1,6 +1,5 @@
 import logging
 from datetime import datetime
-import uuid
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 from app.payments.stripe_client import stripe
@@ -120,7 +119,7 @@ def create_payment_intent(db: Session, job_id: str, amount: float):
             amount=amount_cents,
             currency="mxn",
             capture_method="manual",
-            idempotency_key=f"create_intent_{job.id}_{uuid.uuid4().hex}",
+            idempotency_key=f"create_intent_{job.id}",
             metadata={
                 "job_id": str(job.id),
                 "contract_id": str(contract.id)
@@ -201,6 +200,12 @@ def confirm_escrow(db: Session, payment_intent_id: str):
         )
 
     payment.status = models.PaymentStatus.HELD_IN_ESCROW
+
+    if payment.platform_fee == 0 or payment.platform_fee is None:
+        fee_rate = get_commission_rate(db)
+        fee_cents = int(payment.amount_cents * fee_rate)
+        payment.platform_fee = round(fee_cents / 100, 2)
+        payment.platform_fee_cents = fee_cents
 
     contract = db.query(models.Contract).filter(
         models.Contract.id == payment.contract_id

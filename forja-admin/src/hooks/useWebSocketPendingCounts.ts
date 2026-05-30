@@ -36,11 +36,21 @@ export function useWebSocketPendingCounts() {
   }, []);
 
   const getWsUrl = useCallback(() => {
-    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    const baseUrl = import.meta.env.VITE_API_URL || 'https://forja-api-rw0r.onrender.com';
     return baseUrl.replace('https://', 'wss://').replace('http://', 'ws://');
   }, []);
 
   const connect = useCallback(() => {
+    // Cerrar conexión anterior antes de crear una nueva
+    if (wsRef.current) {
+      wsRef.current.onopen = null;
+      wsRef.current.onclose = null;
+      wsRef.current.onerror = null;
+      wsRef.current.onmessage = null;
+      wsRef.current.close();
+      wsRef.current = null;
+    }
+
     const adminUserId = getAdminUserId();
     if (!adminUserId) return;
 
@@ -77,7 +87,9 @@ export function useWebSocketPendingCounts() {
         }
       };
 
-      ws.onerror = () => {};
+      ws.onerror = (error) => {
+        console.error('[AdminWS] Error:', error);
+      };
 
       wsRef.current = ws;
     } catch (e) {

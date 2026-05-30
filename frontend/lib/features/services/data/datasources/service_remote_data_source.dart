@@ -121,6 +121,30 @@ class ServiceRemoteDataSource {
     }
   }
 
+  Future<List<String>> uploadServiceImages(String serviceId, List<File> images, String token) async {
+    final formData = FormData.fromMap({
+      'files': [
+        for (var image in images)
+          await MultipartFile.fromFile(image.path, filename: image.path.split('/').last),
+      ],
+    });
+    try {
+      final response = await _dio.post(
+        '$_path/$serviceId/images',
+        data: formData,
+        options: Options(
+          headers: {'Authorization': 'Bearer $token'},
+          contentType: 'multipart/form-data',
+        ),
+      );
+      final data = response.data as Map<String, dynamic>;
+      return List<String>.from(data['image_urls'] ?? []);
+    } on DioException catch (e) {
+      debugPrint("🚨 Error al subir imágenes: ${e.response?.data}");
+      throw Exception("Error al subir imágenes: ${e.message}");
+    }
+  }
+
   Future<ServiceModel> updateService(ServiceModel service, String token) async {
     try {
       final response = await _dio.put(

@@ -1,4 +1,4 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from datetime import datetime
 from app.services import models as service_models
 from app.payments import models as payment_models
@@ -36,7 +36,9 @@ def process_expired_payments(db: Session):
 
 
 def _cancel_unpaid_jobs(db: Session, now: datetime) -> int:
-    jobs = db.query(service_models.Job).filter(
+    jobs = db.query(service_models.Job).options(
+        joinedload(service_models.Job.request)
+    ).filter(
         service_models.Job.status == service_models.JobStatus.MATCHED,
         service_models.Job.payment_due_at.isnot(None),
         service_models.Job.payment_due_at < now,
@@ -71,11 +73,16 @@ def _cancel_unpaid_jobs(db: Session, now: datetime) -> int:
             job.payment_due_at = None
             
             # Marcar la postulación seleccionada como expirada
-            if job.request:
-                job.request.status = "expired"
-                if job.request.service:
-                    job.request.service.status = service_models.JobStatus.OPEN
-                    job.request.service.is_active = True
+            req = job.request
+            if not req:
+                req = db.query(service_models.ServiceRequest).filter(
+                    service_models.ServiceRequest.id == job.request_id
+                ).first()
+            if req:
+                req.status = "expired"
+                if req.service:
+                    req.service.status = service_models.JobStatus.OPEN
+                    req.service.is_active = True
                     
             db.commit()
 
@@ -102,7 +109,9 @@ def _cancel_unpaid_jobs(db: Session, now: datetime) -> int:
 
 
 def _auto_release_jobs(db: Session, now: datetime) -> int:
-    jobs = db.query(service_models.Job).filter(
+    jobs = db.query(service_models.Job).options(
+        joinedload(service_models.Job.request)
+    ).filter(
         service_models.Job.status == service_models.JobStatus.WAITING_CONFIRMATION,
         service_models.Job.auto_release_at.isnot(None),
         service_models.Job.auto_release_at < now,
@@ -115,9 +124,14 @@ def _auto_release_jobs(db: Session, now: datetime) -> int:
             job.status = service_models.JobStatus.COMPLETED
             job.completed_at = now
             job.auto_release_at = None
-            if job.request and job.request.service:
-                job.request.service.status = service_models.JobStatus.COMPLETED
-                job.request.service.is_active = False
+            req = job.request
+            if not req:
+                req = db.query(service_models.ServiceRequest).filter(
+                    service_models.ServiceRequest.id == job.request_id
+                ).first()
+            if req and req.service:
+                req.service.status = service_models.JobStatus.COMPLETED
+                req.service.is_active = False
 
             # Cerrar el chat
             try:

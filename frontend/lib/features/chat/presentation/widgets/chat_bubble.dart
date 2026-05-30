@@ -1,8 +1,9 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'chat_audio_player_widget.dart';
 import 'chat_gallery_viewer_screen.dart';
+import 'chat_location_bubble.dart';
+import 'chat_full_screen_video_player.dart';
 
 class ChatBubble extends StatelessWidget {
   final String text;
@@ -178,13 +179,13 @@ class ChatBubble extends StatelessWidget {
         final singleUrl = urls.first;
         final ext = singleUrl.split('?').first.toLowerCase();
         final isVideo = messageType == 'video' || ext.endsWith('.mp4') || ext.endsWith('.mov') || ext.endsWith('.mkv');
-        if (isVideo) return _buildVideoPlaceholder();
-        return _buildImagePlaceholder(overrideUrl: singleUrl, context: context);
+    if (isVideo) return _buildVideoPlaceholder(overrideUrl: singleUrl, context: context);
+    return _buildImagePlaceholder(overrideUrl: singleUrl, context: context);
       }
     } else if (messageType == 'audio') {
       return AudioPlayerWidget(url: text, isMe: isMe);
     } else if (messageType == 'location') {
-      return _buildLocationPlaceholder(theme);
+      return ChatLocationBubble(content: text, isMe: isMe);
     } else {
       return Text(
         text,
@@ -479,16 +480,15 @@ class ChatBubble extends StatelessWidget {
     );
   }
 
-  Widget _buildVideoPlaceholder({String? overrideUrl, double size = 200}) {
+  Widget _buildVideoPlaceholder({String? overrideUrl, double size = 200, BuildContext? context}) {
     final url = overrideUrl ?? text.split(',').first.trim();
     return GestureDetector(
-      onTap: () async {
+      onTap: () {
         if (status == 'sending') return;
-        if (url.startsWith('http')) {
-          final uri = Uri.parse(url);
-          if (await canLaunchUrl(uri)) {
-            await launchUrl(uri, mode: LaunchMode.externalApplication);
-          }
+        if (url.startsWith('http') && context != null) {
+          Navigator.of(context).push(MaterialPageRoute(
+            builder: (_) => ChatFullScreenVideoPlayer(url: url),
+          ));
         }
       },
       child: Container(
@@ -547,28 +547,5 @@ class ChatBubble extends StatelessWidget {
     );
   }
 
-  Widget _buildLocationPlaceholder(ThemeData theme) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: 200,
-          height: 120,
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surfaceVariant,
-            borderRadius: BorderRadius.circular(12),
-            image: const DecorationImage(
-              image: AssetImage('assets/images/map_placeholder.png'),
-              fit: BoxFit.cover,
-            ),
-          ),
-          child: Center(
-            child: Icon(Icons.location_on, size: 40, color: Colors.red.shade400),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text("Ubicación compartida", style: TextStyle(color: isMe ? Colors.white : Colors.black87, fontSize: 13, fontStyle: FontStyle.italic)),
-      ],
-    );
-  }
+
 }

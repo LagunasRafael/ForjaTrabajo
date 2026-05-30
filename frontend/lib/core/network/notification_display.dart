@@ -3,7 +3,9 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:forja_trabajo/shared/utils/notification_navigation.dart';
+import 'package:forja_trabajo/features/notifications/presentation/widgets/sleek_notification_banner.dart';
 
 final FlutterLocalNotificationsPlugin _localNotifications =
     FlutterLocalNotificationsPlugin();
@@ -21,6 +23,14 @@ const AndroidNotificationChannel _channel = AndroidNotificationChannel(
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
   debugPrint("📬 Background message: ${message.messageId}");
+
+  final prefs = await SharedPreferences.getInstance();
+  final enabled = prefs.getBool('notifications_enabled') ?? true;
+  if (!enabled) {
+    debugPrint('🔕 Notificaciones desactivadas, ignorando background message');
+    return;
+  }
+
   try {
     final localNotifications = FlutterLocalNotificationsPlugin();
     await localNotifications.initialize(const InitializationSettings(
@@ -111,39 +121,40 @@ void showLocalNotification(RemoteMessage message) {
 }
 
 void showForegroundBanner(
-    RemoteMessage message, {
-    required GlobalKey<NavigatorState> navigatorKey,
-  }) {
+  RemoteMessage message, {
+  required GlobalKey<NavigatorState> navigatorKey,
+}) {
   try {
-    final context = navigatorKey.currentContext;
-    if (context == null || !context.mounted) return;
+    final navigator = navigatorKey.currentState;
+    if (navigator == null) return;
 
-    final title =
-        message.notification?.title ?? message.data['title'] ?? 'ForjaTrabajo';
-    final body = message.notification?.body ?? message.data['body'] ?? '';
+    final title = message.data['title'] ?? 'ForjaTrabajo';
+    final body = message.data['body'] ?? '';
     final type = message.data['type'] ?? '';
+    final notifIcon = iconForNotificationType(type);
 
-    final IconData notifIcon = iconForNotificationType(type);
+    final overlay = navigator.overlay!;
+    late OverlayEntry entry;
 
-    final overlayState = Overlay.of(context);
-    late OverlayEntry overlayEntry;
-
-    overlayEntry = OverlayEntry(
-      builder: (context) => Positioned(
-        top: MediaQuery.of(context).padding.top + 16,
-        left: 16,
-        right: 16,
+    entry = OverlayEntry(
+      builder: (ctx) => Positioned(
+        top: MediaQuery.of(ctx).padding.top + 12,
+        left: 0,
+        right: 0,
         child: Material(
           color: Colors.transparent,
           child: Dismissible(
             key: UniqueKey(),
             direction: DismissDirection.up,
             onDismissed: (_) {
-              if (overlayEntry.mounted) overlayEntry.remove();
+              if (entry.mounted) entry.remove();
             },
-            child: GestureDetector(
+            child: SleekNotificationBanner(
+              title: title,
+              body: body,
+              icon: notifIcon,
               onTap: () {
-                if (overlayEntry.mounted) overlayEntry.remove();
+                if (entry.mounted) entry.remove();
                 final navContext = navigatorKey.currentContext;
                 if (navContext == null) return;
                 ProviderContainer? container;
@@ -160,75 +171,23 @@ void showForegroundBanner(
                   container: container,
                 );
               },
-              child: Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1E1B4B),
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: const [
-                    BoxShadow(
-                        color: Colors.black26,
-                        blurRadius: 10,
-                        offset: Offset(0, 4)),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 42,
-                      height: 42,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF4F46E5),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(notifIcon, color: Colors.white, size: 20),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            title,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          if (body.isNotEmpty)
-                            Text(
-                              body,
-                              style: TextStyle(
-                                color: Colors.white.withOpacity(0.8),
-                                fontSize: 13,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              onDismissed: () {
+                if (entry.mounted) entry.remove();
+              },
             ),
           ),
         ),
       ),
     );
 
-    overlayState.insert(overlayEntry);
+    overlay.insert(entry);
 
-    Future.delayed(const Duration(seconds: 4), () {
-      if (overlayEntry.mounted) {
-        overlayEntry.remove();
-      }
+    Future.delayed(const Duration(seconds: 5), () {
+      if (entry.mounted) entry.remove();
     });
   } catch (e) {
-    debugPrint('❌ [FCM] Error en showForegroundBanner: $e');
+    debugPrint('❌ [FCM] Error en banner: $e');
   }
 }
+
+

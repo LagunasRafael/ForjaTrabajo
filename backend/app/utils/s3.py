@@ -1,3 +1,4 @@
+import asyncio
 import boto3
 import uuid
 import logging
@@ -7,6 +8,7 @@ import os
 import io
 from PIL import Image
 from urllib.parse import urlparse
+from functools import partial
 
 logger = logging.getLogger(__name__)
 
@@ -57,14 +59,10 @@ async def upload_file_to_s3(file: UploadFile) -> str:
         
         # 5. Subimos a AWS S3
         logger.info("Subiendo a S3: %s", unique_filename)
-        s3_client.upload_fileobj(
-            compressed_image_io, 
-            bucket_name,
-            unique_filename,
-            ExtraArgs={
-                "ContentType": "image/jpeg",
-            }
-        )
+        await asyncio.to_thread(partial(
+            s3_client.upload_fileobj, compressed_image_io, bucket_name, unique_filename,
+            ExtraArgs={"ContentType": "image/jpeg"}
+        ))
         logger.info("Subida exitosa a AWS S3")
         
         # 6. Devolvemos la URL
@@ -118,14 +116,10 @@ async def upload_service_evidence_to_s3(file: UploadFile, service_id: str) -> Op
         logger.info("Subiendo evidencia a S3: %s", s3_key)
         
         # 3. Subimos a AWS
-        s3_client.upload_fileobj(
-            compressed_image_io, 
-            bucket_name,
-            s3_key,
-            ExtraArgs={
-                "ContentType": "image/jpeg",
-            }
-        )
+        await asyncio.to_thread(partial(
+            s3_client.upload_fileobj, compressed_image_io, bucket_name, s3_key,
+            ExtraArgs={"ContentType": "image/jpeg"}
+        ))
         logger.info("Imagenes cargadas exitosamente")
 
         # 4. Devolvemos la URL pública
@@ -174,22 +168,18 @@ async def upload_chat_media_to_s3(file: UploadFile, conversation_id: str) -> Opt
             image.save(compressed_image_io, format='JPEG', optimize=True, quality=65) 
             compressed_image_io.seek(0)
             
-            s3_client.upload_fileobj(
-                compressed_image_io, 
-                bucket_name,
-                s3_key,
+            await asyncio.to_thread(partial(
+                s3_client.upload_fileobj, compressed_image_io, bucket_name, s3_key,
                 ExtraArgs={"ContentType": "image/jpeg"}
-            )
+            ))
         else:
             # Tratamiento para audio/video (Subida directa)
             await file.seek(0)
             upload_content_type = content_type if content_type else "application/octet-stream"
-            s3_client.upload_fileobj(
-                file.file, 
-                bucket_name,
-                s3_key,
+            await asyncio.to_thread(partial(
+                s3_client.upload_fileobj, file.file, bucket_name, s3_key,
                 ExtraArgs={"ContentType": upload_content_type}
-            )
+            ))
 
         return f"https://{bucket_name}.s3.amazonaws.com/{s3_key}"
 

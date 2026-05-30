@@ -34,10 +34,7 @@ async def stripe_webhook(request: Request):
 
     handler = EVENT_HANDLERS.get(event["type"])
     if handler:
-        try:
-            handler(event["data"]["object"])
-        except Exception as e:
-            logger.error(f"Error manejando evento {event['type']}: {e}", exc_info=True)
+        handler(event["data"]["object"])
     else:
         logger.info(f"Evento no manejado: {event['type']}")
 
@@ -103,12 +100,15 @@ def _handle_charge_dispute_created(dispute: dict):
             models.Payment.stripe_payment_intent_id == pi_id
         ).first()
         if payment:
+            payment.status = models.PaymentStatus.DISPUTED
+            db.commit()
             logger.warning(
                 f"Disputa creada para pago {payment.id} "
-                f"(PaymentIntent: {pi_id})"
+                f"(PaymentIntent: {pi_id}) — marcado como DISPUTED"
             )
     except Exception as e:
         logger.error(f"Error en webhook charge.dispute.created: {e}")
+        db.rollback()
     finally:
         db.close()
 
@@ -182,6 +182,7 @@ def _handle_payment_intent_canceled(payment_intent: dict):
         if payment and payment.status not in (
             models.PaymentStatus.FAILED,
             models.PaymentStatus.REFUNDED,
+            models.PaymentStatus.DISPUTED,
         ):
             payment.status = models.PaymentStatus.FAILED
             db.commit()
@@ -208,15 +209,16 @@ def _handle_charge_dispute_closed(dispute: dict):
             return
         if status == "lost":
             payment.status = models.PaymentStatus.REFUNDED
-            contract = db.query(models.Contract).filter(
-                models.Contract.id == payment.contract_id
-            ).first()
-            if contract:
-                contract.status = "cancelled"
-            db.commit()
             logger.warning(f"Disputa PERDIDA para pago {payment.id} — reembolsado")
         elif status == "won":
-            logger.info(f"Disputa GANADA para pago {payment.id} — todo en orden")
+            payment.status = models.PaymentStatus.RELEASED
+            logger.info(f"Disputa GANADA para pago {payment.id} — restaurado a RELEASED")
+        contract = db.query(models.Contract).filter(
+            models.Contract.id == payment.contract_id
+        ).first()
+        if contract:
+            contract.status = "cancelled" if status == "lost" else "completed"
+        db.commit()
     except Exception as e:
         logger.error(f"Error en webhook charge.dispute.closed: {e}")
         db.rollback()

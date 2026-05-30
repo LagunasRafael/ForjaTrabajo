@@ -142,12 +142,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                       ),
                       const SizedBox(height: 40),
-                      _buildLabel('Correo electrónico o Teléfono'),
+                      _buildLabel('Correo electrónico'),
                       const SizedBox(height: 8),
                       TextFormField(
                         controller: _emailController,
                         keyboardType: TextInputType.emailAddress,
-                        decoration: _buildInputDecoration('ejemplo@correo.com o 5512345678'),
+                        decoration: _buildInputDecoration('ejemplo@correo.com'),
                         validator: (value) {
                           if (value == null || value.isEmpty) return 'Ingresa tu correo o teléfono';
                           final trimmed = value.trim();

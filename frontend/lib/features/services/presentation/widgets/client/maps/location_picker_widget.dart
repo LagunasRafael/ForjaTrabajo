@@ -17,11 +17,13 @@ class LocationPickerWidget extends ConsumerStatefulWidget {
   final double? lat;
   final double? lng;
   final Function(double lat, double lng) onLocationCaptured;
+  final ValueChanged<bool>? onLoadingChanged;
 
   const LocationPickerWidget({
     super.key,
     required this.addressCtrl,
     required this.onLocationCaptured,
+    this.onLoadingChanged,
     this.lat,
     this.lng,
   });
@@ -107,6 +109,7 @@ class _LocationPickerWidgetState extends ConsumerState<LocationPickerWidget> {
       _currentCenter = LatLng(lat, lng);
       _isLocating = true;
     });
+    widget.onLoadingChanged?.call(true);
     
     widget.onLocationCaptured(lat, lng);
     _mapController.move(_currentCenter, 15.5);
@@ -114,6 +117,7 @@ class _LocationPickerWidgetState extends ConsumerState<LocationPickerWidget> {
     final address = await NominatimService.reverseGeocode(lat, lng);
     
     setState(() => _isLocating = false);
+    widget.onLoadingChanged?.call(false);
     if (address.isNotEmpty) {
       widget.addressCtrl.text = address;
     }
@@ -125,6 +129,9 @@ class _LocationPickerWidgetState extends ConsumerState<LocationPickerWidget> {
     if (!silent) {
       FocusScope.of(context).unfocus();
       setState(() => _isLocating = true);
+      widget.onLoadingChanged?.call(true);
+    } else {
+      widget.onLoadingChanged?.call(true);
     }
 
     try {
@@ -155,6 +162,7 @@ class _LocationPickerWidgetState extends ConsumerState<LocationPickerWidget> {
           if (!silent) _isLocating = false;
           _isInitialLocationLoaded = true; 
         });
+        widget.onLoadingChanged?.call(false);
       }
     }
   }

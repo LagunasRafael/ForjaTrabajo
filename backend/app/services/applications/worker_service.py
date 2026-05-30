@@ -19,6 +19,8 @@ def get_worker_applications(db: Session, worker_id: str):
             srv = req.service if req else None
             if not srv:
                 continue
+            if srv.is_deleted_by_worker:
+                continue
 
             existing_review = db.query(Review).filter(
                 Review.job_id == job.id,
@@ -28,7 +30,11 @@ def get_worker_applications(db: Session, worker_id: str):
 
             from app.payments.models import Contract, Payment
             from app.payments.models import PaymentStatus as PaymentStatusEnum
+            from app.payments.transfer_service import _get_stripe_fee_cents
             has_paid = False
+            platform_fee = 0.0
+            stripe_fee = 0.0
+            net_payout = 0.0
             contract = db.query(Contract).filter(Contract.job_id == job.id).first()
             if contract:
                 payment = db.query(Payment).filter(
@@ -42,6 +48,13 @@ def get_worker_applications(db: Session, worker_id: str):
                 ).first()
                 if payment:
                     has_paid = True
+                    platform_fee = float(payment.platform_fee) if payment.platform_fee else 0.0
+                    stripe_fee_cents = _get_stripe_fee_cents(payment)
+                    stripe_fee = float(stripe_fee_cents / 100)
+                    transfer_cents = payment.amount_cents - (payment.platform_fee_cents or 0) - stripe_fee_cents
+                    if transfer_cents < 0:
+                        transfer_cents = 0
+                    net_payout = float(transfer_cents / 100)
 
             if job.status in [models.JobStatus.COMPLETED, models.JobStatus.CANCELLED] and job.completed_at:
                 fecha_buscada = job.completed_at.isoformat()
@@ -77,8 +90,11 @@ def get_worker_applications(db: Session, worker_id: str):
                 "author_name": author_name,
                 "author_image_url": author_image_url,
                 "has_paid": has_paid,
-                "payment_due_at": job.payment_due_at.isoformat() if job.payment_due_at else None,
-                "auto_release_at": job.auto_release_at.isoformat() if job.auto_release_at else None,
+                "platform_fee": platform_fee,
+                "stripe_fee": stripe_fee,
+                "net_payout": net_payout,
+                "payment_due_at": (job.payment_due_at.isoformat() + "Z") if job.payment_due_at else None,
+                "auto_release_at": (job.auto_release_at.isoformat() + "Z") if job.auto_release_at else None,
             }
 
         postulations = db.query(models.ServiceRequest, models.Service).join(

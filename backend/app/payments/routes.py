@@ -20,7 +20,11 @@ workers_router = APIRouter()
 # --- CONTRATOS ---
 
 @router.post("/contracts", response_model=schemas.ContractResponse, status_code=201)
-def create_contract(contract: schemas.ContractCreate, db: Session = Depends(get_db)):
+def create_contract(
+    contract: schemas.ContractCreate,
+    db: Session = Depends(get_db),
+    current_user: auth_models.User = Depends(get_current_user)
+):
     import uuid
     new_contract = models.Contract(
         id=str(uuid.uuid4()),
@@ -46,7 +50,11 @@ def get_contracts(
 # --- PAGOS CLÁSICOS ---
 
 @router.post("/", response_model=schemas.PaymentResponse, status_code=201)
-def create_payment(payment: schemas.PaymentCreate, db: Session = Depends(get_db)):
+def create_payment(
+    payment: schemas.PaymentCreate,
+    db: Session = Depends(get_db),
+    current_user: auth_models.User = Depends(get_current_user)
+):
     """Pago directo (sin Stripe escrow). Mantiene compatibilidad."""
     return services.create_payment(db=db, payment=payment)
 
@@ -93,6 +101,12 @@ def create_payment_intent(
             detail=f"El trabajo no está en estado 'matched'. Estado actual: {job.status.value}"
         )
 
+    if str(job.client_id) != str(current_user.id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes permiso para iniciar el pago de este trabajo"
+        )
+
     # 2. Buscar o crear contrato
     contract = db.query(models.Contract).filter(
         models.Contract.job_id == job.id
@@ -137,6 +151,7 @@ def create_payment_intent(
             amount=amount_cents,
             currency="mxn",
             capture_method="manual",
+            idempotency_key=f"create_intent_{data.job_id}",
             metadata={
                 "worker_id": data.worker_id,
                 "job_id": data.job_id,
@@ -148,11 +163,15 @@ def create_payment_intent(
             detail=f"Error al crear PaymentIntent: {str(e)}"
         )
 
-    # 5. Guardar Payment en BD
+    # 5. Calcular comisión y guardar Payment en BD
+    fee_rate = services.get_commission_rate(db)
+    fee_cents = int(amount_cents * fee_rate)
     db_payment = models.Payment(
         contract_id=contract.id,
         amount=data.amount_mxn,
         amount_cents=amount_cents,
+        platform_fee=round(fee_cents / 100, 2),
+        platform_fee_cents=fee_cents,
         status=models.PaymentStatus.PENDING,
         payment_method="card",
         stripe_payment_intent_id=intent.id
@@ -196,6 +215,12 @@ def confirm_payment(
             detail="Trabajo no encontrado"
         )
 
+    if str(job.client_id) != str(current_user.id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes permiso para confirmar el pago de este trabajo"
+        )
+
     contract = db.query(models.Contract).filter(
         models.Contract.job_id == job.id
     ).first()
@@ -210,7 +235,12 @@ def confirm_payment(
         db.flush()
 
     try:
-        stripe.PaymentIntent.retrieve(data.payment_intent_id)
+        intent = stripe.PaymentIntent.retrieve(data.payment_intent_id)
+        if intent.status not in ("succeeded", "requires_capture"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"El PaymentIntent no está en estado válido. Estado: {intent.status}"
+            )
     except stripe.error.StripeError as e:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
@@ -264,6 +294,19 @@ def confirm_escrow(
     confirma que el pago fue autorizado exitosamente.
     Actualiza el estado del pago a 'held_in_escrow'.
     """
+    payment = db.query(models.Payment).filter(
+        models.Payment.stripe_payment_intent_id == data.payment_intent_id
+    ).first()
+    if payment:
+        contract = db.query(models.Contract).filter(
+            models.Contract.id == payment.contract_id
+        ).first()
+        if contract and str(contract.client_id) != str(current_user.id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="No tienes permiso para confirmar este pago"
+            )
+
     payment = services.confirm_escrow(db=db, payment_intent_id=data.payment_intent_id)
     return payment
 
@@ -313,6 +356,12 @@ def download_invoice_pdf(
     if not contract:
         raise HTTPException(status_code=404, detail="Contrato no encontrado")
 
+    if str(contract.client_id) != str(current_user.id) and current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes permiso para ver esta factura"
+        )
+
     svc = None
     if contract.job and contract.job.request and contract.job.request.service:
         svc = contract.job.request.service
@@ -321,6 +370,7 @@ def download_invoice_pdf(
         "id": payment.id,
         "contract_id": payment.contract_id,
         "amount": payment.amount,
+        "platform_fee": payment.platform_fee or 0,
         "status": payment.status.value if hasattr(payment.status, 'value') else payment.status,
         "service_title": svc.title if svc else "Servicio",
         "service_description": svc.description if svc else "",

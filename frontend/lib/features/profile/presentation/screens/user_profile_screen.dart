@@ -81,7 +81,7 @@ class UserProfileScreen extends ConsumerWidget {
                   ),
                 const SizedBox(height: 4),
                 Text(
-                  profile.role.toUpperCase(),
+                  profile.translatedRole,
                   style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.w600, letterSpacing: 1.2),
                 ),
                 const SizedBox(height: 16),
@@ -206,13 +206,16 @@ class UserProfileScreen extends ConsumerWidget {
                 ),
               );
             }
-            return SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (context, index) {
-                  final review = reviews[index];
-                  return _buildReviewCard(review);
-                },
-                childCount: reviews.length,
+            return SliverPadding(
+              padding: const EdgeInsets.only(bottom: 44),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) {
+                    final review = reviews[index];
+                    return _buildReviewCard(review);
+                  },
+                  childCount: reviews.length,
+                ),
               ),
             );
           },
@@ -260,7 +263,7 @@ class UserProfileScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      job.roleInJob == 'client' ? 'Como cliente' : 'Como trabajador',
+                      job.roleInJob == 'client' ? 'Como Cliente' : 'Como Trabajador',
                       style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                     ),
                   ],

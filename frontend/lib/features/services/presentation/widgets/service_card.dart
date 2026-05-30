@@ -5,38 +5,12 @@ import 'package:forja_trabajo/features/services/presentation/providers/category_
 import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart';
 import 'package:forja_trabajo/features/services/presentation/screens/shared/service_detail_screen.dart';
 import 'package:forja_trabajo/core/network/api_client.dart';
+import 'package:forja_trabajo/features/services/presentation/screens/shared/utils/category_icon_helper.dart';
 
 class ServiceCard extends ConsumerWidget {
   final ServiceEntity service;
 
   const ServiceCard({super.key, required this.service});
-
-  IconData _getCategoryIcon(String categoryName) {
-    final name = categoryName.toLowerCase();
-    if (name.contains('font') || name.contains('plom') || name.contains('fuga'))
-      return Icons.plumbing;
-    if (name.contains('electr') || name.contains('luz'))
-      return Icons.electric_bolt;
-    if (name.contains('mueb') || name.contains('carp')) return Icons.chair_alt;
-    if (name.contains('pint')) return Icons.format_paint;
-    return Icons.home_repair_service;
-  }
-
-  Color _getIconBackgroundColor(String title) {
-    final t = title.toLowerCase();
-    if (t.contains('fuga')) return const Color(0xFFF3F4F6);
-    if (t.contains('eléctr')) return const Color(0xFFFEF3C7);
-    if (t.contains('pint')) return const Color(0xFFECFDF5);
-    return const Color(0xFFEEF2FF);
-  }
-
-  Color _getIconColor(String title) {
-    final t = title.toLowerCase();
-    if (t.contains('fuga')) return const Color(0xFF2563EB);
-    if (t.contains('eléctr')) return const Color(0xFFD97706);
-    if (t.contains('pint')) return const Color(0xFF10B981);
-    return const Color(0xFF4F46E5);
-  }
 
   void _onCardTap(BuildContext context, WidgetRef ref, String categoryName) {
     final currentUser = ref.read(authProvider).user;
@@ -65,8 +39,8 @@ class ServiceCard extends ConsumerWidget {
     final isDark = theme.brightness == Brightness.dark;
 
     final isUrgent = service.title.toLowerCase().contains('urgente');
-    final themeColor = _getIconColor(service.title);
-    final bgColor = _getIconBackgroundColor(service.title);
+    final themeColor = service.title.toIconColor;
+    final bgColor = service.title.toIconBackgroundColor;
 
     // 🧠 Resolución reactiva de categoría
     final categoriesAsync = ref.watch(categoryListProvider);
@@ -140,7 +114,7 @@ class ServiceCard extends ConsumerWidget {
                                   child:
                                       CircularProgressIndicator(strokeWidth: 2))
                               : Icon(
-                                  _getCategoryIcon(catName),
+                                  catName.toCategoryIcon,
                                   color: isDark
                                       ? themeColor.withAlpha(200)
                                       : themeColor,

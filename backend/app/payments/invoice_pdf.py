@@ -43,6 +43,8 @@ def generate_invoice_pdf(payment_data: dict) -> str:
     now = datetime.now()
     invoice_id = payment_data.get("id", "N/A")[:8].upper()
     amount = payment_data.get("amount", 0)
+    platform_fee = payment_data.get("platform_fee", 0)
+    subtotal = amount - platform_fee
     service_title = payment_data.get("service_title") or "Servicio"
     service_desc = payment_data.get("service_description") or ""
     service_cat = payment_data.get("service_category") or ""
@@ -51,9 +53,10 @@ def generate_invoice_pdf(payment_data: dict) -> str:
     status_map = {
         "RELEASED": "PAGADO", "COMPLETED": "PAGADO", "PAID": "PAGADO",
         "HELD_IN_ESCROW": "EN GARANTÍA",
-        "PENDING_TRANSFER": "PAGADO",
+        "PENDING_TRANSFER": "EN TRANSFERENCIA",
         "REFUNDED": "REEMBOLSADO",
         "PENDING": "PENDIENTE",
+        "FAILED": "FALLIDO",
     }
     status_label = status_map.get(status, status)
 
@@ -90,16 +93,35 @@ def generate_invoice_pdf(payment_data: dict) -> str:
 
     elements.append(Spacer(1, 20))
 
+    detail_data = [
+        [Paragraph("Subtotal", total_label_style),
+         Paragraph(f"${subtotal:,.2f} MXN", ParagraphStyle("ValueRight", parent=styles["Normal"], fontSize=14, textColor=HexColor("#1E293B"), alignment=TA_RIGHT))],
+        [Paragraph("Comisión Forja (5%)", total_label_style),
+         Paragraph(f"${platform_fee:,.2f} MXN", ParagraphStyle("ValueRight", parent=styles["Normal"], fontSize=14, textColor=HexColor("#64748B"), alignment=TA_RIGHT))],
+    ]
+    detail_table = Table(detail_data, colWidths=[3*inch, 3*inch])
+    detail_table.setStyle(TableStyle([
+        ("TOPPADDING", (0, 0), (-1, -1), 4),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ("LEFTPADDING", (0, 0), (-1, -1), 16),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 16),
+        ("LINEBELOW", (0, 0), (-1, -2), 0.5, HexColor("#E2E8F0")),
+    ]))
+    elements.append(detail_table)
+
+    elements.append(Spacer(1, 8))
+
     total_table = Table([
         [Paragraph("TOTAL PAGADO", total_label_style),
          Paragraph(f"${amount:,.2f} MXN", total_value_style)]
     ], colWidths=[3*inch, 3*inch])
     total_table.setStyle(TableStyle([
-        ("BOX", (0, 0), (-1, -1), 0.5, HexColor("#E2E8F0")),
+        ("BOX", (0, 0), (-1, -1), 0.5, HexColor("#4F46E5")),
         ("TOPPADDING", (0, 0), (-1, -1), 12),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 12),
         ("LEFTPADDING", (0, 0), (-1, -1), 16),
         ("RIGHTPADDING", (0, 0), (-1, -1), 16),
+        ("BACKGROUND", (0, 0), (-1, -1), HexColor("#F8F9FF")),
     ]))
     elements.append(total_table)
 

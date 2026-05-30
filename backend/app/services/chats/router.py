@@ -1,15 +1,9 @@
-from fastapi import APIRouter
 from pydantic import BaseModel
-from app.services.chats.message_routes import router as message_router
-from app.services.chats.conversation_routes import router as conversation_router
-from app.services.chats.offer_routes import router as offer_router
 from app.services.chats.websocket_routes import router as websocket_router
-from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from typing import List, Dict
-import json
 import logging
-
+from typing import List
 from app.db.database import get_db
 from app.auth.security import get_current_user, check_role
 from app.core.roles import Role
@@ -20,16 +14,18 @@ from app.services.chats.ws_manager import manager
 from app.services import models as service_models
 from app.payments import models as payment_models
 from app.payments.services import refund_payment, capture_payment
-from app.utils.s3 import upload_chat_media_to_s3
 from app.services.notifications import service as notif_service
 from fastapi import UploadFile, File, BackgroundTasks
 from app.utils.email import send_dispute_opened_email, send_dispute_resolved_email
+from typing import List
+from app.utils.s3 import upload_chat_media_to_s3
 from app.utils.notifications import send_push_notification
 
 logger = logging.getLogger(__name__)
 
 
 router = APIRouter()
+router.include_router(websocket_router)
 
 
 class MessagePayload(BaseModel):
@@ -141,144 +137,7 @@ async def upload_chat_media(
         raise HTTPException(status_code=500, detail="Error al subir el archivo")
     return {"url": url}
 
-# ---------------------------------------------------------
-# RUTA WEBSOCKET (La Línea Directa en Tiempo Real)
-# ---------------------------------------------------------
-@router.websocket("/chat/ws/{conversation_id}/{user_id}")
-async def websocket_endpoint(websocket: WebSocket, conversation_id: str, user_id: str, db: Session = Depends(get_db)):
-    """
-    AQUÍ SE CONECTA FLUTTER PARA CHATEAR.
-    URL ejemplo: ws://localhost:8000/chat/ws/1234-abcd/mi-user-id
-    """
-    await manager.connect(websocket, conversation_id)
-    # Marcar como leído al entrar
-    service.mark_chat_as_read(db, conversation_id, user_id)
-    print(f"WS CONNECTED & READ: convo={conversation_id}, user={user_id}")
-    
-    try:
-        while True:
-            # Espera a que Flutter mande un mensaje
-            data = await websocket.receive_text()
-            print(f"WS RECEIVED DATA: {data}")
-            
-            # Verificar si la conversación está cerrada ANTES de procesar nada
-            convo = db.query(service_models.Conversation).filter(service_models.Conversation.id == conversation_id).first()
-            if convo and convo.status == service_models.ConversationStatus.CLOSED.value:
-                await websocket.send_json({"error": "Esta conversación ya está cerrada y no admite más mensajes."})
-                continue
 
-            payload = json.loads(data)
-            
-            msg_type = payload.get("type", "text")
-
-            # 🟢 TYPING EVENT: No guardar en DB, solo reenviar a los demás
-            if msg_type == "typing":
-                typing_event = {
-                    "type": "typing",
-                    "sender_id": user_id,
-                    "is_typing": payload.get("is_typing", False),
-                    "conversation_id": conversation_id # 👈 Importante para el filtrado frontend
-                }
-                # Broadcast a todos EXCEPTO al que envió
-                if conversation_id in manager.active_connections:
-                    for connection in manager.active_connections[conversation_id]:
-                        if connection != websocket:
-                            try:
-                                await connection.send_json(typing_event)
-                            except Exception:
-                                pass
-                continue
-
-            # 🟢 MENSAJE NORMAL: Guardar en DB y broadcast
-            content = payload.get("content", "")
-            
-            # --- SEGURIDAD: Solo el cliente puede despachar type "offer" directamente por WS o endpoints
-            if msg_type == "offer":
-                if convo and str(convo.client_id) != str(user_id):
-                    await websocket.send_json({"error": "Solo el cliente puede enviar propuestas."})
-                    continue
-                
-            
-            try:
-                saved_msg = service.save_message(db, conversation_id, user_id, content, msg_type)
-                print(f"WS SAVED MSG: {saved_msg.id}")
-            except (ValueError, Exception) as save_err:
-                print(f"WS SAVE ERROR: {save_err}")
-                await websocket.send_json({"error": str(save_err)})
-                continue
-            
-            message_to_send = {
-                "id": str(saved_msg.id),
-                "conversation_id": str(saved_msg.conversation_id),
-                "sender_id": str(saved_msg.sender_id),
-                "content": saved_msg.content,
-                "message_type": saved_msg.message_type,
-                "created_at": saved_msg.created_at.isoformat(),
-                "status": getattr(saved_msg, "status", "pending")
-            }
-            await manager.broadcast(conversation_id, message_to_send)
-            print(f"WS BROADCASTED MSG to convo={conversation_id}")
-
-            # 🔔 Push notification si el receptor NO está conectado al WS
-            try:
-                convo = db.query(service_models.Conversation).filter(
-                    service_models.Conversation.id == conversation_id
-                ).first()
-                if convo:
-                    # Determinar receptor
-                    receiver_id = str(convo.worker_id) if str(convo.client_id) == user_id else str(convo.client_id)
-                    active_ws_count = len(manager.active_connections.get(conversation_id, []))
-                    # Solo enviar push si el receptor no está en el chat (1 conexión = solo el emisor)
-                    if active_ws_count < 2:
-                        receiver = db.query(auth_models.User).filter(
-                            auth_models.User.id == receiver_id
-                        ).first()
-                        sender = db.query(auth_models.User).filter(
-                            auth_models.User.id == user_id
-                        ).first()
-                    sender = db.query(auth_models.User).filter(auth_models.User.id == user_id).first()
-                    sender_name = sender.full_name if sender else "Nuevo mensaje"
-                    preview = content[:60] + "..." if len(content) > 60 else content
-                    if msg_type == "image": preview = "📷 Imagen"
-                    elif msg_type == "audio": preview = "🎤 Audio"
-                    elif msg_type == "video": preview = "🎥 Video"
-                    elif msg_type == "location": preview = "📍 Ubicación"
-                    
-                    # 📱 Enviar Notificación Push para Tiempo Real
-                    receiver_id = str(convo.worker_id) if str(convo.client_id) == str(user_id) else str(convo.client_id)
-                    receiver = db.query(auth_models.User).filter(auth_models.User.id == receiver_id).first()
-                    
-                    if receiver and receiver.fcm_token:
-                        # Si solo hay una persona en el WS (el emisor), el receptor necesita push
-                        active_ws_count = len(manager.active_connections.get(conversation_id, []))
-                        
-                        # Siempre enviamos la push si el receptor no está en el chat activo
-                        if active_ws_count < 2:
-                            logger.info(f"📣 [WS] Enviando Push a {receiver.full_name} (Token: {str(receiver.fcm_token)[:10]}...)")
-                            response = send_push_notification(
-                                fcm_token=str(receiver.fcm_token),
-                                title=str(sender_name),
-                                body=preview,
-                                data={
-                                    "type": "new_message", 
-                                    "conversation_id": conversation_id,
-                                    "sender_name": sender_name
-                                }
-                            )
-                            logger.info(f"📡 [WS] Resultado Push: {response}")
-                        else:
-                            logger.info(f"✅ [WS] Receptor está en la sala {conversation_id}, no hace falta push.")
-                    else:
-                        logger.warning(f"⚠️ [WS] No se envió push: Receptor {receiver_id} no tiene token.")
-            except Exception as notify_err:
-                logger.error(f"❌ [WS] Error notificando: {notify_err}", exc_info=True)
-
-    except WebSocketDisconnect:
-        print(f"WS DISCONNECTED: convo={conversation_id}")
-        manager.disconnect(websocket, conversation_id)
-    except Exception as e:
-        print(f"WS ERROR: {e}")
-        manager.disconnect(websocket, conversation_id)
 
 # ---------------------------------------------------------
 # RUTAS DE NEGOCIACIÓN (Ofertas y Contratos)
@@ -800,6 +659,15 @@ async def resolve_dispute(
     }
     
     await manager.broadcast(conversation_id, message_to_send)
+
+    # Broadcast evento conversation_closed para que Flutter refresque la lista
+    await manager.broadcast(conversation_id, {
+        "type": "conversation_closed",
+        "conversation_id": conversation_id,
+        "status": "CLOSED",
+        "closed_reason": service_models.ClosedReason.DISPUTE_RESOLVED.value
+    })
+
     print(f"RESOLUTION broadcasted to {conversation_id}")
 
     # 🔔 Notificar por Push la resolución final

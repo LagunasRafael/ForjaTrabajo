@@ -75,79 +75,136 @@ class ProfileMenuOption extends StatelessWidget {
 // =====================================================
 // 3. BOTÓN CERRAR SESIÓN (LOGOUT PRO)
 // =====================================================
-class ProfileLogoutButton extends ConsumerWidget {
-  const ProfileLogoutButton({super.key});
+void showModernLogoutDialog(BuildContext context, WidgetRef ref) {
+  final isDark = Theme.of(context).brightness == Brightness.dark;
 
-  void _showLogoutConfirmation(BuildContext context, WidgetRef ref) {
-    showDialog(
-      context: context,
-      builder: (BuildContext dialogContext) {
-        return AlertDialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Row(
+  showDialog(
+    context: context,
+    builder: (BuildContext dialogContext) {
+      return Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.warning_amber_rounded, color: Colors.orange),
-              SizedBox(width: 10),
-              Text("¿Cerrar sesión?",
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+              // 1. Icono estilizado circular en la parte superior
+              Container(
+                height: 64,
+                width: 64,
+                decoration: BoxDecoration(
+                  color: Colors.red.shade500.withOpacity(0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.logout_rounded,
+                  color: Colors.redAccent,
+                  size: 32,
+                ),
+              ),
+              const SizedBox(height: 20),
+              
+              // 2. Título principal
+              Text(
+                "¿Cerrar Sesión?",
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: isDark ? Colors.white : Colors.black87,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              const SizedBox(height: 10),
+              
+              // 3. Descripción descriptiva
+              Text(
+                "¿Estás seguro de que deseas salir? Tendrás que volver a iniciar sesión para acceder a tus servicios.",
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  height: 1.4,
+                  color: isDark ? Colors.grey[400] : Colors.grey[600],
+                ),
+              ),
+              const SizedBox(height: 28),
+              
+              // 4. Botones de acción side-by-side estilizados
+              Row(
+                children: [
+                  // Botón Cancelar
+                  Expanded(
+                    child: SizedBox(
+                      height: 48,
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.of(dialogContext).pop(),
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(color: isDark ? Colors.grey[800]! : Colors.grey[300]!),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
+                        child: Text(
+                          "Volver",
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? Colors.grey[300] : Colors.grey[700],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  
+                  // Botón Cerrar Sesión (Rojo/Accent)
+                  Expanded(
+                    child: SizedBox(
+                      height: 48,
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          Navigator.of(dialogContext).pop();
+                          await ref.read(authProvider.notifier).logoutUser();
+                          ref.invalidate(serviceListProvider);
+                          ref.invalidate(myRequestsProvider);
+                          
+                          if (context.mounted) {
+                            Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFEF4444),
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
+                        child: const Text(
+                          "Salir",
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ],
           ),
-          content: const Text(
-            "¿Estás seguro de que deseas salir? Tendrás que volver a iniciar sesión para acceder a tus servicios.",
-            style: TextStyle(color: Colors.black87),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text("Cancelar",
-                  style: TextStyle(
-                      color: Colors.grey, fontWeight: FontWeight.bold)),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                Navigator.of(dialogContext).pop();
+        ),
+      );
+    },
+  );
+}
 
-                // 1. Ejecutar el logout en el servidor/storage
-                await ref.read(authProvider.notifier).logoutUser();
-
-                // 2. 🧹 LIMPIEZA PROFUNDA DE PROVIDERS
-                // Invalidamos para que al entrar de nuevo no haya datos "viejos" en memoria
-                ref.invalidate(serviceListProvider);
-                ref.invalidate(myRequestsProvider);
-
-                // Reseteo de navegación (ajusta según tu provider de índice)
-                // ref.invalidate(bottomNavIndexProvider);
-
-                // 3. 🔄 NAVEGACIÓN RADICAL
-                if (context.mounted) {
-                  // Borra todo el historial de rutas y manda al login
-                  Navigator.of(context)
-                      .pushNamedAndRemoveUntil('/login', (route) => false);
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10)),
-              ),
-              child: const Text("Sí, salir",
-                  style: TextStyle(
-                      color: Colors.white, fontWeight: FontWeight.bold)),
-            ),
-          ],
-        );
-      },
-    );
-  }
+class ProfileLogoutButton extends ConsumerWidget {
+  const ProfileLogoutButton({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: OutlinedButton.icon(
-        onPressed: () => _showLogoutConfirmation(context, ref),
+        onPressed: () => showModernLogoutDialog(context, ref),
         style: OutlinedButton.styleFrom(
           minimumSize: const Size(double.infinity, 56),
           side: const BorderSide(color: AppTheme.dangerRose),

@@ -8,7 +8,7 @@ import 'job_management_provider.dart';
 import 'package:forja_trabajo/features/chat/presentation/providers/chat_list_provider.dart';
 
 // 1. Provider de la lista (Usa ServiceRequestEntity)
-final offersListProvider = FutureProvider.family<List<ServiceRequestEntity>, String>((ref, serviceId) async {
+final offersListProvider = FutureProvider.autoDispose.family<List<ServiceRequestEntity>, String>((ref, serviceId) async {
   final repository = ref.watch(serviceRepositoryProvider);
   final prefs = await SharedPreferences.getInstance();
   final token = prefs.getString('token') ?? '';

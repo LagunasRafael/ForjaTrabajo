@@ -8,6 +8,8 @@ import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider
 import 'package:forja_trabajo/shared/widgets/location/marketplace_location_storage.dart';
 import 'category_provider.dart';
 
+final deletedServiceIdsProvider = StateProvider<Set<String>>((ref) => {});
+
 final searchQueryProvider = StateProvider<String>((ref) => "");
 
 final selectedRadiusKmProvider = StateProvider<double>((ref) => 25.0);
@@ -88,7 +90,7 @@ final serviceListProvider = FutureProvider<List<ServiceEntity>>((ref) async {
   );
 });
 
-final serviceDetailProvider = FutureProvider.family<ServiceEntity, String>((ref, id) async {
+final serviceDetailProvider = FutureProvider.autoDispose.family<ServiceEntity, String>((ref, id) async {
   return await ref.watch(serviceRepositoryProvider).getServiceById(id);
 });
 
@@ -130,6 +132,10 @@ class ServiceController extends StateNotifier<AsyncValue<void>> {
     } catch (e, st) {
       state = AsyncValue.error(e, st);
     }
+  }
+
+  Future<List<String>> uploadServiceImages(String serviceId, List<File> images, String token) async {
+    return await ref.read(serviceRepositoryProvider).uploadServiceImages(serviceId, images, token);
   }
 
   // --- ACTUALIZAR SERVICIO ---

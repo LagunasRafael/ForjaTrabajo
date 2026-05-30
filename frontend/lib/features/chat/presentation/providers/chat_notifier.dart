@@ -61,12 +61,11 @@ class ChatNotifier extends StateNotifier<List<MessageModel>>
       } catch (e) {
         print("⚠️ [Chat] Error al marcar como leído (no crítico): $e");
       }
-      
-      wsConnect();
     } catch (e) {
       print("🚨 [Chat] Error crítico cargando historial: $e");
-      wsConnect(); 
     }
+    
+    wsConnect();
   }
 
   Future<void> sendMessage(String content, String type) async {
@@ -252,9 +251,8 @@ class ChatNotifier extends StateNotifier<List<MessageModel>>
     }
   }
 
-  Future<void> sendLocation() async {
-    print("📍 Compartiendo ubicación...");
-    await sendMessage("Ubicación compartida", "location");
+  Future<void> sendLocation(String locationJson) async {
+    await sendMessage(locationJson, "location");
   }
 
   void resendMessage(String messageId) {

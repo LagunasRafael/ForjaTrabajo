@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:forja_trabajo/core/network/api_client.dart';
-import 'package:forja_trabajo/core/network/fcm_service.dart';
+import 'package:forja_trabajo/core/network/notification_controller.dart';
 import 'package:forja_trabajo/features/services/presentation/screens/client/edit_profile_screen.dart';
 import 'package:forja_trabajo/features/auth/presentation/providers/auth_provider.dart';
 import 'package:forja_trabajo/features/auth/presentation/screens/login_screen.dart';
 import 'package:forja_trabajo/features/profile/presentation/screens/legal_document_screen.dart';
+import 'package:forja_trabajo/features/auth/presentation/widgets/profile_shared_widgets.dart';
 import 'package:forja_trabajo/core/theme/theme_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -18,76 +17,13 @@ class SettingsScreen extends ConsumerStatefulWidget {
 }
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
-  bool _notificationsEnabled = true;
   bool _isLoading = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadPreferences();
-  }
-
-  Future<void> _loadPreferences() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _notificationsEnabled = prefs.getBool('notifications_enabled') ?? true;
-    });
-  }
-
-  Future<void> _saveNotificationPreference(bool value) async {
-    setState(() => _isLoading = true);
-    try {
-      if (value) {
-        final fcmService = FcmService();
-        await fcmService.initNotifications();
-        final token = await fcmService.getToken();
-        if (token != null && token.isNotEmpty) {
-        final apiClient = ApiClient();
-        await apiClient.dio.put(
-          '/auth/fcm-token',
-          data: {'fcm_token': token},
-        );
-        }
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setBool('notifications_enabled', true);
-      } else {
-        try {
-          await ApiClient().dio.put(
-            '/auth/fcm-token',
-            data: {'fcm_token': ''},
-          );
-        } catch (_) {}
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setBool('notifications_enabled', false);
-      }
-      setState(() => _notificationsEnabled = value);
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al cambiar notificaciones: $e')),
-        );
-      }
-      setState(() => _notificationsEnabled = !value);
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _launchURL(String urlString) async {
-    final url = Uri.parse(urlString);
-    if (!await launchUrl(url)) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No se pudo abrir el enlace')),
-        );
-      }
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
     final themeMode = ref.watch(themeProvider);
     final isDarkMode = themeMode == ThemeMode.dark;
+    final notificationsEnabled = ref.watch(notificationControllerProvider);
 
     final theme = Theme.of(context);
 
@@ -136,8 +72,32 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           _buildSwitchTile(
             icon: Icons.notifications_none,
             title: "Notificaciones Push",
-            value: _notificationsEnabled,
-            onChanged: _isLoading ? null : _saveNotificationPreference,
+            value: notificationsEnabled,
+            onChanged: _isLoading
+                ? null
+                : (val) async {
+                    setState(() => _isLoading = true);
+                    try {
+                      final controller =
+                          ref.read(notificationControllerProvider.notifier);
+                      if (val) {
+                        final role = ref.read(authProvider).user?.role;
+                        await controller.enable(userRole: role);
+                      } else {
+                        await controller.disable();
+                      }
+                    } catch (e) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                              content:
+                                  Text('Error al cambiar notificaciones: $e')),
+                        );
+                      }
+                    } finally {
+                      if (mounted) setState(() => _isLoading = false);
+                    }
+                  },
           ),
 
           const SizedBox(height: 24),
@@ -188,7 +148,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 24.0),
             child: ElevatedButton.icon(
               onPressed: () {
-                _showLogoutConfirmation(context, ref);
+                showModernLogoutDialog(context, ref);
               },
               icon: const Icon(Icons.logout, color: Colors.red),
               label: const Text("Cerrar Sesión",
@@ -209,6 +169,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _launchURL(String urlString) async {
+    final url = Uri.parse(urlString);
+    if (!await launchUrl(url)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No se pudo abrir el enlace')),
+        );
+      }
+    }
   }
 
   // --- WIDGETS REUTILIZABLES PARA ESTA PANTALLA ---
@@ -282,67 +253,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         value: value,
         onChanged: onChanged,
       ),
-    );
-  }
-
-  void _showLogoutConfirmation(BuildContext context, WidgetRef ref) {
-    showDialog(
-      context: context,
-      builder: (BuildContext dialogContext) {
-        return AlertDialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Row(
-            children: [
-              Icon(Icons.warning_amber_rounded, color: Colors.orange),
-              SizedBox(width: 10),
-              Text("¿Cerrar sesión?",
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-            ],
-          ),
-          content: Text(
-            "¿Estás seguro de que deseas salir de tu cuenta? Tendrás que volver a ingresar tus credenciales la próxima vez.",
-            style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
-          ),
-          actions: [
-            // Botón de Cancelar
-            TextButton(
-              onPressed: () {
-                Navigator.of(dialogContext).pop(); // Solo cierra el diálogo
-              },
-              child: const Text("Cancelar",
-                  style: TextStyle(
-                      color: Colors.grey, fontWeight: FontWeight.bold)),
-            ),
-            // Botón de Confirmar Salida
-            ElevatedButton(
-              onPressed: () async {
-                Navigator.of(dialogContext)
-                    .pop(); // 1. Cerramos el diálogo primero
-                await ref
-                    .read(authProvider.notifier)
-                    .logoutUser(); // 2. Ejecutamos el cierre de sesión
-                if (context.mounted) {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => const LoginScreen()),
-                  );
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10)),
-              ),
-              child: const Text("Sí, salir",
-                  style: TextStyle(
-                      color: Colors.white, fontWeight: FontWeight.bold)),
-            ),
-          ],
-        );
-      },
     );
   }
 }

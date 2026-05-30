@@ -11,9 +11,7 @@ from app.services.chats import schemas
 from app.services.chats import service
 from app.services.chats.ws_manager import manager
 from app.services import models as service_models
-from app.utils.s3 import upload_chat_media_to_s3
 from typing import List
-from fastapi import UploadFile, File
 
 logger = logging.getLogger(__name__)
 
@@ -95,20 +93,4 @@ def get_history(conversation_id: str, skip: int = 0, limit: int = 15, db: Sessio
     return service.get_chat_history(db, conversation_id, skip, limit)
 
 
-@router.post("/chat/{conversation_id}/upload")
-async def upload_chat_media(
-    conversation_id: str,
-    file: UploadFile = File(...),
-    db: Session = Depends(get_db),
-    current_user: auth_models.User = Depends(get_current_user)
-):
-    convo = db.query(service_models.Conversation).filter(service_models.Conversation.id == conversation_id).first()
-    if not convo:
-        raise HTTPException(status_code=404, detail="Conversation not found")
-    if str(convo.client_id) != str(current_user.id) and str(convo.worker_id) != str(current_user.id):
-        raise HTTPException(status_code=403, detail="No perteneces a esta conversacion")
 
-    url = await upload_chat_media_to_s3(file, conversation_id)
-    if not url:
-        raise HTTPException(status_code=500, detail="Error al subir el archivo")
-    return {"url": url}

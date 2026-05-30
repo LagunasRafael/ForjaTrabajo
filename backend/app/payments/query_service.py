@@ -18,18 +18,17 @@ def get_payments_by_role(db: Session, current_user):
 
     if current_user.role == "admin":
         payments = base_query.all()
-    elif current_user.role == "client":
-        payments = base_query\
-            .join(models.Contract)\
-            .filter(models.Contract.client_id == current_user.id)\
-            .all()
-    elif current_user.role == "worker":
-        payments = base_query\
-            .join(models.Contract)\
-            .filter(models.Contract.job.has(Job.provider_id == current_user.id))\
-            .all()
     else:
-        return []
+        from sqlalchemy import or_
+        payments = base_query\
+            .join(models.Contract)\
+            .filter(
+                or_(
+                    models.Contract.client_id == current_user.id,
+                    models.Contract.job.has(Job.provider_id == current_user.id)
+                )
+            )\
+            .all()
 
     result = []
     for payment in payments:
@@ -47,12 +46,16 @@ def get_payments_by_role(db: Session, current_user):
             "service_title": None,
             "service_description": None,
             "service_category": None,
+            "job_id": None,
+            "service_id": None,
         }
         contract = payment.contract
         if contract and contract.job:
             job = contract.job
+            payment_dict["job_id"] = job.id
             if job.request and job.request.service:
                 svc = job.request.service
+                payment_dict["service_id"] = svc.id
                 payment_dict["service_title"] = svc.title
                 payment_dict["service_description"] = svc.description
                 payment_dict["service_category"] = svc.category.name if svc.category else None
@@ -68,4 +71,10 @@ def get_contracts_by_role(db: Session, current_user):
     if current_user.role == "admin":
         return query.all()
 
-    return query.filter(models.Contract.client_id == current_user.id).all()
+    from sqlalchemy import or_
+    return query.filter(
+        or_(
+            models.Contract.client_id == current_user.id,
+            models.Contract.job.has(Job.provider_id == current_user.id)
+        )
+    ).all()

@@ -54,7 +54,13 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
 
     return AppBar(
       backgroundColor: theme.colorScheme.surface,
-      elevation: 1,
+      elevation: 0,
+      shape: const Border(
+        bottom: BorderSide(
+          color: Color(0xFFE0E7FF),
+          width: 1,
+        ),
+      ),
       centerTitle: false,
       leading: IconButton(
         icon: Icon(Icons.arrow_back, color: theme.colorScheme.onSurface),

@@ -23,7 +23,6 @@ android {
     defaultConfig {
         applicationId = "com.example.forja_trabajo"
         
-        // 🔴 1. CAMBIA ESTO: Fija el SDK mínimo a 23 (Requerido por el plugin 'record')
         minSdk = flutter.minSdkVersion
         
         // 🟡 3. TRUCO DE ESTABILIDAD:
