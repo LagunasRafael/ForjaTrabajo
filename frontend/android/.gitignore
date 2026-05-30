@@ -48,3 +48,10 @@ src/release/google-services.json
 # ----------------------------------------------------------------------
 *.env
 .env*
+
+
+# ----------------------------------------------------------------------
+# 6. LLAVES DE FIRMA (¡NUNCA SUBIR A GITHUB!)
+# ----------------------------------------------------------------------
+android/key.properties
+android/app/upload-keystore.jks
