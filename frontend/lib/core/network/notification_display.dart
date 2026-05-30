@@ -1,9 +1,11 @@
+import 'dart:convert';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:forja_trabajo/core/network/notification_service.dart';
 import 'package:forja_trabajo/shared/utils/notification_navigation.dart';
 import 'package:forja_trabajo/features/notifications/presentation/widgets/sleek_notification_banner.dart';
 
@@ -40,6 +42,14 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
         message.notification?.title ?? message.data['title'] ?? 'ForjaTrabajo';
     final body = message.notification?.body ?? message.data['body'] ?? '';
     if (title != 'ForjaTrabajo' || body.isNotEmpty) {
+      final payloadData = {
+        'type': message.data['type'] ?? '',
+        'conversation_id': message.data['conversation_id'] ?? '',
+        'service_id': message.data['service_id'] ?? '',
+        'sender_name': message.data['sender_name'] ?? '',
+        'target_role': message.data['target_role'] ?? '',
+      };
+      final payload = jsonEncode(payloadData);
       await localNotifications.show(
         message.hashCode,
         title,
@@ -55,6 +65,7 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
             icon: '@mipmap/ic_launcher',
           ),
         ),
+        payload: payload,
       );
     }
   } catch (e) {
@@ -74,7 +85,31 @@ Future<void> initLocalNotifications() async {
     await _localNotifications.initialize(
       const InitializationSettings(android: androidInit, iOS: iosInit),
       onDidReceiveNotificationResponse: (response) {
-        debugPrint('🎯 Tap en notificación local: ${response.payload}');
+        final payload = response.payload;
+        if (payload == null || payload.isEmpty) return;
+
+        try {
+          final data = jsonDecode(payload) as Map<String, dynamic>;
+          final context = navigatorKey.currentContext;
+          if (context == null) return;
+
+          ProviderContainer? container;
+          try {
+            container = ProviderScope.containerOf(context);
+          } catch (_) {}
+
+          navigateFromNotification(
+            context: context,
+            type: data['type'] as String? ?? '',
+            conversationId: data['conversation_id'] as String?,
+            serviceId: data['service_id'] as String?,
+            senderName: data['sender_name'] as String?,
+            targetRole: data['target_role'] as String?,
+            container: container,
+          );
+        } catch (e) {
+          debugPrint('⚠️ Error navegando desde notificación local: $e');
+        }
       },
     );
 

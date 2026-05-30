@@ -98,7 +98,7 @@ class _SharedChatScreenState extends ConsumerState<SharedChatScreen> {
     ref.listen<AsyncValue<RemoteMessage>>(notificationEventProvider, (previous, next) {
       next.whenData((message) {
         final type = message.data['type'] ?? '';
-        if (type == 'job_completed' || type == 'job_cancelled' || type == 'dispute_resolved') {
+        if (type == 'new_message' || type == 'job_completed' || type == 'job_cancelled' || type == 'dispute_resolved') {
           ref.invalidate(chatProvider(widget.conversationId));
         }
       });

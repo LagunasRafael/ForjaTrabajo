@@ -51,6 +51,10 @@ async def websocket_endpoint(websocket: WebSocket, conversation_id: str, user_id
                 payload = json.loads(data)
                 msg_type = payload.get("type", "text")
 
+                if msg_type == "ping":
+                    await websocket.send_json({"type": "pong"})
+                    continue
+
                 if msg_type == "typing":
                     typing_event = {
                         "type": "typing",

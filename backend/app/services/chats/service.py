@@ -212,7 +212,8 @@ def get_user_chats(db: Session, user_id: str):
         # También mostrar chats cerrados (tienen historial que conservar).
         is_closed = str(convo.status).lower() == models.ConversationStatus.CLOSED.value
         request_status = str(request.status).lower().strip() if (request and request.status) else "pending"
-        if request_status == "pending" and not last_msg and not is_closed:
+        # Ocultar conversaciones sin mensajes (nunca se inició conversación real)
+        if not last_msg:
             continue
         
         # ✅ AQUÍ ESTÁ LA MAGIA CORREGIDA: Usamos full_name
