@@ -73,3 +73,9 @@ documento_residencias
 
 **/linux/flutter/ephemeral/
 **/macos/Flutter/ephemeral/
+
+# ========================
+# OPENCODE / MCP CONFIGS
+# ========================
+opencode.json
+

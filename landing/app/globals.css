@@ -1,0 +1,55 @@
+@import "tailwindcss";
+
+:root {
+  --primary: #6366F1;
+  --primary-hover: #4F46E5;
+  --surface: #0F172A;
+  --surface-border: #1E293B;
+  --background: #020617;
+  --text-primary: #FFFFFF;
+  --text-muted: #94A3B8;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--text-primary);
+  font-family: var(--font-inter), sans-serif;
+}
+
+@keyframes scroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.logo-track {
+  display: flex;
+  width: max-content;
+  animation: scroll 30s linear infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(30px, 40px); }
+  50% { transform: translate(-20px, 60px); }
+  75% { transform: translate(-40px, 20px); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 20px rgba(99, 102, 241, 0.3); }
+  50% { box-shadow: 0 0 40px rgba(99, 102, 241, 0.6); }
+}
+
+.glow-effect {
+  animation: pulse-glow 3s ease-in-out infinite;
+}
+
+.gradient-text {
+  background: linear-gradient(135deg, #6366F1, #818CF8, #A78BFA);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
