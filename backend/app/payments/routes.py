@@ -101,6 +101,12 @@ def create_payment_intent(
             detail=f"El trabajo no está en estado 'matched'. Estado actual: {job.status.value}"
         )
 
+    if not job.final_price or int(data.amount_mxn * 100) != int(job.final_price * 100):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="El monto no coincide con el precio del trabajo"
+        )
+
     if str(job.client_id) != str(current_user.id):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -219,6 +225,12 @@ def confirm_payment(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No tienes permiso para confirmar el pago de este trabajo"
+        )
+
+    if not job.final_price or int(data.amount_mxn * 100) != int(job.final_price * 100):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="El monto no coincide con el precio del trabajo"
         )
 
     contract = db.query(models.Contract).filter(
