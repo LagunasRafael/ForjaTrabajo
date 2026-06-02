@@ -111,12 +111,35 @@ def delete_service(db: Session, service_id: str):
     if not service_entry:
         raise HTTPException(status_code=404, detail="Servicio no encontrado")
 
-    db.query(models.ServiceRequest).filter(models.ServiceRequest.service_id == service_id).delete()
-    db.query(models.Job).filter(models.Job.client_id == service_entry.client_id).delete()
+    # Soft-delete: marcar como inactivo y cancelado sin borrar datos
+    service_entry.is_active = False
+    service_entry.status = models.JobStatus.CANCELLED
 
-    db.delete(service_entry)
+    # Cerrar conversaciones activas
+    try:
+        close_service_chats(db, service_id, models.ClosedReason.SERVICE_CANCELLED.value)
+    except Exception as e:
+        logger.warning(f"No se pudieron cerrar los chats del servicio: {e}")
+
+    # Marcar postulaciones activas como expiradas
+    active_requests = db.query(models.ServiceRequest).filter(
+        models.ServiceRequest.service_id == service_id,
+        models.ServiceRequest.status.in_(["pending", "accepted"])
+    ).all()
+    for req in active_requests:
+        req.status = "expired"
+
+    # Cancelar job activo si existe
+    job = db.query(models.Job).join(models.ServiceRequest).filter(
+        models.ServiceRequest.service_id == service_id,
+        models.Job.status != models.JobStatus.CANCELLED
+    ).first()
+    if job:
+        job.status = models.JobStatus.CANCELLED
+
     db.commit()
-    return {"message": "Servicio eliminado fisicamente por completo de la base de datos"}
+    db.refresh(service_entry)
+    return {"message": "Servicio cancelado correctamente"}
 
 
 def hide_from_history(db: Session, service_id: str, user_id: str):
