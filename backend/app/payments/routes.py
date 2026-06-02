@@ -1,3 +1,4 @@
+import logging
 import stripe
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -12,6 +13,8 @@ from . import schemas, models
 import app.payments.services as services
 from .invoice_pdf import generate_invoice_pdf
 from app.core.config import PLATFORM_URL
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 workers_router = APIRouter()
@@ -101,6 +104,12 @@ def create_payment_intent(
             detail=f"El trabajo no está en estado 'matched'. Estado actual: {job.status.value}"
         )
 
+    if not job.final_price or int(data.amount_mxn * 100) != int(job.final_price * 100):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="El monto no coincide con el precio del trabajo"
+        )
+
     if str(job.client_id) != str(current_user.id):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -139,8 +148,8 @@ def create_payment_intent(
         if existing_payment.stripe_payment_intent_id:
             try:
                 stripe.PaymentIntent.cancel(existing_payment.stripe_payment_intent_id)
-            except stripe.error.StripeError:
-                pass
+            except stripe.error.StripeError as e:
+                logger.error("Error cancelando PaymentIntent previo %s: %s", existing_payment.stripe_payment_intent_id, e)
         existing_payment.status = models.PaymentStatus.FAILED
         db.commit()
 
@@ -219,6 +228,12 @@ def confirm_payment(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No tienes permiso para confirmar el pago de este trabajo"
+        )
+
+    if not job.final_price or int(data.amount_mxn * 100) != int(job.final_price * 100):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="El monto no coincide con el precio del trabajo"
         )
 
     contract = db.query(models.Contract).filter(
@@ -482,8 +497,8 @@ def setup_worker_stripe(
         if account.charges_enabled and account.payouts_enabled:
             services.process_pending_transfers_for_worker(db, str(current_user.id))
             return schemas.StripeSetupResponse(url="__ALREADY_COMPLETED__")
-    except stripe.error.StripeError:
-        pass
+    except stripe.error.StripeError as e:
+        logger.warning("Stripe account retrieve falló (continuando con creación): %s", e)
 
     try:
         account_link = stripe.AccountLink.create(

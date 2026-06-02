@@ -62,5 +62,5 @@ def recalculate_and_broadcast(db: Session):
         loop = asyncio.get_event_loop()
         if loop.is_running():
             asyncio.ensure_future(admin_manager.broadcast(payload))
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("No se pudo hacer broadcast a administradores: %s", e)

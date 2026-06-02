@@ -63,8 +63,8 @@ def accept_postulation(db: Session, request_id: str, current_user_id: str):
             if convo and convo.status == models.ConversationStatus.CLOSED.value:
                 from app.services.chats.service import reactivate_chat
                 reactivate_chat(db, str(convo.id))
-        except Exception:
-            pass
+        except Exception as e:
+            logger.error("Error reactivando chat al aceptar postulación: %s", e)
 
         return {
             "status": "success",
@@ -143,8 +143,8 @@ def complete_job(db: Session, job_id: str, user_id: str):
                 ).first()
                 if convo and convo.status != models.ConversationStatus.CLOSED.value:
                     close_chat(db, str(convo.id), models.ClosedReason.SERVICE_COMPLETED.value)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.error("Error cerrando chat al completar (job %s): %s", job.id, e)
 
         return job
 
@@ -185,7 +185,7 @@ def cancel_job(db: Session, job_id: str, user_id: str, user_role: str):
     if job.request and job.request.service:
         try:
             close_service_chats(db, str(job.request.service.id), models.ClosedReason.SERVICE_CANCELLED.value)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.error("Error cerrando chats al cancelar (job %s): %s", job.id, e)
 
     return job

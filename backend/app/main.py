@@ -91,14 +91,6 @@ from app.services.scheduler import start_scheduler, stop_scheduler
 def on_startup():
     # Crear tablas (solo corre en el worker, no en el reloader padre)
     logger.info("Tablas listas para crear: %s", Base.metadata.tables.keys())
-    from sqlalchemy import text
-    try:
-        with engine.connect() as conn:
-            conn.execute(text("DROP TABLE IF EXISTS reports CASCADE"))
-            conn.commit()
-            logger.info("Tabla reports eliminada para recrear desde modelo.")
-    except Exception as e:
-        logger.warning("Aviso (no critico): %s", e)
     Base.metadata.create_all(bind=engine)
     logger.info("Tablas creadas/verificadas con create_all.")
 

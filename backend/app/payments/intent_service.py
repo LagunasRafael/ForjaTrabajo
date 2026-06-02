@@ -106,8 +106,8 @@ def create_payment_intent(db: Session, job_id: str, amount: float):
         if existing_payment.stripe_payment_intent_id:
             try:
                 stripe.PaymentIntent.cancel(existing_payment.stripe_payment_intent_id)
-            except stripe.error.StripeError:
-                pass
+            except stripe.error.StripeError as e:
+                logger.error("Error cancelando PaymentIntent previo %s: %s", existing_payment.stripe_payment_intent_id, e)
         existing_payment.status = models.PaymentStatus.FAILED
         db.commit()
 
