@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja_trabajo/features/chat/domain/repositories/chat_repository.dart';
 import 'package:forja_trabajo/features/chat/data/models/message_model.dart';
@@ -8,7 +9,7 @@ import 'package:forja_trabajo/core/network/api_client.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:forja_trabajo/features/chat/presentation/providers/chat_typing_provider.dart';
 
-mixin ChatWebSocketMixin on StateNotifier<List<MessageModel>> {
+mixin ChatWebSocketMixin on StateNotifier<List<MessageModel>>, WidgetsBindingObserver {
   ChatRepository get repository;
   String get conversationId;
   String get userId;
@@ -19,8 +20,40 @@ mixin ChatWebSocketMixin on StateNotifier<List<MessageModel>> {
   bool wsReconnecting = false;
   int _wsRetryCount = 0;
   StreamSubscription? _wsStreamSubscription;
+  Timer? _wsPingTimer;
+  bool _wsLifecycleObserverAdded = false;
 
   bool get isConnected => wsChannel != null && !wsReconnecting;
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && !isConnected && !isDisposed) {
+      print("📱 [WS] App reanudada, reconectando WebSocket...");
+      wsReconnect();
+    }
+  }
+
+  void _startPingTimer() {
+    _wsPingTimer?.cancel();
+    _wsPingTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (wsChannel != null) {
+        wsChannel!.sink.add(jsonEncode({"type": "ping"}));
+      }
+    });
+    if (!_wsLifecycleObserverAdded) {
+      WidgetsBinding.instance.addObserver(this);
+      _wsLifecycleObserverAdded = true;
+    }
+  }
+
+  void _stopPingTimer() {
+    _wsPingTimer?.cancel();
+    _wsPingTimer = null;
+    if (_wsLifecycleObserverAdded) {
+      WidgetsBinding.instance.removeObserver(this);
+      _wsLifecycleObserverAdded = false;
+    }
+  }
 
   void wsConnect() {
     if (isDisposed || wsReconnecting || userId.isEmpty || conversationId.isEmpty) return;
@@ -41,6 +74,7 @@ mixin ChatWebSocketMixin on StateNotifier<List<MessageModel>> {
     
     try {
       wsChannel = WebSocketChannel.connect(Uri.parse(wsUrl));
+      _startPingTimer();
 
       _wsStreamSubscription = wsChannel!.stream.listen(
         (message) {
@@ -73,6 +107,10 @@ mixin ChatWebSocketMixin on StateNotifier<List<MessageModel>> {
       final incomingConvoId = decoded['conversation_id']?.toString() ?? '';
       if (incomingConvoId.isNotEmpty && incomingConvoId != conversationId) {
         print("⏭️ Ignorando mensaje de otra conversación: $incomingConvoId");
+        return;
+      }
+
+      if (decoded is Map && decoded['type'] == 'pong') {
         return;
       }
 
@@ -154,14 +192,10 @@ mixin ChatWebSocketMixin on StateNotifier<List<MessageModel>> {
 
   void wsReconnect() {
     if (!mounted || wsReconnecting) return;
-    if (_wsRetryCount >= 15) {
-      print("🚨 [WS] Máximo de reintentos alcanzado (15)");
-      return;
-    }
+    _stopPingTimer();
     wsReconnecting = true;
     _wsRetryCount++;
 
-    // Cerrar conexión anterior antes de reintentar
     _wsStreamSubscription?.cancel();
     _wsStreamSubscription = null;
     wsChannel?.sink.close();
@@ -170,7 +204,7 @@ mixin ChatWebSocketMixin on StateNotifier<List<MessageModel>> {
     int delayMs = 1000 * (1 << _wsRetryCount);
     if (delayMs > 30000) delayMs = 30000;
     final delay = Duration(milliseconds: delayMs);
-    print("🔄 [WS] Reintentando en ${delay.inMilliseconds}ms (intento $_wsRetryCount/15)");
+    print("🔄 [WS] Reintentando en ${delay.inMilliseconds}ms (intento $_wsRetryCount)");
 
     Future.delayed(delay, () {
       if (mounted) {
@@ -181,6 +215,7 @@ mixin ChatWebSocketMixin on StateNotifier<List<MessageModel>> {
   }
 
   void wsDisconnect() {
+    _stopPingTimer();
     _wsStreamSubscription?.cancel();
     _wsStreamSubscription = null;
     wsChannel?.sink.close();
