@@ -9,7 +9,7 @@ import 'package:forja_trabajo/core/network/api_client.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:forja_trabajo/features/chat/presentation/providers/chat_typing_provider.dart';
 
-mixin ChatWebSocketMixin on StateNotifier<List<MessageModel>> implements WidgetsBindingObserver {
+mixin ChatWebSocketMixin on StateNotifier<List<MessageModel>>, WidgetsBindingObserver {
   ChatRepository get repository;
   String get conversationId;
   String get userId;
