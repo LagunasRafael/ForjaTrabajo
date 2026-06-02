@@ -10,6 +10,7 @@ from app.services.notifications import service as notif_service
 from app.core.config import PAYMENT_DUE_MINUTES
 from app.payments import models as payment_models
 import logging
+from urllib.parse import quote
 
 def close_chat(db: Session, conversation_id: str, reason: str):
     """Cierra un chat con una razón específica."""
@@ -224,8 +225,8 @@ def get_user_chats(db: Session, user_id: str):
         
         # Fallback si no hay avatar (null o vacío)
         if not avatar:
-            inicial = other_name[0] if other_name else "U"
-            avatar = f"https://ui-avatars.com/api/?name={inicial}&background=random"
+            avatar_name = quote(other_name) if other_name else "U"
+            avatar = f"https://ui-avatars.com/api/?name={avatar_name}&color=4F46E5&background=EEF2FF"
         # Si es S3 o URL absoluta, lo dejamos. Si fuera relativa, en el futuro habría que prefijarla.
         # Por ahora, confiamos en lo que hay en DB si no es nulo.
 

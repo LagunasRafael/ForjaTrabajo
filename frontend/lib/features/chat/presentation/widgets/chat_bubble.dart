@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'chat_audio_player_widget.dart';
 import 'chat_gallery_viewer_screen.dart';
 import 'chat_location_bubble.dart';
@@ -42,10 +43,20 @@ class ChatBubble extends StatelessWidget {
       ),
       clipBehavior: Clip.hardEdge,
       child: (url.isNotEmpty && url.startsWith('http'))
-          ? Image.network(
-              url,
+          ? CachedNetworkImage(
+              imageUrl: url,
               fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) => Center(
+              errorWidget: (context, url, error) => Center(
+                child: Text(
+                  initial,
+                  style: const TextStyle(
+                    color: Color(0xFF4F46E5),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+              placeholder: (context, url) => Center(
                 child: Text(
                   initial,
                   style: const TextStyle(

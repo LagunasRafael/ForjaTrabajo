@@ -24,7 +24,8 @@ class ChatSummaryModel extends ChatSummaryEntity {
   factory ChatSummaryModel.fromJson(Map<String, dynamic> json) {
     String rawUrl = json['avatarUrl'] ?? '';
     if (rawUrl.isNotEmpty && !rawUrl.startsWith('http')) {
-      rawUrl = "${ApiClient.baseUrl.replaceFirst('/api', '')}/$rawUrl";
+      final base = ApiClient.baseUrl.replaceAll(RegExp(r'/api.*$'), '');
+      rawUrl = '$base/${rawUrl.replaceFirst('/', '')}';
     }
 
     return ChatSummaryModel(
