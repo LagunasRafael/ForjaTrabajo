@@ -65,8 +65,8 @@ def _cancel_unpaid_jobs(db: Session, now: datetime) -> int:
                             intent = stripe.PaymentIntent.retrieve(payment.stripe_payment_intent_id)
                             if intent.status in ("requires_payment_method", "requires_confirmation", "requires_capture"):
                                 stripe.PaymentIntent.cancel(payment.stripe_payment_intent_id)
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logger.error("Error cancelando PaymentIntent %s: %s", payment.stripe_payment_intent_id, e)
                     payment.status = payment_models.PaymentStatus.FAILED
 
             job.status = service_models.JobStatus.CANCELLED
@@ -97,8 +97,8 @@ def _cancel_unpaid_jobs(db: Session, now: datetime) -> int:
                     ).first()
                     if convo and convo.status != service_models.ConversationStatus.CLOSED.value:
                         close_chat(db, str(convo.id), service_models.ClosedReason.CLIENT_PAYMENT_TIMEOUT.value)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.error("Error cerrando chat por expiración de pago (job %s): %s", job.id, e)
 
             count += 1
         except Exception as e:
@@ -141,8 +141,8 @@ def _auto_release_jobs(db: Session, now: datetime) -> int:
                     ).first()
                     if convo and convo.status != service_models.ConversationStatus.CLOSED.value:
                         close_chat(db, str(convo.id), service_models.ClosedReason.SERVICE_COMPLETED_AUTO.value)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.error("Error cerrando chat por auto-release (job %s): %s", job.id, e)
 
             db.commit()
 

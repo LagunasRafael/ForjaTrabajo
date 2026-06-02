@@ -77,8 +77,8 @@ def cancel_service(db: Session, service_id: str, user_id: str, user_role: str):
                         intent = stripe.PaymentIntent.retrieve(payment.stripe_payment_intent_id)
                         if intent.status in ("requires_payment_method", "requires_confirmation", "requires_capture"):
                             stripe.PaymentIntent.cancel(payment.stripe_payment_intent_id)
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.error("Error cancelando PaymentIntent %s en moderación: %s", payment.stripe_payment_intent_id, e)
                 payment.status = PaymentStatus.FAILED
 
     active_requests = db.query(models.ServiceRequest).filter(

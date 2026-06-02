@@ -1,3 +1,4 @@
+import logging
 import stripe
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -12,6 +13,8 @@ from . import schemas, models
 import app.payments.services as services
 from .invoice_pdf import generate_invoice_pdf
 from app.core.config import PLATFORM_URL
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 workers_router = APIRouter()
@@ -145,8 +148,8 @@ def create_payment_intent(
         if existing_payment.stripe_payment_intent_id:
             try:
                 stripe.PaymentIntent.cancel(existing_payment.stripe_payment_intent_id)
-            except stripe.error.StripeError:
-                pass
+            except stripe.error.StripeError as e:
+                logger.error("Error cancelando PaymentIntent previo %s: %s", existing_payment.stripe_payment_intent_id, e)
         existing_payment.status = models.PaymentStatus.FAILED
         db.commit()
 
@@ -494,8 +497,8 @@ def setup_worker_stripe(
         if account.charges_enabled and account.payouts_enabled:
             services.process_pending_transfers_for_worker(db, str(current_user.id))
             return schemas.StripeSetupResponse(url="__ALREADY_COMPLETED__")
-    except stripe.error.StripeError:
-        pass
+    except stripe.error.StripeError as e:
+        logger.warning("Stripe account retrieve falló (continuando con creación): %s", e)
 
     try:
         account_link = stripe.AccountLink.create(
