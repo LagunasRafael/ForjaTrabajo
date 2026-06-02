@@ -77,7 +77,8 @@ class _SharedChatScreenState extends ConsumerState<SharedChatScreen> {
     for (int i = 0; i < messages.length; i++) {
       final msg = messages[i];
       items.add(msg);
-      if (i + 1 >= messages.length || !_isSameDay(msg.createdAt, messages[i + 1].createdAt)) {
+      if (i + 1 >= messages.length ||
+          !_isSameDay(msg.createdAt, messages[i + 1].createdAt)) {
         items.add(ChatDayDivider.fromDateTime(msg.createdAt));
       }
     }
@@ -95,10 +96,14 @@ class _SharedChatScreenState extends ConsumerState<SharedChatScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    ref.listen<AsyncValue<RemoteMessage>>(notificationEventProvider, (previous, next) {
+    ref.listen<AsyncValue<RemoteMessage>>(notificationEventProvider,
+        (previous, next) {
       next.whenData((message) {
         final type = message.data['type'] ?? '';
-        if (type == 'new_message' || type == 'job_completed' || type == 'job_cancelled' || type == 'dispute_resolved') {
+        if (type == 'new_message' ||
+            type == 'job_completed' ||
+            type == 'job_cancelled' ||
+            type == 'dispute_resolved') {
           ref.invalidate(chatProvider(widget.conversationId));
         }
       });
@@ -106,24 +111,31 @@ class _SharedChatScreenState extends ConsumerState<SharedChatScreen> {
 
     final messages = ref.watch(chatProvider(widget.conversationId));
     ref.listen(chatProvider(widget.conversationId), (prev, next) {
-      if (prev != null && next.length > prev.length && prev.isNotEmpty && _isNearBottom()) {
+      if (prev != null &&
+          next.length > prev.length &&
+          prev.isNotEmpty &&
+          _isNearBottom()) {
         WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
       }
     });
     final chatNotifier = ref.read(chatProvider(widget.conversationId).notifier);
 
-    final isOtherUserTyping = ref.watch(chatTypingProvider(widget.conversationId));
+    final isOtherUserTyping =
+        ref.watch(chatTypingProvider(widget.conversationId));
     final authState = ref.watch(authProvider);
     final user = authState.user;
     final myId = user?.id;
     final myRole = widget.myRole ?? user?.role ?? 'client';
     final isClient = myRole == 'client';
 
-    final isInitialLoading = authState.status == 'loading' || (messages.isEmpty && !chatNotifier.isConnected);
+    final isInitialLoading = authState.status == 'loading' ||
+        (messages.isEmpty && !chatNotifier.isConnected);
 
     final lastOffer = _getLastOffer(messages);
-    final isOfferAccepted = messages.any((m) => m.messageType == 'offer' &&
-        (m.status.toLowerCase() == 'accept' || m.status.toLowerCase() == 'accepted'));
+    final isOfferAccepted = messages.any((m) =>
+        m.messageType == 'offer' &&
+        (m.status.toLowerCase() == 'accept' ||
+            m.status.toLowerCase() == 'accepted'));
 
     final chatList = ref.watch(chatListProvider);
     final thisChat = chatList.maybeWhen(
@@ -137,7 +149,8 @@ class _SharedChatScreenState extends ConsumerState<SharedChatScreen> {
       orElse: () => null,
     );
 
-    final isClosed = thisChat?.status.toUpperCase() == 'CERRADO' || thisChat?.status.toUpperCase() == 'CLOSED';
+    final isClosed = thisChat?.status.toUpperCase() == 'CERRADO' ||
+        thisChat?.status.toUpperCase() == 'CLOSED';
     final closedReason = thisChat?.closedReason;
 
     final sStatus = (thisChat?.serviceStatus ?? 'open').toLowerCase();
@@ -165,8 +178,12 @@ class _SharedChatScreenState extends ConsumerState<SharedChatScreen> {
       appBar: ChatAppBar(
         subtitlePrefix: subtitlePrefix,
         service: {
-          'id': (widget.service is Map && widget.service['id'] != null) ? widget.service['id'] : thisChat?.serviceId,
-          'title': (widget.service is Map && widget.service['title'] != null) ? widget.service['title'] : (thisChat?.serviceName ?? 'Servicio'),
+          'id': (widget.service is Map && widget.service['id'] != null)
+              ? widget.service['id']
+              : thisChat?.serviceId,
+          'title': (widget.service is Map && widget.service['title'] != null)
+              ? widget.service['title']
+              : (thisChat?.serviceName ?? 'Servicio'),
         },
         otherUserName: widget.otherUserName,
         otherUserAvatarUrl: widget.otherUserAvatarUrl,
@@ -175,8 +192,13 @@ class _SharedChatScreenState extends ConsumerState<SharedChatScreen> {
             ? () => showDisputeDialog(context, ref, widget.conversationId)
             : null,
         onTapService: () {
-          final sId = (widget.service is Map && widget.service['id'] != null) ? widget.service['id'] : thisChat?.serviceId;
-          final sTitle = (widget.service is Map && widget.service['title'] != null) ? widget.service['title'] : (thisChat?.serviceName ?? 'Servicio');
+          final sId = (widget.service is Map && widget.service['id'] != null)
+              ? widget.service['id']
+              : thisChat?.serviceId;
+          final sTitle =
+              (widget.service is Map && widget.service['title'] != null)
+                  ? widget.service['title']
+                  : (thisChat?.serviceName ?? 'Servicio');
 
           if (sId != null && sId.isNotEmpty) {
             final currentUser = ref.read(authProvider).user;
@@ -225,139 +247,155 @@ class _SharedChatScreenState extends ConsumerState<SharedChatScreen> {
                 ),
               ),
               child: isInitialLoading
-              ? const Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                  ),
-                )
-              : messages.isEmpty
-                ? const ChatEmptyState()
-                : NotificationListener<ScrollNotification>(
-                    onNotification: (ScrollNotification scrollInfo) {
-                      if (scrollInfo.metrics.pixels >= scrollInfo.metrics.maxScrollExtent - 100) {
-                        ref.read(chatProvider(widget.conversationId).notifier).loadMoreMessages();
-                      }
-                      return false;
-                    },
-                    child: ListView.builder(
-                      controller: _scrollController,
-                      reverse: true,
-                      padding: const EdgeInsets.all(16),
-                      cacheExtent: 1000,
-                      itemCount: _buildChatItems(messages).length + 1,
-                      itemBuilder: (context, index) {
-                        final displayItems = _buildChatItems(messages);
-                        if (index == displayItems.length) {
-                          final notifier = ref.read(chatProvider(widget.conversationId).notifier);
-                          if (notifier.isLoadingMore) {
-                            return const Padding(
-                              padding: EdgeInsets.symmetric(vertical: 20),
-                              child: Center(
-                                child: SizedBox(
-                                  width: 24, height: 24,
-                                  child: CircularProgressIndicator(
-                                    color: Color(0xFF4F46E5),
-                                    strokeWidth: 2,
-                                  ),
-                                ),
-                              ),
-                            );
-                          }
-                          return const SizedBox.shrink();
-                        }
+                  ? const Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                      ),
+                    )
+                  : messages.isEmpty
+                      ? const ChatEmptyState()
+                      : NotificationListener<ScrollNotification>(
+                          onNotification: (ScrollNotification scrollInfo) {
+                            if (scrollInfo.metrics.pixels >=
+                                scrollInfo.metrics.maxScrollExtent - 100) {
+                              ref
+                                  .read(chatProvider(widget.conversationId)
+                                      .notifier)
+                                  .loadMoreMessages();
+                            }
+                            return false;
+                          },
+                          child: ListView.builder(
+                            controller: _scrollController,
+                            reverse: true,
+                            padding: const EdgeInsets.all(16),
+                            cacheExtent: 1000,
+                            itemCount: _buildChatItems(messages).length + 1,
+                            itemBuilder: (context, index) {
+                              final displayItems = _buildChatItems(messages);
+                              if (index == displayItems.length) {
+                                final notifier = ref.read(
+                                    chatProvider(widget.conversationId)
+                                        .notifier);
+                                if (notifier.isLoadingMore) {
+                                  return const Padding(
+                                    padding: EdgeInsets.symmetric(vertical: 20),
+                                    child: Center(
+                                      child: SizedBox(
+                                        width: 24,
+                                        height: 24,
+                                        child: CircularProgressIndicator(
+                                          color: Color(0xFF4F46E5),
+                                          strokeWidth: 2,
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                }
+                                return const SizedBox.shrink();
+                              }
 
-                        final item = displayItems[index];
-                        if (item is ChatDayDivider) {
-                          return item;
-                        }
+                              final item = displayItems[index];
+                              if (item is ChatDayDivider) {
+                                return item;
+                              }
 
-                        final m = item as MessageEntity;
-                        final isMyMessage = m.senderId == myId;
+                              final m = item as MessageEntity;
+                              final isMyMessage = m.senderId == myId;
 
-                        String displayTime = m.displayTime;
+                              String displayTime = m.displayTime;
 
-                        Widget messageWidget;
+                              Widget messageWidget;
 
-                        if (m.messageType == 'offer') {
-                          final isCurrentOffer = lastOffer != null && lastOffer.id == m.id;
-                          messageWidget = NegotiationCard(
-                            key: ValueKey("offer_${m.id}_${m.status}"),
-                            message: m,
-                            isMe: isMyMessage,
-                            isClient: isClient,
-                            conversationId: widget.conversationId,
-                            serviceImageUrl: widget.service is Map ? widget.service['imageUrls']?.firstOrNull : null,
-                            isProcessed: !isCurrentOffer,
-                            time: displayTime,
-                          );
-                        } else {
-                          messageWidget = ChatBubble(
-                            key: ValueKey("bubble_${m.id}"),
-                            text: m.content,
-                            isMe: isMyMessage,
-                            time: displayTime,
-                            messageType: m.messageType,
-                            status: m.status,
-                            senderAvatarUrl: isMyMessage ? null : widget.otherUserAvatarUrl,
-                            onRetry: () {
-                              ref.read(chatProvider(widget.conversationId).notifier).resendMessage(m.id);
+                              if (m.messageType == 'offer') {
+                                final isCurrentOffer =
+                                    lastOffer != null && lastOffer.id == m.id;
+                                messageWidget = NegotiationCard(
+                                  key: ValueKey("offer_${m.id}_${m.status}"),
+                                  message: m,
+                                  isMe: isMyMessage,
+                                  isClient: isClient,
+                                  conversationId: widget.conversationId,
+                                  serviceImageUrl: widget.service is Map
+                                      ? widget.service['imageUrls']?.firstOrNull
+                                      : null,
+                                  isProcessed: !isCurrentOffer,
+                                  time: displayTime,
+                                );
+                              } else {
+                                messageWidget = ChatBubble(
+                                  key: ValueKey("bubble_${m.id}"),
+                                  text: m.content,
+                                  isMe: isMyMessage,
+                                  time: displayTime,
+                                  messageType: m.messageType,
+                                  status: m.status,
+                                  senderAvatarUrl: isMyMessage
+                                      ? null
+                                      : widget.otherUserAvatarUrl,
+                                  senderName:
+                                      isMyMessage ? null : widget.otherUserName,
+                                  onRetry: () {
+                                    ref
+                                        .read(
+                                            chatProvider(widget.conversationId)
+                                                .notifier)
+                                        .resendMessage(m.id);
+                                  },
+                                );
+                              }
+
+                              final firstMsgIndex = displayItems
+                                  .indexWhere((i) => i is MessageEntity);
+                              if (index == firstMsgIndex && isMyMessage) {
+                                String statusText = "Enviado";
+                                Color statusColor = Colors.grey.shade600;
+
+                                if (m.status == 'sending') {
+                                  statusText = "Enviando...";
+                                  statusColor = const Color(0xFF4F46E5);
+                                } else if (m.status == 'error') {
+                                  statusText = "Error al enviar";
+                                  statusColor = Colors.red;
+                                } else if (m.status == 'pending') {
+                                  statusText = "Pendiente";
+                                  statusColor = Colors.orange;
+                                }
+
+                                return Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    messageWidget,
+                                    Padding(
+                                      padding: const EdgeInsets.only(
+                                          top: 4, right: 12, bottom: 4),
+                                      child: Text(
+                                        statusText,
+                                        style: TextStyle(
+                                          color: statusColor,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              }
+
+                              return messageWidget;
                             },
-                          );
-                        }
-
-                        final firstMsgIndex = displayItems.indexWhere((i) => i is MessageEntity);
-                        if (index == firstMsgIndex && isMyMessage) {
-                          String statusText = "Enviado";
-                          Color statusColor = Colors.grey.shade600;
-
-                          if (m.status == 'sending') {
-                            statusText = "Enviando...";
-                            statusColor = const Color(0xFF4F46E5);
-                          } else if (m.status == 'error') {
-                            statusText = "Error al enviar";
-                            statusColor = Colors.red;
-                          } else if (m.status == 'pending') {
-                            statusText = "Pendiente";
-                            statusColor = Colors.orange;
-                          }
-
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              messageWidget,
-                              Padding(
-                                padding: const EdgeInsets.only(top: 4, right: 12, bottom: 4),
-                                child: Text(
-                                  statusText,
-                                  style: TextStyle(
-                                    color: statusColor,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          );
-                        }
-
-                        return messageWidget;
-                      },
-                    ),
-                  ),
-              ),
+                          ),
+                        ),
             ),
-
-            if (isClient && hasActiveOffer)
+          ),
+          if (isClient && hasActiveOffer)
             ChatNegotiationBanner(
               amount: lastOffer.content.toString(),
               conversationId: widget.conversationId,
             ),
-
-          if (isOtherUserTyping) ChatTypingIndicator(otherUserName: widget.otherUserName),
-
-          if (isClosed)
-            ChatClosedBanner(closedReason: closedReason),
-
+          if (isOtherUserTyping)
+            ChatTypingIndicator(otherUserName: widget.otherUserName),
+          if (isClosed) ChatClosedBanner(closedReason: closedReason),
           ChatInputArea(
             conversationId: widget.conversationId,
             isClient: isClient,
