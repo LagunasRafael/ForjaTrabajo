@@ -7,11 +7,9 @@ import 'package:record/record.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:audioplayers/audioplayers.dart';
-import 'package:wechat_assets_picker/wechat_assets_picker.dart';
 import 'package:forja_trabajo/features/chat/presentation/providers/chat_provider.dart';
 import 'package:forja_trabajo/features/chat/presentation/widgets/offer_bottom_sheet.dart';
 import 'package:forja_trabajo/features/chat/presentation/widgets/chat_media_preview.dart';
-import 'package:forja_trabajo/features/chat/presentation/widgets/spanish_asset_picker_delegate.dart';
 import 'package:forja_trabajo/features/chat/presentation/widgets/chat_input_action_menu.dart';
 import 'package:forja_trabajo/features/chat/presentation/widgets/chat_input_recorder_bar.dart';
 import 'package:forja_trabajo/features/chat/presentation/widgets/chat_location_picker.dart';
@@ -43,7 +41,6 @@ class _ChatInputAreaState extends ConsumerState<ChatInputArea> {
   List<XFile> _selectedMedia = [];
   List<String> _selectedMediaTypes = [];
   List<Duration?> _selectedMediaDurations = [];
-  List<AssetEntity> _selectedAssets = [];
 
   final AudioRecorder _audioRecorder = AudioRecorder();
   bool _isRecording = false;
@@ -93,7 +90,6 @@ class _ChatInputAreaState extends ConsumerState<ChatInputArea> {
         _selectedMedia.clear();
         _selectedMediaTypes.clear();
         _selectedMediaDurations.clear();
-        _selectedAssets.clear();
       });
     } else {
       notifier.sendMessage(text, "text");
@@ -186,57 +182,20 @@ class _ChatInputAreaState extends ConsumerState<ChatInputArea> {
 
   Future<void> _pickGallery() async {
     try {
-      final PermissionState ps = await PhotoManager.requestPermissionExtend();
-      if (!ps.isAuth) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('⚠️ Permiso denegado para acceder a la galería.'),
-              backgroundColor: Colors.orange,
-            ),
-          );
-        }
-        return;
-      }
-
-      final List<AssetEntity>? result = await AssetPicker.pickAssets(
-        context,
-        pickerConfig: AssetPickerConfig(
-          maxAssets: 5,
-          selectedAssets: _selectedAssets,
-          requestType: RequestType.common,
-          textDelegate: const SpanishAssetPickerTextDelegate(),
-        ),
+      final picker = ImagePicker();
+      final pickedFiles = await picker.pickMultipleMedia(
+        imageQuality: 80,
+        limit: 5,
       );
 
-      if (result != null && mounted) {
+      if (pickedFiles != null && mounted) {
         setState(() {
-          _selectedAssets = result;
-        });
-
-        List<XFile> currentMedia = [];
-        List<String> currentTypes = [];
-        List<Duration?> currentDurations = [];
-
-        for (var asset in result) {
-          final file = await asset.file;
-          if (file != null) {
-            currentMedia.add(XFile(file.path));
-
-            if (asset.type == AssetType.video) {
-              currentTypes.add('video');
-              currentDurations.add(Duration(seconds: asset.duration));
-            } else {
-              currentTypes.add('image');
-              currentDurations.add(null);
-            }
-          }
-        }
-
-        setState(() {
-          _selectedMedia = currentMedia;
-          _selectedMediaTypes = currentTypes;
-          _selectedMediaDurations = currentDurations;
+          _selectedMedia = pickedFiles;
+          _selectedMediaTypes = pickedFiles.map((f) {
+            final ext = f.name.split('.').last.toLowerCase();
+            return ['mp4', 'mov', 'avi', 'mkv', 'webm'].contains(ext) ? 'video' : 'image';
+          }).toList();
+          _selectedMediaDurations = List.filled(pickedFiles.length, null);
         });
       }
     } catch (e) {
@@ -396,9 +355,6 @@ class _ChatInputAreaState extends ConsumerState<ChatInputArea> {
                 _selectedMedia.removeAt(index);
                 _selectedMediaTypes.removeAt(index);
                 _selectedMediaDurations.removeAt(index);
-                if (index < _selectedAssets.length) {
-                  _selectedAssets.removeAt(index);
-                }
               });
             },
           ),

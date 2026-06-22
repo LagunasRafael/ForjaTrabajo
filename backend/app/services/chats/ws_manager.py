@@ -36,8 +36,6 @@ class ConnectionManager:
             for dead_conn in dead_connections:
                 if dead_conn in self.active_connections[conversation_id]:
                     self.active_connections[conversation_id].remove(dead_conn)
-
-
 manager = ConnectionManager()
 
 
