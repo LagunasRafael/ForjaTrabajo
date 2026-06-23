@@ -44,10 +44,6 @@ class Category(Base):
 # SERVICE (PUBLICA EL CLIENTE - OPCIÓN B)
 # -----------------------------
 class Service(Base):
-    """
-    Aquí el CLIENTE o ADMIN publican la necesidad (ej. Tubo roto).
-    Mantenemos todos tus campos originales.
-    """
     __tablename__ = "services"
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))

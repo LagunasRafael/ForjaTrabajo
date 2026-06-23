@@ -8,6 +8,7 @@ import 'package:forja_trabajo/features/chat/presentation/providers/chat_list_pro
 import 'package:forja_trabajo/core/network/api_client.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:forja_trabajo/features/chat/presentation/providers/chat_typing_provider.dart';
+import 'package:forja_trabajo/features/services/presentation/providers/job_management_provider.dart';
 
 mixin ChatWebSocketMixin on StateNotifier<List<MessageModel>>, WidgetsBindingObserver {
   ChatRepository get repository;
@@ -130,6 +131,13 @@ mixin ChatWebSocketMixin on StateNotifier<List<MessageModel>>, WidgetsBindingObs
 
       if (decoded is Map && decoded['type'] == 'conversation_reactivated') {
         print("🔓 [WS] Chat reactivado: $conversationId");
+        ref.read(chatListProvider.notifier).loadRealChats();
+        return;
+      }
+
+      if (decoded is Map && decoded['type'] == 'job_accepted') {
+        print("✅ [WS] Trabajo aceptado: job=${decoded['job_id']}");
+        ref.invalidate(workerJobsProvider);
         ref.read(chatListProvider.notifier).loadRealChats();
         return;
       }

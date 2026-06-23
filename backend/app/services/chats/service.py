@@ -218,7 +218,7 @@ def get_user_chats(db: Session, user_id: str):
             continue
         
         # ✅ AQUÍ ESTÁ LA MAGIA CORREGIDA: Usamos full_name
-        other_name = other_user.full_name if other_user and other_user.full_name else "Usuario"
+        other_name = other_user.full_name if other_user and other_user.full_name else (other_user.email.split('@')[0] if other_user and other_user.email else "Usuario")
         
         # ✅ Aseguramos que el avatar sea una URL absoluta
         avatar = getattr(other_user, 'profile_picture_url', None)
