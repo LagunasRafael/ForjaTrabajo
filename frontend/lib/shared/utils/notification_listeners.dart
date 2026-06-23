@@ -25,6 +25,7 @@ void _onNotification(Ref ref, RemoteMessage message) {
   }
 
   if (type.toString().contains('job_') ||
+      type == 'payment_expired' ||
       type == 'in_progress' ||
       type == 'new_application' ||
       type == 'offer_responded' ||
