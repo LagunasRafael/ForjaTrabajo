@@ -1,4 +1,5 @@
 import logging
+import uuid
 import stripe
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -28,7 +29,6 @@ def create_contract(
     db: Session = Depends(get_db),
     current_user: auth_models.User = Depends(get_current_user)
 ):
-    import uuid
     new_contract = models.Contract(
         id=str(uuid.uuid4()),
         job_id=contract.job_id,
@@ -160,7 +160,7 @@ def create_payment_intent(
             amount=amount_cents,
             currency="mxn",
             capture_method="manual",
-            idempotency_key=f"create_intent_{data.job_id}",
+            idempotency_key=f"create_intent_{data.job_id}_{uuid.uuid4().hex}",
             metadata={
                 "worker_id": data.worker_id,
                 "job_id": data.job_id,
@@ -186,8 +186,6 @@ def create_payment_intent(
         stripe_payment_intent_id=intent.id
     )
     db.add(db_payment)
-    # El cliente inició el pago, ya no necesita el deadline
-    job.payment_due_at = None  # type: ignore
     db.commit()
 
     return schemas.CreateIntentResponse(
