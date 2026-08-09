@@ -1,9 +1,8 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:wechat_assets_picker/wechat_assets_picker.dart';
-import 'package:photo_manager/photo_manager.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:forja_trabajo/features/services/presentation/providers/work_evidence_provider.dart';
-import 'package:forja_trabajo/features/chat/presentation/widgets/spanish_asset_picker_delegate.dart';
 
 class WorkEvidenceUploadButton extends ConsumerWidget {
   final String serviceId;
@@ -38,44 +37,27 @@ class WorkEvidenceUploadButton extends ConsumerWidget {
   }
 
   Future<void> _pickAndUpload(BuildContext context, WidgetRef ref) async {
-    final PermissionState ps = await PhotoManager.requestPermissionExtend();
-    if (!ps.isAuth) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('⚠️ Permiso denegado para acceder a la galería.'),
-            backgroundColor: Colors.orange,
-          ),
-        );
-      }
-      return;
-    }
-
     final remaining = 8 - currentCount;
     if (remaining <= 0) return;
 
-    final List<AssetEntity>? result = await AssetPicker.pickAssets(
-      context,
-      pickerConfig: AssetPickerConfig(
-        maxAssets: remaining,
-        requestType: RequestType.image,
-        textDelegate: const SpanishAssetPickerTextDelegate(),
-      ),
-    );
-
-    if (result == null || result.isEmpty) return;
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => const Center(child: CircularProgressIndicator()),
-    );
-
-    int successCount = 0;
     try {
-      for (final asset in result) {
-        final file = await asset.file;
-        if (file == null) continue;
+      final picker = ImagePicker();
+      final pickedFiles = await picker.pickMultiImage(
+        imageQuality: 80,
+        limit: remaining,
+      );
+
+      if (pickedFiles == null || pickedFiles.isEmpty) return;
+
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => const Center(child: CircularProgressIndicator()),
+      );
+
+      int successCount = 0;
+      for (final xfile in pickedFiles) {
+        final file = File(xfile.path);
         try {
           await ref.read(uploadEvidenceProvider(
             UploadEvidenceParams(serviceId: serviceId, imageFile: file),

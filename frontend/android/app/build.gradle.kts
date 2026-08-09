@@ -1,3 +1,6 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
@@ -5,8 +8,16 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
     id("com.google.gms.google-services")
 }
+
+val keystoreProperties = Properties()
+val keystorePropertiesFile = rootProject.file("key.properties")
+
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+}
+
 android {
-    namespace = "com.example.forja_trabajo"
+    namespace = "com.ForjaTrabajo.app"
     compileSdk = 36
     ndkVersion = "27.0.12077973"
 
@@ -21,7 +32,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.forja_trabajo"
+        applicationId = "com.ForjaTrabajo.app"
         
         minSdk = flutter.minSdkVersion
         
@@ -36,9 +47,32 @@ android {
         multiDexEnabled = true
     }
 
+    signingConfigs {
+        create("release") {
+            keyAlias = (keystoreProperties["keyAlias"] as String?)
+                ?: System.getenv("KEY_ALIAS") ?: ""
+            keyPassword = (keystoreProperties["keyPassword"] as String?)
+                ?: System.getenv("KEY_PASSWORD") ?: ""
+            storeFile = file(
+                (keystoreProperties["storeFile"] as String?)
+                    ?: System.getenv("STORE_FILE") ?: ""
+            )
+            storePassword = (keystoreProperties["storePassword"] as String?)
+                ?: System.getenv("STORE_PASSWORD") ?: ""
+        }
+    }
+
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
+
+            isMinifyEnabled = false
+            isShrinkResources = false
+
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
     }
 }

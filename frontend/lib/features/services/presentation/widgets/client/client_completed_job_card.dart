@@ -312,7 +312,7 @@ class _ClientCompletedActions extends ConsumerWidget {
     if (payment == null) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No se encontró factura para este servicio')),
+        const SnackBar(content: Text('El servicio fue cancelado o eliminado')),
       );
       return;
     }

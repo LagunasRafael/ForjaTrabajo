@@ -21,6 +21,16 @@ def create_service_request(db: Session, request_data: schemas.ServiceRequestCrea
     ).first()
 
     if existing_request:
+        if existing_request.status == "accepted":
+            raise HTTPException(status_code=400, detail="Ya fuiste aceptado para este trabajo.")
+        service = db.query(models.Service).filter(
+            models.Service.id == str(request_data.service_id)
+        ).first()
+        if service and service.status == models.JobStatus.OPEN:
+            existing_request.description = request_data.description
+            existing_request.proposed_price = request_data.proposed_price
+            db.commit()
+            return existing_request
         raise HTTPException(status_code=400, detail="Ya enviaste una propuesta a este trabajo.")
 
     worker = db.query(auth_models.User).filter(auth_models.User.id == str(worker_id)).first()

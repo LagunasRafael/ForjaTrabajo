@@ -1,3 +1,5 @@
+import logging
+import uuid
 import stripe
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -13,6 +15,8 @@ import app.payments.services as services
 from .invoice_pdf import generate_invoice_pdf
 from app.core.config import PLATFORM_URL
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter()
 workers_router = APIRouter()
 
@@ -25,7 +29,6 @@ def create_contract(
     db: Session = Depends(get_db),
     current_user: auth_models.User = Depends(get_current_user)
 ):
-    import uuid
     new_contract = models.Contract(
         id=str(uuid.uuid4()),
         job_id=contract.job_id,
@@ -101,6 +104,12 @@ def create_payment_intent(
             detail=f"El trabajo no está en estado 'matched'. Estado actual: {job.status.value}"
         )
 
+    if not job.final_price or int(data.amount_mxn * 100) != int(job.final_price * 100):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="El monto no coincide con el precio del trabajo"
+        )
+
     if str(job.client_id) != str(current_user.id):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -139,8 +148,8 @@ def create_payment_intent(
         if existing_payment.stripe_payment_intent_id:
             try:
                 stripe.PaymentIntent.cancel(existing_payment.stripe_payment_intent_id)
-            except stripe.error.StripeError:
-                pass
+            except stripe.error.StripeError as e:
+                logger.error("Error cancelando PaymentIntent previo %s: %s", existing_payment.stripe_payment_intent_id, e)
         existing_payment.status = models.PaymentStatus.FAILED
         db.commit()
 
@@ -151,7 +160,7 @@ def create_payment_intent(
             amount=amount_cents,
             currency="mxn",
             capture_method="manual",
-            idempotency_key=f"create_intent_{data.job_id}",
+            idempotency_key=f"create_intent_{data.job_id}_{uuid.uuid4().hex}",
             metadata={
                 "worker_id": data.worker_id,
                 "job_id": data.job_id,
@@ -177,8 +186,6 @@ def create_payment_intent(
         stripe_payment_intent_id=intent.id
     )
     db.add(db_payment)
-    # El cliente inició el pago, ya no necesita el deadline
-    job.payment_due_at = None  # type: ignore
     db.commit()
 
     return schemas.CreateIntentResponse(
@@ -219,6 +226,12 @@ def confirm_payment(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No tienes permiso para confirmar el pago de este trabajo"
+        )
+
+    if not job.final_price or int(data.amount_mxn * 100) != int(job.final_price * 100):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="El monto no coincide con el precio del trabajo"
         )
 
     contract = db.query(models.Contract).filter(
@@ -482,8 +495,8 @@ def setup_worker_stripe(
         if account.charges_enabled and account.payouts_enabled:
             services.process_pending_transfers_for_worker(db, str(current_user.id))
             return schemas.StripeSetupResponse(url="__ALREADY_COMPLETED__")
-    except stripe.error.StripeError:
-        pass
+    except stripe.error.StripeError as e:
+        logger.warning("Stripe account retrieve falló (continuando con creación): %s", e)
 
     try:
         account_link = stripe.AccountLink.create(

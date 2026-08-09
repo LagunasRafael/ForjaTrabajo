@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'chat_audio_player_widget.dart';
 import 'chat_gallery_viewer_screen.dart';
 import 'chat_location_bubble.dart';
@@ -13,6 +14,7 @@ class ChatBubble extends StatelessWidget {
   final String status;
   final VoidCallback? onRetry;
   final String? senderAvatarUrl;
+  final String? senderName;
 
   const ChatBubble({
     super.key,
@@ -23,22 +25,58 @@ class ChatBubble extends StatelessWidget {
     this.status = 'sent',
     this.onRetry,
     this.senderAvatarUrl,
+    this.senderName,
   });
 
   Widget _buildSmallAvatar(ThemeData theme) {
-    final url = senderAvatarUrl ?? '';
-    if (url.isNotEmpty && url.startsWith('http')) {
-      return CircleAvatar(
-        radius: 16,
-        backgroundColor: theme.colorScheme.primaryContainer,
-        backgroundImage: NetworkImage(url),
-        onBackgroundImageError: (_, __) {},
-      );
-    }
-    return CircleAvatar(
-      radius: 16,
-      backgroundColor: theme.colorScheme.primaryContainer,
-      child: const Icon(Icons.person, size: 18, color: Color(0xFF4F46E5)),
+    final url = senderAvatarUrl?.trim() ?? '';
+    final initial = (senderName != null && senderName!.isNotEmpty)
+        ? senderName![0].toUpperCase()
+        : 'U';
+
+    return Container(
+      width: 32,
+      height: 32,
+      decoration: const BoxDecoration(
+        color: Color(0xFFEEF2FF),
+        shape: BoxShape.circle,
+      ),
+      clipBehavior: Clip.hardEdge,
+      child: (url.isNotEmpty && url.startsWith('http'))
+          ? CachedNetworkImage(
+              imageUrl: url,
+              fit: BoxFit.cover,
+              errorWidget: (context, url, error) => Center(
+                child: Text(
+                  initial,
+                  style: const TextStyle(
+                    color: Color(0xFF4F46E5),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+              placeholder: (context, url) => Center(
+                child: Text(
+                  initial,
+                  style: const TextStyle(
+                    color: Color(0xFF4F46E5),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            )
+          : Center(
+              child: Text(
+                initial,
+                style: const TextStyle(
+                  color: Color(0xFF4F46E5),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+            ),
     );
   }
 
@@ -81,10 +119,12 @@ class ChatBubble extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Column(
-        crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        crossAxisAlignment:
+            isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+            mainAxisAlignment:
+                isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               if (!isMe) ...[
@@ -101,12 +141,16 @@ class ChatBubble extends StatelessWidget {
                   child: Container(
                     padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
                     decoration: BoxDecoration(
-                      color: isMe ? const Color(0xFF4F46E5) : theme.colorScheme.surfaceVariant,
+                      color: isMe
+                          ? const Color(0xFF4F46E5)
+                          : theme.colorScheme.surfaceVariant,
                       borderRadius: BorderRadius.only(
                         topLeft: const Radius.circular(16),
                         topRight: const Radius.circular(16),
-                        bottomLeft: isMe ? const Radius.circular(16) : Radius.zero,
-                        bottomRight: isMe ? Radius.zero : const Radius.circular(16),
+                        bottomLeft:
+                            isMe ? const Radius.circular(16) : Radius.zero,
+                        bottomRight:
+                            isMe ? Radius.zero : const Radius.circular(16),
                       ),
                       boxShadow: [
                         BoxShadow(
@@ -117,7 +161,9 @@ class ChatBubble extends StatelessWidget {
                       ],
                     ),
                     child: Column(
-                      crossAxisAlignment: isMe ? CrossAxisAlignment.start : CrossAxisAlignment.end,
+                      crossAxisAlignment: isMe
+                          ? CrossAxisAlignment.start
+                          : CrossAxisAlignment.end,
                       children: [
                         _buildContent(context),
                         if (time != null)
@@ -129,7 +175,9 @@ class ChatBubble extends StatelessWidget {
                                 Text(
                                   time!,
                                   style: TextStyle(
-                                    color: isMe ? Colors.white70 : Colors.grey.shade500,
+                                    color: isMe
+                                        ? Colors.white70
+                                        : Colors.grey.shade500,
                                     fontSize: 10,
                                     fontWeight: FontWeight.w500,
                                   ),
@@ -158,7 +206,8 @@ class ChatBubble extends StatelessWidget {
       return const SizedBox(
         width: 12,
         height: 12,
-        child: CircularProgressIndicator(strokeWidth: 1.5, color: Colors.white54),
+        child:
+            CircularProgressIndicator(strokeWidth: 1.5, color: Colors.white54),
       );
     } else if (status == 'pending') {
       return const SizedBox.shrink();
@@ -171,16 +220,23 @@ class ChatBubble extends StatelessWidget {
 
   Widget _buildContent(BuildContext context) {
     final theme = Theme.of(context);
-    if (messageType == 'gallery' || messageType == 'image' || messageType == 'video') {
+    if (messageType == 'gallery' ||
+        messageType == 'image' ||
+        messageType == 'video') {
       final urls = text.split(',');
       if (urls.length > 1) {
         return _buildGalleryGrid(urls, context);
       } else {
         final singleUrl = urls.first;
         final ext = singleUrl.split('?').first.toLowerCase();
-        final isVideo = messageType == 'video' || ext.endsWith('.mp4') || ext.endsWith('.mov') || ext.endsWith('.mkv');
-    if (isVideo) return _buildVideoPlaceholder(overrideUrl: singleUrl, context: context);
-    return _buildImagePlaceholder(overrideUrl: singleUrl, context: context);
+        final isVideo = messageType == 'video' ||
+            ext.endsWith('.mp4') ||
+            ext.endsWith('.mov') ||
+            ext.endsWith('.mkv');
+        if (isVideo)
+          return _buildVideoPlaceholder(
+              overrideUrl: singleUrl, context: context);
+        return _buildImagePlaceholder(overrideUrl: singleUrl, context: context);
       }
     } else if (messageType == 'audio') {
       return AudioPlayerWidget(url: text, isMe: isMe);
@@ -200,7 +256,8 @@ class ChatBubble extends StatelessWidget {
 
   void _openGallery(BuildContext context, List<String> urls, int initialIndex) {
     Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => GalleryViewerScreen(urls: urls, initialIndex: initialIndex),
+      builder: (_) =>
+          GalleryViewerScreen(urls: urls, initialIndex: initialIndex),
     ));
   }
 
@@ -210,9 +267,11 @@ class ChatBubble extends StatelessWidget {
     if (count == 1) {
       final url = urls.first;
       final ext = url.split('?').first.toLowerCase();
-      final isVideo = ext.endsWith('.mp4') || ext.endsWith('.mov') || ext.endsWith('.mkv');
+      final isVideo =
+          ext.endsWith('.mp4') || ext.endsWith('.mov') || ext.endsWith('.mkv');
       if (isVideo) return _buildVideoPlaceholder();
-      return _buildImagePlaceholder(overrideUrl: url, size: 200, context: context);
+      return _buildImagePlaceholder(
+          overrideUrl: url, size: 200, context: context);
     }
 
     const double spacing = 4.0;
@@ -240,15 +299,18 @@ class ChatBubble extends StatelessWidget {
         child: Row(
           children: [
             Expanded(
-              child: _buildGridThumbnail(urls[0], 0, urls, context, height: sizeBig),
+              child: _buildGridThumbnail(urls[0], 0, urls, context,
+                  height: sizeBig),
             ),
             const SizedBox(width: spacing),
             Expanded(
               child: Column(
                 children: [
-                  Expanded(child: _buildGridThumbnail(urls[1], 1, urls, context)),
+                  Expanded(
+                      child: _buildGridThumbnail(urls[1], 1, urls, context)),
                   const SizedBox(height: spacing),
-                  Expanded(child: _buildGridThumbnail(urls[2], 2, urls, context)),
+                  Expanded(
+                      child: _buildGridThumbnail(urls[2], 2, urls, context)),
                 ],
               ),
             ),
@@ -321,7 +383,8 @@ class ChatBubble extends StatelessWidget {
     double? height,
   }) {
     final ext = url.split('?').first.toLowerCase();
-    final isVideo = ext.endsWith('.mp4') || ext.endsWith('.mov') || ext.endsWith('.mkv');
+    final isVideo =
+        ext.endsWith('.mp4') || ext.endsWith('.mov') || ext.endsWith('.mkv');
 
     return GestureDetector(
       onTap: () {
@@ -338,9 +401,7 @@ class ChatBubble extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            isVideo
-                ? _buildVideoThumbnail()
-                : _buildImageThumbnail(url),
+            isVideo ? _buildVideoThumbnail() : _buildImageThumbnail(url),
             if (status == 'sending')
               Container(
                 color: Colors.black45,
@@ -372,7 +433,10 @@ class ChatBubble extends StatelessWidget {
 
   Widget _buildImageThumbnail(String url) {
     bool isUrl = url.startsWith('http');
-    bool isLocal = url.startsWith('/') || url.startsWith('C:') || url.startsWith('var/') || url.startsWith('file://');
+    bool isLocal = url.startsWith('/') ||
+        url.startsWith('C:') ||
+        url.startsWith('var/') ||
+        url.startsWith('file://');
 
     if (isUrl) {
       return Image.network(
@@ -380,7 +444,9 @@ class ChatBubble extends StatelessWidget {
         fit: BoxFit.cover,
         loadingBuilder: (context, child, loadingProgress) {
           if (loadingProgress == null) return child;
-          return Center(child: CircularProgressIndicator(color: isMe ? Colors.white : const Color(0xFF4F46E5)));
+          return Center(
+              child: CircularProgressIndicator(
+                  color: isMe ? Colors.white : const Color(0xFF4F46E5)));
         },
         errorBuilder: (context, error, stackTrace) => const Center(
           child: Icon(Icons.broken_image, size: 24, color: Colors.grey),
@@ -396,15 +462,20 @@ class ChatBubble extends StatelessWidget {
         ),
       );
     } else {
-      return const Center(child: Icon(Icons.image, size: 24, color: Colors.grey));
+      return const Center(
+          child: Icon(Icons.image, size: 24, color: Colors.grey));
     }
   }
 
-  Widget _buildImagePlaceholder({String? overrideUrl, double size = 200, required BuildContext context}) {
+  Widget _buildImagePlaceholder(
+      {String? overrideUrl, double size = 200, required BuildContext context}) {
     final theme = Theme.of(context);
     final url = overrideUrl ?? text;
     bool isUrl = url.startsWith('http');
-    bool isLocal = url.startsWith('/') || url.startsWith('C:') || url.startsWith('var/') || url.startsWith('file://');
+    bool isLocal = url.startsWith('/') ||
+        url.startsWith('C:') ||
+        url.startsWith('var/') ||
+        url.startsWith('file://');
 
     Widget imageWidget;
     if (isUrl) {
@@ -413,19 +484,27 @@ class ChatBubble extends StatelessWidget {
         fit: BoxFit.cover,
         loadingBuilder: (context, child, loadingProgress) {
           if (loadingProgress == null) return child;
-          return Center(child: CircularProgressIndicator(color: isMe ? Colors.white : const Color(0xFF4F46E5)));
+          return Center(
+              child: CircularProgressIndicator(
+                  color: isMe ? Colors.white : const Color(0xFF4F46E5)));
         },
-        errorBuilder: (context, error, stackTrace) => Center(child: Icon(Icons.broken_image, size: 40, color: isMe ? Colors.white : Colors.grey)),
+        errorBuilder: (context, error, stackTrace) => Center(
+            child: Icon(Icons.broken_image,
+                size: 40, color: isMe ? Colors.white : Colors.grey)),
       );
     } else if (isLocal) {
       final path = url.replaceFirst('file://', '');
       imageWidget = Image.file(
         File(path),
         fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) => Center(child: Icon(Icons.broken_image, size: 40, color: isMe ? Colors.white : Colors.grey)),
+        errorBuilder: (context, error, stackTrace) => Center(
+            child: Icon(Icons.broken_image,
+                size: 40, color: isMe ? Colors.white : Colors.grey)),
       );
     } else {
-      imageWidget = Center(child: Icon(Icons.image, size: 40, color: isMe ? Colors.white : Colors.grey));
+      imageWidget = Center(
+          child: Icon(Icons.image,
+              size: 40, color: isMe ? Colors.white : Colors.grey));
     }
 
     return GestureDetector(
@@ -438,7 +517,8 @@ class ChatBubble extends StatelessWidget {
         width: size,
         height: size,
         decoration: BoxDecoration(
-          color: isMe ? const Color(0xFF6366F1) : theme.colorScheme.surfaceVariant,
+          color:
+              isMe ? const Color(0xFF6366F1) : theme.colorScheme.surfaceVariant,
           borderRadius: BorderRadius.circular(12),
         ),
         clipBehavior: Clip.hardEdge,
@@ -458,7 +538,8 @@ class ChatBubble extends StatelessWidget {
                         height: 28,
                         child: CircularProgressIndicator(
                           strokeWidth: 2.5,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(Colors.white),
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -480,7 +561,8 @@ class ChatBubble extends StatelessWidget {
     );
   }
 
-  Widget _buildVideoPlaceholder({String? overrideUrl, double size = 200, BuildContext? context}) {
+  Widget _buildVideoPlaceholder(
+      {String? overrideUrl, double size = 200, BuildContext? context}) {
     final url = overrideUrl ?? text.split(',').first.trim();
     return GestureDetector(
       onTap: () {
@@ -505,11 +587,13 @@ class ChatBubble extends StatelessWidget {
             Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.play_circle_outline, size: 50, color: Colors.white),
+                const Icon(Icons.play_circle_outline,
+                    size: 50, color: Colors.white),
                 const SizedBox(height: 4),
                 Text(
                   'Toca para reproducir',
-                  style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 11),
+                  style: TextStyle(
+                      color: Colors.white.withOpacity(0.7), fontSize: 11),
                 ),
               ],
             ),
@@ -525,7 +609,8 @@ class ChatBubble extends StatelessWidget {
                         height: 28,
                         child: CircularProgressIndicator(
                           strokeWidth: 2.5,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(Colors.white),
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -546,6 +631,4 @@ class ChatBubble extends StatelessWidget {
       ),
     );
   }
-
-
 }

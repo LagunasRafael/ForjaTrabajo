@@ -10,8 +10,13 @@ from app.db.database import get_db
 from app.auth import models
 from app.core.roles import Role # Importante para validaciones
 
-# Leemos desde el .env, si no hay, usamos una temporal para desarrollo
-SECRET_KEY = os.getenv("SECRET_KEY", "TU_LLAVE_SUPER_SECRETA_DE_SISTEMAS") 
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    raise RuntimeError(
+        "SECRET_KEY no está configurada. "
+        "Debes definir la variable de entorno SECRET_KEY "
+        "con una clave segura (ej: openssl rand -hex 32)"
+    )
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
 REFRESH_TOKEN_EXPIRE_DAYS = 7

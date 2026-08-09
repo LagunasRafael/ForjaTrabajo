@@ -1,4 +1,4 @@
-package com.example.forja_trabajo
+package com.ForjaTrabajo.app
 
 import io.flutter.embedding.android.FlutterFragmentActivity
 

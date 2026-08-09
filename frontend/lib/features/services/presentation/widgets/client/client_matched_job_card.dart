@@ -39,6 +39,10 @@ class ClientMatchedJobCard extends ConsumerWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
+    final isExpired = isMatched && !isPaid &&
+        service.paymentDueAt != null &&
+        service.paymentDueAt!.isBefore(DateTime.now());
+
     String badgeText;
     Color badgeColor;
     if (isDisputed) {
@@ -50,7 +54,10 @@ class ClientMatchedJobCard extends ConsumerWidget {
     } else if (isMatched && isPaid) {
       badgeText = "PAGADO";
       badgeColor = const Color(0xFF10B981);
-    } else if (isMatched) {
+    } else if (isMatched && !isPaid && isExpired) {
+      badgeText = "PAGO VENCIDO";
+      badgeColor = Colors.red;
+    } else if (isMatched && !isPaid) {
       badgeText = "PAGO PENDIENTE";
       badgeColor = Colors.red;
     } else {
@@ -119,9 +126,6 @@ class _ClientMatchedActionsState extends ConsumerState<_ClientMatchedActions> {
   bool _isOpeningChat = false;
   String _countdown = '';
   Timer? _timer;
-  Timer? _retryTimer;
-  int _retryCount = 0;
-  static const int _maxRetries = 40;
 
   @override
   void initState() {
@@ -132,8 +136,6 @@ class _ClientMatchedActionsState extends ConsumerState<_ClientMatchedActions> {
   @override
   void didUpdateWidget(covariant _ClientMatchedActions oldWidget) {
     super.didUpdateWidget(oldWidget);
-    _retryTimer?.cancel();
-    _retryCount = 0;
     if (oldWidget.service.status != widget.service.status ||
         oldWidget.service.hasPaid != widget.service.hasPaid) {
       _startCountdown();
@@ -143,7 +145,6 @@ class _ClientMatchedActionsState extends ConsumerState<_ClientMatchedActions> {
   @override
   void dispose() {
     _timer?.cancel();
-    _retryTimer?.cancel();
     super.dispose();
   }
 
@@ -151,22 +152,6 @@ class _ClientMatchedActionsState extends ConsumerState<_ClientMatchedActions> {
     _timer?.cancel();
     _updateCountdown();
     _timer = Timer.periodic(const Duration(seconds: 1), (_) => _updateCountdown());
-  }
-
-  void _startPostExpiryRetry() {
-    _retryTimer?.cancel();
-    _retryCount = 0;
-    _retryTimer = Timer.periodic(const Duration(seconds: 3), (_) {
-      if (!mounted) {
-        _retryTimer?.cancel();
-        return;
-      }
-      _retryCount++;
-      ref.invalidate(myRequestsProvider);
-      if (_retryCount >= _maxRetries) {
-        _retryTimer?.cancel();
-      }
-    });
   }
 
   void _updateCountdown() {
@@ -184,14 +169,11 @@ class _ClientMatchedActionsState extends ConsumerState<_ClientMatchedActions> {
 
     final remaining = deadline.difference(DateTime.now());
     if (remaining.isNegative) {
-      setState(() => _countdown = '');
+      setState(() => _countdown = 'VENCIDO');
       _timer?.cancel();
-      Future.microtask(() {
-        if (mounted) {
-          ref.invalidate(myRequestsProvider);
-          _startPostExpiryRetry();
-        }
-      });
+      if (mounted) {
+        ref.invalidate(myRequestsProvider);
+      }
       return;
     }
 
@@ -259,7 +241,12 @@ class _ClientMatchedActionsState extends ConsumerState<_ClientMatchedActions> {
     VoidCallback? onPressed;
     Color color;
 
-    if (isMatched && !isPaid) {
+    if (_countdown == 'VENCIDO' && isMatched && !isPaid) {
+      label = "VENCIDO";
+      icon = Icons.timer_off;
+      onPressed = null;
+      color = Colors.grey;
+    } else if (isMatched && !isPaid) {
       label = "Pagar";
       icon = Icons.payment;
       onPressed = () => _handlePayment(context);
@@ -316,7 +303,11 @@ class _ClientMatchedActionsState extends ConsumerState<_ClientMatchedActions> {
     Color bgColor;
     Color textColor;
 
-    if (isMatched && !widget.service.hasPaid) {
+    if (_countdown == 'VENCIDO') {
+      message = "El plazo para pagar ha vencido";
+      bgColor = Colors.grey.shade100;
+      textColor = Colors.grey.shade700;
+    } else if (isMatched && !widget.service.hasPaid) {
       message = "Tiempo restante para pagar";
       bgColor = Colors.red.shade50;
       textColor = Colors.red.shade800;
