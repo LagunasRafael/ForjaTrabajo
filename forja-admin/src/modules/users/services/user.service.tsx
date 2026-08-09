@@ -37,10 +37,10 @@ const mapUserFromApi = (dto: UserDTO): User => {
 
 // --- SERVICIOS CONECTADOS AL HOOK ---
 
-// 🟢 OBTENER TODOS
+// Obtener todos los usuarios
 export const getUsersApi = async (): Promise<User[]> => {
   const { data } = await api.get<UserDTO[]>('/auth/users');
-  return data.map(mapUserFromApi); // Pasamos los datos por el filtro (Mapper)
+  return data.map(mapUserFromApi); 
 };
 
 // 🔵 CREAR (Usando el endpoint protegido de admin)
@@ -93,20 +93,16 @@ export const uploadUserAvatarApi = async (id: string, file: File): Promise<User>
 
   const updatedUser = mapUserFromApi(data);
 
-  // 🔥 LA MAGIA DE SINCRONIZACIÓN:
-  // 1. Obtenemos quién está logueado ahora mismo
   const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
 
-  // 2. Si el ID que acabamos de actualizar es el MISMO del que está logueado...
   if (id === storedUser.id) {
-    // Actualizamos el localStorage con la nueva URL
+
     const newUserSession = {
       ...storedUser,
       profile_picture_url: updatedUser.avatarUrl
     };
     localStorage.setItem('user', JSON.stringify(newUserSession));
 
-    // Avisamos a toda la app que cambie la foto (UserMenu, ProfilePage, etc.)
     window.dispatchEvent(new Event('storage'));
   }
 

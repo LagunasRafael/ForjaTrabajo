@@ -31,21 +31,17 @@ export const FinancePage = () => {
     fetchData();
   }, []);
 
-  // 💰 Lógica Financiera
+  // Lógica Financiera
   const stats = useMemo(() => {
     // Filtramos solo los terminados
     const completed = services.filter(s => (s.status || '').toUpperCase() === 'COMPLETED');
     const total = completed.reduce((acc, curr) => acc + (curr.basePrice || 0), 0);
     const average = completed.length > 0 ? total / completed.length : 0;
     
-    // 3. 🟢 Cruce relacional: Dinero por categoría real
     const byCategory: Record<string, number> = {};
-    
     completed.forEach(s => {
-      // Buscamos la categoría en el arreglo de categorías usando el ID que trae el servicio
       const categoryObj = categories.find(c => c.id === s.categoryId);
       const name = categoryObj ? categoryObj.name : 'Otros';
-      
       byCategory[name] = (byCategory[name] || 0) + (s.basePrice || 0);
     });
 
@@ -54,11 +50,8 @@ export const FinancePage = () => {
       .sort((a, b) => b.value - a.value);
 
     return { total, average, completedCount: completed.length, categoryData };
-  }, [services, categories]); // Agregamos categories a las dependencias
-
+  }, [services, categories]);
   const formatMXN = (val: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(val);
-
-  // 📥 Función nativa para exportar a CSV
     const exportToCSV = () => {
     // 1. Filtramos solo los servicios terminados
     const completedServices = services.filter(s => (s.status || '').toUpperCase() === 'COMPLETED');

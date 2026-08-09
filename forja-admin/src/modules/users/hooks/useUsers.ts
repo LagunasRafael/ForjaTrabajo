@@ -19,7 +19,7 @@ export const useUsers = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // 1. CARGAR USUARIOS (Al iniciar la pantalla)
+  //cargar usuarios al iniciar la pantalla
   useEffect(() => {
     fetchUsers();
   }, []);
@@ -40,30 +40,27 @@ export const useUsers = () => {
       setIsLoading(false);
     }
   };
-
-  // 2. CREAR USUARIO
+  
+  //Crear usuario
   const createUser = async (formData: UserFormData) => {
     try {
-      // Enviamos la petición POST a FastAPI
       const newUser = await createUserApi(formData);
       
-      // Actualizamos la tabla de React inmediatamente (Optimistic UI)
       setUsers(prev => [newUser, ...prev]);
       
       return newUser;
     } catch (error) {
       console.error("Error creando usuario:", error);
-      throw error; // Lo lanzamos para que el toast.error del UsersPage lo atrape
+      throw error;
     }
   };
 
-  // 3. ACTUALIZAR USUARIO
+  //ACTUALIZAR USUARIO
   const updateUser = async (id: string, formData: UserFormData) => {
     try {
-      // Enviamos la petición PUT a FastAPI
+
       const updatedUser = await updateUserApi(id, formData);
       
-      // Buscamos al usuario en la tabla y lo reemplazamos con los datos frescos
       setUsers(prev => prev.map(user => 
         user.id === id ? { ...user, ...updatedUser } : user
       ));
@@ -75,13 +72,10 @@ export const useUsers = () => {
     }
   };
 
-  // 4. ELIMINAR USUARIO
+  //ELIMINAR USUARIO
   const deleteUser = async (id: string) => {
     try {
-      // Enviamos la petición DELETE a FastAPI
       await deleteUserApi(id);
-      
-      // Lo filtramos (quitamos) de la tabla visualmente
       setUsers(prev => prev.filter(user => user.id !== id));
     } catch (error) {
       console.error("Error eliminando usuario:", error);

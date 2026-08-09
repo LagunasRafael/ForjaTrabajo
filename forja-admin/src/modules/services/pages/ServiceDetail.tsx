@@ -19,21 +19,19 @@ export const ServiceDetail = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // 📡 Carga de datos usando tu service.service
+  // Carga de datos
   useEffect(() => {
   const loadFullData = async () => {
     try {
       setLoading(true);
       
-      // 🟢 Llamada 1: El Detalle (Objeto individual)
+      // Traemos el servicio y las ofertas
       const serviceData = await getServiceById(id!); 
-      
-      // 🔵 Llamada 2: Las Ofertas (Arreglo de postulaciones)
-      // CAMBIA getServiceById POR getServiceOffers
       const offersData = await getServiceOffers(id!); 
       
+      // Guardamos los datos
       setService(serviceData);
-      setOffers(offersData); // ✅ Ahora sí recibirá un arreglo y no habrá error
+      setOffers(offersData); 
     } catch (error) {
       toast.error("Error al sincronizar con FastAPI");
     } finally {

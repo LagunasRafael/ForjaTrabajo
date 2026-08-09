@@ -46,7 +46,7 @@ api.interceptors.response.use(
       try {
         const refreshToken = localStorage.getItem('refresh_token');
         if (refreshToken) {
-          // Usamos axios puro (no 'api') para evitar que se intercepte de nuevo este refresco
+          // Usamos axios puro para evitar que se intercepte de nuevo este refresco
           const response = await axios.post(`${api.defaults.baseURL}/auth/refresh`, {
             refresh_token: refreshToken
           });

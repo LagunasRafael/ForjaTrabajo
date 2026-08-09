@@ -9,16 +9,13 @@ import {type UserFormData } from './schemas/user.schema';
 import { ConfirmModal } from '../../components/ConfirmModal';
 
 const UsersPage = () => {
-  // 1. Lógica de Datos (Extraída al Hook)
   const { users, isLoading, createUser, updateUser, deleteUser } = useUsers();
   
-  // 2. Estado de UI (Local de la página)
   const [searchTerm, setSearchTerm] = useState('');
   const [isSlideOverOpen, setIsSlideOverOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
 
-  // 3. Filtrado
   const filteredUsers = useMemo(() => {
     if (!searchTerm) return users;
     const lowerTerm = searchTerm.toLowerCase();
@@ -28,7 +25,6 @@ const UsersPage = () => {
     );
   }, [users, searchTerm]);
 
-  // 4. Handlers de UI
   const handleOpenCreate = () => {
     setSelectedUser(null);
     setIsSlideOverOpen(true);

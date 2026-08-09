@@ -35,7 +35,7 @@ export const DashboardPage = () => {
         getServices()
       ]);
 
-      // 📊 Cálculos de métricas reales
+      //Cálculos de métricas reales
       const matched = servicesData.filter(s => (s.status || '').toUpperCase() === 'MATCHED').length;
       
       setStats({
@@ -66,7 +66,7 @@ export const DashboardPage = () => {
 
   useAutoRefresh(() => loadDashboardData(), 90000);
 
-  // 📈 Preparación de datos para la gráfica circular
+  //Preparación de datos para la gráfica circular
   const chartData = useMemo(() => [
     { name: 'Abiertos', value: services.filter(s => (s.status || '').toUpperCase() === 'OPEN').length, color: '#60a5fa' },
     { name: 'En Proceso', value: services.filter(s => (s.status || '').toUpperCase() === 'MATCHED').length, color: '#fb7185' },
@@ -82,7 +82,7 @@ export const DashboardPage = () => {
     counts[s.categoryId] = (counts[s.categoryId] || 0) + 1;
   });
 
-  // Mapeamos a nombres reales y ordenamos de mayor a menor
+  // Mapeamos y ordenamos de mayor a menor
   return categories
     .map(cat => ({
       name: cat.name,
@@ -285,7 +285,6 @@ export const DashboardPage = () => {
                   fill="#818cf8" 
                   radius={[0, 4, 4, 0]} 
                   barSize={24}
-                  // Animación para que se vea pro al cargar
                   animationDuration={1500}
                 />
               </BarChart>
