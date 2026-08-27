@@ -1,7 +1,7 @@
 name: forja_trabajo
 description: "A new Flutter project."
 publish_to: 'none'
-version: 0.1.4+4
+version: 0.1.5+5
 
 environment:
   sdk: ^3.5.0
@@ -13,6 +13,7 @@ dependencies:
   flutter_riverpod: ^2.6.1
   get_it: ^7.6.0
   http: ^1.2.0
+  http_parser: ^4.1.0
   flutter_secure_storage: ^9.2.2
   google_fonts: ^6.2.1
   lucide_icons: ^0.257.0

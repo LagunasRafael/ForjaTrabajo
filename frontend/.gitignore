@@ -78,3 +78,7 @@ android/app/release
 linux/flutter/ephemeral/
 macos/Flutter/ephemeral/
 windows/flutter/ephemeral/
+
+#external
+.obsidian
+.opencode

@@ -35,11 +35,10 @@ android {
         applicationId = "com.ForjaTrabajo.app"
         
         minSdk = flutter.minSdkVersion
-        
-        // 🟡 3. TRUCO DE ESTABILIDAD:
-        // Compilamos con la 36 (para que Gradle no llore), 
-        // pero le decimos al emulador que se comporte como la 35.
-        targetSdk = 35 
+
+        // Requisito de Google Play (vigente desde el 31 ago 2026):
+        // las actualizaciones deben apuntar a Android 16 (API 36) o superior.
+        targetSdk = 36
         
         versionCode = flutter.versionCode
         versionName = flutter.versionName
@@ -53,10 +52,11 @@ android {
                 ?: System.getenv("KEY_ALIAS") ?: ""
             keyPassword = (keystoreProperties["keyPassword"] as String?)
                 ?: System.getenv("KEY_PASSWORD") ?: ""
-            storeFile = file(
-                (keystoreProperties["storeFile"] as String?)
-                    ?: System.getenv("STORE_FILE") ?: ""
-            )
+            val storeFilePath = (keystoreProperties["storeFile"] as String?)
+                ?: System.getenv("STORE_FILE")
+            if (!storeFilePath.isNullOrEmpty()) {
+                storeFile = file(storeFilePath)
+            }
             storePassword = (keystoreProperties["storePassword"] as String?)
                 ?: System.getenv("STORE_PASSWORD") ?: ""
         }

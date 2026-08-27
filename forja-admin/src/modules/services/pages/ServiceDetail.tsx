@@ -6,7 +6,7 @@ import {
   ArrowLeft, MapPin, DollarSign, Clock, User, 
   ShieldCheck, ShieldAlert, ExternalLink, Box, Trash2
 } from 'lucide-react';
-import { getServiceById, toggleServiceActive, type ServiceEntity, getServiceOffers,deleteServiceAdmin } from '../services/service.service';
+import { getServiceById, toggleServiceActive, type ServiceEntity, getServiceOffers,deleteServiceAdmin, type ServiceOffer } from '../services/service.service';
 
 
 
@@ -15,7 +15,7 @@ export const ServiceDetail = () => {
   const navigate = useNavigate();
   const [service, setService] = useState<ServiceEntity | null>(null);
   const [loading, setLoading] = useState(true);
-  const [offers, setOffers] = useState<any[]>([]);
+  const [offers, setOffers] = useState<ServiceOffer[]>([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
