@@ -107,13 +107,13 @@ export const AdminLayout = () => {
   const location = useLocation();
   const { counts } = usePendingCounts();
 
-  // 🔒 Auth Guard: si no hay token, redirigir al login
+  //Auth Guard: si no hay token, redirigir al login
   const token = localStorage.getItem('token');
   if (!token) {
     return <Navigate to="/login" replace />;
   }
 
-  // 📱 Estado del sidebar móvil
+  //Estado del sidebar móvil
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Leemos el estado de mantenimiento
@@ -187,7 +187,7 @@ export const AdminLayout = () => {
           }} />
         </aside>
 
-        {/* 🖥️ SIDEBAR DESKTOP (igual que antes) */}
+        {/*IDEBAR DESKTOP*/}
         <aside className="hidden w-64 flex-col border-r border-slate-800 bg-slate-900/50 backdrop-blur-xl md:flex">
           <SidebarLogo />
           <SidebarNav counts={{
@@ -202,7 +202,7 @@ export const AdminLayout = () => {
         <div className="flex flex-1 flex-col overflow-hidden">
           <header className="relative z-30 flex h-16 shrink-0 items-center justify-between border-b border-slate-800 bg-slate-900/50 px-4 md:px-8 backdrop-blur-md">
             <div className="flex items-center gap-3">
-              {/* 📱 BOTÓN HAMBURGUESA (solo en móvil) */}
+              {/*BOTÓN HAMBURGUESA (solo en móvil) */}
               <button 
                 onClick={() => setIsMobileMenuOpen(true)}
                 className="rounded-lg p-2 text-slate-400 hover:bg-slate-800 hover:text-white transition-colors md:hidden"

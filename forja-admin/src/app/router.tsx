@@ -23,7 +23,6 @@ export const router = createBrowserRouter([
     path: '/login',
     element: <LoginPage />,
   },
-
   // 2. Rutas Privadas (Admin Panel)
   {
     path: '/',
@@ -38,7 +37,7 @@ export const router = createBrowserRouter([
         element: <ProfilePage />,
       },
       {
-        path: 'settings', // 🟢 2. REGISTRA LA RUTA DE CONFIGURACIÓN
+        path: 'settings',
         element: <SettingsPage />,
       },
       {

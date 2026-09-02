@@ -20,28 +20,22 @@ export const LoginPage = () => {
         identifier: email,
         password: password
       });
-
       // 2. Guardar Token, Refresh Token y USUARIO
       localStorage.setItem('token', data.access_token);
       if (data.refresh_token) {
         localStorage.setItem('refresh_token', data.refresh_token);
       }
-
       // Guardamos el objeto user completo como string
       if (data.user) {
         localStorage.setItem('user', JSON.stringify(data.user));
       }
-
       // 3. Feedback personalizado
       const userName = data.user?.full_name || 'Admin';
       toast.success(`¡Bienvenido de nuevo, ${userName}!`);
-
       // Redirigimos al Dashboard
       navigate('/', { replace: true });
-
     } catch (error: any) {
       console.error("Error en login:", error);
-
       if (error.response?.status === 401) {
         toast.error('Credenciales incorrectas. Verifica tu contraseña.');
       } else if (error.response?.status === 400 || error.response?.status === 422) {

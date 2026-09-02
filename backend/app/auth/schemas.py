@@ -46,7 +46,6 @@ class UserResponse(UserBase):
     is_active: bool
     is_email_verified: bool
     is_identity_verified: bool = False
-    verification_code: Optional[str] = None
     created_at: Optional[datetime] = None
     bio: Optional[str] = None
     categories: Optional[List[Category]] = []

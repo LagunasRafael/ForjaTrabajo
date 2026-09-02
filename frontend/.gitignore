@@ -53,6 +53,11 @@ forja-admin/dist/
 forja-admin/.env
 
 # =========================
+# ANDROID KEYSTORE (NO SUBIR A GIT)
+# =========================
+android/key.properties
+
+# =========================
 # FLUTTER
 # =========================
 .dart_tool/
@@ -73,3 +78,7 @@ android/app/release
 linux/flutter/ephemeral/
 macos/Flutter/ephemeral/
 windows/flutter/ephemeral/
+
+#external
+.obsidian
+.opencode

@@ -25,6 +25,7 @@ void _onNotification(Ref ref, RemoteMessage message) {
   }
 
   if (type.toString().contains('job_') ||
+      type == 'payment_expired' ||
       type == 'in_progress' ||
       type == 'new_application' ||
       type == 'offer_responded' ||
@@ -33,7 +34,7 @@ void _onNotification(Ref ref, RemoteMessage message) {
     ref.invalidate(myRequestsProvider);
   }
 
-  if (type == 'job_completed' || type == 'job_cancelled' || type == 'dispute_resolved') {
+  if (type == 'job_completed' || type == 'job_cancelled' || type == 'dispute_resolved' || type == 'dispute_continued') {
     ref.invalidate(chatListProvider);
   }
 

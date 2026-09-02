@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja_trabajo/features/chat/domain/repositories/chat_repository.dart';
 import 'package:forja_trabajo/features/chat/data/models/message_model.dart';
@@ -9,7 +10,7 @@ import 'package:forja_trabajo/features/chat/presentation/providers/chat_websocke
 import 'package:forja_trabajo/features/chat/presentation/providers/chat_media_mixin.dart';
 
 class ChatNotifier extends StateNotifier<List<MessageModel>>
-    with ChatWebSocketMixin, ChatMediaMixin {
+    with WidgetsBindingObserver, ChatWebSocketMixin, ChatMediaMixin {
   @override
   final ChatRepository repository;
   @override

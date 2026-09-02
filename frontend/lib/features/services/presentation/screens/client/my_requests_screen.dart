@@ -20,19 +20,28 @@ class MyRequestsScreen extends ConsumerStatefulWidget {
 }
 
 class _MyRequestsScreenState extends ConsumerState<MyRequestsScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late TabController _tabController;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     // Prioridad: 1. Índice que viene por constructor (notificaciones) 2. Índice del provider (navegación interna)
     final index = widget.initialIndex != 0 ? widget.initialIndex : ref.read(myRequestsTabProvider);
     _tabController = TabController(length: 3, vsync: this, initialIndex: index);
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      ref.invalidate(myRequestsProvider);
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _tabController.dispose();
     super.dispose();
   }

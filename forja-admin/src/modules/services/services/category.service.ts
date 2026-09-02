@@ -1,15 +1,15 @@
 import api from '../../../api/client';
 
-// 1. DTO: Lo que viene de FastAPI (Snake Case)
+// DTO: Lo que viene de FastAPI 
 interface CategoryDTO {
   id: string;
   name: string;
   description?: string;
-  is_active?: boolean; // Por si lo agregas luego
+  is_active?: boolean;
   created_at?: string;
 }
 
-// 2. Modelo Frontend: Lo que usa React (Camel Case)
+// 2. Modelo forntend que usa frontend 
 export interface Category {
   id: string;
   name: string;

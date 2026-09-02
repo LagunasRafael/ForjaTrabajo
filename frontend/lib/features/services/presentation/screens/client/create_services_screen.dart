@@ -1,8 +1,8 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:wechat_assets_picker/wechat_assets_picker.dart';
 import '../../../domain/entities/service_entity.dart';
 import '../../providers/category_provider.dart';
 import '../../providers/service_list_provider.dart';
@@ -13,7 +13,6 @@ import 'create_service_steps/step2_location.dart';
 import 'create_service_steps/step3_summary.dart';
 import '../../providers/nav_providers.dart';
 import 'package:forja_trabajo/features/services/presentation/widgets/createservices/create_services_header.dart';
-import 'package:forja_trabajo/features/chat/presentation/widgets/spanish_asset_picker_delegate.dart';
 
 class CreateServiceScreen extends ConsumerStatefulWidget {
   final ServiceEntity? serviceToEdit;
@@ -66,31 +65,19 @@ class _CreateServiceScreenState extends ConsumerState<CreateServiceScreen> {
       return;
     }
 
-    final PermissionState ps = await PhotoManager.requestPermissionExtend();
-    if (!ps.isAuth) {
-      _showError("Permiso denegado para acceder a la galería");
-      return;
-    }
+    try {
+      final picker = ImagePicker();
+      final pickedFiles = await picker.pickMultiImage(
+        imageQuality: 80,
+        limit: remaining,
+      );
 
-    final List<AssetEntity>? result = await AssetPicker.pickAssets(
-      context,
-      pickerConfig: AssetPickerConfig(
-        maxAssets: remaining,
-        requestType: RequestType.image,
-        textDelegate: const SpanishAssetPickerTextDelegate(),
-      ),
-    );
-
-    if (result == null || result.isEmpty) return;
-    if (!mounted) return;
-
-    final files = <File>[];
-    for (final asset in result) {
-      final file = await asset.file;
-      if (file != null) files.add(file);
-    }
-    if (files.isNotEmpty) {
-      ref.read(createServiceFormProvider.notifier).addImages(files);
+      if (pickedFiles != null && pickedFiles.isNotEmpty && mounted) {
+        final files = pickedFiles.map((f) => File(f.path)).toList();
+        ref.read(createServiceFormProvider.notifier).addImages(files);
+      }
+    } catch (e) {
+      _showError("Error al seleccionar imágenes");
     }
   }
 

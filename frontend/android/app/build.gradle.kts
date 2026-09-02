@@ -1,3 +1,6 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
@@ -5,8 +8,16 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
     id("com.google.gms.google-services")
 }
+
+val keystoreProperties = Properties()
+val keystorePropertiesFile = rootProject.file("key.properties")
+
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+}
+
 android {
-    namespace = "com.example.forja_trabajo"
+    namespace = "com.ForjaTrabajo.app"
     compileSdk = 36
     ndkVersion = "27.0.12077973"
 
@@ -21,14 +32,13 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.forja_trabajo"
+        applicationId = "com.ForjaTrabajo.app"
         
         minSdk = flutter.minSdkVersion
-        
-        // 🟡 3. TRUCO DE ESTABILIDAD:
-        // Compilamos con la 36 (para que Gradle no llore), 
-        // pero le decimos al emulador que se comporte como la 35.
-        targetSdk = 35 
+
+        // Requisito de Google Play (vigente desde el 31 ago 2026):
+        // las actualizaciones deben apuntar a Android 16 (API 36) o superior.
+        targetSdk = 36
         
         versionCode = flutter.versionCode
         versionName = flutter.versionName
@@ -36,9 +46,33 @@ android {
         multiDexEnabled = true
     }
 
+    signingConfigs {
+        create("release") {
+            keyAlias = (keystoreProperties["keyAlias"] as String?)
+                ?: System.getenv("KEY_ALIAS") ?: ""
+            keyPassword = (keystoreProperties["keyPassword"] as String?)
+                ?: System.getenv("KEY_PASSWORD") ?: ""
+            val storeFilePath = (keystoreProperties["storeFile"] as String?)
+                ?: System.getenv("STORE_FILE")
+            if (!storeFilePath.isNullOrEmpty()) {
+                storeFile = file(storeFilePath)
+            }
+            storePassword = (keystoreProperties["storePassword"] as String?)
+                ?: System.getenv("STORE_PASSWORD") ?: ""
+        }
+    }
+
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
+
+            isMinifyEnabled = true
+            isShrinkResources = true
+
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
     }
 }

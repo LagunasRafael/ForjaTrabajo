@@ -21,17 +21,30 @@ def get_s3_config():
     secret_key = os.getenv('AWS_SECRET_ACCESS_KEY', '').replace('"', '').replace("'", '').strip()
     region = os.getenv('AWS_REGION', 'us-east-1').replace('"', '').replace("'", '').strip()
     bucket_name = os.getenv('AWS_BUCKET_NAME', '').replace('"', '').replace("'", '').strip()
+    endpoint_url = os.getenv('AWS_ENDPOINT_URL', os.getenv('S3_ENDPOINT_URL', '')).replace('"', '').replace("'", '').strip()
     
     if not access_key or not secret_key or not bucket_name:
         raise ValueError("Faltan credenciales de AWS o el nombre del Bucket en el entorno.")
         
     s3_client = boto3.client(
         's3',
+        endpoint_url=endpoint_url or None,
         aws_access_key_id=access_key,
         aws_secret_access_key=secret_key,
         region_name=region
     )
     return s3_client, bucket_name
+
+
+def get_s3_public_url(key: str) -> str:
+    """Genera la URL pública de acceso a un archivo en S3 o Cloudflare R2."""
+    bucket_name = os.getenv('AWS_BUCKET_NAME', '').replace('"', '').replace("'", '').strip()
+    public_url_base = os.getenv('S3_PUBLIC_URL', '').replace('"', '').replace("'", '').strip().rstrip('/')
+    clean_key = key.lstrip('/')
+    if public_url_base:
+        return f"{public_url_base}/{clean_key}"
+    return f"https://{bucket_name}.s3.amazonaws.com/{clean_key}"
+
 
 
 async def upload_file_to_s3(file: UploadFile) -> str:
@@ -66,7 +79,7 @@ async def upload_file_to_s3(file: UploadFile) -> str:
         logger.info("Subida exitosa a AWS S3")
         
         # 6. Devolvemos la URL
-        return f"https://{bucket_name}.s3.amazonaws.com/{unique_filename}"
+        return get_s3_public_url(unique_filename)
 
     except Exception as e:
         logger.error("Error critico al subir la imagen a S3", exc_info=True)
@@ -123,7 +136,7 @@ async def upload_service_evidence_to_s3(file: UploadFile, service_id: str) -> Op
         logger.info("Imagenes cargadas exitosamente")
 
         # 4. Devolvemos la URL pública
-        return f"https://{bucket_name}.s3.amazonaws.com/{s3_key}"
+        return get_s3_public_url(s3_key)
 
     except Exception as e:
         logger.error("Error al subir evidencia a S3", exc_info=True)
@@ -181,7 +194,7 @@ async def upload_chat_media_to_s3(file: UploadFile, conversation_id: str) -> Opt
                 ExtraArgs={"ContentType": upload_content_type}
             ))
 
-        return f"https://{bucket_name}.s3.amazonaws.com/{s3_key}"
+        return get_s3_public_url(s3_key)
 
     except Exception as e:
         logger.error("Error al subir media de chat a S3", exc_info=True)

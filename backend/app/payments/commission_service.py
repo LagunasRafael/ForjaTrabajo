@@ -12,6 +12,6 @@ def get_commission_rate(db: Session) -> float:
         config = db.query(SiteConfig).first()
         if config and config.commission_rate is not None:
             return config.commission_rate / 100.0
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("No se pudo obtener commission_rate desde DB, usando default: %s", e)
     return COMMISSION_RATE

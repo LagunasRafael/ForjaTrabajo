@@ -10,6 +10,7 @@ from app.services.notifications import service as notif_service
 from app.core.config import PAYMENT_DUE_MINUTES
 from app.payments import models as payment_models
 import logging
+from urllib.parse import quote
 
 def close_chat(db: Session, conversation_id: str, reason: str):
     """Cierra un chat con una razón específica."""
@@ -212,19 +213,20 @@ def get_user_chats(db: Session, user_id: str):
         # También mostrar chats cerrados (tienen historial que conservar).
         is_closed = str(convo.status).lower() == models.ConversationStatus.CLOSED.value
         request_status = str(request.status).lower().strip() if (request and request.status) else "pending"
-        if request_status == "pending" and not last_msg and not is_closed:
+        # Ocultar conversaciones sin mensajes (nunca se inició conversación real)
+        if not last_msg:
             continue
         
         # ✅ AQUÍ ESTÁ LA MAGIA CORREGIDA: Usamos full_name
-        other_name = other_user.full_name if other_user and other_user.full_name else "Usuario"
+        other_name = other_user.full_name if other_user and other_user.full_name else (other_user.email.split('@')[0] if other_user and other_user.email else "Usuario")
         
         # ✅ Aseguramos que el avatar sea una URL absoluta
         avatar = getattr(other_user, 'profile_picture_url', None)
         
         # Fallback si no hay avatar (null o vacío)
         if not avatar:
-            inicial = other_name[0] if other_name else "U"
-            avatar = f"https://ui-avatars.com/api/?name={inicial}&background=random"
+            avatar_name = quote(other_name) if other_name else "U"
+            avatar = f"https://ui-avatars.com/api/?name={avatar_name}&color=4F46E5&background=EEF2FF"
         # Si es S3 o URL absoluta, lo dejamos. Si fuera relativa, en el futuro habría que prefijarla.
         # Por ahora, confiamos en lo que hay en DB si no es nulo.
 

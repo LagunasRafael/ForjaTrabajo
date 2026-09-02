@@ -22,7 +22,6 @@ export const UserTable = ({ users, isLoading, onEdit, onDelete }: UserTableProps
     <div className="w-full overflow-hidden rounded-lg border border-slate-800 bg-slate-900/40">
       <div className="overflow-x-auto">
         <table className="w-full text-left text-sm text-slate-400">
-          {/* Header con fondo ligeramente más oscuro */}
           <thead className="bg-slate-950/30 text-xs uppercase tracking-wider text-slate-500 font-medium">
             <tr>
               <th className="px-6 py-4">Usuario</th>

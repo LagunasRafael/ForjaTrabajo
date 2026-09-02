@@ -1,4 +1,5 @@
 import logging
+import uuid
 from datetime import datetime
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
@@ -106,8 +107,8 @@ def create_payment_intent(db: Session, job_id: str, amount: float):
         if existing_payment.stripe_payment_intent_id:
             try:
                 stripe.PaymentIntent.cancel(existing_payment.stripe_payment_intent_id)
-            except stripe.error.StripeError:
-                pass
+            except stripe.error.StripeError as e:
+                logger.error("Error cancelando PaymentIntent previo %s: %s", existing_payment.stripe_payment_intent_id, e)
         existing_payment.status = models.PaymentStatus.FAILED
         db.commit()
 
@@ -119,7 +120,7 @@ def create_payment_intent(db: Session, job_id: str, amount: float):
             amount=amount_cents,
             currency="mxn",
             capture_method="manual",
-            idempotency_key=f"create_intent_{job.id}",
+            idempotency_key=f"create_intent_{job.id}_{uuid.uuid4().hex}",
             metadata={
                 "job_id": str(job.id),
                 "contract_id": str(contract.id)
@@ -147,8 +148,6 @@ def create_payment_intent(db: Session, job_id: str, amount: float):
         payment_method="card",
         stripe_payment_intent_id=intent.id
     )
-
-    job.payment_due_at = None
 
     db.add(db_payment)
     db.commit()

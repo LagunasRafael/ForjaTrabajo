@@ -127,8 +127,8 @@ def list_reports(
         try:
             status_enum = service_models.ReportStatus(status)
             query = query.filter(service_models.Report.status == status_enum)
-        except ValueError:
-            pass
+        except ValueError as e:
+            logger.warning("Filtro de status inválido en reportes: %s", e)
 
     reports = query.all()
     return [_enrich_report(r, db) for r in reports]

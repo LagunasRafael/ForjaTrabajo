@@ -7,6 +7,7 @@ from app.core.roles import Role
 from app.auth import models as auth_models
 from app.services.notifications import service as notif_service
 from app.services.chats.service import close_chat, close_service_chats, get_or_create_conversation
+from app.services.chats.ws_manager import broadcast_event
 from app.payments.services import capture_payment
 import logging
 from app.core.config import PAYMENT_DUE_MINUTES, AUTO_RELEASE_MINUTES
@@ -40,6 +41,9 @@ def accept_postulation(db: Session, request_id: str, current_user_id: str):
         service_entry.base_price = final_price
         postulation.status = "accepted"
 
+        logger.info(f"ACCEPT_POSTULATION: PAYMENT_DUE_MINUTES={PAYMENT_DUE_MINUTES}, "
+                     f"payment_due_at={datetime.utcnow() + timedelta(minutes=PAYMENT_DUE_MINUTES)}")
+
         new_job = models.Job(
             request_id=postulation.id,
             provider_id=postulation.worker_id,
@@ -63,8 +67,14 @@ def accept_postulation(db: Session, request_id: str, current_user_id: str):
             if convo and convo.status == models.ConversationStatus.CLOSED.value:
                 from app.services.chats.service import reactivate_chat
                 reactivate_chat(db, str(convo.id))
-        except Exception:
-            pass
+            if convo:
+                broadcast_event(str(convo.id), {
+                    "type": "job_accepted",
+                    "job_id": str(new_job.id),
+                    "service_title": service_entry.title,
+                })
+        except Exception as e:
+            logger.error("Error en chat/WS al aceptar postulación: %s", e)
 
         return {
             "status": "success",
@@ -143,8 +153,8 @@ def complete_job(db: Session, job_id: str, user_id: str):
                 ).first()
                 if convo and convo.status != models.ConversationStatus.CLOSED.value:
                     close_chat(db, str(convo.id), models.ClosedReason.SERVICE_COMPLETED.value)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.error("Error cerrando chat al completar (job %s): %s", job.id, e)
 
         return job
 
@@ -185,7 +195,7 @@ def cancel_job(db: Session, job_id: str, user_id: str, user_role: str):
     if job.request and job.request.service:
         try:
             close_service_chats(db, str(job.request.service.id), models.ClosedReason.SERVICE_CANCELLED.value)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.error("Error cerrando chats al cancelar (job %s): %s", job.id, e)
 
     return job

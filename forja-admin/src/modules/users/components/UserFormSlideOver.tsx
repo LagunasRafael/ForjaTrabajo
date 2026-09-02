@@ -23,13 +23,8 @@ export const UserFormSlideOver = ({ isOpen, onClose, onSubmit, initialData }: Us
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // 3. Configuración del Hook Form
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors, isSubmitting }
-  } = useForm<UserFormData>({
+  //Configuración del Hook Form
+  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<UserFormData>({
     resolver: zodResolver(userSchema),
     defaultValues: {
       name: '',
@@ -39,11 +34,10 @@ export const UserFormSlideOver = ({ isOpen, onClose, onSubmit, initialData }: Us
     }
   });
 
-  // 4. Efecto para cargar datos
   useEffect(() => {
     if (isOpen) {
       if (initialData) {
-        setLocalAvatarUrl(initialData.avatarUrl); // <-- Guardamos la foto actual
+        setLocalAvatarUrl(initialData.avatarUrl); 
         reset({
           name: initialData.full_name,
           email: initialData.email,
@@ -51,7 +45,7 @@ export const UserFormSlideOver = ({ isOpen, onClose, onSubmit, initialData }: Us
           status: initialData.status,
         });
       } else {
-        setLocalAvatarUrl(undefined); // <-- Limpiamos si es nuevo usuario
+        setLocalAvatarUrl(undefined); 
         reset({
           name: '',
           email: '',
