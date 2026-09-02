@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, UploadFile
 from app.auth import models
-from app.utils.s3 import get_s3_config  # type: ignore
+from app.utils.s3 import get_s3_config, get_s3_public_url  # type: ignore
 import uuid
 import traceback
 
@@ -34,7 +34,7 @@ def create_verification(db: Session, user_id: str, ine_front: UploadFile, ine_ba
             file.file.seek(0)
             key = f"verifications/{user_id}/{prefix}_{uuid.uuid4()}.jpg"
             s3_client.upload_fileobj(compressed, bucket_name, key, ExtraArgs={"ContentType": "image/jpeg"})
-            return f"https://{bucket_name}.s3.amazonaws.com/{key}"
+            return get_s3_public_url(key)
 
         ine_front_url = upload_image(ine_front, "ine_front")
         ine_back_url = upload_image(ine_back, "ine_back")
